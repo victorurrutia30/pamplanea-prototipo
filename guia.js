@@ -1,11 +1,15 @@
 // Guía del prototipo: casos, pasos que se marcan solos con los eventos del teléfono,
-// simulaciones, tema y notas. Habla con telefono.html por postMessage (funciona con file://).
+// simulaciones, tema y notas. Habla con telefono.html por postMessage (funciona con file:// y
+// servido). Guarda el caso, el tema y las notas en este navegador; las notas son las mismas que
+// ve «Casos y ayuda» en el teléfono.
 'use strict';
 (() => {
     const CASOS = window.CASOS;
     const $ = (s) => document.querySelector(s);
     const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]);
     const PERSONAS = { ana: 'Ana', carlos: 'Carlos', nueva: 'Persona nueva' };
+    const CLAVE_GUIA = 'pamplanea-proto-v2:guia';
+    const CLAVE_NOTAS = 'pamplanea-proto-v2:notas';
     const est = { caso: null, persona: 'ana', tema: 'serena-claro', hechos: {}, completos: {}, nota: '', ajustar: false };
     const iframe = $('#telefono');
     let listo = false;
@@ -25,7 +29,18 @@
             /* sin almacenamiento: las notas viven solo en la página */
         }
     }
-    const notas = leer('v2-prototipo-notas', {});
+    const guardado = leer(CLAVE_GUIA, null);
+    if (guardado && guardado.version === window.VERSION_PROTOTIPO) Object.assign(est, { caso: guardado.caso, persona: guardado.persona || 'ana', tema: guardado.tema || 'serena-claro', hechos: guardado.hechos || {}, completos: guardado.completos || {} });
+    if (est.caso && !CASOS.some((c) => c.id === est.caso)) est.caso = null;
+    const guardarGuia = () => escribir(CLAVE_GUIA, { version: window.VERSION_PROTOTIPO, caso: est.caso, persona: est.persona, tema: est.tema, hechos: est.hechos, completos: est.completos });
+    const leerNotas = () => {
+        const d = leer(CLAVE_NOTAS, null) || {};
+        d.notas = d.notas || {};
+        d.nombre = d.nombre || '';
+        d.guiada = d.guiada || { activa: false, i: 0, resp: {} };
+        d.guiada.resp = d.guiada.resp || {};
+        return d;
+    };
 
     function enviar(msg) {
         if (!listo) return;
@@ -37,9 +52,7 @@
         if (!m || m.fuente !== 'pamplanea-proto') return;
         if (m.tipo === 'listo') {
             listo = true;
-            enviar({ tipo: 'tema', tema: est.tema });
-            if (est.caso) enviar({ tipo: 'caso', id: est.caso });
-            else enviar({ tipo: 'persona', persona: est.persona });
+            arrancar();
         }
         if (m.tipo === 'tema') aplicarTema(m.tema, false);
         if (m.tipo === 'evento') {
@@ -56,7 +69,7 @@
         const hechos = (est.hechos[caso.id] = est.hechos[caso.id] || {});
         let cambio = false;
         caso.pasos.forEach((p, i) => {
-            if (p.clave && p.clave === clave && !hechos[i]) {
+            if (p.clave && [].concat(p.clave).includes(clave) && !hechos[i]) {
                 hechos[i] = true;
                 cambio = true;
             }
@@ -64,6 +77,7 @@
         if (cambio) {
             const automaticos = caso.pasos.map((p, i) => [p, i]).filter(([p]) => p.clave);
             if (automaticos.every(([, i]) => hechos[i])) est.completos[caso.id] = true;
+            guardarGuia();
             pintarPanel();
             pintarCasos();
         }
@@ -77,6 +91,7 @@
         document.documentElement.dataset.mode = modo === 'oscuro' ? 'dark' : 'light';
         for (const b of document.querySelectorAll('[data-tema]')) b.setAttribute('aria-pressed', String(b.dataset.tema === tema));
         if (avisarTelefono) enviar({ tipo: 'tema', tema });
+        guardarGuia();
     }
 
     // ------------------------------------------------------------------ casos y panel
@@ -99,7 +114,7 @@
         if (!caso) {
             const ana = est.persona === 'ana';
             panel.innerHTML = `<p class="g-panel-cod">Exploración libre</p><h2 class="g-panel-t">${ana ? 'Ana, pago quincenal' : 'Carlos, pago semanal'}</h2>
-                <p>${ana ? 'Cobra ~$600 el 15 y el 30 en Banco Agrícola. Tiene $40 en efectivo y $1,455.60 en el banco, tarjeta Crédito BAC (corte 15, pago 5), luz vencida sin confirmar y tres apartados: Emergencias, Laptop (lista para usar) y Vacaciones.' : 'Cobra ~$90 cada viernes, en efectivo. Tiene $125 y paga $150 de alquiler el día 1: el número va guardando el alquiler por partes. Aporta $10 al cuchubal cada viernes.'}</p>
+                <p>${ana ? 'Cobra ~$600 el 15 y el 30 en Banco Agrícola. Tiene $40 en efectivo y $1,455.60 en el banco, tarjeta Crédito BAC (corte 15, pago 5, cupo $1,500), luz vencida sin confirmar y tres apartados: Emergencias, Laptop (lista para usar) y Vacaciones.' : 'Cobra ~$90 cada viernes, en efectivo. Tiene $125 y paga $150 de alquiler el día 1: el número va guardando el alquiler por partes («Guardando para pagos»). Aporta $10 al cuchubal cada viernes.'}</p>
                 <p class="g-tip">Elige un caso a la izquierda para ver sus pasos. Todo lo que hagas cambia los números de verdad; «Reiniciar datos» vuelve al inicio.</p>`;
             return;
         }
@@ -122,13 +137,20 @@
             <p>${esc(caso.esperado)}</p>
             <h3 class="g-h3">Qué observar</h3>
             <p>${esc(caso.observar)}</p>
+            <h3 class="g-h3">Tarea para la prueba guiada</h3>
+            <p class="g-tip">«${esc(caso.tarea)}»</p>
             <button type="button" class="g-btn" data-reiniciar-caso>Empezar este caso otra vez</button>`;
+    }
+    /** Al cargar la guía: el teléfono recupera lo guardado si es del mismo caso. */
+    function arrancar() {
+        enviar({ tipo: 'arrancar', caso: est.caso, persona: est.persona, tema: est.tema });
     }
     function abrirCaso(id) {
         est.caso = id;
         est.nota = '';
         est.hechos[id] = {};
         delete est.completos[id];
+        guardarGuia();
         enviar({ tipo: 'caso', id });
         pintarCasos();
         pintarPanel();
@@ -137,6 +159,7 @@
         est.caso = null;
         est.persona = persona;
         est.nota = '';
+        guardarGuia();
         enviar({ tipo: 'persona', persona });
         pintarCasos();
         pintarPanel();
@@ -147,16 +170,31 @@
         $('#g-obs').innerHTML = CASOS.map((c) => `<article class="g-obs-c"><p class="g-panel-cod">${c.id} · ${PERSONAS[c.persona]}</p><h3 class="g-h3">${esc(c.titulo)}</h3><p>${esc(c.observar)}</p><button type="button" class="g-btn g-btn--sm" data-caso="${c.id}" data-subir>Abrir este caso</button></article>`).join('');
     }
     function pintarNotas() {
+        const d = leerNotas();
         const filas = [...CASOS.map((c) => [c.id, `${c.id} · ${c.titulo}`]), ['general', 'Notas generales']];
-        $('#g-notas').innerHTML = filas.map(([id, t]) => `<div class="g-nota-c"><label class="g-label" for="g-n-${id}">${esc(t)}</label><textarea id="g-n-${id}" data-nota="${id}" rows="3" placeholder="Qué entendió, dónde dudó, qué dijo…">${esc(notas[id] || '')}</textarea></div>`).join('');
+        const resp = (id) => {
+            const r = d.guiada.resp[id];
+            return r ? `<p class="g-obs-t">Prueba guiada: ${r.saltada ? 'la saltó' : `fácil ${r.facil} de 5`}${r.confuso ? ` · «${esc(r.confuso)}»` : ''}</p>` : '';
+        };
+        $('#g-notas').innerHTML = `<div class="g-nota-c"><label class="g-label" for="g-nombre">Tu nombre</label><input id="g-nombre" class="g-input" data-nombre type="text" autocomplete="off" value="${esc(d.nombre)}" placeholder="Ej. Victor"></div>` + filas.map(([id, t]) => `<div class="g-nota-c"><label class="g-label" for="g-n-${id}">${esc(t)}</label>${resp(id)}<textarea id="g-n-${id}" data-nota="${id}" rows="3" placeholder="Qué entendió, dónde dudó, qué dijo…">${esc(d.notas[id] || '')}</textarea></div>`).join('');
     }
     function armarTexto() {
-        const lineas = ['PRODUCTO V2 · NOTAS DEL PROTOTIPO', `Recorridos completos: ${Object.keys(est.completos).length} de ${CASOS.length}`, ''];
-        for (const c of CASOS) {
-            const t = (notas[c.id] || '').trim();
-            lineas.push(`${c.id} · ${c.titulo}${est.completos[c.id] ? ' (recorrido completo)' : ''}`, t || '(sin notas)', '');
+        const d = leerNotas();
+        let fecha;
+        try {
+            fecha = new Date().toLocaleString('es-SV', { dateStyle: 'medium', timeStyle: 'short' });
+        } catch {
+            fecha = new Date().toISOString().slice(0, 16).replace('T', ' ');
         }
-        lineas.push('Notas generales', (notas.general || '').trim() || '(sin notas)');
+        const lineas = [`PamPlanea · ${window.VERSION_PROTOTIPO} · notas del prototipo`, `Nombre: ${d.nombre.trim() || '(sin nombre)'}`, `Fecha: ${fecha}`, `Recorridos completos: ${Object.keys(est.completos).length} de ${CASOS.length}`, ''];
+        for (const c of CASOS) {
+            const t = (d.notas[c.id] || '').trim();
+            const r = d.guiada.resp[c.id];
+            lineas.push(`${c.id} · ${c.titulo}${est.completos[c.id] ? ' (recorrido completo)' : ''}`);
+            if (r) lineas.push(r.saltada ? 'Prueba guiada: la saltó' : `Qué tan fácil: ${r.facil} de 5${r.confuso ? ` · Me confundió: ${r.confuso}` : ''}`);
+            lineas.push(t || '(sin notas)', '');
+        }
+        lineas.push('Notas generales', (d.notas.general || '').trim() || '(sin notas)');
         $('#g-texto').value = lineas.join('\n');
     }
 
@@ -175,6 +213,13 @@
             if (est.caso) abrirCaso(est.caso);
             else enviar({ tipo: 'reiniciar' });
         } else if (b.id === 'g-armar') armarTexto();
+        else if (b.id === 'g-copiar') {
+            if (!$('#g-texto').value) armarTexto();
+            navigator.clipboard.writeText($('#g-texto').value).then(
+                () => ($('#g-copiado').textContent = '✓ Copiado'),
+                () => ($('#g-copiado').textContent = 'No se pudo copiar: usa Ctrl + A y Ctrl + C.'),
+            );
+        }
         else if (b.id === 'g-seleccionar') {
             if (!$('#g-texto').value) armarTexto();
             $('#g-texto').focus();
@@ -195,9 +240,11 @@
     });
     document.addEventListener('input', (e) => {
         const t = e.target;
-        if (t.dataset && t.dataset.nota) {
-            notas[t.dataset.nota] = t.value;
-            escribir('v2-prototipo-notas', notas);
+        if (t.dataset && (t.dataset.nota || t.dataset.nombre !== undefined)) {
+            const d = leerNotas();
+            if (t.dataset.nota) d.notas[t.dataset.nota] = t.value;
+            else d.nombre = t.value;
+            escribir(CLAVE_NOTAS, d);
         }
     });
     function ajustar() {
@@ -219,10 +266,14 @@
     iframe.addEventListener('load', () => {
         if (listo) return;
         listo = true;
-        enviar({ tipo: 'tema', tema: est.tema });
-        if (est.caso) enviar({ tipo: 'caso', id: est.caso });
-        else enviar({ tipo: 'persona', persona: est.persona });
+        arrancar();
     });
+    // Las notas también se escriben desde «Casos y ayuda»: al volver a esta pestaña se refrescan.
+    window.addEventListener('focus', () => {
+        if (!document.activeElement || !document.activeElement.matches('textarea, input')) pintarNotas();
+    });
+    if (!(navigator.clipboard && window.isSecureContext)) $('#g-copiar').hidden = true;
+    aplicarTema(est.tema, false);
 
     pintarCasos();
     pintarPanel();

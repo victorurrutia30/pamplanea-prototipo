@@ -1,15 +1,88 @@
-// Producto v2 · prototipo de teléfono. Arranque: barra inferior, casos, simulaciones y
-// mensajes con la guía (index.html). Abierto solo, carga a Ana en Serena claro.
+// Producto v2 · prototipo de teléfono. Arranque: barra inferior, casos, simulaciones, guardado en
+// el navegador y mensajes con la guía (index.html). Solo (en el teléfono de quien prueba) recupera
+// lo último que hizo; dentro de la guía, la guía decide qué caso abrir.
 'use strict';
 (() => {
     const D = window.DATOS;
     const M = window.MOTOR;
     const P = window.P;
     const c = D.c;
+    const VERSION = window.VERSION_PROTOTIPO;
+    const CLAVE_APP = 'pamplanea-proto-v2:app';
 
+    // ------------------------------------------------------------------ guardado (try/catch: si falla, todo vive en memoria)
+    const memoria = {};
+    P.almacen = {
+        disponible: (() => {
+            try {
+                localStorage.setItem('pamplanea-proto-v2:prueba', '1');
+                localStorage.removeItem('pamplanea-proto-v2:prueba');
+                return true;
+            } catch {
+                return false;
+            }
+        })(),
+        leer(clave, defecto) {
+            try {
+                const v = localStorage.getItem(clave);
+                return v === null ? (clave in memoria ? memoria[clave] : defecto) : JSON.parse(v);
+            } catch {
+                return clave in memoria ? memoria[clave] : defecto;
+            }
+        },
+        escribir(clave, valor) {
+            memoria[clave] = valor;
+            try {
+                localStorage.setItem(clave, JSON.stringify(valor));
+                return true;
+            } catch {
+                return false;
+            }
+        },
+        borrar(clave) {
+            delete memoria[clave];
+            try {
+                localStorage.removeItem(clave);
+            } catch {
+                /* sin almacenamiento */
+            }
+        },
+    };
+    P.enGuia = (() => {
+        try {
+            return window.parent !== window;
+        } catch {
+            return true;
+        }
+    })();
+    /** Mientras el arranque decide qué cargar no se guarda nada (no pisar lo guardado). */
+    P.guardando = false;
+    let guardarTimer = null;
+    function guardarAhora() {
+        if (!P.guardando || !P.st || P.sinGuardar) return;
+        P.almacen.escribir(CLAVE_APP, { version: VERSION, caso: P.caso ? P.caso.id : null, persona: P.st.persona, tab: P.ui.tab, tema: P.tema, st: P.st });
+    }
+    P.alRender = () => {
+        clearTimeout(guardarTimer);
+        guardarTimer = setTimeout(guardarAhora, 250);
+    };
+    window.addEventListener('pagehide', guardarAhora);
+    document.addEventListener('visibilitychange', () => document.visibilityState === 'hidden' && guardarAhora());
+    function restaurar(filtro = null) {
+        const g = P.almacen.leer(CLAVE_APP, null);
+        if (!g || g.version !== VERSION || !g.st || (filtro && !filtro(g))) return false;
+        P.caso = g.caso ? window.CASOS.find((x) => x.id === g.caso) || null : null;
+        P.cargar(g.st, { tab: g.tab || 'hoy' });
+        P.guardando = true;
+        P.emitir('restaurado');
+        return true;
+    }
+    P.borrarGuardado = () => P.almacen.borrar(CLAVE_APP);
+
+    // ------------------------------------------------------------------ casos
     function estadoDeCaso(caso) {
         if (caso.persona === 'nueva') return D.crearNueva();
-        if (caso.persona === 'carlos') return D.crearCarlos();
+        if (caso.persona === 'carlos') return D.crearCarlos(caso.variante);
         if (caso.variante === 'planea') return D.crearAna('planea');
         const st = D.crearAna();
         if (caso.variante === 'sinColegio') {
@@ -19,6 +92,14 @@
         if (caso.variante === 'quincena') {
             st.hoy = '2026-10-30';
             st.avisos = [];
+            D.sembrar(st, [
+                { tipo: 'gasto', fecha: '2026-10-24', monto: c('12'), nombre: 'Mercado', categoria: 'mercado', medio: 'efectivo', anotado: true },
+                { tipo: 'gasto', fecha: '2026-10-28', monto: c('6'), nombre: 'Pupusas', categoria: 'comida', medio: 'efectivo', anotado: true },
+            ]);
+        }
+        if (caso.variante === 'regalo') {
+            // C30: un apartado para el regalo de mamá, cuya fecha (el 10) ya pasó.
+            st.apartados.push({ id: 'regalo', nombre: 'Regalo', emoji: '🎁', portada: 'general-alcancia', monto: c('20'), meta: c('20'), metaFecha: '2026-10-10', historial: [{ fecha: '2026-09-30', tipo: 'apartar', monto: c('20') }] });
         }
         if (caso.variante === 'ausente') {
             st.hoy = '2026-11-06';
@@ -44,6 +125,7 @@
         if (!caso) return;
         P.caso = caso;
         clearTimeout(bannerTimer);
+        P.guardando = true;
         P.cargar(estadoDeCaso(caso), { tab: caso.inicio || 'hoy' });
         if (BANNERS[id]) bannerTimer = setTimeout(() => P.notificar(BANNERS[id]), 900);
         P.emitir('caso:' + id);
@@ -51,21 +133,23 @@
     function cargarPersona(persona) {
         P.caso = null;
         clearTimeout(bannerTimer);
+        P.guardando = true;
         P.cargar(persona === 'carlos' ? D.crearCarlos() : D.crearAna(), { tab: 'hoy' });
         P.emitir('persona:' + persona);
     }
     function reiniciar() {
         if (P.caso) cargarCaso(P.caso.id);
-        else cargarPersona(P.st.persona === 'carlos' ? 'carlos' : 'ana');
+        else cargarPersona(P.st && P.st.persona === 'carlos' ? 'carlos' : 'ana');
     }
 
-    /** Lo que el panel de la guía puede simular: el paso del tiempo y los avisos. */
+    /** Lo que la guía (o «Casos y ayuda») puede simular: el paso del tiempo y los avisos. */
     function simular(id) {
         const st = P.st;
         if (id === 'dia4') {
             const colegio = st.pagos.find((p) => M.normalizar(p.nombre) === 'colegio' && p.activo !== false);
             if (!colegio) {
                 P.emitir('nota', { texto: 'Primero guarda el recordatorio del colegio (pasos 1 a 3).' });
+                P.avisar('Primero apunta el pago del colegio', { check: false });
                 return;
             }
             st.hoy = '2026-11-04';
@@ -80,6 +164,10 @@
             P.emitir('nota', { texto: 'Ahora es miércoles 4 de noviembre. Tu quincena del 30 ya llegó.' });
         }
         if (id === 'viernes') {
+            if (st.hoy >= '2026-10-23') {
+                P.avisar('Ya es viernes 23', { check: false });
+                return;
+            }
             st.hoy = '2026-10-23';
             P.ui.stack = [];
             P.ui.tab = 'hoy';
@@ -90,9 +178,7 @@
             P.emitir('nota', { texto: 'Ahora es viernes 23 de octubre.' });
         }
     }
-    P.cargarCaso = cargarCaso;
-    P.cargarPersona = cargarPersona;
-    P.simular = simular;
+    Object.assign(P, { cargarCaso, cargarPersona, reiniciar, simular, restaurar });
 
     window.addEventListener('message', (e) => {
         const m = e.data;
@@ -100,6 +186,15 @@
         if (m.tipo === 'tema') {
             P.aplicarTema(m.tema);
             if (P.ui && P.ui.hoja && P.ui.hoja.tipo === 'apariencia') P.render();
+        }
+        // La guía arranca: si lo guardado es del mismo caso (o la misma persona), se recupera.
+        if (m.tipo === 'arrancar') {
+            if (m.tema) P.aplicarTema(m.tema);
+            const ok = restaurar((g) => (m.caso ? g.caso === m.caso : !g.caso && g.persona === m.persona));
+            if (!ok) {
+                if (m.caso) cargarCaso(m.caso);
+                else cargarPersona(m.persona || 'ana');
+            }
         }
         if (m.tipo === 'caso') cargarCaso(m.id);
         if (m.tipo === 'persona') cargarPersona(m.persona);
@@ -112,13 +207,25 @@
         const nav = document.getElementById('nav');
         const enlace = (tab, ic, t) => `<button type="button" class="nav-l" data-a="tab" data-tab="${tab}" data-fk="nav-${tab}"><span class="nav-i">${icon(ic)}</span><span class="nav-t">${t}</span></button>`;
         nav.innerHTML = `${enlace('hoy', 'house', 'Hoy')}${enlace('pagos', 'calendar-clock', 'Pagos')}<button type="button" class="nav-mas" data-a="anotar" data-fk="nav-anotar" aria-label="Anotar" aria-haspopup="dialog"><span class="nav-circ">${icon('plus')}</span><span class="nav-t">Anotar</span></button>${enlace('midinero', 'wallet', 'Mi dinero')}${enlace('mes', 'chart-pie', 'Mes')}`;
-        // Para revisiones automáticas: #caso=C05&tema=ancla-oscuro (Victor no lo necesita).
+        // Para revisiones automáticas: #caso=C05&tema=ancla-oscuro (no guarda nada).
         const h = new URLSearchParams(location.hash.slice(1));
-        P.aplicarTema(h.get('tema') || 'serena-claro');
-        if (h.get('caso')) cargarCaso(h.get('caso'));
-        else cargarPersona(h.get('persona') || 'ana');
+        const g = P.almacen.leer(CLAVE_APP, null);
+        P.aplicarTema(h.get('tema') || (!P.enGuia && g && g.version === VERSION && g.tema) || 'serena-claro');
+        if (h.get('caso') || h.get('persona')) {
+            P.sinGuardar = true;
+            if (h.get('caso')) cargarCaso(h.get('caso'));
+            else cargarPersona(h.get('persona'));
+        } else if (P.enGuia) {
+            // Dibuja a Ana mientras la guía responde, sin guardar encima de lo guardado.
+            P.caso = null;
+            P.cargar(D.crearAna(), { tab: 'hoy' });
+        } else if (!restaurar()) {
+            cargarPersona('ana');
+            P.primeraVez = true;
+        }
+        if (P.ayuda) P.ayuda.iniciar();
         try {
-            if (window.parent !== window) window.parent.postMessage({ fuente: 'pamplanea-proto', tipo: 'listo' }, '*');
+            if (P.enGuia) window.parent.postMessage({ fuente: 'pamplanea-proto', tipo: 'listo' }, '*');
         } catch {
             /* sin guía */
         }

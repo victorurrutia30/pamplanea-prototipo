@@ -2,8 +2,11 @@
 <html lang="es" data-palette="serena" data-mode="light">
     <head>
         <meta charset="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-        <title>PamPlanea · teléfono (prototipo v2)</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
+        <meta name="color-scheme" content="light dark" />
+        <meta name="robots" content="noindex" />
+        <title>PamPlanea · prototipo v2</title>
+        <link rel="icon" href="recursos/icono.svg" type="image/svg+xml" />
         <link rel="stylesheet" href="recursos/fuentes.css" />
         <link rel="stylesheet" href="recursos/tokens.css" />
         <link rel="stylesheet" href="prototipo.css" />
@@ -19,11 +22,14 @@
                     <svg width="27" height="13" viewBox="0 0 27 13"><rect x=".5" y=".5" width="22" height="12" rx="3.5" fill="none" stroke="currentColor" opacity=".4" /><rect x="2" y="2" width="17" height="9" rx="2" /><path d="M24 4.5v4c.8-.3 1.4-1.1 1.4-2s-.6-1.7-1.4-2Z" opacity=".4" /></svg>
                 </span>
             </div>
+            <div id="aviso-proto" class="aviso-proto" role="note">Prototipo de prueba · no pongas tus datos reales</div>
+            <div id="tarea-bar" class="tarea-bar" hidden></div>
             <main id="vista" class="vista"><div id="pantalla"></div></main>
             <nav id="nav" class="nav" aria-label="Principal"></nav>
             <div id="capa-banner" class="capa-banner"></div>
             <div id="capa-hoja"></div>
             <div id="capa-toast" class="capa-toast" role="status" aria-live="polite"></div>
+            <div id="capa-ayuda" class="capa-ayuda"></div>
             <div class="home-ind" aria-hidden="true"></div>
         </div>
         <script src="recursos/arte.js"></script>
@@ -33,5 +39,6 @@
         <script src="hojas.js"></script>
         <script src="casos.js"></script>
         <script src="arranque.js"></script>
+        <script src="ayuda.js"></script>
     </body>
 </html>

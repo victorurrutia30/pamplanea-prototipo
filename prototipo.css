@@ -1986,6 +1986,517 @@ button.fila-main:active {
     background: var(--color-surface);
 }
 
+/* ------------------------------------------------------------------ v2 · aviso de prototipo y prueba guiada */
+html {
+    --aviso-h: 28px;
+    --tarea-h: 0px;
+    --top-h: calc(var(--safe-top) + var(--aviso-h) + var(--tarea-h));
+}
+html.con-tarea {
+    --tarea-h: 52px;
+}
+.vista {
+    inset: var(--top-h) 0 0;
+}
+.capa-banner {
+    inset: calc(var(--top-h) + 6px) 8px auto;
+}
+.aviso-proto {
+    position: absolute;
+    top: var(--safe-top);
+    right: 0;
+    left: 0;
+    z-index: 41;
+    display: flex;
+    height: var(--aviso-h);
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 0 8px 0 14px;
+    border-bottom: 1px solid var(--color-border);
+    background: color-mix(in srgb, var(--tone-ambar) 14%, var(--color-surface));
+    color: var(--color-text);
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 15px;
+}
+.aviso-proto-t {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 6px;
+    text-wrap: balance;
+}
+.aviso-proto-t .nw {
+    white-space: nowrap;
+}
+.aviso-proto-b {
+    position: relative;
+    flex-shrink: 0;
+    min-height: 34px;
+    padding: 0 12px;
+    border: 1px solid var(--color-control-border);
+    border-radius: 999px;
+    background: var(--color-surface-2);
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 16px;
+    white-space: nowrap;
+}
+.aviso-proto-b::after {
+    position: absolute;
+    inset: -5px -4px;
+    content: '';
+}
+.aviso-proto-b:hover {
+    border-color: var(--color-focus);
+}
+.tarea-bar {
+    position: absolute;
+    top: calc(var(--safe-top) + var(--aviso-h));
+    right: 0;
+    left: 0;
+    z-index: 41;
+    height: var(--tarea-h);
+    padding: 4px 8px;
+    border-bottom: 1px solid var(--color-border);
+    background: var(--color-surface);
+}
+.tarea-bar[hidden] {
+    display: none;
+}
+.tarea-b {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    align-items: center;
+    gap: 8px;
+    padding: 0 12px;
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--color-primary) 10%, var(--color-surface-2));
+    text-align: left;
+}
+.tarea-b--ok {
+    background: color-mix(in srgb, var(--color-success) 16%, var(--color-surface-2));
+    color: var(--color-text);
+}
+.tarea-b--ok .ico {
+    color: var(--color-success);
+}
+.tarea-n {
+    color: var(--color-primary);
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 16px;
+    white-space: nowrap;
+}
+.tarea-t {
+    min-width: 0;
+    flex: 1;
+    overflow: hidden;
+    font-size: 13px;
+    line-height: 18px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.tarea-ver {
+    color: var(--color-primary);
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+/* ------------------------------------------------------------------ v2 · pantalla completa en el teléfono de quien prueba */
+html.modo-real {
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --aviso-h: 44px;
+}
+html.modo-real.teclado,
+html.modo-real.escribiendo {
+    --safe-bottom: 0px;
+}
+.modo-real .sb,
+.modo-real .home-ind {
+    display: none;
+}
+.modo-real .app {
+    position: fixed;
+    top: var(--vv-top, 0px);
+    right: 0;
+    left: 0;
+    width: 100%;
+    max-width: 480px;
+    height: var(--vv-h, 100%);
+    margin-inline: auto;
+}
+@media (min-width: 600px) {
+    html.modo-real,
+    .modo-real body {
+        background: color-mix(in srgb, var(--color-text) 7%, var(--color-surface));
+    }
+    .modo-real .app {
+        box-shadow:
+            0 0 0 1px var(--color-border),
+            0 24px 60px -24px rgb(0 0 0 / 0.35);
+    }
+}
+
+/* ------------------------------------------------------------------ v2 · «Casos y ayuda» */
+.capa-ayuda:empty {
+    display: none;
+}
+.ay {
+    position: absolute;
+    inset: 0;
+    z-index: 300;
+    display: flex;
+    flex-direction: column;
+    padding-top: var(--safe-top);
+    background: var(--color-surface);
+    animation: p-sube 220ms var(--app-motion-ease) both;
+}
+.ay-h {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 6px 8px 6px 16px;
+    border-bottom: 1px solid var(--color-border);
+}
+.ay-t {
+    font-size: 20px;
+    font-weight: 600;
+    line-height: 28px;
+}
+.ay-c {
+    display: grid;
+    min-height: 0;
+    flex: 1;
+    align-content: start;
+    gap: 12px;
+    padding: 16px 16px calc(var(--safe-bottom) + 24px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+.ay-card {
+    display: grid;
+    gap: 10px;
+    padding: 16px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-card);
+    background: var(--color-surface-2);
+}
+.ay-card--prim {
+    border-color: color-mix(in srgb, var(--color-primary) 45%, var(--color-border));
+}
+.ay-h3 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 24px;
+}
+.ay-h3 .ico {
+    color: var(--color-primary);
+}
+.ay-tarea {
+    font-size: 16px;
+    font-weight: 500;
+    line-height: 24px;
+}
+.ay-tarea--grande {
+    font-size: 20px;
+    font-weight: 600;
+    line-height: 28px;
+    text-wrap: pretty;
+}
+.ay-acc {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 8px;
+}
+.ay-acc--sec {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 4px;
+}
+.ay-c .link {
+    justify-self: start;
+}
+.ay-sims {
+    display: grid;
+    gap: 8px;
+}
+.ay-sim {
+    justify-content: flex-start;
+    border-color: var(--color-primary);
+    background: color-mix(in srgb, var(--color-primary) 8%, var(--color-surface-2));
+}
+.ay-pasos summary {
+    display: flex;
+    min-height: 44px;
+    align-items: center;
+    color: var(--color-primary);
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+}
+.ay-pasos ol {
+    display: grid;
+    gap: 6px;
+    margin-bottom: 8px;
+    padding-left: 20px;
+    font-size: 14px;
+    line-height: 20px;
+    list-style: decimal;
+}
+.ay-casos {
+    display: grid;
+    gap: 6px;
+}
+.ay-caso {
+    display: flex;
+    width: 100%;
+    min-height: 48px;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    border: 1px solid var(--color-border);
+    border-radius: 14px;
+    background: var(--color-surface);
+}
+.ay-caso:hover {
+    border-color: var(--color-focus);
+}
+.ay-caso[aria-current='true'] {
+    border-color: var(--color-primary);
+    box-shadow: inset 0 0 0 1px var(--color-primary);
+}
+.ay-caso-cod {
+    min-width: 54px;
+    padding: 2px 6px;
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--color-text) 7%, transparent);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    text-align: center;
+}
+.ay-caso-t {
+    min-width: 0;
+    flex: 1;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 20px;
+}
+.ay-caso-ok {
+    color: var(--color-success);
+}
+.ay-textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--color-control-border);
+    border-radius: 12px;
+    background: var(--color-surface);
+    color: inherit;
+    font: inherit;
+    font-size: 16px;
+    line-height: 22px;
+    resize: vertical;
+}
+.ay-textarea:focus-visible {
+    border-color: var(--color-focus);
+    outline: 2px solid var(--color-focus);
+    outline-offset: 0;
+}
+.ay-texto {
+    font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+    font-size: 14px;
+    line-height: 20px;
+}
+.ay-resp {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--color-success);
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 18px;
+}
+.ay-bienvenida,
+.ay-gracias {
+    display: grid;
+    gap: 6px;
+    padding: 16px;
+    border-radius: var(--radius-card);
+    background: color-mix(in srgb, var(--tone-ambar) 16%, var(--color-surface-2));
+}
+.ay-bien-t {
+    font-size: 18px;
+    font-weight: 600;
+    line-height: 24px;
+}
+.ay-notas-n {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 6px;
+}
+.ay-nota-n {
+    display: grid;
+    min-height: 68px;
+    justify-items: center;
+    align-content: center;
+    gap: 2px;
+    padding: 8px 2px;
+    border: 1px solid var(--color-control-border);
+    border-radius: 14px;
+    background: var(--color-surface);
+}
+.ay-nota-n:hover {
+    border-color: var(--color-focus);
+}
+.ay-nota-n[aria-checked='true'] {
+    border-color: var(--color-primary);
+    background: color-mix(in srgb, var(--color-primary) 12%, var(--color-surface-2));
+    box-shadow: inset 0 0 0 1px var(--color-primary);
+}
+.ay-nota-num {
+    font-size: 20px;
+    font-weight: 600;
+    line-height: 28px;
+}
+.ay-nota-l {
+    color: var(--color-text-muted);
+    font-size: 11px;
+    line-height: 14px;
+    text-align: center;
+}
+.ay-version {
+    padding: 8px 0;
+    color: var(--color-text-muted);
+    font-size: 12px;
+    line-height: 16px;
+    text-align: center;
+}
+.btn--reiniciar {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+}
+.app.con-ayuda .capa-toast {
+    z-index: 310;
+    bottom: calc(var(--safe-bottom) + 16px);
+}
+
+/* ------------------------------------------------------------------ v2 · Hoy, Mi dinero y fichas */
+.portada-pie {
+    position: relative;
+    padding: 0 16px 16px;
+}
+.portada-pie .btn--prim {
+    border-color: transparent;
+    background: var(--color-surface-2);
+    color: var(--color-text);
+}
+.portada-pie .btn--prim:hover:not(:disabled) {
+    background: var(--color-surface);
+}
+.portada-pie .btn:focus-visible {
+    outline-color: var(--home-fg);
+}
+.reparto-frase {
+    padding: 0 16px;
+    font-size: 15px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    line-height: 22px;
+}
+.reparto-barra {
+    display: flex;
+    height: 12px;
+    gap: 3px;
+    margin: 12px 16px 0;
+    overflow: hidden;
+    border-radius: 999px;
+}
+.rb {
+    min-width: 6px;
+    flex-basis: 0;
+}
+.rb--ap {
+    background: var(--tone-violeta-fill);
+}
+.rb--pg {
+    background: var(--tone-naranja-fill);
+}
+.rb--gu {
+    background: var(--tone-azul-fill);
+}
+.rb--li {
+    background: var(--color-primary);
+}
+.reparto-ley {
+    display: grid;
+    gap: 6px;
+    padding: 12px 16px 16px;
+}
+.reparto-ley li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    line-height: 20px;
+}
+.reparto-ley li > span:nth-child(2) {
+    flex: 1;
+}
+.rb-pt {
+    width: 10px;
+    height: 10px;
+    flex-shrink: 0;
+    border-radius: 3px;
+}
+.reparto-falta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 600;
+}
+.reparto-falta .ico {
+    color: var(--color-danger);
+}
+.cupo {
+    display: grid;
+    font-size: 14px;
+    line-height: 20px;
+}
+.opciones-grandes--2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.opciones-grandes--2 .opcion-g {
+    flex-direction: column;
+    align-items: flex-start;
+}
+.ob-2 > .campo-g {
+    min-width: 0;
+    align-content: start;
+}
+.ob-2 .campo--monto {
+    min-width: 0;
+}
+.ob-2 .campo--monto input {
+    width: 100%;
+    min-width: 0;
+}
+.link--start {
+    justify-self: start;
+    margin-left: -8px;
+}
+
 @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
