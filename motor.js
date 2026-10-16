@@ -211,8 +211,19 @@
               : null;
         const porPagarEstado = Math.max(0, ult.aPagar - pagado);
         const comprasTotal = suma(compras, (r) => r.monto);
-        const resto = Math.max(0, ult.total - Math.max(ult.aPagar, pagado));
-        return { t, ult, pagado, porPagarEstado, compras, comprasTotal, pendiente, proxCorte, resto, enLibre: porPagarEstado + comprasTotal, debeTotal: Math.max(0, ult.total - pagado) + comprasTotal };
+        // Lo pagado de más primero baja lo que quedó como deuda y luego las compras nuevas.
+        const excedente = Math.max(0, pagado - ult.aPagar);
+        const restoBruto = Math.max(0, ult.total - ult.aPagar);
+        const resto = Math.max(0, restoBruto - excedente);
+        const comprasNetas = Math.max(0, comprasTotal - Math.max(0, excedente - restoBruto));
+        const enLibre = porPagarEstado + comprasNetas;
+        const debeTotal = Math.max(0, ult.total + comprasTotal - pagado);
+        // Lo apartado que se usó con esta tarjeta queda reservado para pagarla (V2-27).
+        const reservas = (st.reservasTarjeta || []).filter((x) => x.tarjeta === t.id);
+        const reservado = Math.min(enLibre, suma(reservas, (x) => x.monto));
+        const venceCompras = fechaDe(vy, vm, t.pagoDia);
+        const cupoLibre = t.cupo ? Math.max(0, t.cupo - debeTotal) : null;
+        return { t, ult, pagado, porPagarEstado, compras, comprasTotal, comprasNetas, pendiente, proxCorte, resto, enLibre, debeTotal, reservas, reservado, venceCompras, cupoLibre };
     }
     /** Pagos de tarjeta como ocurrencias de Pagos: el estado vigente y, si llegó otro, el pendiente. */
     function ocurrenciasTarjeta(st, desde, hasta) {
@@ -250,6 +261,11 @@
         return { fecha: prox.fecha, ingreso: p, ocurrencia: prox, atrasadas, dias: diasEntre(st.hoy, prox.fecha) };
     }
 
+    /**
+     * Reserva gradual (V2-15, V2-26): con ingreso semanal, cada pago mensual que vence después del
+     * próximo ingreso se reparte entre los días de pago de su ciclo (4 o 5 viernes). `ideal` es lo
+     * que debería ir guardado con los pagos que ya llegaron; `calcular` lo limita a lo que alcanza.
+     */
     function reservas(st, hz) {
         const p = principal(st);
         if (!p || p.frecuencia !== 'semanal') return [];
@@ -263,9 +279,24 @@
             const pagos = fechasRegla(p, sumarDias(previa, 1), sumarDias(prox.fecha, -1));
             if (pagos.length < 2) continue;
             const recibidos = pagos.filter((f) => f <= st.hoy && (p.llegadas[f] || f < p.desde)).length;
-            out.push({ pago: pg, fecha: prox.fecha, total: prox.monto, guardado: Math.round((prox.monto * recibidos) / pagos.length), porIngreso: Math.round(prox.monto / pagos.length), recibidos, cuantos: pagos.length });
+            out.push({ pago: pg, fecha: prox.fecha, total: prox.monto, ideal: Math.round((prox.monto * recibidos) / pagos.length), porIngreso: Math.round(prox.monto / pagos.length), recibidos, cuantos: pagos.length, restantes: pagos.length - recibidos });
         }
-        return out;
+        return out.sort((a, b) => (a.fecha < b.fecha ? -1 : 1));
+    }
+
+    /** «~$ por día» (V2-29 #12): hacia abajo, dólares enteros desde $10 y centavos por debajo. */
+    function porDiaDe(libre, dias) {
+        if (!(dias > 0) || libre <= 0) return null;
+        const x = libre / dias;
+        return x >= 1000 ? Math.floor(x / 100) * 100 : Math.floor(x);
+    }
+
+    /** Apartado con fecha de meta vencida y dinero adentro: «¿Ya lo usaste?» (V2-23 c). */
+    const apartadosVencidos = (st) => st.apartados.filter((a) => a.metaFecha && a.metaFecha < st.hoy && a.monto > 0);
+    /** ¿Ese día cae el ingreso principal? (V2-29 #4: el pago de ese día cuenta en el periodo siguiente). */
+    function esDiaDeIngreso(st, fecha) {
+        const p = principal(st);
+        return !!p && fechasRegla(p, fecha, fecha).length > 0;
     }
 
     function calcular(st) {
@@ -281,26 +312,41 @@
         }
         items.sort((a, b) => (a.fecha < b.fecha ? -1 : 1));
         const tarjetas = st.tarjetas.map((x) => tarjetaInfo(st, x));
-        const res = reservas(st, hz);
         const porPagar = suma(items, (o) => o.monto);
         const enTarjetas = suma(tarjetas, (x) => x.enLibre);
+        const reservadoTarjetas = suma(tarjetas, (x) => x.reservado);
+        // Primero apartados, pagos y tarjetas; la reserva gradual toma lo que quede (V2-29 #5).
+        const base = t - ap - porPagar - enTarjetas;
+        const res = reservas(st, hz);
+        let queda = Math.max(0, base);
+        for (const r of res) {
+            r.guardado = Math.min(r.ideal, queda);
+            r.falta = r.ideal - r.guardado;
+            queda -= r.guardado;
+            // La cuota se recalcula con los días de pago que quedan antes del vencimiento.
+            r.siguiente = r.restantes ? Math.ceil((r.total - r.guardado) / r.restantes) : r.total - r.guardado;
+        }
         const guardando = suma(res, (r) => r.guardado);
-        const libre = t - ap - porPagar - enTarjetas - guardando;
-        const porDia = hz.dias > 0 && libre > 0 ? Math.floor(libre / hz.dias / 100) * 100 : null;
-        // Avisos: apartados sin cubrir y el primer pago al que no le alcanzaría.
+        // Nunca negativo: lo que falta se dice en los avisos.
+        const libre = Math.max(0, base - guardando);
+        const porDia = porDiaDe(libre, hz.dias);
         const avisos = [];
         if (t < ap) avisos.push({ tipo: 'apartados', faltan: ap - t });
-        let base = t - ap - enTarjetas - guardando;
+        let b = t - ap - enTarjetas;
         for (const o of items) {
-            base -= o.monto;
-            if (base < 0) {
-                avisos.push({ tipo: 'faltaria', ocurrencia: o, faltan: Math.min(-base, o.monto) });
+            b -= o.monto;
+            if (b < 0) {
+                avisos.push({ tipo: 'faltaria', ocurrencia: o, faltan: Math.min(-b, o.monto) });
                 break;
             }
         }
+        for (const r of res) if (r.falta > 0) avisos.push({ tipo: 'reserva', reserva: r, faltan: r.falta });
         for (const x of tarjetas) if (x.pendiente) avisos.push({ tipo: 'estado', info: x });
+        for (const a of apartadosVencidos(st)) avisos.push({ tipo: 'apartadoVencido', apartado: a });
         const inactivo = diasEntre(ultimaActividad(st), st.hoy);
-        return { hz, tienes: t, apartado: ap, items, porPagar, tarjetas, enTarjetas, reservas: res, guardando, libre, porDia, avisos, inactivo };
+        // «Pongámonos al día» (V2-29 #6): 10 días sin anotar ni cuadrar, o un día de pago sin confirmar.
+        const alDia = inactivo >= 10 || (hz.atrasadas || []).length > 0;
+        return { hz, tienes: t, apartado: ap, items, porPagar, tarjetas, enTarjetas, reservadoTarjetas, reservas: res, guardando, base, deficit: Math.max(0, -base), libre, porDia, avisos, inactivo, alDia };
     }
 
     // ------------------------------------------------------------------ mes
@@ -473,7 +519,12 @@
                 d.medioSeguro = u.seguro;
             }
             if (d.dia !== null) d.fecha = ultimoDia(st.hoy, d.dia);
-            if (k.emergencia) {
+            // Red del apartado olvidado (V2-23 a): si el gasto se llama como un apartado, se pregunta.
+            const porNombre = st.apartados.find((a) => a.monto > 0 && coincide(resto, a.nombre));
+            if (porNombre) {
+                d.sugerirApartado = porNombre.id;
+                d.apartadoPorNombre = true;
+            } else if (k.emergencia) {
                 const em = st.apartados.find((a) => normalizar(a.nombre).includes('emergencia') && a.monto > 0);
                 if (em) d.sugerirApartado = em.id;
             }
@@ -497,6 +548,9 @@
                     d.nombre = o.ingreso.nombre;
                     d.emoji = o.ingreso.emoji;
                     d.lugar = o.ingreso.lugar;
+                    // V2-29 #10: si no es el de hoy, se pregunta si es ese ingreso o uno extra.
+                    d.preguntarIngreso = o.fecha !== st.hoy;
+                    d.cualIngreso = null;
                 }
             }
             if (!d.nombre) d.nombre = d.categoria === 'venta' ? (resto ? 'Venta de ' + nombreDe(palabras).toLowerCase() : 'Venta') : d.categoria === 'remesa' ? 'Remesa' : d.categoria === 'salario' ? 'Pago' : nombreDe(palabras) || 'Ingreso';
@@ -509,6 +563,14 @@
             const a = st.apartados.find((x) => coincide(resto, x.nombre));
             d.apartado = a ? a.id : null;
             d.nombre = a ? a.nombre : nombreDe(palabras) || null;
+            // V2-29 #11: «aparté 20 luz» con la luz en Pagos: ya se descuenta sola; se pregunta.
+            if (d.tipo === 'apartar' && !a) {
+                const pg = st.pagos.find((p) => p.activo !== false && coincide(resto, p.nombre));
+                if (pg) {
+                    d.pagoParecido = pg.id;
+                    d.apartarIgual = null;
+                }
+            }
         }
         if (d.tipo === 'cuadre') {
             const l = st.lugares.find((x) => coincide(resto, x.nombre) || (x.tipo === 'banco' && /\b(banco|cuenta)\b/.test(resto)));
@@ -553,6 +615,8 @@
             if (d.frecuencia !== 'semanal' && d.dia === null) f.push('dia');
         }
         if (d.tipo === 'ingreso' && !d.lugar) f.push('lugar');
+        if (d.tipo === 'ingreso' && d.ingresoRef && d.preguntarIngreso && !d.cualIngreso) f.push('cualIngreso');
+        if (d.tipo === 'apartar' && d.pagoParecido && d.apartarIgual !== 'si') f.push('apartarIgual');
         if ((d.tipo === 'apartar' || d.tipo === 'liberar') && !d.apartado) f.push('apartado');
         if (d.tipo === 'cuadre' && !d.lugar) f.push('lugar');
         if (d.tipo === 'mover' && (!d.de || !d.a || d.de === d.a)) f.push('mover');
@@ -563,6 +627,6 @@
         MESES, MESES_CORTOS, DIAS, DIAS_CORTOS, pad, sumarDias, diasEntre, diaSemana, partes, diasDelMes, fechaDe, mesMas, fechaCorta, fechaLarga, conDia, diaCorto, relativa, haceDias, ultimoDia, proximoDia,
         dinero, leerMonto, montoCampo, suma, lugar, medio, tarjeta, pago, ingreso, apartado, categoria, principal, sinVS,
         despues, saldoLugar, anteriorAlCuadre, lugaresDe, tienes, apartadoTotal, ultimaActividad, fechasRegla, ocurrenciasPago, ocurrenciasIngreso, tarjetaInfo, ocurrenciasTarjeta,
-        horizonte, reservas, calcular, resumenMes, medioUsual, normalizar, entender, faltan, capital,
+        horizonte, reservas, calcular, resumenMes, medioUsual, normalizar, entender, faltan, capital, porDiaDe, apartadosVencidos, esDiaDeIngreso, coincide,
     };
 })();

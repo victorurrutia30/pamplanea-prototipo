@@ -11,7 +11,8 @@ const CATEGORIAS = [
     { id: 'salud', nombre: 'Salud', emoji: '💊', medio: 'debito', emergencia: true, palabras: ['medicina', 'medicinas', 'farmacia', 'pastillas', 'doctor', 'consulta', 'clinica', 'dentista', 'vitaminas'] },
     { id: 'telefono', nombre: 'Teléfono', emoji: '📱', medio: 'efectivo', palabras: ['recarga', 'saldo', 'celular', 'telefono'] },
     { id: 'casa', nombre: 'Casa', emoji: '🏠', medio: 'efectivo', palabras: ['gas', 'chimbo', 'limpieza', 'jabon', 'detergente', 'escoba'] },
-    { id: 'salidas', nombre: 'Salidas', emoji: '🎉', medio: 'bac', palabras: ['salida', 'cine', 'fiesta', 'cumple', 'cumpleanos', 'cerveza', 'amigas', 'amigos', 'regalo'] },
+    { id: 'salidas', nombre: 'Salidas', emoji: '🎉', medio: 'bac', palabras: ['salida', 'cine', 'fiesta', 'cumple', 'cumpleanos', 'cerveza', 'amigas', 'amigos'] },
+    { id: 'regalos', nombre: 'Regalos', emoji: '🎁', medio: 'efectivo', palabras: ['regalo', 'regalos', 'detalle'] },
     { id: 'educacion', nombre: 'Educación', emoji: '🎓', medio: 'transferencia', palabras: ['colegio', 'escuela', 'universidad', 'utiles', 'cuaderno', 'libros', 'matricula'] },
     { id: 'tecnologia', nombre: 'Tecnología', emoji: '💻', medio: 'debito', palabras: ['laptop', 'computadora', 'audifonos', 'cargador'] },
     { id: 'servicios', nombre: 'Servicios', emoji: '💡', medio: 'debito', palabras: ['luz', 'agua', 'internet', 'cable'] },
@@ -45,10 +46,18 @@ const PAGOS_FRECUENTES = [
     { id: 'internet', nombre: 'Internet', emoji: '🌐', categoria: 'servicios' },
     { id: 'telefono', nombre: 'Teléfono', emoji: '📱', categoria: 'telefono' },
     { id: 'colegio', nombre: 'Colegio', emoji: '🎓', categoria: 'educacion' },
-    { id: 'casacomercial', nombre: 'Cuota de casa comercial', emoji: '🛍️', categoria: 'cuotas' },
-    { id: 'prestamo', nombre: 'Préstamo', emoji: '🏦', categoria: 'cuotas' },
+    { id: 'casacomercial', nombre: 'Cuota de casa comercial', emoji: '🛍️', categoria: 'cuotas', deuda: 'casacomercial' },
+    { id: 'prestamo', nombre: 'Préstamo', emoji: '🏦', categoria: 'cuotas', deuda: 'prestamo' },
     { id: 'cuchubal', nombre: 'Cuchubal', emoji: '🤝', categoria: 'cuotas', semanal: true },
     { id: 'cable', nombre: 'Cable', emoji: '📺', categoria: 'servicios' },
+];
+
+/** «+ Tarjeta o préstamo» (V2-24): un solo formulario para los cuatro tipos. */
+const TIPOS_DEUDA = [
+    { id: 'tarjeta', nombre: 'Tarjeta de crédito', emoji: '💳', s: 'Con corte y fecha de pago' },
+    { id: 'casacomercial', nombre: 'Casa comercial', emoji: '🛍️', s: 'Cuota de una tienda' },
+    { id: 'prestamo', nombre: 'Préstamo personal', emoji: '🏦', s: 'Del banco, cooperativa o alguien' },
+    { id: 'vivienda', nombre: 'Crédito de vivienda', emoji: '🏡', s: 'Cuota de tu casa' },
 ];
 
 const BANCOS = ['Agrícola', 'Cuscatlán', 'BAC', 'Davivienda', 'Promerica', 'Hipotecaria', 'Fedecrédito'];
@@ -62,7 +71,7 @@ function estadoBase(extra) {
     return {
         persona: 'ana', nombre: 'Ana', espacio: 'Hogar de Ana', hoy: '2026-10-21', configurado: true,
         horizonteVariable: null, lugares: [], tarjetas: [], medios: [], apartados: [], logros: [], pagos: [],
-        ingresos: [], registros: [], avisos: [], seq: 1, interesInvitar: false, ...extra,
+        ingresos: [], registros: [], avisos: [], reservasTarjeta: [], seq: 1, interesInvitar: false, ...extra,
     };
 }
 
@@ -91,7 +100,7 @@ function crearAna(variante) {
         { id: 'transferencia', nombre: 'Transferencia', emoji: '🔁', lugar: 'agricola' },
     ];
     st.tarjetas = [{
-        id: 'bac', nombre: 'Crédito BAC', emoji: '💳', corte: 15, pagoDia: 5, interesesAnio: c('38.50'),
+        id: 'bac', nombre: 'Crédito BAC', emoji: '💳', tipo: 'tarjeta', corte: 15, pagoDia: 5, cupo: c('1500'), interesesAnio: c('38.50'),
         estados: [{ corte: '2026-09-15', total: c('190'), minimo: c('25'), aPagar: c('190'), opcion: 'total', vence: '2026-10-05' }],
     }];
     st.apartados = [
@@ -108,7 +117,7 @@ function crearAna(variante) {
         { id: 'luz', nombre: 'Luz', emoji: '💡', categoria: 'servicios', monto: c('35'), estimado: true, frecuencia: 'mensual', dia: 12, medio: 'debito', avisos: [{ tipo: 'recibo', dia: 3, on: true }, { tipo: 'vence', on: true }], desde: '2026-10-01', hechos: {}, previos: [{ fecha: '2026-09-12', monto: c('33.80') }, { fecha: '2026-08-12', monto: c('36.10') }] },
         { id: 'agua', nombre: 'Agua', emoji: '💧', categoria: 'servicios', monto: c('12'), estimado: false, frecuencia: 'mensual', dia: 18, medio: 'debito', avisos: [{ tipo: 'vence', on: true }], desde: '2026-10-01', hechos: {}, previos: [{ fecha: '2026-09-18', monto: c('12') }] },
         { id: 'internet', nombre: 'Internet', emoji: '🌐', categoria: 'servicios', monto: c('25'), estimado: false, frecuencia: 'mensual', dia: 20, medio: 'debito', avisos: [{ tipo: 'vence', on: true }], desde: '2026-10-01', hechos: {}, previos: [{ fecha: '2026-09-20', monto: c('25') }] },
-        { id: 'casacomercial', nombre: 'Casa comercial', emoji: '🛍️', categoria: 'cuotas', monto: c('35'), estimado: false, frecuencia: 'mensual', dia: 20, medio: 'transferencia', avisos: [{ tipo: 'antes', dias: 1, on: true }, { tipo: 'vence', on: true }], deuda: { debe: c('420') }, desde: '2026-10-01', hechos: {}, previos: [{ fecha: '2026-09-20', monto: c('35') }] },
+        { id: 'casacomercial', nombre: 'Casa comercial', emoji: '🛍️', categoria: 'cuotas', monto: c('35'), estimado: false, frecuencia: 'mensual', dia: 20, medio: 'transferencia', avisos: [{ tipo: 'antes', dias: 1, on: true }, { tipo: 'vence', on: true }], tipoDeuda: 'casacomercial', deuda: { debe: c('420') }, desde: '2026-10-01', hechos: {}, previos: [{ fecha: '2026-09-20', monto: c('35') }] },
     ];
 
     const planea = variante === 'planea';
@@ -176,7 +185,7 @@ function crearAna(variante) {
     return st;
 }
 
-function crearCarlos() {
+function crearCarlos(variante) {
     const st = estadoBase({ persona: 'carlos', nombre: 'Carlos', espacio: 'Casa de Carlos' });
     st.lugares = [{ id: 'efectivo', tipo: 'efectivo', nombre: 'Efectivo', emoji: '💵' }];
     st.medios = [{ id: 'efectivo', nombre: 'Efectivo', emoji: '💵', lugar: 'efectivo' }];
@@ -198,7 +207,8 @@ function crearCarlos() {
         { tipo: 'gasto', fecha: '2026-10-16', monto: c('10'), nombre: 'Cuchubal (tu aporte)', categoria: 'cuotas', medio: 'efectivo', pago: 'cuchubal', ref: 'cuchubal-16' },
         { tipo: 'gasto', fecha: '2026-10-18', monto: c('15'), nombre: 'Mercado', categoria: 'mercado', medio: 'efectivo', anotado: true },
         { tipo: 'gasto', fecha: '2026-10-19', monto: c('4'), nombre: 'Pupusas', categoria: 'comida', medio: 'efectivo', anotado: true },
-        { tipo: 'cuadre', fecha: '2026-10-20', lugar: 'efectivo', monto: c('125'), esperado: c('131'), ref: 'cuadre-efectivo' },
+        // «corto» (C33): Carlos cuenta $60 en vez de $125 y no le alcanza la reserva del alquiler.
+        { tipo: 'cuadre', fecha: '2026-10-20', lugar: 'efectivo', monto: variante === 'corto' ? c('60') : c('125'), esperado: c('131'), ref: 'cuadre-efectivo' },
     ]);
     const r = porId(st, 'cuadre-efectivo');
     st.lugares[0].cuadre = { fecha: r.fecha, seq: r.seq, monto: r.monto };
@@ -214,4 +224,4 @@ function crearNueva() {
     return estadoBase({ persona: 'nueva', nombre: '', espacio: 'Tu espacio', configurado: false });
 }
 
-window.DATOS = { CATEGORIAS, INGRESO_CATEGORIAS, EMOJI_NOMBRE, PAGOS_FRECUENTES, BANCOS, crearAna, crearCarlos, crearNueva, sembrar, c };
+window.DATOS = { CATEGORIAS, INGRESO_CATEGORIAS, EMOJI_NOMBRE, PAGOS_FRECUENTES, TIPOS_DEUDA, BANCOS, crearAna, crearCarlos, crearNueva, sembrar, c };
