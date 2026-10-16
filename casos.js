@@ -1,0 +1,125 @@
+// Producto v2 · prototipo. Los 9 recorridos: los usa la guía (pasos, resultado, qué observar)
+// y el teléfono (estado inicial y simulaciones). Un paso con `clave` se marca solo cuando el
+// teléfono avisa ese evento; sin `clave`, lo marca quien observa.
+'use strict';
+window.CASOS = [
+    {
+        id: 'C01', titulo: 'Primer día', persona: 'nueva',
+        para: 'Una persona nueva configura la app y ve su primer número.',
+        pasos: [
+            { t: 'Toca «Empezar» (el nombre es opcional).', clave: 'onboarding:paso1' },
+            { t: '¿Cómo te pagan?: elige «Cada quincena», escribe ~600 y «En el banco».', clave: 'onboarding:ingreso:quincena' },
+            { t: 'Siguiente. ¿Cuánto tienes?: elige un banco, escribe cuánto hay y algo de efectivo (este paso no se puede saltar).', clave: 'onboarding:paso3' },
+            { t: '¿Con qué pagas?: prueba «Tarjeta de crédito» o sáltalo.', clave: 'onboarding:paso4' },
+            { t: 'Tus pagos fijos: toca «Luz», pon 35 y el día 12; agrega otro si quieres.', clave: 'onboarding:pago:luz' },
+            { t: '«Ver mi número» y luego «Ir a Hoy».', clave: 'onboarding:hoy' },
+        ],
+        esperado: 'Aparece «Tu primer número»: libre hasta tu quincena del 30, ya sin la luz. En Hoy se ve el mismo número y la luz en Próximos pagos.',
+        observar: '¿Entiende qué le preguntamos y para qué? ¿Se siente largo? ¿Entiende que «cuánto tienes» es el punto de partida y no tiene que ser exacto?',
+    },
+    {
+        id: 'C05', titulo: 'Anotar «pupusas 6»', persona: 'ana',
+        para: 'Anotar un gasto pequeño en pocos segundos.',
+        pasos: [
+            { t: 'Toca el botón (+) Anotar, abajo al centro.', clave: 'hoja:anotar' },
+            { t: 'Escribe «pupusas 6».', clave: 'entendio:gasto:pupusas' },
+            { t: 'Revisa lo que entendió (Gasto · $6.00 · Pupusas · Efectivo · Hoy) y toca Guardar.', clave: 'guardado:gasto:pupusas' },
+            { t: 'Mira Hoy: el libre bajó $6.00 y «Pupusas» aparece en Últimos anotados. Prueba «Deshacer».' },
+        ],
+        esperado: 'El libre pasa de $270.60 a $264.60 al instante y sale «✓ Guardado · Deshacer».',
+        observar: '¿Confía en lo que entendió sin revisarlo todo? ¿Sabe que puede tocar un dato para cambiarlo? ¿Nota que el número cambió?',
+    },
+    {
+        id: 'C11', titulo: 'Recordatorio dictado del colegio', persona: 'ana', variante: 'sinColegio',
+        para: 'Crear un recordatorio con una frase y recibir el aviso.',
+        pasos: [
+            { t: 'Toca (+) Anotar.', clave: 'hoja:anotar' },
+            { t: 'Escribe o dicta «acuérdame colegio 20 el 5». (En el teléfono, con el micrófono del teclado.)', clave: 'entendio:pago:colegio' },
+            { t: 'En «¿Se repite?» elige «Cada mes» y guarda.', clave: 'guardado:pago:colegio' },
+            { t: 'Toca «Simular: es 4 de noviembre» en este panel.', clave: 'sim:dia4' },
+            { t: 'Toca la notificación «Mañana vence Colegio».', clave: 'aviso:abierto:colegio' },
+            { t: 'En la ficha, toca «Pagado».', clave: 'guardado:pagado:colegio' },
+        ],
+        esperado: 'Colegio aparece en Pagos el 5. El día 4 llega el aviso (también queda en Hoy). Al marcarlo Pagado el libre no cambia: ya estaba contado.',
+        observar: '¿Le sale natural decirlo así? ¿Entiende que «Cada mes» lo repite solo? ¿Le da confianza el aviso?',
+        sims: [{ id: 'dia4', t: 'Simular: es 4 de noviembre, 8:00 a. m.' }],
+    },
+    {
+        id: 'C16', titulo: 'Llega el estado de cuenta (no anota compras)', persona: 'ana', variante: 'planea',
+        para: 'Quien no anota sus compras con tarjeta dice cuánto le salió y cuánto va a pagar.',
+        pasos: [
+            { t: 'Lee el aviso «¿Ya te llegó tu estado de cuenta?» en Hoy (o toca la notificación).' },
+            { t: 'Toca «Anotar estado de cuenta».', clave: 'hoja:estadoCuenta' },
+            { t: 'Escribe pago de contado 245 y mínimo 25. Mira «¿Dónde lo encuentro?».', clave: 'estado:paso3' },
+            { t: 'Elige cuánto vas a pagar (Todo, Mínimo u Otro) y lee el consejo. Guarda.', clave: 'guardado:estado' },
+            { t: 'Mira el libre en Hoy y la tarjeta en Mi dinero.', clave: 'pantalla:midinero' },
+        ],
+        esperado: 'Con «Todo», el libre baja de $560.60 a $315.60. Con «Mínimo» baja $25.00 y los $220.00 restantes se ven como deuda en Mi dinero.',
+        observar: '¿Sabe dónde encontrar los dos montos? ¿El consejo se siente como ayuda y no como regaño? ¿Entiende por qué bajó su libre?',
+    },
+    {
+        id: 'C19', titulo: 'Llega la quincena', persona: 'ana', variante: 'quincena',
+        para: 'El día de pago: confirmar, ver lo ya contado y repartir.',
+        pasos: [
+            { t: 'Hoy es 30 de octubre. Toca «Sí, ya me cayó» en Hoy (o la notificación).', clave: 'hoja:ingresoLlego' },
+            { t: 'Revisa el monto (~$600 en Banco Agrícola) y toca Siguiente.', clave: 'ingreso:llego:quincena' },
+            { t: 'En «Reparte tu quincena» mira «Ya está contado».', clave: 'pantalla:reparte:quincena' },
+            { t: 'Acepta o no una sugerencia de apartar.', clave: 'reparte:apartar' },
+            { t: 'Toca Listo y mira Hoy.', clave: 'reparte:fin' },
+        ],
+        esperado: 'El número pasa a «Hasta tu quincena del 15». Lo apartado baja el libre al momento; nada se aparta sin tocar.',
+        observar: '¿Entiende que los pagos ya estaban restados? ¿Siente la sugerencia como opcional? ¿Le gustaría hacer esto cada quincena?',
+    },
+    {
+        id: 'C20', titulo: 'Carlos: pago semanal y alquiler mensual', persona: 'carlos',
+        para: 'Con ingreso semanal, el número va guardando el alquiler por partes.',
+        pasos: [
+            { t: 'Mira Hoy: «Hasta el viernes · en 2 días».' },
+            { t: 'Toca el número para ver el detalle.', clave: 'hoja:desglose' },
+            { t: 'Encuentra «Guardando para el alquiler: $90.00 de $150.00».' },
+            { t: 'Toca «Simular: llega el viernes 23» en este panel.', clave: 'sim:viernes' },
+            { t: 'Confirma el pago de la semana y revisa «Reparte».', clave: 'ingreso:llego:semana' },
+            { t: 'Toca Listo y vuelve a ver el detalle del número.', clave: 'reparte:fin' },
+        ],
+        esperado: 'Antes: libre $35.00 (~$17 por día). Después del viernes: guardando $120.00 de $150.00 y libre hasta el viernes 30.',
+        observar: '¿Entiende por qué no puede gastar todo lo que tiene? ¿«Guardando para el alquiler» le da tranquilidad o le confunde?',
+        sims: [{ id: 'viernes', t: 'Simular: llega el viernes 23' }],
+    },
+    {
+        id: 'C23', titulo: 'Usar el apartado Laptop', persona: 'ana', inicio: 'midinero',
+        para: 'Gastar lo que se juntó y celebrarlo como logro.',
+        pasos: [
+            { t: 'En Mi dinero, toca el apartado «Laptop» (lista para usar).', clave: 'pantalla:apartado:laptop' },
+            { t: 'Toca «Usar».', clave: 'hoja:usar' },
+            { t: 'Revisa monto ($600.00) y con qué pagaste. Toca «Usar».', clave: 'guardado:usar:laptop' },
+            { t: 'Lee la pantalla de logro y vuelve a Mi dinero.', clave: 'pantalla:midinero' },
+        ],
+        esperado: '«¡Meta cumplida!». Tu libre no cambia ($270.60). La laptop pasa a «Logros»; Banco Agrícola baja $600.00.',
+        observar: '¿Entiende que usar no le quita libre? ¿Se siente como un logro y no como «perder» el ahorro?',
+    },
+    {
+        id: 'C26', titulo: 'Volver después de dos semanas', persona: 'ana', variante: 'ausente',
+        para: 'Retomar sin culpa: confirmar lo pendiente y cuadrar.',
+        pasos: [
+            { t: 'Hoy es 6 de noviembre y no has anotado desde el 20 de octubre. Mira la tarjeta «Pongámonos al día».' },
+            { t: 'Toca «Empezar».', clave: 'pantalla:aldia' },
+            { t: 'Ingresos: di si te cayó la quincena del 30.', clave: 'aldia:paso2' },
+            { t: 'Pagos: marca Pagado, Aún no o Saltar (o «Marcar todos»).', clave: 'aldia:paso3' },
+            { t: 'Cuadra Efectivo y Banco con lo que tienes de verdad. Toca Listo.', clave: 'aldia:fin' },
+        ],
+        esperado: '«¡Listo, estás al día!» con el número nuevo. Lo que no cuadró queda «sin detalle», sin pedir explicaciones.',
+        observar: '¿Se siente regañado en algún momento? ¿Entiende «sin detalle»? ¿Cuánto tarda?',
+    },
+    {
+        id: 'EXTRA', titulo: 'Tu espacio e invitar a alguien', persona: 'ana',
+        para: 'Visión futura: compartir el hogar con la pareja (Próximamente).',
+        pasos: [
+            { t: 'En Hoy, toca la letra «A» arriba a la izquierda.', clave: 'hoja:menu' },
+            { t: 'Toca «Tu espacio».', clave: 'pantalla:espacio' },
+            { t: 'Toca «Ver cómo sería» en «Invitar a alguien».', clave: 'pantalla:invitar' },
+            { t: 'Lee lo que podrían hacer juntos; toca «Me interesa» si te gustaría.', clave: 'invitar:interes' },
+        ],
+        esperado: 'Queda claro que hoy una persona lleva el hogar y que invitar viene después (marcado «Próximamente»).',
+        observar: '¿Lo usaría con su pareja? ¿Qué le preocuparía compartir? ¿Se entiende que todavía no existe?',
+    },
+];

@@ -1,0 +1,999 @@
+/* Copiado de resources/css/app.css (solo lectura) por herramientas/generar-recursos.mjs. */
+:root {
+    --font-sans:
+        Instrument Sans, ui-sans-serif, system-ui, sans-serif,
+        'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
+        'Noto Color Emoji';
+
+    --color-brand: #ba1679;
+    --color-primary: #ba1679;
+    --color-focus: #ba1679;
+    --color-control-border: #9b7a8b;
+    --color-primary-fg: #ffffff;
+    --color-button-primary-hover: #9f1268;
+    --color-button-primary-active: #860f57;
+    --color-button-danger-hover: #a91f28;
+    --color-button-danger-active: #8e1a22;
+    --color-button-danger-fg: #ffffff;
+    --color-accent: #ff8a5c;
+    --color-surface: #fff6f8;
+    --color-surface-2: #ffffff;
+    --color-text: #2a1423;
+    --color-text-muted: #6e5565;
+    --color-border: #f6dce4;
+    --color-success: #0b7748;
+    --color-danger: #c5242f;
+
+    /* Fixed type scale 32/24/20/16/14/12 (03 §17.3). */
+    
+    
+    --radius-card: 1.25rem;
+}
+:root {
+    color-scheme: light;
+
+    /* The cover of a savings fund (03 §19.7.1): its three colours, its text and the
+       eight tones of its drawing. Every one of them holds the text at 4.5:1 or more. */
+    --cover-1: #ffd3b8;
+    --cover-2: #ffb3c7;
+    --cover-3: #f7a8e0;
+    --cover-fg: #2a1423;
+    --cover-far: #ffdde8;
+    --cover-mid: #ff9dbd;
+    --cover-near: #f2709f;
+    --cover-ink: #e0568f;
+    --cover-disc: #fff3c4;
+    --cover-acc: #ff8a5c;
+    --cover-acc2: #c9a0f5;
+    --cover-lite: #ffffff;
+
+    /* The cover of Inicio (03 §19.7.2): its three colours, its text and the four tones
+       of its pattern. Every one of them holds white text at 4.5:1 or more. */
+    --home-1: #8e0e66;
+    --home-2: #b4157a;
+    --home-3: #c02a5a;
+    --home-fg: #ffffff;
+    --home-far: #c9367e;
+    --home-mid: #7a0c58;
+    --home-near: #5e0a47;
+    --home-lite: #cc3a5e;
+    --art-main: #ba1679;
+    --art-deep: #9f1268;
+    --art-soft: #f1d0e4;
+    --art-wash: #ffe9f1;
+    --art-acc: #ff8a5c;
+    --art-acc2: #b892f0;
+    --art-lite: #ffffff;
+
+    --app-motion-ease: cubic-bezier(0.2, 0.75, 0.25, 1);
+    --app-shadow-card:
+        0 1px 2px color-mix(in srgb, var(--color-text) 4%, transparent),
+        0 10px 24px -18px color-mix(in srgb, var(--color-text) 18%, transparent);
+    --app-shadow-overlay: 0 16px 48px -12px
+        color-mix(in srgb, var(--color-text) 22%, transparent);
+    --app-tint-active: color-mix(
+        in srgb,
+        var(--color-primary) 12%,
+        var(--color-surface)
+    );
+    /* The one fill of a disabled button, whatever its variant (03 §11.1). */
+    --app-button-disabled: color-mix(
+        in srgb,
+        var(--color-text) 12%,
+        var(--color-surface-2)
+    );
+
+    /* Own palette for a card's colour (03 §18.1): no brand hues, no green or red. */
+    --card-1: #7a4b6e;
+    --card-2: #2b6470;
+    --card-3: #4b4f8c;
+    --card-4: #7a5a1c;
+    --card-5: #4a5058;
+    --card-6: #7b4f35;
+    --card-fg: #ffffff;
+
+    /* Category tones (03 §19.7, rules 7 and 8), the same in Serena and Ancla: one value for
+       text and stroke over the tint, one for fills (dot, bar, chart). Light. */
+    --tone-share: 16%;
+    --tone-ambar: #92400e;
+    --tone-ambar-fill: #d67506;
+    --tone-naranja: #9a3412;
+    --tone-naranja-fill: #ea580c;
+    --tone-mostaza: #854d0e;
+    --tone-mostaza-fill: #a16207;
+    --tone-cian: #155e75;
+    --tone-cian-fill: #0891b2;
+    --tone-celeste: #0369a1;
+    --tone-celeste-fill: #0284c7;
+    --tone-azul: #1d4ed8;
+    --tone-azul-fill: #2563eb;
+    --tone-indigo: #4338ca;
+    --tone-indigo-fill: #4f46e5;
+    --tone-violeta: #6d28d9;
+    --tone-violeta-fill: #7c3aed;
+    --tone-fucsia: #a21caf;
+    --tone-fucsia-fill: #c026d3;
+    --tone-rosa: #ba185b;
+    --tone-rosa-fill: #db2777;
+    --tone-cafe: #6b3410;
+    --tone-cafe-fill: #92400e;
+    --tone-pizarra: #475569;
+    --tone-pizarra-fill: #64748b;
+}
+
+:root[data-palette='ancla'] {
+    /* The cover of a savings fund. */
+    --cover-1: #bfd8ff;
+    --cover-2: #b5e6f5;
+    --cover-3: #c9d4ff;
+    --cover-fg: #0d1b33;
+    --cover-far: #dcebff;
+    --cover-mid: #7fb2fa;
+    --cover-near: #5b95f0;
+    --cover-ink: #4c86e8;
+    --cover-disc: #fff3c4;
+    --cover-acc: #2cc5de;
+    --cover-acc2: #ffb48a;
+    --cover-lite: #ffffff;
+    /* The cover of Inicio. */
+    --home-1: #1a3bc2;
+    --home-2: #1e54d4;
+    --home-3: #0b6788;
+    --home-fg: #ffffff;
+    --home-far: #2a6fd6;
+    --home-mid: #14309e;
+    --home-near: #0f2478;
+    --home-lite: #0e7c96;
+    --art-main: #1f55e0;
+    --art-deep: #1946bd;
+    --art-soft: #d2ddf9;
+    --art-wash: #e6efff;
+    --art-acc: #06b6d4;
+    --art-acc2: #ff9e6b;
+    --art-lite: #ffffff;
+    --color-brand: #1f55e0;
+    --color-primary: #1f55e0;
+    --color-focus: #1f55e0;
+    --color-control-border: #71829e;
+    --color-primary-fg: #ffffff;
+    --color-button-primary-hover: #1946bd;
+    --color-button-primary-active: #153b9f;
+    --color-button-danger-hover: #a91f28;
+    --color-button-danger-active: #8e1a22;
+    --color-accent: #06b6d4;
+    --color-surface: #f3f7fe;
+    --color-surface-2: #ffffff;
+    --color-text: #0d1b33;
+    --color-text-muted: #4a5a75;
+    --color-border: #d9e4f5;
+    --color-success: #0b7748;
+    --color-danger: #c5242f;
+    --color-button-danger-fg: #ffffff;
+}
+
+:root[data-mode='dark'] {
+    color-scheme: dark;
+
+    --color-primary-fg: #2b0a1c;
+    --color-surface: #170e14;
+    --color-surface-2: #22151d;
+    --color-text: #fbeff4;
+    --color-text-muted: #cdb4c2;
+    --color-control-border: #9a7c8c;
+    --color-border: #3b2733;
+    --color-success: #4ade94;
+    --color-danger: #ff8b85;
+    --color-button-danger-hover: #f3a39d;
+    --color-button-danger-active: #f7b4af;
+    --color-button-danger-fg: #2b0a1c;
+
+    --card-1: #d3a0c4;
+    --card-2: #7fbac6;
+    --card-3: #a6a9e0;
+    --card-4: #d4ae6a;
+    --card-5: #aeb4bb;
+    --card-6: #d2a081;
+    --card-fg: #15171a;
+
+    /* Category tones (03 §19.7, rules 7 and 8), the same in Serena and Ancla: one value for
+       text and stroke over the tint, one for fills (dot, bar, chart). Dark. */
+    --tone-share: 24%;
+    --tone-ambar: #fcd34d;
+    --tone-ambar-fill: #fbbf24;
+    --tone-naranja: #fdba74;
+    --tone-naranja-fill: #fb923c;
+    --tone-mostaza: #fde047;
+    --tone-mostaza-fill: #facc15;
+    --tone-cian: #67e8f9;
+    --tone-cian-fill: #22d3ee;
+    --tone-celeste: #7dd3fc;
+    --tone-celeste-fill: #38bdf8;
+    --tone-azul: #93c5fd;
+    --tone-azul-fill: #60a5fa;
+    --tone-indigo: #a5b4fc;
+    --tone-indigo-fill: #818cf8;
+    --tone-violeta: #c4b5fd;
+    --tone-violeta-fill: #a78bfa;
+    --tone-fucsia: #f0abfc;
+    --tone-fucsia-fill: #e879f9;
+    --tone-rosa: #f9a8d4;
+    --tone-rosa-fill: #f472b6;
+    --tone-cafe: #e0b98f;
+    --tone-cafe-fill: #d4a373;
+    --tone-pizarra: #cbd5e1;
+    --tone-pizarra-fill: #94a3b8;
+}
+
+:root[data-palette='serena'][data-mode='dark'] {
+    /* The cover of a savings fund. */
+    --cover-1: #6b2a3f;
+    --cover-2: #7a2f5c;
+    --cover-3: #5b2a6e;
+    --cover-fg: #ffffff;
+    --cover-far: #a63c78;
+    --cover-mid: #5e1d52;
+    --cover-near: #3d123a;
+    --cover-ink: #260b24;
+    --cover-disc: #cc3d6b;
+    --cover-acc: #c2410c;
+    --cover-acc2: #7a3fc0;
+    --cover-lite: #be4a80;
+    /* The cover of Inicio. */
+    --home-1: #7a0f5a;
+    --home-2: #a3176d;
+    --home-3: #a82c56;
+    --home-fg: #ffffff;
+    --home-far: #bf3478;
+    --home-mid: #650c4b;
+    --home-near: #4a0937;
+    --home-lite: #c43a5e;
+    --art-main: #ff7db8;
+    --art-deep: #ab557d;
+    --art-soft: #64344c;
+    --art-wash: #2e1826;
+    --art-acc: #ffa27a;
+    --art-acc2: #b79cf2;
+    --art-lite: #22151d;
+    --color-brand: #ff7db8;
+    --color-primary: #ff7db8;
+    --color-focus: #ff7db8;
+    --color-button-primary-hover: #ff9bc8;
+    --color-button-primary-active: #ffb1d4;
+    --color-accent: #ffa27a;
+    --color-control-border: #9a7c8c;
+    --color-primary-fg: #2b0a1c;
+    --color-button-danger-hover: #ffa09b;
+    --color-button-danger-active: #ffb5b1;
+    --color-button-danger-fg: #2b0a1c;
+    --color-surface: #170e14;
+    --color-surface-2: #22151d;
+    --color-text: #fbeff4;
+    --color-text-muted: #cdb4c2;
+    --color-border: #3b2733;
+    --color-success: #4ade94;
+    --color-danger: #ff8b85;
+}
+
+:root[data-palette='ancla'][data-mode='dark'] {
+    /* The cover of a savings fund. */
+    --cover-1: #1f3a7a;
+    --cover-2: #1b5273;
+    --cover-3: #2b3585;
+    --cover-fg: #ffffff;
+    --cover-far: #2f58b8;
+    --cover-mid: #16306e;
+    --cover-near: #0f2152;
+    --cover-ink: #0a1638;
+    --cover-disc: #2a74cc;
+    --cover-acc: #0e7c96;
+    --cover-acc2: #b4530f;
+    --cover-lite: #3672c8;
+    /* The cover of Inicio. */
+    --home-1: #142e99;
+    --home-2: #1a4ab8;
+    --home-3: #0a5f7d;
+    --home-fg: #ffffff;
+    --home-far: #2a66c4;
+    --home-mid: #10267f;
+    --home-near: #0b1a5c;
+    --home-lite: #0c708a;
+    --art-main: #7aa5ff;
+    --art-deep: #5371ae;
+    --art-soft: #32446a;
+    --art-wash: #141f38;
+    --art-acc: #4dd8ee;
+    --art-acc2: #ffb48a;
+    --art-lite: #131b2a;
+    --color-brand: #7aa5ff;
+    --color-primary: #7aa5ff;
+    --color-focus: #7aa5ff;
+    --color-button-primary-hover: #9bbbff;
+    --color-button-primary-active: #b1caff;
+    --color-accent: #4dd8ee;
+    --color-control-border: #7386a6;
+    --color-primary-fg: #081433;
+    --color-button-danger-hover: #ffa09b;
+    --color-button-danger-active: #ffb5b1;
+    --color-button-danger-fg: #081433;
+    --color-surface: #0b111d;
+    --color-surface-2: #131b2a;
+    --color-text: #eef3fc;
+    --color-text-muted: #aebbd0;
+    --color-border: #25324a;
+    --color-success: #4ade94;
+    --color-danger: #ff8b85;
+}
+
+/* Reglas de componentes reales de la app que este prototipo reutiliza. */
+.app-button:disabled:not(.app-color-button, .app-button--card),
+.app-button[aria-disabled='true'],
+.app-ghost-button:disabled,
+.app-ghost-button[aria-disabled='true'],
+.app-menu [aria-disabled='true'] .app-menu-action,
+fieldset:disabled .app-segment {
+    --button-bg: var(--app-button-disabled) !important;
+    --button-fg: var(--color-text-muted) !important;
+    --button-border: var(--app-button-disabled) !important;
+
+    background-color: var(--button-bg) !important;
+    color: var(--button-fg) !important;
+    border-color: var(--button-border) !important;
+    box-shadow: none;
+    cursor: not-allowed;
+    opacity: 1 !important;
+}
+
+.app-card > .transaction-list-item:first-child {
+    border-top-left-radius: calc(var(--radius-card) - 1px);
+    border-top-right-radius: calc(var(--radius-card) - 1px);
+}
+
+.app-card > .transaction-list-item:last-child {
+    border-bottom-right-radius: calc(var(--radius-card) - 1px);
+    border-bottom-left-radius: calc(var(--radius-card) - 1px);
+}
+
+.app-ghost-button {
+    display: inline-flex;
+    min-width: 44px;
+    min-height: 44px;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-xl);
+    background-color: transparent;
+    color: var(--color-text-muted);
+}
+
+.app-ghost-button:hover:not(:disabled),
+.app-ghost-button[aria-pressed='true'],
+.app-shell-account[aria-expanded='true'] {
+    background-color: color-mix(in srgb, var(--color-text) 7%, transparent);
+    color: var(--color-text);
+}
+
+.app-ghost-button:active:not(:disabled) {
+    background-color: color-mix(in srgb, var(--color-text) 11%, transparent);
+}
+
+.app-ghost-button--danger,
+.app-ghost-button--danger:hover:not(:disabled) {
+    color: var(--color-danger);
+}
+
+.app-ghost-button--accent,
+.app-ghost-button--accent:hover:not(:disabled) {
+    color: var(--color-primary);
+}
+
+.app-card {
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-card);
+    background-color: var(--color-surface-2);
+    box-shadow: var(--app-shadow-card);
+}
+
+.transactions-day > .app-card {
+    overflow: hidden;
+}
+
+.app-tabs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 4px;
+    border-radius: 1rem;
+    background-color: color-mix(in srgb, var(--color-text) 6%, transparent);
+    padding: 4px;
+}
+
+@media (width >= 640px) {
+    .app-tabs {
+        display: inline-grid;
+    }
+}
+
+.app-tab {
+    display: inline-flex;
+    min-height: 44px;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border-radius: var(--radius-xl);
+    padding-inline: 1rem;
+    color: var(--color-text-muted);
+    font-size: 0.875rem;
+    font-weight: 500;
+    line-height: 1.25rem;
+}
+
+.app-tab[aria-selected='true'],
+.app-tab[aria-pressed='true'] {
+    background-color: var(--color-surface-2);
+    box-shadow: inset 0 0 0 1px var(--color-control-border);
+    color: var(--color-text);
+    font-weight: 600;
+}
+
+.app-tab-count {
+    font-size: 0.75rem;
+    font-variant-numeric: tabular-nums;
+    font-weight: 500;
+}
+
+:where(
+    .app-button:not(.app-button--card),
+    .app-ghost-button,
+    .app-choice,
+    .app-dialog-close,
+    .app-menu-action,
+    .app-shell-nav-link,
+    .app-shell-mobile-link,
+    .app-shell-mobile-register,
+    .theme-palette-choice,
+    .theme-mode-choice
+) {
+    touch-action: manipulation;
+    
+    transition:
+        transform 180ms var(--app-motion-ease),
+        opacity 180ms var(--app-motion-ease);
+}
+
+:where(
+        .app-button:not(.app-button--card),
+        .app-ghost-button,
+        .app-choice,
+        .app-dialog-close,
+        .app-menu-action,
+        .app-shell-nav-link,
+        .app-shell-mobile-link,
+        .app-shell-mobile-register,
+        .theme-palette-choice,
+        .theme-mode-choice
+    ):active:not(:disabled) {
+    transform: scale(0.97);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .app-shell-sidebar::before,
+    .app-shell-label,
+    .app-shell-active-indicator,
+    .app-shell-mobile-nav,
+    .app-shell-mobile-indicator,
+    .app-overlay-motion,
+    .app-dialog,
+    .app-dialog-mask,
+    .app-shell-more-mask,
+    .app-menu,
+    .app-shell-more,
+    .app-form-popover,
+    .transaction-list-item,
+    :where(
+        .app-button:not(.app-button--card),
+        .app-ghost-button,
+        .app-choice,
+        .app-dialog-close,
+        .app-menu-action,
+        .app-shell-nav-link,
+        .app-shell-mobile-link,
+        .app-shell-mobile-register,
+        .theme-palette-choice,
+        .theme-mode-choice
+    ) {
+        transition: none !important;
+        animation: none !important;
+    }
+    :where(
+        .app-button:not(.app-button--card),
+        .app-ghost-button,
+        .app-choice,
+        .app-dialog-close,
+        .app-menu-action,
+        .app-shell-nav-link,
+        .app-shell-mobile-link,
+        .app-shell-mobile-register,
+        .theme-palette-choice,
+        .theme-mode-choice
+    ):is(:hover, :active),
+    .transaction-list-item {
+        transform: none !important;
+    }
+    .app-dialog,
+    .app-menu,
+    .app-shell-more,
+    .app-form-popover {
+        transform: none !important;
+        opacity: 1 !important;
+    }
+}
+
+.app-header-action,
+.app-main-action {
+    min-height: 48px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .app-save-check {
+        animation: app-save-check 200ms var(--app-motion-ease) both;
+    }
+}
+
+@keyframes app-save-check {
+    from {
+        opacity: 0;
+        transform: scale(0.6);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+.app-illustration {
+    display: block;
+    flex-shrink: 0;
+    width: 10rem;
+    height: 7.5rem;
+}
+
+.app-illustration--large {
+    width: 12.5rem;
+    height: 9.375rem;
+}
+
+.app-illustration--small {
+    width: 7.5rem;
+    height: 5.625rem;
+}
+
+.app-illustration--mini {
+    width: 4.5rem;
+    height: 3.375rem;
+}
+
+@media (width >= 768px) {
+    .app-illustration {
+        width: 12.5rem;
+        height: 9.375rem;
+    }
+    .app-illustration--large {
+        width: 15rem;
+        height: 11.25rem;
+    }
+    .app-illustration--small {
+        width: 10rem;
+        height: 7.5rem;
+    }
+    .app-illustration--mini {
+        width: 6rem;
+        height: 4.5rem;
+    }
+}
+
+@media (height < 640px) {
+    
+    .app-illustration,
+    .app-illustration--large,
+    .app-illustration--small {
+        width: 7.5rem;
+        height: 5.625rem;
+    }
+    
+    .app-empty-state[role='alert'] .app-illustration {
+        display: none;
+    }
+    .app-illustration--mini {
+        width: 4.5rem;
+        height: 3.375rem;
+    }
+}
+
+@media (width < 768px) {
+    .app-empty-state:has(> [data-illustration='cuentas']),
+    .app-empty-state:has(> [data-illustration='ahorros']) {
+        padding-block: 2rem;
+    }
+    .app-empty-state .app-illustration[data-illustration='cuentas'],
+    .app-empty-state .app-illustration[data-illustration='ahorros'] {
+        width: 6rem;
+        height: 4.5rem;
+    }
+}
+
+.app-illustration [data-art-motion] {
+    transform-box: fill-box;
+    transform-origin: center;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .app-illustration--entering [data-art-motion='rise'] {
+        animation: app-art-rise 1.4s var(--app-motion-ease) both;
+    }
+    .app-illustration--entering [data-art-motion='pop'] {
+        animation: app-art-pop 0.5s var(--app-motion-ease) 1.1s both;
+    }
+    .app-illustration--entering [data-art-motion='drop'] {
+        animation: app-art-drop 0.9s cubic-bezier(0.4, 0, 0.7, 0.4) 0.5s both;
+    }
+}
+
+.app-home-pattern {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    background: linear-gradient(
+        120deg,
+        var(--home-1),
+        var(--home-2) 55%,
+        var(--home-3)
+    );
+    color: var(--home-fg);
+}
+
+.app-home-pattern-art {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+.app-home-pattern [data-home-tone='far'] {
+    --home-tone: var(--home-far);
+}
+
+.app-home-pattern [data-home-tone='mid'] {
+    --home-tone: var(--home-mid);
+}
+
+.app-home-pattern [data-home-tone='near'] {
+    --home-tone: var(--home-near);
+}
+
+.app-home-pattern [data-home-tone='lite'] {
+    --home-tone: var(--home-lite);
+}
+
+.app-home-pattern [data-home-tone] {
+    fill: var(--home-tone);
+}
+
+.app-home-pattern path[data-home-tone] {
+    fill: none;
+    stroke: var(--home-tone);
+    stroke-width: 3;
+    stroke-linecap: round;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .app-enter {
+        animation: app-enter 280ms var(--app-motion-ease)
+            var(--app-enter-delay, 0ms) both;
+    }
+    .app-goal-bar--entering {
+        animation: app-goal-grow 600ms var(--app-motion-ease) both;
+    }
+}
+
+.app-goal-bar {
+    transform-origin: left center;
+}
+
+@keyframes app-enter {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+@keyframes app-goal-grow {
+    from {
+        transform: scaleX(0);
+    }
+
+    to {
+        transform: none;
+    }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .app-home-pattern-art--entering {
+        animation: app-home-pattern-in 280ms var(--app-motion-ease) both;
+    }
+}
+
+@keyframes app-home-pattern-in {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+.app-home-pattern .app-home-pattern-muted {
+    color: var(--home-fg);
+}
+
+.app-home-pattern-action,
+.app-cover-action {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    display: inline-flex;
+    width: 2.75rem;
+    height: 2.75rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-xl);
+    color: var(--home-fg);
+}
+
+.app-home-pattern-action:hover {
+    background-color: color-mix(in srgb, var(--home-fg) 14%, transparent);
+}
+
+.app-cover-action {
+    color: var(--cover-fg);
+}
+
+.app-cover-action:hover {
+    background-color: color-mix(in srgb, var(--cover-fg) 14%, transparent);
+}
+
+.app-home-pattern :focus-visible {
+    outline-color: var(--home-fg);
+}
+
+.app-cover {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    background: linear-gradient(
+        120deg,
+        var(--cover-1),
+        var(--cover-2) 55%,
+        var(--cover-3)
+    );
+    color: var(--cover-fg);
+}
+
+.app-cover-art {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+.app-cover-art [data-cover-motion] {
+    transform-box: fill-box;
+    transform-origin: center;
+}
+
+.app-cover-art [data-cover-motion='swing'] {
+    transform-origin: center top;
+}
+
+.app-cover-art [data-cover-motion='grow'] {
+    transform-origin: center bottom;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .app-cover-art--entering [data-cover-motion='rise'] {
+        animation: app-cover-rise 1.4s var(--app-motion-ease) both;
+    }
+    .app-cover-art--entering [data-cover-motion='drift'] {
+        animation: app-cover-drift 2.2s var(--app-motion-ease) 0.2s both;
+    }
+    .app-cover-art--entering [data-cover-motion='pop'] {
+        animation: app-cover-pop 0.5s var(--app-motion-ease) 1.1s both;
+    }
+    .app-cover-art--entering [data-cover-motion='drop'] {
+        animation: app-cover-drop 0.9s cubic-bezier(0.4, 0, 0.7, 0.4) 0.5s both;
+    }
+    .app-cover-art--entering [data-cover-motion='fly'] {
+        animation: app-cover-fly 2.4s var(--app-motion-ease) both;
+    }
+    .app-cover-art--entering [data-cover-motion='drive'] {
+        animation: app-cover-drive 2s var(--app-motion-ease) both;
+    }
+    .app-cover-art--entering [data-cover-motion='float'] {
+        animation: app-cover-float 1.8s var(--app-motion-ease) both;
+    }
+    .app-cover-art--entering [data-cover-motion='swing'] {
+        animation: app-cover-swing 1.6s var(--app-motion-ease) both;
+    }
+    .app-cover-art--entering [data-cover-motion='grow'] {
+        animation: app-cover-grow 1.4s var(--app-motion-ease) both;
+    }
+}
+
+@keyframes app-cover-rise {
+    from {
+        opacity: 0;
+        transform: translateY(18px);
+    }
+
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+@keyframes app-cover-drift {
+    from {
+        opacity: 0;
+        transform: translateX(-28px);
+    }
+
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+@keyframes app-cover-pop {
+    from {
+        opacity: 0;
+        transform: scale(0.6);
+    }
+
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+@keyframes app-cover-drop {
+    from {
+        opacity: 0;
+        transform: translateY(-24px);
+    }
+
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+@keyframes app-cover-fly {
+    from {
+        opacity: 0;
+        transform: translate(-64px, 16px);
+    }
+
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+@keyframes app-cover-drive {
+    from {
+        transform: translateX(-46px);
+    }
+
+    to {
+        transform: none;
+    }
+}
+
+@keyframes app-cover-float {
+    from {
+        transform: translateY(10px);
+    }
+
+    to {
+        transform: none;
+    }
+}
+
+@keyframes app-cover-swing {
+    from {
+        transform: rotate(-7deg);
+    }
+
+    to {
+        transform: none;
+    }
+}
+
+@keyframes app-cover-grow {
+    from {
+        transform: scale(0.5);
+    }
+
+    to {
+        transform: none;
+    }
+}
+
+.app-cover .app-cover-muted {
+    color: var(--cover-fg);
+}
+
+.app-cover :focus-visible {
+    outline-color: var(--cover-fg);
+}
+
+.app-cover--crop {
+    width: 4rem;
+    height: 4rem;
+    flex-shrink: 0;
+    border-radius: 0.875rem;
+    background: linear-gradient(
+        135deg,
+        var(--cover-1),
+        var(--cover-2) 55%,
+        var(--cover-3)
+    );
+}
+
+.app-cover--crop.app-cover--small {
+    width: 3rem;
+    height: 3rem;
+    border-radius: 0.75rem;
+}
+
+.app-cover--crop.app-cover--tiny {
+    width: 2rem;
+    height: 2rem;
+    border-radius: 0.5rem;
+}
+
+.savings-place > .app-cover-action {
+    z-index: 1;
+}
+
+.app-cover--place {
+    border-radius: 0.875rem;
+    background: none;
+}
+
+.account-main-actions .app-main-action {
+    padding-block: 0;
+    padding-inline: 1rem;
+    font-size: var(--text-sm);
+    line-height: var(--text-sm--line-height);
+}
+
+@media (width < 640px) {
+    .account-main-actions .app-main-action:not(.bg-primary) {
+        padding-inline: 0.75rem;
+    }
+}
+
+.account-place-summary .app-ghost-button--accent,
+.account-place-summary .app-ghost-button--accent:hover:not(:disabled) {
+    color: var(--cover-fg);
+}

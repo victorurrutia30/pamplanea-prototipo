@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="es" data-palette="serena" data-mode="light">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Producto v2 · prototipo</title>
+        <link rel="stylesheet" href="recursos/fuentes.css" />
+        <link rel="stylesheet" href="recursos/tokens.css" />
+        <link rel="stylesheet" href="guia.css" />
+    </head>
+    <body>
+        <a class="g-saltar" href="#telefono">Ir al teléfono</a>
+        <header class="g-cab">
+            <div class="g-cab-txt">
+                <p class="g-ceja">PamPlanea · Producto v2 · prototipo para probar con personas</p>
+                <h1>¿Se entiende el flujo de Producto v2?</h1>
+                <p class="g-lead">Un teléfono clicable con la app completa propuesta: <strong>Hoy · Pagos · (+) Anotar · Mi dinero · Mes</strong>. Recórrelo tú con los 9 casos y después pruébalo con 5 a 8 personas.</p>
+                <p class="g-decide"><span class="g-decide-t">Qué se decide aquí: 1 cosa</span> si el flujo se entiende. <span id="g-faltan" aria-live="polite">Faltan 9 de 9 recorridos.</span></p>
+            </div>
+            <ol class="g-como">
+                <li><strong>Elige un caso</strong> a la izquierda: el teléfono queda listo en su pantalla de inicio.</li>
+                <li><strong>Sigue los pasos dentro del teléfono.</strong> Se marcan solos cuando los haces.</li>
+                <li><strong>Escribe lo que viste</strong> en «Mis notas», al final de la página.</li>
+                <li class="g-como-nota">Es una maqueta: los datos son ficticios, viven solo en esta pestaña y vuelven al inicio al recargar. Fecha simulada: miércoles 21 de octubre de 2026.</li>
+            </ol>
+        </header>
+
+        <div class="g-barra" role="region" aria-label="Controles del prototipo">
+            <div class="g-control" role="group" aria-labelledby="g-l-persona">
+                <span class="g-control-l" id="g-l-persona">Explorar libre con</span>
+                <div class="g-seg">
+                    <button type="button" data-persona="ana" aria-pressed="false">Ana · quincenal</button>
+                    <button type="button" data-persona="carlos" aria-pressed="false">Carlos · semanal</button>
+                </div>
+            </div>
+            <div class="g-control" role="group" aria-labelledby="g-l-tema">
+                <span class="g-control-l" id="g-l-tema">Tema</span>
+                <div class="g-seg">
+                    <button type="button" data-tema="serena-claro" aria-pressed="true">Serena claro</button>
+                    <button type="button" data-tema="serena-oscuro" aria-pressed="false">Serena oscuro</button>
+                    <button type="button" data-tema="ancla-claro" aria-pressed="false">Ancla claro</button>
+                    <button type="button" data-tema="ancla-oscuro" aria-pressed="false">Ancla oscuro</button>
+                </div>
+            </div>
+            <div class="g-control g-control--der">
+                <button type="button" class="g-btn" id="g-ajustar" aria-pressed="false">Ajustar el teléfono a la ventana</button>
+                <button type="button" class="g-btn g-btn--prim" id="g-reiniciar">Reiniciar datos</button>
+            </div>
+        </div>
+
+        <main class="g-main">
+            <nav class="g-casos" aria-labelledby="g-casos-t">
+                <h2 id="g-casos-t" class="g-h2">Casos</h2>
+                <ul id="g-lista-casos"></ul>
+            </nav>
+            <div class="g-telefono" id="g-telefono">
+                <div class="marco">
+                    <iframe id="telefono" src="telefono.html" title="Prototipo de PamPlanea en un teléfono de 390 por 844 píxeles" width="390" height="844"></iframe>
+                </div>
+                <p class="g-pie-tel" id="g-pie-tel">Teléfono a 390 × 844 px reales · fecha simulada: miércoles 21 de octubre de 2026</p>
+            </div>
+            <aside class="g-panel" id="g-panel" aria-live="polite"></aside>
+        </main>
+
+        <section class="g-seccion" aria-labelledby="g-obs-t">
+            <h2 id="g-obs-t" class="g-h2">Qué observar en cada caso</h2>
+            <p class="g-sub">Úsalo también cuando pruebes con personas: no expliques la pantalla, mira dónde dudan.</p>
+            <div class="g-obs" id="g-obs"></div>
+        </section>
+
+        <section class="g-seccion" aria-labelledby="g-notas-t">
+            <h2 id="g-notas-t" class="g-h2">Mis notas</h2>
+            <p class="g-sub">Escribe tus hallazgos por caso. Se guardan solo en este navegador. Al terminar, «Armar texto» junta todo para que lo copies.</p>
+            <div class="g-notas" id="g-notas"></div>
+            <div class="g-armar">
+                <button type="button" class="g-btn g-btn--prim" id="g-armar">Armar texto</button>
+                <button type="button" class="g-btn" id="g-seleccionar">Seleccionar todo el texto</button>
+            </div>
+            <label class="g-label" for="g-texto">Texto para copiar (Ctrl + A, Ctrl + C)</label>
+            <textarea id="g-texto" class="g-texto" readonly rows="12"></textarea>
+        </section>
+
+        <footer class="g-pie">
+            <p>Maqueta de flujo y comprensión, no producción. Los datos son ficticios y viven solo en esta pestaña. Piel real de PamPlanea: tokens Serena/Ancla, Instrument Sans (SIL OFL 1.1), Fluent Emoji «Color» (MIT, © Microsoft) e íconos Lucide (ISC); licencias en <code>recursos/licencias</code>.</p>
+        </footer>
+        <script src="casos.js"></script>
+        <script src="guia.js"></script>
+    </body>
+</html>
