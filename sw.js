@@ -2,7 +2,7 @@
 // el nombre de la caché; una versión nueva espera hasta que la persona toque «Actualizar» (los datos
 // guardados en el navegador no se tocan). Generado por herramientas/generar-sw.mjs: no editar a mano.
 'use strict';
-const VERSION_SW = 'v2.1-2026-10-16';
+const VERSION_SW = 'v2.2-2026-10-16';
 const CACHE = 'pamplanea-proto-' + VERSION_SW;
 const ARCHIVOS = [
     "./",
@@ -16,6 +16,7 @@ const ARCHIVOS = [
     "hojas.js",
     "index.html",
     "manifest.webmanifest",
+    "modos.js",
     "motor.js",
     "prototipo.css",
     "recursos/arte.js",
@@ -142,7 +143,8 @@ const ARCHIVOS = [
     "recursos/licencias/instrument-sans-OFL.txt",
     "recursos/licencias/lucide-LICENSE.txt",
     "recursos/tokens.css",
-    "telefono.html"
+    "telefono.html",
+    "tour.js"
 ];
 
 self.addEventListener('install', (e) => {

@@ -3,7 +3,7 @@
 // sin decir dónde tocar). Un paso con `clave` se marca solo cuando el teléfono avisa ese evento
 // (una clave o varias alternativas); sin `clave`, lo marca quien observa.
 'use strict';
-window.VERSION_PROTOTIPO = 'Prototipo v2.1 · 2026-10-16';
+window.VERSION_PROTOTIPO = 'Prototipo v2.2 · 2026-10-16';
 window.CASOS = [
     {
         id: 'C01', titulo: 'Primer día', persona: 'nueva',
@@ -36,7 +36,7 @@ window.CASOS = [
     {
         id: 'C11', titulo: 'Recordatorio dictado del colegio', persona: 'ana', variante: 'sinColegio',
         para: 'Crear un recordatorio con una frase y recibir el aviso.',
-        tarea: 'Apunta que tienes que pagar el colegio, $20, el 5 de cada mes. Después adelanta el tiempo con el botón de esta tarjeta y, cuando la app te avise, márcalo como pagado.',
+        tarea: 'Apunta que tienes que pagar el colegio, $20, el 5 de cada mes. Después adelanta el tiempo (en «¿Cómo?») y, cuando la app te avise, márcalo como pagado.',
         pasos: [
             { t: 'Toca (+) Anotar.', clave: 'hoja:anotar' },
             { t: 'Escribe o dicta «acuérdame colegio 20 el 5». (En el teléfono, con el micrófono del teclado.)', clave: 'entendio:pago:colegio' },
@@ -80,7 +80,7 @@ window.CASOS = [
     {
         id: 'C20', titulo: 'Carlos: pago semanal y alquiler mensual', persona: 'carlos',
         para: 'Con ingreso semanal, el número va guardando el alquiler por partes.',
-        tarea: 'Eres Carlos: te pagan cada viernes y el alquiler de $150 se paga el 1. Averigua cuánto puedes gastar hasta el viernes y por qué no es todo lo que tienes. Después adelanta al viernes y confirma tu pago de la semana.',
+        tarea: 'Eres Carlos: te pagan cada viernes y el alquiler de $150 se paga el 1. Averigua cuánto puedes gastar hasta el viernes y por qué no es todo lo que tienes. Después adelanta al viernes (en «¿Cómo?») y confirma tu pago de la semana.',
         pasos: [
             { t: 'Mira Hoy: «Hasta el viernes · en 2 días».' },
             { t: 'Toca el número para ver el detalle.', clave: 'hoja:desglose' },
