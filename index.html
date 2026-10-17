@@ -9,9 +9,19 @@
         <script>
             // En pantalla angosta (< 768 px) la app se abre a pantalla completa, sin marco ni guía.
             // «?guia=1» (desde «Casos y ayuda») muestra la guía de todos modos.
-            if (window.matchMedia('(max-width: 767px)').matches && !/[?&]guia=1/.test(location.search)) location.replace('telefono.html' + location.hash);
+            if (window.matchMedia('(max-width: 767px)').matches && !/[?&]guia=1/.test(location.search)) location.replace('telefono.html' + location.search + location.hash);
         </script>
         <link rel="icon" href="recursos/icono.svg" type="image/svg+xml" />
+        <script>
+            // App instalable (PWA) solo servida por http(s): por file:// el navegador bloquea el manifest.
+            if (/^https?:$/.test(location.protocol)) document.head.appendChild(Object.assign(document.createElement('link'), { rel: 'manifest', href: 'manifest.webmanifest' }));
+        </script>
+        <meta name="theme-color" content="#f7e9e4" />
+        <link rel="apple-touch-icon" href="recursos/iconos/apple-touch-icon-180.png" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-title" content="PamPlanea" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <link rel="stylesheet" href="recursos/fuentes.css" />
         <link rel="stylesheet" href="recursos/tokens.css" />
         <link rel="stylesheet" href="guia.css" />
@@ -77,6 +87,12 @@
             <div class="g-obs" id="g-obs"></div>
         </section>
 
+        <section class="g-seccion" aria-labelledby="g-sets-t">
+            <h2 id="g-sets-t" class="g-h2">Prueba guiada para testers: sets A y B</h2>
+            <p class="g-sub">En su teléfono, cada persona ve una tarea a la vez, sin que se le diga dónde tocar. Los sets se alternan en un mismo teléfono (1.ª persona A, 2.ª B…); entre teléfonos distintos, manda enlaces alternados con <code>?set=A</code> y <code>?set=B</code>. El moderador puede cambiarlo en «Casos y ayuda» → «Modo moderador».</p>
+            <div class="g-obs" id="g-sets"></div>
+        </section>
+
         <section class="g-seccion" aria-labelledby="g-notas-t">
             <h2 id="g-notas-t" class="g-h2">Mis notas</h2>
             <p class="g-sub">Escribe tus hallazgos por caso. Se guardan solo en este navegador (son las mismas de «Casos y ayuda» en el teléfono, con las respuestas de la prueba guiada). «Armar texto» junta todo para que lo copies.</p>
@@ -92,7 +108,7 @@
         </section>
 
         <footer class="g-pie">
-            <p><strong id="g-version">Prototipo v2 · 2026-10-16</strong> · Maqueta de flujo y comprensión, no producción. Datos inventados; sin servidor, sin analítica ni rastreadores. Piel real de PamPlanea: tokens Serena/Ancla, Instrument Sans (SIL OFL 1.1), Fluent Emoji «Color» (MIT, © Microsoft) e íconos Lucide (ISC); licencias en <code>recursos/licencias</code>.</p>
+            <p><strong id="g-version">Prototipo v2.1 · 2026-10-16</strong> · Maqueta de flujo y comprensión, no producción. Datos inventados; sin servidor, sin analítica ni rastreadores. Piel real de PamPlanea: tokens Serena/Ancla, Instrument Sans (SIL OFL 1.1), Fluent Emoji «Color» (MIT, © Microsoft) e íconos Lucide (ISC); licencias en <code>recursos/licencias</code>.</p>
         </footer>
         <script src="casos.js"></script>
         <script src="guia.js"></script>

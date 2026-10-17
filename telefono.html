@@ -7,6 +7,16 @@
         <meta name="robots" content="noindex" />
         <title>PamPlanea · prototipo v2</title>
         <link rel="icon" href="recursos/icono.svg" type="image/svg+xml" />
+        <script>
+            // App instalable (PWA) solo servida por http(s): por file:// el navegador bloquea el manifest.
+            if (/^https?:$/.test(location.protocol)) document.head.appendChild(Object.assign(document.createElement('link'), { rel: 'manifest', href: 'manifest.webmanifest' }));
+        </script>
+        <meta name="theme-color" content="#f7e9e4" />
+        <link rel="apple-touch-icon" href="recursos/iconos/apple-touch-icon-180.png" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-title" content="PamPlanea" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <link rel="stylesheet" href="recursos/fuentes.css" />
         <link rel="stylesheet" href="recursos/tokens.css" />
         <link rel="stylesheet" href="prototipo.css" />
