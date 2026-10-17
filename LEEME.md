@@ -1,19 +1,79 @@
-# Producto v2 · prototipo de teléfono — versión 2
+# Producto v2 · prototipo de teléfono — versión 2.1
 
-**Qué es:** un prototipo clicable de la app completa propuesta en Producto v2, para recorrer el flujo y probarlo con 5–8 personas **en su propio teléfono**. Es una maqueta de flujo y comprensión, no producción. Datos 100 % inventados.
+**Qué es:** un prototipo clicable de la app completa propuesta en Producto v2, para probarlo con 5–8 personas **en su propio teléfono** (algunas sin experiencia en apps de finanzas) y recoger datos comparables. Es una maqueta de flujo y comprensión, no producción. Datos 100 % inventados.
 
-**Dónde:** repo público `victorurrutia30/pamplanea-prototipo`, publicado con GitHub Pages en <https://victorurrutia30.github.io/pamplanea-prototipo/> (cuando Victor active Pages). La versión 1 queda como historial en `pamplanea-capturas/v2-prototipo/` (no se tocó).
+**Dónde:** repo público `victorurrutia30/pamplanea-prototipo`, publicado con GitHub Pages en <https://victorurrutia30.github.io/pamplanea-prototipo/>. La versión 1 queda como historial en `pamplanea-capturas/v2-prototipo/` (no se tocó).
 
 **Cómo se abre:**
 
-- **Computadora:** doble clic en `index.html` (Chrome o Edge) o el enlace de Pages. Muestra la guía con el teléfono enmarcado (390 × 844).
-- **Teléfono:** el mismo enlace. En pantalla angosta (< 768 px) `index.html` abre la app **a pantalla completa**, sin marco ni guía, con el botón «Casos y ayuda». `telefono.html` abre así en cualquier pantalla.
+- **Computadora:** doble clic en `index.html` (Chrome o Edge) o el enlace de Pages. Muestra la guía con el teléfono enmarcado (390 × 844), los 13 casos y los dos sets de la prueba guiada.
+- **Teléfono:** el mismo enlace. En pantalla angosta (< 768 px) `index.html` abre la app **a pantalla completa**, con la bienvenida para tester y «Casos y ayuda». Se puede **instalar** (PWA) y abre **sin internet** después de la primera visita.
 
-Sin servidor propio, sin dependencias, sin CDN, sin analítica ni rastreadores. Fuentes, emoji e íconos locales con sus licencias (`recursos/licencias`).
+Sin servidor propio, sin dependencias, sin CDN, sin analítica ni rastreadores. Fuentes, emoji, íconos y los íconos de la app instalable son locales, con sus licencias (`recursos/licencias`).
 
-**Estado:** brief y acuerdos V2-01…V2-22 APROBADOS por Victor (2026-10-16); acuerdos **V2-23 a V2-30 APROBADOS por Victor (2026-10-16)**. Nada de esto está documentado todavía en el repo de la app: se documentará después de las pruebas con personas. Este prototipo no cambia nada del repo de la app.
+**Estado:** brief y acuerdos V2-01…V2-22 APROBADOS por Victor (2026-10-16); **V2-23 a V2-30** y **V2-31 (respuestas v2.1)** APROBADOS por Victor (2026-10-16). Nada de esto está documentado todavía en el repo de la app: se documentará después de las pruebas con personas. Este prototipo no cambia nada del repo de la app.
 
-Versión visible en la app y en la guía: **«Prototipo v2 · 2026-10-16»**.
+Versión visible en la app y en la guía: **«Prototipo v2.1 · 2026-10-16»**.
+
+---
+
+## V2-31 Respuestas v2.1 (APROBADO por Victor, 2026-10-16)
+
+1. Si hay dos pagos próximos de la misma tarjeta, el mensaje dice el mes: «pago del 5 de diciembre».
+2. «Pagar la tarjeta ya» NO salda todo en automático: pregunta «¿Cuánto pagas? [Solo la laptop $600] [Todo lo que debes $X] [Otro]».
+3. Apartado cerrado después de su fecha: es Logro solo si se usó para su propósito («Sí, ya lo gasté»). Si se libera sin usarlo, queda «Cerrado», no Logro.
+4. «No lo anoté»: la fecha se muestra como sugerencia editable (chip con la fecha de la meta).
+5. Correcto: [Pagado] sin preguntar solo a tiempo; los vencidos preguntan la fecha.
+6. El libre nunca se muestra negativo, pero cuando está en $0 SIEMPRE aparece el faltante exacto: «Te faltan $X para cubrir lo que viene» (tocable, lleva al detalle).
+7. Reserva gradual para TODOS los tipos de ingreso: cada pago se reparte entre los días de pago que caen antes de su vencimiento (ej. alquiler del 1 con quincenas 15 y 30 = mitad y mitad). Mostrarlo en el desglose de Hoy, en Mi dinero («Guardando para pagos») y en la ficha del pago. Revisar que los resultados esperados de todos los casos sigan cuadrando y actualizarlos.
+8. El formulario de tarjeta pregunta OPCIONAL «¿Tienes tu último estado de cuenta? Total / Mínimo». Si no lo pone, se le pide en el siguiente corte.
+9. Préstamo sin saldo: en Mi dinero dice «Cuota $35 al mes» (en positivo), no «sin saldo».
+10. Si coinciden el día de pago y los 10 días sin anotar: UNA sola tarjeta (el ritual de la quincena incluye el cuadre).
+11. Sí: el horizonte se queda hasta confirmar la quincena («Libre por ahora»).
+12. La prueba guiada se divide en dos sets.
+
+### Cómo quedó cada respuesta
+
+| # | Dónde se ve |
+| --- | --- |
+| 1 | Logro con crédito, Logros, «Guardando para pagos», ficha y desglose: «pago del 5 de diciembre» cuando la tarjeta también tiene el del 5 de noviembre. Hoy: «Incluye tarjeta $245.00, vence el 5 de noviembre». Con un solo pago, solo el día. |
+| 2 | «Pagar la tarjeta ya» abre «¿Cuánto pagas?»: «Solo la laptop · $600.00» (paga esa compra; el pago del 5 de noviembre sigue igual), «Todo lo que debes · $890.00», «Otro monto». |
+| 3 | «¿Ya lo usaste?» → «Sí, ya lo gasté» (eligiendo el gasto o «No lo anoté») pasa a **Logros**; «No lo usé» o liberar todo un apartado vencido lo deja en **Cerrados** («Cerrado sin usar… volvieron a Sin apartar»). |
+| 4 | «No lo anoté» → «¿Cuándo? (te sugerimos el 10 oct, la fecha de tu meta; cámbiala si fue otro día)» con chips Hoy / Ayer / Antier / El 10 oct. |
+| 5 | Sin cambios (ya era así). |
+| 6 | Con libre $0: «Te faltan $30.00 para cubrir lo que viene» en el número (que abre el detalle), en el detalle y en «Así se reparte»; si justo alcanza, «Justo te alcanza: no te queda libre». |
+| 7 | Reserva gradual para quincena, semana y cualquier ingreso con más de un día de pago por ciclo. Ana guarda hoy **$27.50** (colegio $10 de $20 y luz $17.50 de $35, mitad con cada quincena): libre **$243.10**. Se ve en Hoy («Ya separa $27.50 para el colegio y la luz»), en el detalle, en Mi dinero y en la ficha del pago. |
+| 8 | «+ Tarjeta o préstamo» → Tarjeta: «¿Tienes tu último estado de cuenta? (opcional) Total / Mínimo». Sin él, aparece en Pagos «según tu estado de cuenta» y Hoy lo pide después del siguiente corte. |
+| 9 | Tarjetas y deudas: «Cuota $25.00 al mes, el 28» y a la derecha «$25.00 al mes». |
+| 10 | El día de pago, solo «Libre por ahora» + «¿Ya te cayó?»; «Pongámonos al día» no aparece. Reparte trae «3. ¿Cuadramos?». |
+| 11 | Día de pago pasado sin confirmar: «Tu quincena del 30 · falta confirmarla», «Libre por ahora». Lo vencido sigue contando; Pagos sigue al calendario. |
+| 12 | Sets A y B (abajo). |
+
+## Prueba guiada para testers (v2.1)
+
+**Objetivo:** dar el enlace a 5–8 personas, observarlas sin ayudar y recoger datos comparables.
+
+1. **Bienvenida (primera vez en el teléfono):** qué es («Una prueba de una app para organizar tu dinero. Los datos son inventados. No pongas tus datos reales»), cómo funciona (tareas cortas, piensa en voz alta, «si algo no se entiende, es culpa de la app, no tuya», ~15 min), nombre o apodo (opcional) y 4 preguntas de perfil con chips: ¿Cómo te pagan? · ¿Dónde tienes tu dinero? · ¿Usas tarjeta de crédito? · ¿Hoy llevas tus cuentas? Botón «Empezar» (y «Solo quiero mirar la app (sin prueba)»).
+2. **Instalar (saltable):** «Tenla en tu pantalla de inicio» con el botón «Instalar» real en Android/Chrome, los pasos con dibujos en iPhone/Safari o «ábrelo en Safari» en otro navegador de iPhone; «Ya la instalé / No pude / Ahora no». Si ya está instalada, no aparece.
+3. **Dos sets de 7 tareas (~15 min):**
+   - **Set A:** Primer día (C01 corto) · Anotar un gasto (C05) · Recordatorio del colegio (C11) · Llegó la quincena (C19) · Usar lo que juntaste (C23) · El regalo de mamá (C30) · Qué entendiste.
+   - **Set B:** Anotar un gasto (C05) · Estado de cuenta (C16) · Usar lo que juntaste, con tarjeta (C32) · Tarjeta y cuotas nuevas (C31) · Volver después de dos semanas (C26) · Carlos sin dinero suficiente (C33, «Ahora eres otra persona: Carlos…») · Qué entendiste.
+   - «Anotar un gasto» está en los dos sets para comparar.
+   - Cada tarea: instrucción en lenguaje cotidiano sin decir dónde tocar, «Empezar», y arriba una barra con «Listo» y «No pude». La app detecta sola cuando se cumplió («¡Lo lograste! · Seguir»). Después: «¿Qué tan fácil fue? 1–5» y «¿Qué te confundió?» (una línea, opcional).
+   - **Registro automático por tarea (solo en el navegador):** tiempo, número de toques dentro de la app, si la app lo detectó, si dijo «Listo» sin que se detectara, si se rindió, y las pantallas visitadas.
+   - **Comprensión final:** «Mira la pantalla de Hoy sin tocar nada» y, con Hoy visible arriba, «¿Qué significa el número grande de Hoy?», «¿Para qué crees que sirve esta app?» y «¿La usarías? ¿Qué te haría dejarla?».
+4. **Asignación del set:** `?set=A` o `?set=B` en el enlace manda; si no, el moderador lo elige; si no, se alterna en ese teléfono (1.ª persona A, 2.ª B…). Entre teléfonos distintos no hay forma de alternar sin servidor: manda enlaces alternados.
+5. **Resultado:** «¡Gracias!» con un resumen en texto (nombre, fecha, set, perfil, instalada sí/no/no lo intentó, por tarea: resultado, tiempo, toques, 1–5, comentario, pantallas; respuestas finales y notas) con «Compartir» (WhatsApp), «Copiar» y el texto seleccionable.
+6. **Modo moderador:** «Casos y ayuda» → enlace discreto «Modo moderador» al pie: persona actual, cambiar de set (reinicia el set conservando nombre y perfil), el resumen, y «Nueva persona», que primero pregunta «¿Ya enviaste el resumen de …?» y luego borra estado, respuestas y notas y abre la bienvenida para la siguiente.
+7. Fuera de la prueba se conserva todo lo anterior: 13 casos, guía de escritorio, notas, reinicio y temas. Elegir un caso pausa la prueba; «Seguir con la prueba» la retoma.
+
+## App instalable (PWA)
+
+- `manifest.webmanifest`: «PamPlanea (prototipo)» / «PamPlanea», `start_url` y `scope` «./» (funciona en la subruta `/pamplanea-prototipo/`), `display: standalone`, colores de Serena, íconos 192 y 512, uno maskable y `apple-touch-icon` 180, generados localmente desde el ícono (`herramientas/generar-iconos.mjs`).
+- `sw.js`: caché **versionada** (`pamplanea-proto-v2.1-2026-10-16`) que precarga los 138 archivos publicados; abre sin internet. Una versión nueva se instala en segundo plano y la app muestra «Hay una versión nueva · Actualizar»; al tocarlo guarda y recarga **sin perder datos** (lo guardado tiene su propio formato, independiente de la versión visible). La primera instalación no recarga la página.
+- El service worker y el manifest solo se usan servidos por http(s); por `file://` no se registran y todo funciona igual, sin errores de consola.
+- **Para publicar una versión nueva:** cambiar `VERSION_PROTOTIPO` en `casos.js` y correr `node herramientas/generar-sw.mjs v2.2-AAAA-MM-DD` (regenera la lista y el nombre de la caché). Si `sw.js` no cambia, los teléfonos instalados no se enteran.
+- En modo instalado: safe areas reales, sin barra de estado simulada; la barra de estado de Android toma el color del aviso de prototipo en cada tema.
 
 ---
 
@@ -44,6 +104,8 @@ Versión visible en la app y en la guía: **«Prototipo v2 · 2026-10-16»**.
 - **V2-30 PUBLICACIÓN:** repo público aparte con GitHub Pages, para probar en el teléfono de cada persona.
 
 ### Cómo quedó cada acuerdo en el prototipo
+
+> Tal como quedó en la v2. Con V2-31 cambian algunos textos y números (por ejemplo «pago del 5 de diciembre», «¿Cuánto pagas?» y el libre de Ana, ahora 43.10): ver V2-31 y §3.
 
 | Acuerdo | Dónde se ve |
 | --- | --- |
@@ -80,14 +142,14 @@ Versión visible en la app y en la guía: **«Prototipo v2 · 2026-10-16»**.
 4. Arriba: «Explorar libre con» Ana o Carlos, el tema (Serena/Ancla × claro/oscuro), «Ajustar el teléfono a la ventana» y «Reiniciar datos».
 5. Al final: «Qué observar en cada caso» y «Mis notas» (con tu nombre y las respuestas de la prueba guiada). «Armar texto» junta todo; «Copiar» si el navegador lo permite.
 
-Todo se guarda en este navegador: al volver sigues en el mismo caso, con el mismo tema, los mismos datos y tus notas. «Reiniciar datos» vuelve el caso al inicio.
+Todo se guarda en este navegador (también al publicarse una versión nueva): al volver sigues en el mismo caso, con el mismo tema, los mismos datos y tus notas. «Reiniciar datos» vuelve el caso al inicio.
 
 ### En el teléfono (pantalla completa)
 
 - Arriba, fijo: **«Prototipo de prueba · no pongas tus datos reales»** y el botón **«Casos y ayuda»**.
-- La primera vez se abre «Casos y ayuda» con una bienvenida.
+- La primera vez se abre la **bienvenida para tester** (ver «Prueba guiada para testers»).
 - **«Casos y ayuda»:** prueba guiada, el caso actual (sus pasos y simulaciones), **Mis notas** (tu nombre + notas del caso + «Armar texto para enviar», seleccionable, con «Copiar» y «Compartir» si el teléfono los permite), elegir otro caso o explorar con Ana/Carlos, apariencia, **«Reiniciar datos»** (bien visible) y «Borrar todo, también mis notas». Al pie, la versión.
-- **Prueba guiada:** una tarea a la vez, en lenguaje sencillo y sin decir dónde tocar («Apunta que tienes que pagar el colegio, $20, el 5 de cada mes…»). Una barra bajo el aviso recuerda la tarea; cuando la app detecta que terminó dice «¡Listo! Cuéntanos cómo te fue». Al terminar pregunta «¿Qué tan fácil fue? 1–5» y «¿Qué te confundió?»; las respuestas van a las notas y al texto para mandar. Se puede saltar una tarea o salir.
+- **Prueba guiada:** ver la sección «Prueba guiada para testers (v2.1)».
 - Safe areas reales (muesca y barra de inicio) y teclado: la app se ajusta a la parte visible de la pantalla para que el campo de Anotar no quede tapado.
 - Guardado en el navegador (`localStorage`) envuelto en try/catch: si el navegador no deja guardar, todo funciona en memoria y «Casos y ayuda» lo dice.
 
@@ -103,93 +165,89 @@ La fecha simulada es el **miércoles 21 de octubre de 2026** (ver §4).
 - **Mes:** como la v1; corregir un gasto ofrece «Tomarlo de un apartado».
 - **Recorridos:** Primer día, Reparte (sugerencia V2-29 #7), Pongámonos al día, estado de cuenta, logro (también con crédito y «Pagar la tarjeta ya»), «¿Cuál de estos gastos fue?», Tu espacio e Invitar a alguien (Próximamente).
 
-## 3. Los 13 recorridos y su resultado esperado
+## 3. Los 13 recorridos y su resultado esperado (v2.1)
 
 | Caso | Qué hace | Resultado esperado |
 | --- | --- | --- |
 | C01 Primer día | Cómo te pagan → cuánto tienes y dónde → con qué pagas → pagos fijos → primer número | «Tu primer número»: libre hasta la quincena del 30, explicado; Hoy igual |
-| C05 «pupusas 6» | (+) → escribir → Guardar | Libre $270.60 → $264.60, «✓ Guardado · Deshacer»; el número dice «Incluye tarjeta $245.00, vence el 5» |
-| C11 Colegio dictado | «acuérdame colegio 20 el 5» → Cada mes → Simular día 4 → notificación → Pagado | Pagado sin preguntar: «Pagado con Transferencia · Cambiar · Deshacer»; el libre no cambia |
-| C16 Estado de cuenta (no anota) | Aviso → total 245 y mínimo 25 → cuánto vas a pagar + consejo | Todo: $560.60 → $315.60. Mínimo: $535.60, $220.00 como deuda y consejo sin culpa sobre intereses |
-| C19 Llega la quincena | «Libre por ahora» → «¿Ya te cayó?» → $600 → Reparte → Listo | Hasta la quincena del 15; sugiere 10 % a Emergencias ($60.00), nunca más que el libre |
-| C20 Carlos | Hoy semanal → desglose → Mi dinero → Simular viernes → Reparte | $35.00 (~$17 por día); «Tienes $125.00 = para el alquiler $90.00 + libre $35.00»; cuchubal «mismo día de tu pago»; después $85.00 y guardando $120.00 de $150.00 |
-| C23 Usar Laptop (débito) | Mi dinero → Laptop → Usar → Débito → Usar | «¡Meta cumplida!»; libre $270.60; banco $855.60; Logros «Usado con Débito Agrícola» |
-| C26 Dos semanas después | 6 de noviembre → «Libre por ahora» → Pongámonos al día | «¿Ya te cayó tu quincena del 30?»; «¡Listo, estás al día!»; lo que no cuadró queda «sin detalle» |
-| C30 Regalo olvidado | Anota «regalo mamá 20» diciendo «No» → arregla con (c) o (b) | $250.60 → $230.60 (contaba dos veces) → $250.60 sin otro gasto; Regalo a Logros |
-| C31 + Tarjeta o préstamo | Crédito Cuscatlán (corte 20, pago 10, cupo 500) + Almacén La Esquina (cuota 25 el 28, debe 300) | La cuota aparece el 28 y el libre baja a $245.60; la tarjeta aparece el 10 nov «según tu estado de cuenta» y Hoy pide su estado; ambas en Tarjetas y deudas |
-| C32 Laptop con Crédito BAC | Mi dinero → Laptop → Usar → Crédito BAC | Libre $270.60; banco igual; deuda $890.00 (cupo $610.00); $600.00 reservados; con «Pagar la tarjeta ya» banco $855.60 y sin reserva |
-| C33 Carlos con $60 | Hoy → desglose → Mi dinero → viernes | Libre $0.00; guardando $60.00 de $150.00; «Te faltan $30.00…»; después del viernes libre $20.00 y guardando $120.00 |
+| C05 «pupusas 6» | (+) → escribir → Guardar | Libre $243.10 → $237.10; «Incluye tarjeta $245.00, vence el 5 de noviembre» y «Ya separa $27.50 para el colegio y la luz» |
+| C11 Colegio dictado | «acuérdame colegio 20 el 5» → Cada mes → Simular día 4 → notificación → Pagado | «Pagado con Transferencia · Cambiar · Deshacer»; el libre no cambia |
+| C16 Estado de cuenta (no anota) | Aviso → total 245 y mínimo 25 → cuánto vas a pagar | Todo: $533.10 → $288.10. Mínimo: $508.10, $220.00 como deuda y consejo sin culpa |
+| C19 Llega la quincena | «Libre por ahora» → «¿Ya te cayó?» → $600 → Reparte (contado, apartar, cuadrar) → Listo | Una sola tarjeta el día de pago. Después $779.60 hasta el 15; sugiere $60.00 a Emergencias; con eso $719.60 |
+| C20 Carlos | Hoy semanal → desglose → Mi dinero → Simular viernes → Reparte | $35.00 (~$17 por día); «Tienes $125.00 = para el alquiler $90.00 + libre $35.00»; después $85.00 y guardando $120.00 de $150.00 |
+| C23 Usar Laptop (débito) | Mi dinero → Laptop → Usar → Débito → Usar | «¡Meta cumplida!»; libre $243.10; banco $855.60; Logros «Usado con Débito Agrícola» |
+| C26 Dos semanas después | 6 de noviembre → «Libre por ahora» → Pongámonos al día | «Tu quincena del 30 · falta confirmarla», $233.10; «¡Listo, estás al día!» |
+| C30 Regalo olvidado | «regalo mamá 20» diciendo «No» → arregla con (c) o (b) | $223.10 → $203.10 → $223.10 sin otro gasto; Regalo a Logros. «No lo usé» → Cerrados |
+| C31 + Tarjeta o préstamo | Crédito Cuscatlán (corte 20, pago 10) + Almacén La Esquina (cuota 25 el 28) | Cuota el 28: libre $218.10; tarjeta el 10 nov «según tu estado de cuenta» (Hoy la pide después del corte del 20 nov); «$25.00 al mes» |
+| C32 Laptop con Crédito BAC | Mi dinero → Laptop → Usar → Crédito BAC → «Pagar la tarjeta ya» | Libre $243.10; «pago del 5 de diciembre»; deuda $890.00 (cupo $610.00); «¿Cuánto pagas?» → Solo la laptop: banco $855.60, pago del 5 nov sigue |
+| C33 Carlos con $60 | Hoy → desglose → Mi dinero → viernes | Libre $0.00 + «Te faltan $30.00 para cubrir lo que viene»; después del viernes $20.00 |
 | EXTRA Tu espacio | Letra «A» → Tu espacio → Invitar a alguien | Visión futura marcada «Próximamente» |
 
 ## 4. Ajustes a los datos (para que todo cuadre)
 
 - **Fecha:** el brief dice «martes 21 de octubre de 2026», pero ese día es **miércoles**; los viernes de Carlos son el 2, 9, 16, 23 y 30.
-- **Banco Agrícola de Ana: $1,455.60** (el brief decía $560) para cubrir sus $900 de apartados: Libre **$270.60 · ~$30 por día**.
-- **Efectivo de Carlos: $125** (el brief decía $60). El caso **C33** usa justamente **$60** para ver el libre en $0 y el aviso (V2-29 #5).
-- **Crédito BAC:** estado del 15 de octubre $245 (anotado $230 → $15 de intereses o cargos), mínimo $25, paga el total el 5 de noviembre; compras desde el corte $45. **Cupo $1,500** (nuevo, para V2-25): le quedan $1,210.
-- **Casa comercial** de Ana: cuota $35 el 20, debe ~$420, ahora con tipo «Casa comercial».
-- **C30:** Ana tiene además el apartado **Regalo** ($20, meta $20, para el 10 de octubre). Con él el libre empieza en **$250.60**.
-- **C19:** Ana anotó el 24 (mercado $12) y el 28 (pupusas $6), para que el día de la quincena no coincida con los 10 días sin anotar de «Pongámonos al día».
-- **Regalos** es una categoría nueva (efectivo de forma usual), para que «regalo mamá 20» no se vaya a la tarjeta por costumbre.
+- **Banco Agrícola de Ana: $1,455.60** (el brief decía $560) para cubrir sus $900 de apartados. En v2.1, con la reserva de la quincena, el libre es **$243.10 · ~$27 por día**.
+- **Efectivo de Carlos: $125**; el caso **C33** usa **$60**.
+- **Crédito BAC:** estado del 15 de octubre $245 (anotado $230 → $15 de intereses), mínimo $25, paga el total el 5 de noviembre; compras desde el corte $45; cupo $1,500.
+- **C30:** apartado **Regalo** ($20, meta $20, para el 10 de octubre).
+- **C19:** ya no lleva anotaciones extra (en v2 se agregaron para esquivar la doble tarjeta; con V2-31 #10 no hacen falta).
+- **Regalos** es una categoría (efectivo de forma usual).
 
 ## 5. Decisiones técnicas del prototipo (no son de producto)
 
 - Montos en centavos enteros; nunca float. Fechas sin hora.
-- **Saldo de un lugar = último cuadre + lo anotado después.** Lo anterior no lo mueve y lo dice (V2-29 #2).
-- **Libre = Tienes − Apartado − Por pagar antes del próximo ingreso − Tarjetas − Guardando**, nunca negativo. Primero se cubren apartados, pagos y tarjetas; la reserva gradual toma lo que quede (con lo que falta como aviso).
-- **Tarjeta:** lo que decidiste pagar del último estado (menos lo pagado) + compras desde el corte. Lo pagado de más baja primero lo que quedó como deuda y luego las compras nuevas. Las compras desde el corte se pagan en el siguiente vencimiento (las del 21 de octubre, el 5 de diciembre).
-- **Reserva gradual (ingreso semanal):** cada pago mensual que vence después del próximo ingreso se reparte entre los días de pago de su ciclo (octubre: 5 viernes → $30); lo ideal es lo de los viernes que ya llegaron; si no alcanza, se guarda lo que haya y la cuota se recalcula: lo que falta ÷ días de pago que quedan.
-- **Reserva de la tarjeta (V2-27):** al usar un apartado con crédito se guarda una reserva con el monto usado; se muestra como «Guardando para pagos» (sale de «Por pagar» para no contarlo dos veces) y nunca supera lo que se debe de esa tarjeta. «Pagar la tarjeta ya» paga ese monto y la quita; otros pagos a la tarjeta la gastan solo en la parte que pasa del estado de cuenta.
-- **Usar un apartado:** con fecha de meta es para una sola cosa: se cierra (Logro si se cumplió) y lo que sobre vuelve a «Sin apartar». Sin fecha (Emergencias) desde Anotar solo baja lo usado. La hoja «Usar» vacía el apartado como en la v1.
-- **Red (c):** los gastos candidatos son los que no vienen de un pago ni de un apartado, desde un mes antes de la fecha de la meta, ordenados por nombre parecido y monto. «No lo anoté» lo anota con la fecha de la meta.
-- **[Pagado] directo** solo para pagos fijos a tiempo; vencidos o estimados abren la hoja (fecha y monto real).
-- **Pongámonos al día:** 10 días sin anotar ni cuadrar, o un día de pago sin confirmar.
-- **«¿Es tu quincena del 30 adelantada o un ingreso extra?»** se pregunta si el monto se parece (±30 %) a un ingreso esperado de ±12 días que no es el de hoy; hay que elegir para guardar.
-- **Intérprete sin IA:** como la v1, más apartado por nombre y «aparté … luz».
-- **Guardado:** `pamplanea-proto-v2:app` (estado, caso, pestaña, tema), `pamplanea-proto-v2:notas` (nombre, notas por caso, prueba guiada) y `pamplanea-proto-v2:guia` (caso y pasos de la guía). Si el formato cambia, la versión invalida lo guardado. Las revisiones automáticas (`#caso=…`) no guardan.
+- **Saldo de un lugar = último cuadre + lo anotado después.**
+- **Libre = Tienes − Apartado − Por pagar − Tarjetas − Guardando**, nunca negativo; el faltante se muestra. Por pagar = todo lo vencido + lo que vence antes del horizonte.
+- **Horizonte:** el próximo ingreso; si un día de pago pasó sin confirmar, se queda en ese día («falta confirmarla») y Pagos usa el calendario.
+- **Reserva gradual (V2-31 #7):** para cada pago mensual que vence después del próximo ingreso, se reparte entre los días de pago de su ciclo (entre el vencimiento anterior y este); lo ideal es lo de los días de pago que ya llegaron; si no alcanza, se guarda lo que haya y la cuota se recalcula con los que quedan. Ingresos con un solo día de pago por ciclo (mensual) o únicos no reservan.
+- **Tarjeta:** lo decidido del último estado (menos lo pagado) + compras desde el corte. Un pago «Solo la compra» se marca para las compras nuevas; los demás pagan primero el estado de cuenta. La reserva de un apartado usado con crédito se muestra como «Guardando para pagos» y nunca supera lo que se debe.
+- **Logros y Cerrados:** usar un apartado con fecha lo cierra; «Sí, ya lo gasté» → Logro; «No lo usé» o liberar todo uno vencido → Cerrado.
+- **Pongámonos al día:** 10 días sin anotar ni cuadrar, o un día de pago pasado sin confirmar; nunca el mismo día de pago.
+- **Prueba guiada:** cada tarea tiene una condición que la app revisa tras cada acción (por ejemplo, «hay un gasto nuevo de $6.00»); los toques se cuentan en la app, no en la barra de la tarea ni en «Casos y ayuda».
+- **Guardado:** `pamplanea-proto-v2:app` (estado, caso, pestaña, tema; con `formato: 2`), `pamplanea-proto-v2:notas` (nombre, notas, prueba), `pamplanea-proto-v2:dispositivo` (personas en este teléfono y set siguiente) y `pamplanea-proto-v2:guia`. La versión visible no invalida lo guardado.
+- **Service worker:** primero la caché (sin importar `?set=…`), luego la red. Solo por http(s).
 
 ## 6. PREGUNTAS PARA VICTOR (no las decidí; el prototipo usa lo de §5)
 
-1. **«El pago del 5» en V2-27:** la compra con crédito del 21 de octubre entra al corte del 15 de noviembre y se paga el **5 de diciembre**, pero también existe el pago del 5 de noviembre ($245). El mensaje aprobado dice «para el pago del 5» sin mes. ¿Agregamos el mes («5 de dic.»)?
-2. **«Pagar la tarjeta ya»** paga $600 de una vez: cubre primero el estado del 5 de noviembre ($245) y el resto va a las compras nuevas, así que Crédito BAC del 5 de noviembre sale «Pagado». ¿Está bien o la reserva debe quedar solo para el pago de diciembre?
-3. **Apartado usado tarde:** con «Sí, ya lo gasté» el apartado Regalo pasa a Logros como «Meta cumplida». ¿Así, o un apartado usado después de su fecha no debería contar como logro?
-4. **«No lo anoté»** (red c) anota el gasto con la fecha de la meta (el 10). Como es anterior al cuadre del efectivo (18), el saldo no baja y el libre sube. ¿O preguntamos siempre la fecha?
-5. **Pagado sin preguntar (#8)** quedó solo para pagos a tiempo; un pago fijo vencido sigue preguntando «¿Cuándo lo pagaste?» porque la fecha decide si el libre sube (#2). ¿Correcto?
-6. **Libre nunca negativo (#5)** se aplicó a todo, no solo a la reserva: si apartados y pagos superan lo que tienes, el libre queda en $0 y un aviso dice cuánto falta. ¿Correcto?
-7. **Reserva gradual con quincena:** hoy solo aplica a ingreso semanal (V2-15). ¿También a quincenales cuando un pago vence después de la siguiente quincena?
-8. **Tarjeta recién agregada:** el prototipo supone que su último corte ya pasó y pide el estado de cuenta en Hoy de inmediato. ¿O el formulario debería preguntar «¿Ya te llegó tu primer estado de cuenta?»?
-9. **Préstamo sin «¿cuánto debes?»:** aparece en Tarjetas y deudas con «sin saldo». ¿Así, o solo en Pagos?
-10. **Dos tarjetas a la vez en Hoy:** el día de pago puede coincidir con los 10 días sin anotar («¿Ya te cayó?» + «Pongámonos al día»). En C19 cambié los datos para evitarlo. ¿Mostramos solo una cuando coinciden?
-11. **Día de pago ya pasado sin confirmar (C26):** el horizonte muestra la siguiente quincena (15) mientras dice «Libre por ahora» y «¿Ya te cayó tu quincena del 30?». ¿O el horizonte debe quedarse en el 30 hasta que confirme?
-12. **Prueba guiada de 13 tareas** puede tomar 20–30 minutos. ¿Repartimos 6–7 tareas por persona?
+1. **Sets entre teléfonos distintos:** sin servidor, la alternancia solo funciona en un mismo teléfono. Propongo mandar enlaces alternados `…/?set=A` y `…/?set=B`. ¿Te sirve así?
+2. **iPhone e instalar al inicio:** en iPhone la app instalada guarda sus datos aparte de Safari; si la persona la instala en el paso 2, en la app instalada empieza de nuevo (lo avisamos). ¿Movemos la instalación al final de la prueba en iPhone?
+3. **Reserva gradual con quincena (#7):** hoy le baja a Ana $27.50 por pagos que vencen después del 30 (colegio del 5 y luz del 12). ¿Es lo esperado también para pagos chicos?
+4. **«Otro monto» en «¿Cuánto pagas?»** se aplica como en el banco: primero al estado de cuenta y lo que sobra a las compras/reserva. ¿Correcto?
+5. **Comprensión «sin tocar nada»:** las tres preguntas ocupan la mitad de abajo y se sigue viendo el número grande. ¿Suficiente?
+6. **Toques registrados:** cuentan solo dentro de la app (no la barra de tarea ni «Casos y ayuda»). ¿Así?
+7. **Tarjeta agregada sin estado de cuenta:** aparece en Pagos en su vencimiento actual «según tu estado de cuenta», aunque Hoy no lo pida hasta el próximo corte. ¿O no mostrar nada hasta el corte?
+8. **Préstamo con saldo:** sigue diciendo «~$300 debes» a la derecha y la cuota abajo. ¿Mismo tono positivo («Cuota $25 al mes · debes ~$300»)?
+9. **Cuadre en Reparte:** al tocar Listo se guarda lo que diga cada campo (si no lo cambiaste, cuadra exacto y cuenta como actividad). ¿O solo si lo cambia?
+10. **«Sí, ya lo gasté» con meta incompleta** (apartado a medias): igual va a Logros. ¿Correcto?
 
 ## 7. Lo que no hace (límites)
 
 - Es una maqueta: sin servidor, sin cuentas, sin correo ni notificaciones reales (se simulan). El dictado depende del micrófono del teclado.
-- **Desktop (V2-28):** no está diseñado; en la computadora se ve la guía con el teléfono enmarcado. Se prototipa después de las pruebas con personas.
+- **Desktop (V2-28):** no está diseñado; en la computadora se ve la guía con el teléfono enmarcado.
 - Aprende y Ayuda sin contenido. Lugares y medios solo se configuran en el primer día.
-- Revisión: Chrome y Edge sin ventana (390 × 844, 1440 × 900 y 1024 × 768), por `file://` y servido por HTTP local; teclado simulado achicando la ventana; contraste medido. **Sin teléfono real ni lector de pantalla:** pendiente de las pruebas de Victor.
+- Los resúmenes de la prueba viven solo en el teléfono de cada persona hasta que los comparte.
+- Revisión: Chrome y Edge sin ventana (390 × 844 y 1440 × 900), por `file://` y servido en la subruta de Pages; teclado simulado; contraste medido; navegador de iPhone y Android emulado para la guía de instalación; instalación, sin internet y actualización verificados en Chrome. **Sin teléfono real ni lector de pantalla:** pendiente de las pruebas de Victor.
 
 ## 8. Archivos
 
 | Archivo | Para qué |
 | --- | --- |
-| `index.html`, `guia.css`, `guia.js` | La guía para la computadora; en pantalla angosta redirige a `telefono.html` |
+| `index.html`, `guia.css`, `guia.js` | La guía para la computadora (13 casos y los dos sets); en pantalla angosta redirige a `telefono.html` conservando `?set=` |
 | `telefono.html`, `prototipo.css` | La app (enmarcada en la guía o a pantalla completa) |
-| `datos.js` | Ana, Carlos, la persona nueva, el catálogo y los tipos de deuda |
-| `motor.js` | Fechas, centavos, saldo por cuadre, libre, reservas, tarjeta, mes e intérprete |
+| `datos.js`, `motor.js` | Datos inventados y cálculos (libre, reservas, tarjeta, intérprete) |
 | `app.js`, `hojas.js` | Pantallas, hojas y recorridos |
-| `casos.js` | Los 13 casos (pasos, esperado, observar, tarea de la prueba guiada) y la versión |
+| `casos.js` | Los 13 casos, los sets A y B de la prueba guiada y la versión visible |
 | `arranque.js` | Arranque, guardado en el navegador, casos y simulaciones |
-| `ayuda.js` | Pantalla completa, aviso, «Casos y ayuda», prueba guiada y notas |
+| `ayuda.js` | Pantalla completa, aviso, «Casos y ayuda», prueba guiada, moderador, instalación y versión nueva |
+| `manifest.webmanifest`, `sw.js`, `recursos/iconos/` | App instalable y sin internet |
 | `recursos/` | Piel real (tokens, Instrument Sans, emoji Fluent, íconos Lucide, portadas e ilustraciones) con sus licencias |
-| `README.md` | Para quien llega al repo: qué es, enlace, aviso y cómo dar feedback |
+| `README.md` | Para quien llega al repo: instalar, hacer la prueba, enviar el resumen |
 
-Fuera del repo (en `.gitignore`, solo en la copia local): `capturas/` (evidencia) y `herramientas/` (recorrido automático `recorrer-v2.mjs`, contraste, hojas de contacto, servidor de prueba).
+Fuera del repo (en `.gitignore`, solo en la copia local): `capturas/` y `herramientas/` (`recorrer-v2.mjs` 13 casos, `recorrer-sets.mjs` sets A y B, `probar-pwa.mjs`, `instalar-ua.mjs`, `contraste*.mjs`, `generar-iconos.mjs`, `generar-sw.mjs` + `sw.plantilla.js`, `servidor.mjs`).
 
 ## 9. Qué falta
 
-Nada de lo pedido quedó pendiente. Queda para Victor: activar Pages, probar en su teléfono y con 5–8 personas, y responder §6.
+Nada de lo pedido quedó pendiente. Queda para Victor: probar en su teléfono (instalar, sin internet, un set completo, enviar el resumen, «Nueva persona») y correr la prueba con 5–8 personas; responder §6.
 
 ---
 
