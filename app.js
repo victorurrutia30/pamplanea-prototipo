@@ -245,7 +245,7 @@
         if (o.estado === 'saltado') return `saltado · ${M.fechaCorta(o.fecha)}`;
         if (o.estado === 'porConfirmar') return `${M.fechaCorta(o.fecha)} · según tu estado de cuenta`;
         const rel = M.relativa(o.fecha, st.hoy);
-        if (!hz || hz.esHoy || !hz.ingreso) return rel;
+        if (!hz || hz.esHoy || hz.atrasada || !hz.ingreso) return rel;
         if (o.fecha === hz.fecha) return `${rel}, día de tu ${nombreIngreso(hz)}`;
         return o.fecha > hz.fecha ? `${rel} · después de tu ${nombreIngreso(hz)}` : rel;
     };
@@ -259,6 +259,7 @@
     function textoHorizonte(hz) {
         if (!hz.ingreso) return hz.modo === 'quince' ? `Próximos 15 días · hasta el ${M.fechaCorta(hz.fecha)}` : `Hasta fin de mes · ${plural(hz.dias, 'día', 'días')}`;
         if (hz.esHoy) return `Hoy es tu ${nombreIngreso(hz)}`;
+        if (hz.atrasada) return `Tu ${nombreIngreso(hz)} del ${M.partes(hz.fecha)[2]} · falta confirmarla`;
         const en = hz.dias === 1 ? 'mañana' : `en ${hz.dias} días`;
         if (hz.ingreso.frecuencia === 'semanal') return `Hasta el ${M.DIAS[M.diaSemana(hz.fecha)]} · ${en}`;
         if (hz.ingreso.frecuencia === 'quincenal') return `Hasta tu quincena del ${M.partes(hz.fecha)[2]} · ${en}`;
@@ -364,15 +365,24 @@
         return true;
     }
     P.avisoVigente = avisoVigente;
-    /** «2 viernes», «1 sábado», «3 sábados»: los días de pago semanales que quedan. */
+    /** «2 viernes», «1 sábado», «2 quincenas»: los días de pago que quedan. */
     P.diasDePago = (n) => {
         const p = M.principal(P.st);
-        const d = p && p.frecuencia === 'semanal' ? M.DIAS[p.diaSemana] : 'pago';
+        const d = p && p.frecuencia === 'semanal' ? M.DIAS[p.diaSemana] : p && p.frecuencia === 'quincenal' ? 'quincena' : 'pago';
         return `${n} ${n === 1 || d.endsWith('s') ? d : d + 's'}`;
     };
+    /** «cada viernes», «cada quincena», «cada pago». */
+    P.cadaPago = () => {
+        const p = M.principal(P.st);
+        return p && p.frecuencia === 'semanal' ? `cada ${M.DIAS[p.diaSemana]}` : p && p.frecuencia === 'quincenal' ? 'cada quincena' : 'cada pago';
+    };
+    /** «el colegio y la luz», «A, B y C». */
+    P.lista = (xs) => (xs.length < 2 ? xs.join('') : `${xs.slice(0, -1).join(', ')} y ${xs.at(-1)}`);
+    /** V2-31 #1: si la tarjeta tiene dos pagos próximos, la fecha lleva el mes («5 de diciembre»). */
+    P.diaPago = (info, fecha) => (info && info.dosPagos ? M.fechaLarga(fecha) : String(M.partes(fecha)[2]));
     /** «Quedan 2 viernes: unos $45.00 cada uno» o «Queda 1 viernes: $30.00». */
     P.quedan = (r) => (r.restantes === 1 ? `Queda ${P.diasDePago(1)}: ${dinero(r.siguiente)}` : `Quedan ${P.diasDePago(r.restantes)}: unos ${dinero(r.siguiente)} cada uno`);
-    const ARTICULOS = { alquiler: 'el alquiler', luz: 'la luz', agua: 'el agua', internet: 'el internet', colegio: 'el colegio', telefono: 'el teléfono', cable: 'el cable', prestamo: 'el préstamo', cuchubal: 'el cuchubal' };
+    const ARTICULOS = { alquiler: 'el alquiler', luz: 'la luz', agua: 'el agua', internet: 'el internet', colegio: 'el colegio', telefono: 'el teléfono', cable: 'el cable', prestamo: 'el préstamo', cuchubal: 'el cuchubal', laptop: 'la laptop', regalo: 'el regalo', vacaciones: 'las vacaciones', 'casa comercial': 'la casa comercial' };
     P.conArticulo = (nombre) => ARTICULOS[M.normalizar(nombre)] || `«${nombre}»`;
 
     S.hoy = function () {
@@ -387,10 +397,12 @@
         const lineas = [];
         if (porConfirmar) lineas.push(`<span class="portada-s">${hz.esHoy ? 'Confírmala para ver el número nuevo' : `Falta confirmar tu ${esc(nombreIngreso(hz))} del ${M.partes(porConfirmar.fecha)[2]}`}</span>`);
         else if (k.porDia !== null) lineas.push(`<span class="portada-s">~${dinero(k.porDia, { aprox: true }).replace('~', '')} por día</span>`);
-        else if (k.libre <= 0) lineas.push('<span class="portada-s">Hoy no te queda libre: mira el detalle</span>');
+        else if (k.libre <= 0) lineas.push(`<span class="portada-s">${k.falta > 0 ? `Te faltan ${dinero(k.falta)} para cubrir lo que viene` : 'Justo te alcanza: no te queda libre'}</span>`);
+        if (porConfirmar && k.libre <= 0 && k.falta > 0) lineas.push(`<span class="portada-v">Te faltan ${dinero(k.falta)} para cubrir lo que viene</span>`);
         // V2-29 #1: el pago de la tarjeta que vence después del ingreso ya baja el libre; se dice.
-        if (ultimaTarjeta) lineas.push(`<span class="portada-v">Incluye tarjeta ${dinero(ultimaTarjeta.porPagarEstado)}, ${ultimaTarjeta.ult.vence < st.hoy ? 'venció' : 'vence'} el ${M.partes(ultimaTarjeta.ult.vence)[2]}</span>`);
-        if (k.reservas.length && k.guardando) lineas.push(`<span class="portada-v">Ya separa ${dinero(k.guardando)} para ${esc(k.reservas.map((r) => P.conArticulo(r.pago.nombre)).join(' y '))}</span>`);
+        if (ultimaTarjeta) lineas.push(`<span class="portada-v">Incluye tarjeta ${dinero(ultimaTarjeta.porPagarEstado)}, ${ultimaTarjeta.ult.vence < st.hoy ? 'venció' : 'vence'} el ${P.diaPago(ultimaTarjeta, ultimaTarjeta.ult.vence)}</span>`);
+        const separa = k.reservas.filter((r) => r.guardado > 0);
+        if (separa.length) lineas.push(`<span class="portada-v">Ya separa ${dinero(k.guardando)} para ${esc(P.lista(separa.map((r) => P.conArticulo(r.pago.nombre))))}</span>`);
         if (k.inactivo >= 10) lineas.push(`<span class="portada-v">Con lo último que anotaste, ${esc(M.haceDias(M.ultimaActividad(st), st.hoy))}</span>`);
         const portada = `<div class="portada app-home-pattern">
                 <svg class="app-home-pattern-art" viewBox="0 0 320 180" preserveAspectRatio="xMaxYMax meet" aria-hidden="true" focusable="false">${ART.circles}</svg>
@@ -472,8 +484,9 @@
 
     /** Las filas de Próximos pagos; lo que vence desde el próximo ingreso va tras un separador. */
     function filasProximos(lista, hz, k) {
-        const fila = (o) => filaPago(o, null, { reserva: !o.tarjeta && k.reservas.find((r) => r.pago.id === o.pago.id) });
-        if (!hz.ingreso || hz.esHoy) return lista.map(fila).join('');
+        // La reserva va solo en la fila de la ocurrencia que está guardando (y si ya lleva algo).
+        const fila = (o) => filaPago(o, null, { reserva: !o.tarjeta && k.reservas.find((r) => r.pago.id === o.pago.id && r.fecha === o.fecha && (r.guardado > 0 || r.falta > 0)) });
+        if (!hz.ingreso || hz.esHoy || hz.atrasada) return lista.map(fila).join('');
         const antes = lista.filter((o) => o.estado === 'vencido' || o.fecha < hz.fecha);
         const despues = lista.filter((o) => !antes.includes(o));
         const dia = M.partes(hz.fecha)[2];
@@ -518,12 +531,14 @@
             return { actual: { desde: `${y}-${M.pad(m)}-01`, hasta: M.fechaDe(y, m, 31), t: 'Este mes' }, proxima: (() => { const [ny, nm] = M.mesMas(y, m, 1); return { desde: `${ny}-${M.pad(nm)}-01`, hasta: M.fechaDe(ny, nm, 31), t: 'Próximo mes' }; })(), semanal: false };
         }
         const pasadas = M.ocurrenciasIngreso(st, p, M.sumarDias(st.hoy, -40), st.hoy);
-        const ultima = pasadas.filter((o) => o.fecha < hz.fecha).at(-1);
-        const sig = M.ocurrenciasIngreso(st, p, M.sumarDias(hz.fecha, 1), M.sumarDias(hz.fecha, 40))[0];
+        // Con un día de pago sin confirmar, los periodos de Pagos siguen al calendario (el próximo día de pago).
+        const hasta = hz.atrasada ? hz.siguiente.fecha : hz.fecha;
+        const ultima = pasadas.filter((o) => o.fecha < hasta).at(-1);
+        const sig = M.ocurrenciasIngreso(st, p, M.sumarDias(hasta, 1), M.sumarDias(hasta, 40))[0];
         const semanal = p.frecuencia === 'semanal';
         return {
-            actual: { desde: ultima ? M.sumarDias(ultima.fecha, 1) : M.sumarDias(st.hoy, -14), hasta: hz.fecha, t: semanal ? 'Esta semana' : p.frecuencia === 'quincenal' ? 'Esta quincena' : 'Este periodo' },
-            proxima: { desde: M.sumarDias(hz.fecha, 1), hasta: sig ? sig.fecha : M.sumarDias(hz.fecha, 15), t: semanal ? 'Próxima' : 'Próxima' },
+            actual: { desde: ultima ? M.sumarDias(ultima.fecha, 1) : M.sumarDias(st.hoy, -14), hasta, t: semanal ? 'Esta semana' : p.frecuencia === 'quincenal' ? 'Esta quincena' : 'Este periodo' },
+            proxima: { desde: M.sumarDias(hasta, 1), hasta: sig ? sig.fecha : M.sumarDias(hasta, 15), t: semanal ? 'Próxima' : 'Próxima' },
             semanal,
         };
     }
@@ -658,7 +673,7 @@
         for (const p of st.pagos.filter((x) => (x.deuda || x.tipoDeuda) && x.activo !== false)) {
             const tipo = D.TIPOS_DEUDA.find((x) => x.id === p.tipoDeuda);
             const debe = p.deuda && p.deuda.debe !== null && p.deuda.debe !== undefined;
-            deudas.push(`<li class="fila"><button type="button" class="fila-main" data-a="abrir" data-tipo="pago" data-id="${p.id}" data-fk="d-${p.id}">${caja(p.emoji)}<span class="fila-txt"><span class="fila-t">${esc(p.nombre)}</span><span class="fila-s">${tipo ? esc(tipo.nombre) + ' · ' : ''}Cuota ${dinero(p.monto)} el ${p.dia}</span></span><span class="fila-m">${debe ? `${montoHtml(p.deuda.debe, null, { aprox: true })}<span class="fila-s">debes</span>` : '<span class="fila-s">sin saldo</span>'}</span></button></li>`);
+            deudas.push(`<li class="fila"><button type="button" class="fila-main" data-a="abrir" data-tipo="pago" data-id="${p.id}" data-fk="d-${p.id}">${caja(p.emoji)}<span class="fila-txt"><span class="fila-t">${esc(p.nombre)}</span><span class="fila-s">${tipo ? esc(tipo.nombre) + ' · ' : ''}${debe ? `Cuota ${dinero(p.monto)} el ${p.dia}` : `Cuota ${dinero(p.monto)} al mes, el ${p.dia}`}</span></span><span class="fila-m">${debe ? `${montoHtml(p.deuda.debe, null, { aprox: true })}<span class="fila-s">debes</span>` : `${montoHtml(p.monto)}<span class="fila-s">al mes</span>`}</span></button></li>`);
         }
         const deudasHtml = tarjetaSeccion(
             'Tarjetas y deudas',
@@ -669,7 +684,10 @@
         const logros = st.logros.length
             ? tarjetaSeccion('Logros', `<ul class="lista">${st.logros.map((l) => `<li class="fila"><div class="fila-main fila-main--quieta">${caja('🎉')}<span class="fila-txt"><span class="fila-t">${esc(l.nombre)}</span><span class="fila-s">Meta cumplida el ${esc(M.fechaLarga(l.fecha))}</span>${textoUsoLogro(l) ? `<span class="fila-s">${esc(textoUsoLogro(l))}</span>` : ''}</span><span class="fila-m">${montoHtml(l.monto)}</span></div></li>`).join('')}</ul>`, { id: 'md-logros' })
             : '';
-        return `<div class="pg">${encabezado('Mi dinero', 'Dónde está y para qué es')}${total}${apartados}${guardandoParaPagos(k)}${deudasHtml}${logros}</div>`;
+        const cerrados = (st.cerrados || []).length
+            ? tarjetaSeccion('Cerrados', `<ul class="lista">${st.cerrados.map((l) => `<li class="fila"><div class="fila-main fila-main--quieta">${caja('🔒')}<span class="fila-txt"><span class="fila-t">${esc(l.nombre)}</span><span class="fila-s">Cerrado sin usar el ${esc(M.fechaLarga(l.fecha))} · ${dinero(l.monto)} volvieron a «Sin apartar»</span></span></div></li>`).join('')}</ul>`, { id: 'md-cerrados' })
+            : '';
+        return `<div class="pg">${encabezado('Mi dinero', 'Dónde está y para qué es')}${total}${apartados}${guardandoParaPagos(k)}${deudasHtml}${logros}${cerrados}</div>`;
     };
 
     /** V2-27: «Usado con Crédito BAC · $600 reservados para tu pago del 5» mientras siga la reserva. */
@@ -682,7 +700,7 @@
         const res = (st.reservasTarjeta || []).find((x) => x.id === l.reserva);
         const t = M.tarjeta(st, m.tarjeta);
         const info = t ? M.tarjetaInfo(st, t) : null;
-        if (res && info && info.reservado > 0) return `Usado con ${m.nombre} · ${dinero(Math.min(res.monto, info.reservado))} reservados para tu pago del ${M.partes(info.venceCompras)[2]}`;
+        if (res && info && info.reservado > 0) return `Usado con ${m.nombre} · ${dinero(Math.min(res.monto, info.reservado))} reservados para tu pago del ${P.diaPago(info, info.venceCompras)}`;
         return `Usado con ${m.nombre} · ya pagaste la tarjeta`;
     }
     P.textoUsoLogro = textoUsoLogro;
@@ -692,7 +710,8 @@
         const st = P.st;
         const paraPagos = k.porPagar + k.enTarjetas - k.reservadoTarjetas;
         const guardado = k.guardando + k.reservadoTarjetas;
-        const unico = k.reservas.length === 1 && !k.reservadoTarjetas ? `para ${P.conArticulo(k.reservas[0].pago.nombre)}` : 'guardando para pagos';
+        const vis = k.reservas.filter((r) => r.guardado > 0);
+        const unico = vis.length === 1 && !k.reservadoTarjetas ? `para ${P.conArticulo(vis[0].pago.nombre)}` : 'guardando para pagos';
         const partes = [
             ['ap', 'apartado', Math.min(k.apartado, k.tienes)],
             ['pg', 'por pagar', Math.max(0, Math.min(paraPagos, k.tienes - k.apartado))],
@@ -707,20 +726,20 @@
             <p class="reparto-frase">${esc(frase)}</p>
             <div class="reparto-barra" aria-hidden="true">${partes.map(([c, , m]) => `<span class="rb rb--${c}" style="flex-grow:${m}"></span>`).join('')}</div>
             <ul class="reparto-ley">${partes.map(([c, t, m]) => `<li><span class="rb-pt rb--${c}" aria-hidden="true"></span><span>${esc(M.capital(t))}</span><span class="monto">${dinero(m)}</span></li>`).join('')}</ul>
-            ${falta > 0 ? `<p class="txt txt--card reparto-falta">${icon('triangle-alert', 'ico-s')}${k.deficit ? `Lo que tienes no cubre tus apartados y pagos: te faltan ${dinero(falta)}.` : `Te faltan ${dinero(falta)} para ir al día con ${esc(k.reservas.filter((r) => r.falta > 0).map((r) => P.conArticulo(r.pago.nombre)).join(' y '))}.`}</p>` : ''}
+            ${falta > 0 ? `<p class="txt txt--card reparto-falta">${icon('triangle-alert', 'ico-s')}${k.deficit ? `Te faltan ${dinero(falta)} para cubrir lo que viene.` : `Te faltan ${dinero(falta)} para ir al día con ${esc(k.reservas.filter((r) => r.falta > 0).map((r) => P.conArticulo(r.pago.nombre)).join(' y '))}.`}</p>` : ''}
         </section>`;
     }
     /** V2-26 / V2-27: lo que el número va guardando solo (alquiler por partes, reserva de la tarjeta). */
     function guardandoParaPagos(k) {
         const st = P.st;
         const filas = [];
-        for (const r of k.reservas) {
-            const sub = r.falta > 0 ? `Te faltan ${dinero(r.falta)} para ir al día` : r.restantes ? `${dinero(r.siguiente)} cada ${M.DIAS[M.principal(st).diaSemana]} · vence el ${M.partes(r.fecha)[2]}` : `Vence el ${M.partes(r.fecha)[2]}`;
+        for (const r of k.reservas.filter((x) => x.ideal > 0 || x.guardado > 0)) {
+            const sub = r.falta > 0 ? `Te faltan ${dinero(r.falta)} para ir al día` : r.restantes ? `${dinero(r.siguiente)} ${P.cadaPago()} · vence el ${M.partes(r.fecha)[2]}` : `Vence el ${M.partes(r.fecha)[2]}`;
             filas.push(`<li class="fila"><button type="button" class="fila-main" data-a="abrir" data-tipo="pago" data-id="${r.pago.id}" data-fk="g-${r.pago.id}">${caja(r.pago.emoji)}<span class="fila-txt"><span class="fila-t">${esc(r.pago.nombre)} · ${dinero(r.guardado)} de ${dinero(r.total)}</span><span class="fila-s">${esc(sub)}</span>${barra(r.guardado, r.total, 'Guardado para ' + r.pago.nombre)}</span><span class="fila-m">${montoHtml(r.guardado)}</span></button></li>`);
         }
         for (const x of k.tarjetas.filter((t) => t.reservado > 0)) {
             const de = x.reservas.map((r) => r.de).filter(Boolean).join(', ');
-            filas.push(`<li class="fila"><button type="button" class="fila-main" data-a="abrir" data-tipo="tarjeta" data-id="${x.t.id}" data-fk="g-t-${x.t.id}">${caja(x.t.emoji)}<span class="fila-txt"><span class="fila-t">${esc(x.t.nombre)} · ${dinero(x.reservado)} reservados</span><span class="fila-s">${de ? `De tu apartado ${esc(de)} · ` : ''}para tu pago del ${M.partes(x.venceCompras)[2]}</span></span><span class="fila-m">${montoHtml(x.reservado)}</span></button></li>`);
+            filas.push(`<li class="fila"><button type="button" class="fila-main" data-a="abrir" data-tipo="tarjeta" data-id="${x.t.id}" data-fk="g-t-${x.t.id}">${caja(x.t.emoji)}<span class="fila-txt"><span class="fila-t">${esc(x.t.nombre)} · ${dinero(x.reservado)} reservados</span><span class="fila-s">${de ? `De tu apartado ${esc(de)} · ` : ''}para tu pago del ${esc(P.diaPago(x, x.venceCompras))}</span></span><span class="fila-m">${montoHtml(x.reservado)}</span></button></li>`);
         }
         if (!filas.length) return '';
         return tarjetaSeccion(`Guardando para pagos <span class="contador">automático</span>`, `<p class="txt txt--card">Lo separa el número solo y se vacía cuando marcas el pago como Pagado.</p><ul class="lista">${filas.join('')}</ul>`, { id: 'md-guardando' });
@@ -859,7 +878,7 @@
                 </ul>
                 ${info.cupoLibre !== null ? `<p class="cupo"><strong>Te quedan ${dinero(info.cupoLibre)} de cupo</strong> <span class="fila-s">de ${dinero(t.cupo)}. El cupo no suma a tu libre.</span></p>` : ''}
                 <p class="fila-s">Las compras con tarjeta bajan tu libre el día que las haces.</p>
-                ${info.reservado ? `<div class="nota nota--ok" role="note">${icon('check')}<p><strong>${dinero(info.reservado)} reservados para tu pago del ${M.partes(info.venceCompras)[2]}</strong>${info.reservas.length ? ` (de tu apartado ${esc(info.reservas.map((r) => r.de).join(', '))})` : ''}. Ya no cuentan en tu libre.</p></div>` : ''}
+                ${info.reservado ? `<div class="nota nota--ok" role="note">${icon('check')}<p><strong>${dinero(info.reservado)} reservados para tu pago del ${esc(P.diaPago(info, info.venceCompras))}</strong>${info.reservas.length ? ` (de tu apartado ${esc(info.reservas.map((r) => r.de).join(', '))})` : ''}. Ya no cuentan en tu libre.</p></div>` : ''}
                 ${info.porPagarEstado || info.reservado ? `<button type="button" class="btn btn--prim btn--48 btn--full" data-a="pagado" data-tipo="tarjeta" data-id="${t.id}" data-fecha="${ult.vence}" data-fk="t-pagar">${icon('arrow-left-right', 'ico-s')}Pagar tarjeta</button>` : ''}
                 ${pendiente}
             </section>
@@ -1119,6 +1138,7 @@
         root.dataset.palette = palette === 'ancla' ? 'ancla' : 'serena';
         root.dataset.mode = mode === 'oscuro' ? 'dark' : 'light';
         P.tema = tema;
+        if (P.colorBarra) P.colorBarra();
     };
 
     window.addEventListener('DOMContentLoaded', () => {

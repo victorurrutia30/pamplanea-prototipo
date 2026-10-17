@@ -197,7 +197,10 @@
     function tarjetaInfo(st, t) {
         const ult = t.estados[t.estados.length - 1];
         const regs = st.registros;
-        const pagado = suma(regs.filter((r) => r.tipo === 'pagoTarjeta' && r.tarjeta === t.id && r.fecha > ult.corte), (r) => r.monto);
+        const pagos = regs.filter((r) => r.tipo === 'pagoTarjeta' && r.tarjeta === t.id && r.fecha > ult.corte);
+        // Un pago marcado «aCompras» paga compras nuevas (por ejemplo, solo la laptop) y no el estado de cuenta.
+        const pagado = suma(pagos.filter((r) => !r.aCompras), (r) => r.monto);
+        const pagadoCompras = suma(pagos.filter((r) => r.aCompras), (r) => r.monto);
         const compras = regs.filter((r) => r.tipo === 'gasto' && medio(st, r.medio)?.tarjeta === t.id && r.fecha > ult.corte);
         const [cy, cm] = partes(ult.corte);
         const [ny, nm] = mesMas(cy, cm, 1);
@@ -215,15 +218,19 @@
         const excedente = Math.max(0, pagado - ult.aPagar);
         const restoBruto = Math.max(0, ult.total - ult.aPagar);
         const resto = Math.max(0, restoBruto - excedente);
-        const comprasNetas = Math.max(0, comprasTotal - Math.max(0, excedente - restoBruto));
+        const comprasNetas = Math.max(0, comprasTotal - Math.max(0, excedente - restoBruto) - pagadoCompras);
         const enLibre = porPagarEstado + comprasNetas;
-        const debeTotal = Math.max(0, ult.total + comprasTotal - pagado);
+        const debeTotal = Math.max(0, ult.total + comprasTotal - pagado - pagadoCompras);
         // Lo apartado que se usó con esta tarjeta queda reservado para pagarla (V2-27).
         const reservas = (st.reservasTarjeta || []).filter((x) => x.tarjeta === t.id);
         const reservado = Math.min(enLibre, suma(reservas, (x) => x.monto));
         const venceCompras = fechaDe(vy, vm, t.pagoDia);
         const cupoLibre = t.cupo ? Math.max(0, t.cupo - debeTotal) : null;
-        return { t, ult, pagado, porPagarEstado, compras, comprasTotal, comprasNetas, pendiente, proxCorte, resto, enLibre, debeTotal, reservas, reservado, venceCompras, cupoLibre };
+        // Sin estado de cuenta al agregarla, se le pide después del siguiente corte (V2-31 #8).
+        const pedir = !!pendiente && !(ult.inicial && ult.esperarCorte && st.hoy <= proxCorte);
+        // Dos pagos próximos de la misma tarjeta: el texto dice el mes (V2-31 #1).
+        const dosPagos = porPagarEstado > 0 && comprasNetas > 0 && ult.vence !== venceCompras;
+        return { t, ult, pagado, pagadoCompras, porPagarEstado, compras, comprasTotal, comprasNetas, pendiente, pedir, proxCorte, resto, enLibre, debeTotal, reservas, reservado, venceCompras, cupoLibre, dosPagos };
     }
     /** Pagos de tarjeta como ocurrencias de Pagos: el estado vigente y, si llegó otro, el pendiente. */
     function ocurrenciasTarjeta(st, desde, hasta) {
@@ -256,19 +263,22 @@
         const pasadas = ocurrenciasIngreso(st, p, p.desde, st.hoy);
         const hoyPend = pasadas.find((o) => o.fecha === st.hoy && o.estado !== 'llego');
         const atrasadas = pasadas.filter((o) => o.estado === 'porConfirmar');
-        if (hoyPend) return { fecha: st.hoy, ingreso: p, ocurrencia: hoyPend, esHoy: true, atrasadas, dias: 0 };
         const prox = ocurrenciasIngreso(st, p, sumarDias(st.hoy, 1), sumarDias(st.hoy, 70))[0];
-        return { fecha: prox.fecha, ingreso: p, ocurrencia: prox, atrasadas, dias: diasEntre(st.hoy, prox.fecha) };
+        if (hoyPend) return { fecha: st.hoy, ingreso: p, ocurrencia: hoyPend, esHoy: true, atrasadas, dias: 0, siguiente: prox };
+        // Un día de pago que ya pasó sin confirmar: el horizonte se queda ahí («Libre por ahora»).
+        if (atrasadas.length) return { fecha: atrasadas.at(-1).fecha, ingreso: p, ocurrencia: atrasadas.at(-1), atrasada: true, atrasadas, dias: 0, siguiente: prox };
+        return { fecha: prox.fecha, ingreso: p, ocurrencia: prox, atrasadas, dias: diasEntre(st.hoy, prox.fecha), siguiente: prox };
     }
 
     /**
-     * Reserva gradual (V2-15, V2-26): con ingreso semanal, cada pago mensual que vence después del
-     * próximo ingreso se reparte entre los días de pago de su ciclo (4 o 5 viernes). `ideal` es lo
+     * Reserva gradual (V2-15, V2-26, V2-31 #7): para todo tipo de ingreso, cada pago mensual que vence
+     * después del próximo ingreso se reparte entre los días de pago que caen antes de su vencimiento
+     * (4 o 5 viernes; quincena 15 y 30 = mitad y mitad). `ideal` es lo
      * que debería ir guardado con los pagos que ya llegaron; `calcular` lo limita a lo que alcanza.
      */
     function reservas(st, hz) {
         const p = principal(st);
-        if (!p || p.frecuencia !== 'semanal') return [];
+        if (!p || p.frecuencia === 'unico') return [];
         const out = [];
         for (const pg of st.pagos.filter((x) => x.activo !== false && x.frecuencia === 'mensual')) {
             const prox = ocurrenciasPago(st, pg, hz.fecha, sumarDias(hz.fecha, 40)).find((o) => o.estado === 'pendiente');
@@ -304,9 +314,10 @@
         const t = tienes(st);
         const ap = apartadoTotal(st);
         const limite = sumarDias(hz.fecha, -1);
+        const ayer = sumarDias(st.hoy, -1);
         const items = [];
         for (const p of st.pagos.filter((x) => x.activo !== false)) {
-            for (const o of ocurrenciasPago(st, p, p.desde, limite)) {
+            for (const o of ocurrenciasPago(st, p, p.desde, limite > ayer ? limite : ayer)) {
                 if (o.estado === 'pendiente' || o.estado === 'vencido') items.push(o);
             }
         }
@@ -341,12 +352,13 @@
             }
         }
         for (const r of res) if (r.falta > 0) avisos.push({ tipo: 'reserva', reserva: r, faltan: r.falta });
-        for (const x of tarjetas) if (x.pendiente) avisos.push({ tipo: 'estado', info: x });
+        for (const x of tarjetas) if (x.pendiente && x.pedir) avisos.push({ tipo: 'estado', info: x });
         for (const a of apartadosVencidos(st)) avisos.push({ tipo: 'apartadoVencido', apartado: a });
         const inactivo = diasEntre(ultimaActividad(st), st.hoy);
         // «Pongámonos al día» (V2-29 #6): 10 días sin anotar ni cuadrar, o un día de pago sin confirmar.
-        const alDia = inactivo >= 10 || (hz.atrasadas || []).length > 0;
-        return { hz, tienes: t, apartado: ap, items, porPagar, tarjetas, enTarjetas, reservadoTarjetas, reservas: res, guardando, base, deficit: Math.max(0, -base), libre, porDia, avisos, inactivo, alDia };
+        const alDia = !hz.esHoy && (inactivo >= 10 || (hz.atrasadas || []).length > 0);
+        const falta = Math.max(0, -base) + suma(res, (r) => r.falta);
+        return { hz, tienes: t, apartado: ap, items, porPagar, tarjetas, enTarjetas, reservadoTarjetas, reservas: res, guardando, base, deficit: Math.max(0, -base), falta, libre, porDia, avisos, inactivo, alDia };
     }
 
     // ------------------------------------------------------------------ mes

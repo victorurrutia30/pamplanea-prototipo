@@ -7,7 +7,9 @@
     const M = window.MOTOR;
     const P = window.P;
     const c = D.c;
-    const VERSION = window.VERSION_PROTOTIPO;
+    // El formato de lo guardado es independiente de la versión visible: publicar una versión nueva
+    // (v2.1, v2.2…) no borra lo que la persona ya hizo. Solo cambia si cambia la forma de los datos.
+    const FORMATO = 2;
     const CLAVE_APP = 'pamplanea-proto-v2:app';
 
     // ------------------------------------------------------------------ guardado (try/catch: si falla, todo vive en memoria)
@@ -60,8 +62,9 @@
     let guardarTimer = null;
     function guardarAhora() {
         if (!P.guardando || !P.st || P.sinGuardar) return;
-        P.almacen.escribir(CLAVE_APP, { version: VERSION, caso: P.caso ? P.caso.id : null, persona: P.st.persona, tab: P.ui.tab, tema: P.tema, st: P.st });
+        P.almacen.escribir(CLAVE_APP, { formato: FORMATO, caso: P.caso ? P.caso.id : null, persona: P.st.persona, tab: P.ui.tab, tema: P.tema, st: P.st });
     }
+    P.guardarYa = guardarAhora;
     P.alRender = () => {
         clearTimeout(guardarTimer);
         guardarTimer = setTimeout(guardarAhora, 250);
@@ -70,7 +73,10 @@
     document.addEventListener('visibilitychange', () => document.visibilityState === 'hidden' && guardarAhora());
     function restaurar(filtro = null) {
         const g = P.almacen.leer(CLAVE_APP, null);
-        if (!g || g.version !== VERSION || !g.st || (filtro && !filtro(g))) return false;
+        if (!g || g.formato !== FORMATO || !g.st || (filtro && !filtro(g))) return false;
+        // Datos guardados por una versión anterior del prototipo: campos nuevos con su valor inicial.
+        g.st.reservasTarjeta = g.st.reservasTarjeta || [];
+        g.st.cerrados = g.st.cerrados || [];
         P.caso = g.caso ? window.CASOS.find((x) => x.id === g.caso) || null : null;
         P.cargar(g.st, { tab: g.tab || 'hoy' });
         P.guardando = true;
@@ -92,10 +98,6 @@
         if (caso.variante === 'quincena') {
             st.hoy = '2026-10-30';
             st.avisos = [];
-            D.sembrar(st, [
-                { tipo: 'gasto', fecha: '2026-10-24', monto: c('12'), nombre: 'Mercado', categoria: 'mercado', medio: 'efectivo', anotado: true },
-                { tipo: 'gasto', fecha: '2026-10-28', monto: c('6'), nombre: 'Pupusas', categoria: 'comida', medio: 'efectivo', anotado: true },
-            ]);
         }
         if (caso.variante === 'regalo') {
             // C30: un apartado para el regalo de mamá, cuya fecha (el 10) ya pasó.
@@ -120,13 +122,13 @@
     };
 
     let bannerTimer = null;
-    function cargarCaso(id) {
+    function cargarCaso(id, { tab = null } = {}) {
         const caso = window.CASOS.find((x) => x.id === id);
         if (!caso) return;
         P.caso = caso;
         clearTimeout(bannerTimer);
         P.guardando = true;
-        P.cargar(estadoDeCaso(caso), { tab: caso.inicio || 'hoy' });
+        P.cargar(estadoDeCaso(caso), { tab: tab || caso.inicio || 'hoy' });
         if (BANNERS[id]) bannerTimer = setTimeout(() => P.notificar(BANNERS[id]), 900);
         P.emitir('caso:' + id);
     }
@@ -210,7 +212,7 @@
         // Para revisiones automáticas: #caso=C05&tema=ancla-oscuro (no guarda nada).
         const h = new URLSearchParams(location.hash.slice(1));
         const g = P.almacen.leer(CLAVE_APP, null);
-        P.aplicarTema(h.get('tema') || (!P.enGuia && g && g.version === VERSION && g.tema) || 'serena-claro');
+        P.aplicarTema(h.get('tema') || (!P.enGuia && g && g.formato === FORMATO && g.tema) || 'serena-claro');
         if (h.get('caso') || h.get('persona')) {
             P.sinGuardar = true;
             if (h.get('caso')) cargarCaso(h.get('caso'));
