@@ -1,0 +1,547 @@
+// Producto v2.2 · prototipo. Dos modos con datos SEPARADOS:
+// - ENTRENAMIENTO: los ejemplos de Ana y Carlos (fecha simulada, casos, recorrido, prueba guiada).
+// - USO NORMAL: los datos reales de la persona, con la fecha real del teléfono. Se guardan solo en
+//   este navegador con un esquema versionado (pamplanea-uso:v1) y una migración: una versión nueva
+//   nunca los borra. Copia en .json, restaurar y borrar. Avisos al abrir (sin servidor no hay
+//   notificaciones). Registro de uso SIN montos ni nombres financieros y «Contarle a Victor».
+'use strict';
+(() => {
+    const P = window.P;
+    const M = window.MOTOR;
+    const D = window.DATOS;
+    const { esc, icon } = P;
+    const VERSION = window.VERSION_PROTOTIPO;
+    const CLAVE_MODO = 'pamplanea-modo';
+    const CLAVE_USO = 'pamplanea-uso:v1';
+    const CLAVE_ENTRENAMIENTO = 'pamplanea-entrenamiento';
+    const ESQUEMA = 1;
+    const $ = (s) => document.querySelector(s);
+    const dinero = M.dinero;
+
+    // ------------------------------------------------------------------ preferencias y fecha
+    const pref = () => ({ modo: null, notaAvisos: false, ...(P.almacen.leer(CLAVE_MODO, null) || {}) });
+    const guardarPref = (cambios) => P.almacen.escribir(CLAVE_MODO, { ...pref(), ...cambios });
+    const entrenamiento = () => ({ tour: null, practicas: {}, ...(P.almacen.leer(CLAVE_ENTRENAMIENTO, null) || {}) });
+    const guardarEntrenamiento = (cambios) => P.almacen.escribir(CLAVE_ENTRENAMIENTO, { ...entrenamiento(), ...cambios });
+    /** La fecha REAL del teléfono. `window.__fechaPrueba` solo lo ponen las pruebas automáticas. */
+    const hoy = () => (typeof window.__fechaPrueba === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(window.__fechaPrueba) ? window.__fechaPrueba : M.hoyLocal());
+    const instalada = () => window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+    P.modo = 'entrenamiento';
+
+    // ------------------------------------------------------------------ datos de uso normal (esquema versionado)
+    const metricasVacias = () => ({ dias: [], anotaciones: 0, cuadres: 0, pagados: 0, reparte: 0, alDia: 0, pantallas: {}, noEntendio: 0, instalada: false });
+    const usoVacio = () => ({ esquema: ESQUEMA, creado: new Date().toISOString(), st: null, tab: 'hoy', tema: null, introVista: false, nombre: '', metricas: metricasVacias(), feedback: [], feedbackEnDias: 0, feedbackPospuesto: null, ultimaCopia: null });
+    /**
+     * Migración: recibe lo guardado (o una copia) de cualquier esquema conocido y lo lleva al actual.
+     * Cuando cambie la forma de los datos: subir ESQUEMA y agregar aquí el paso «de N a N+1».
+     */
+    function migrarUso(obj) {
+        if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return null;
+        const x = { ...obj };
+        if (!x.esquema) x.esquema = 1;
+        if (typeof x.esquema !== 'number' || x.esquema > ESQUEMA) return null;
+        // if (x.esquema === 1) { …transformar…; x.esquema = 2; }
+        x.metricas = { ...metricasVacias(), ...(x.metricas || {}) };
+        x.feedback = Array.isArray(x.feedback) ? x.feedback : [];
+        if (x.st) {
+            for (const k of ['lugares', 'medios', 'tarjetas', 'apartados', 'logros', 'pagos', 'ingresos', 'registros', 'avisos', 'reservasTarjeta', 'cerrados']) x.st[k] = Array.isArray(x.st[k]) ? x.st[k] : [];
+            x.st.persona = 'uso';
+        }
+        return x;
+    }
+    let uso = null;
+    const leerUso = () => migrarUso(P.almacen.leer(CLAVE_USO, null)) || usoVacio();
+    function guardarUso() {
+        if (!uso) return;
+        if (P.modo === 'uso' && P.st) {
+            uso.st = P.st;
+            // Nombres que la persona ha usado (aunque luego los borre): solo sirven para taparlos en «Contarle a Victor».
+            recordarNombres();
+        }
+        if (P.ui) uso.tab = P.ui.tab;
+        uso.tema = P.tema;
+        uso.actualizado = new Date().toISOString();
+        P.almacen.escribir(CLAVE_USO, uso);
+    }
+    function estadoNuevo() {
+        const st = D.crearNueva();
+        Object.assign(st, { persona: 'uso', hoy: hoy(), avisos: [] });
+        return st;
+    }
+
+    // ------------------------------------------------------------------ entrar a cada modo
+    function entrarUso({ abrirIntro = true } = {}) {
+        P.guardarYa && P.modo === 'entrenamiento' && P.guardarYa();
+        P.modo = 'uso';
+        P.caso = null;
+        if (P.ayuda && P.ayuda.salirDePrueba) P.ayuda.salirDePrueba();
+        if (P.practica) P.practica.salir();
+        uso = leerUso();
+        const st = uso.st || estadoNuevo();
+        st.hoy = hoy();
+        P.guardando = true;
+        // Cada vez que se abre, empieza en Hoy: ahí están los avisos del día.
+        P.cargar(st, { tab: 'hoy' });
+        if (uso.tema) P.aplicarTema(uso.tema);
+        registrarDia();
+        pintarAviso();
+        guardarPref({ modo: 'uso' });
+        guardarUso();
+        if (abrirIntro && !uso.introVista) P.ayuda.abrir('introUso');
+    }
+    function entrarEntrenamiento({ tour = false } = {}) {
+        if (P.modo === 'uso') guardarUso();
+        P.modo = 'entrenamiento';
+        guardarPref({ modo: 'entrenamiento' });
+        if (tour || !P.restaurar()) P.cargarPersona('ana');
+        pintarAviso();
+        if (tour && P.tour) P.tour.empezar();
+    }
+    /** Al cargar la página (fuera de la guía): el modo elegido o, la primera vez, la bienvenida. */
+    function arrancar() {
+        const p = pref();
+        if (p.modo === 'uso') return entrarUso({ abrirIntro: false });
+        P.modo = 'entrenamiento';
+        if (p.modo !== 'entrenamiento') {
+            P.cargarPersona('ana');
+            A.elegir = true;
+            return;
+        }
+        if (!P.restaurar()) P.cargarPersona('ana');
+    }
+    /** Si cambió el día con la app abierta (o al volver a ella), la fecha real se pone al día. */
+    function alVolver() {
+        if (P.modo !== 'uso' || !P.st) return;
+        const h = hoy();
+        if (P.st.hoy !== h) {
+            P.st.hoy = h;
+            // Día nuevo: si no está a media acción, vuelve a Hoy (ahí están los avisos del día).
+            if (!P.ui.hoja && P.irTab) P.irTab('hoy');
+            else P.render({ nueva: true });
+        }
+        registrarDia();
+        guardarUso();
+    }
+    document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && alVolver());
+
+    // ------------------------------------------------------------------ aviso fijo según el modo
+    const textoAviso = () => (P.modo === 'uso' ? ['Versión de prueba ·', 'tus datos solo están en este teléfono'] : ['Modo entrenamiento ·', 'datos de ejemplo']);
+    function pintarAviso() {
+        const aviso = $('#aviso-proto');
+        if (!aviso) return;
+        const [a, b] = textoAviso();
+        aviso.classList.toggle('aviso-proto--uso', P.modo === 'uso');
+        aviso.innerHTML = `<span class="aviso-proto-t">${icon(P.modo === 'uso' ? 'smartphone' : 'book-open', 'ico-xs')}<span><span class="nw">${a}</span> <span class="nw">${b}</span></span></span>${P.enGuia ? '' : `<button type="button" class="aviso-proto-b" id="btn-ayuda" data-a="abrirAyuda" data-fk="btn-ayuda" aria-haspopup="dialog">${P.modo === 'uso' ? 'Ayuda' : 'Casos y ayuda'}</button>`}`;
+        if (P.colorBarra) P.colorBarra();
+    }
+
+    // ------------------------------------------------------------------ avisos al abrir (uso normal)
+    let ultimosAvisos = [];
+    function avisosAlAbrir() {
+        const st = P.st;
+        const out = [];
+        const manana = M.sumarDias(st.hoy, 1);
+        for (const p of st.pagos.filter((x) => x.activo !== false)) {
+            for (const o of M.ocurrenciasPago(st, p, M.sumarDias(st.hoy, -31), manana)) {
+                if (o.estado !== 'vencido' && o.estado !== 'pendiente') continue;
+                const art = P.conArticulo(p.nombre);
+                const base = { id: `auto-${p.id}-${o.fecha}`, emoji: p.emoji, accion: { tipo: 'pago', id: p.id } };
+                if (o.estado === 'vencido') out.push({ ...base, hora: 'Venció', titulo: `${p.nombre}: venció el ${M.fechaCorta(o.fecha)}`, texto: '¿Ya lo pagaste? Márcalo como Pagado.' });
+                else if (o.fecha === st.hoy) out.push({ ...base, hora: 'Hoy', titulo: `Hoy vence ${art}`, texto: `${dinero(o.monto, { aprox: o.estimado })}.` });
+                else out.push({ ...base, hora: 'Mañana', titulo: `Mañana: ${p.nombre}`, texto: `${dinero(o.monto, { aprox: o.estimado })}.` });
+            }
+        }
+        for (const o of M.ocurrenciasTarjeta(st, st.hoy, manana)) {
+            if (o.estado !== 'pendiente') continue;
+            out.push({ id: `auto-t-${o.tarjeta.id}-${o.fecha}`, emoji: o.tarjeta.emoji, hora: o.fecha === st.hoy ? 'Hoy' : 'Mañana', titulo: `${o.fecha === st.hoy ? 'Hoy' : 'Mañana'} vence ${o.tarjeta.nombre}`, texto: `${dinero(o.monto)}.`, accion: { tipo: 'tarjeta', id: o.tarjeta.id } });
+        }
+        ultimosAvisos = out;
+        return out;
+    }
+    const avisoPorId = (id) => ultimosAvisos.find((a) => a.id === id) || null;
+
+    // ------------------------------------------------------------------ registro de uso (sin montos ni nombres)
+    function registrarDia() {
+        if (!uso) return;
+        const h = hoy();
+        if (!uso.metricas.dias.includes(h)) uso.metricas.dias.push(h);
+        if (instalada()) uso.metricas.instalada = true;
+    }
+    const ANOTA = new Set(['guardado:gasto', 'guardado:ingreso', 'guardado:mover', 'guardado:apartar', 'guardado:liberar', 'guardado:pagoTarjeta', 'guardado:pago']);
+    window.addEventListener('proto', (e) => {
+        if (P.modo !== 'uso' || !uso) return;
+        const clave = String(e.detail.clave);
+        const m = uso.metricas;
+        if (ANOTA.has(clave)) m.anotaciones++;
+        else if (clave === 'guardado:pagado') m.pagados++;
+        else if (clave === 'guardado:cuadre' || clave === 'reparte:cuadre') m.cuadres++;
+        else if (clave === 'aldia:fin') m.alDia++;
+        else if (clave === 'reparte:fin') m.reparte++;
+        else if (clave === 'anotar:noEntendio') m.noEntendio++;
+        // Pantallas: solo el TIPO (hoy, pagos, ficha de pago…), nunca su nombre ni su id.
+        const [tipo, cual] = clave.split(':');
+        if ((tipo === 'pantalla' || tipo === 'hoja') && cual) m.pantallas[cual] = (m.pantallas[cual] || 0) + 1;
+    });
+
+    // ------------------------------------------------------------------ «¿Cómo te ha ido?» cada 3 días de uso
+    const feedbackToca = () => uso && uso.metricas.dias.length >= 3 && uso.metricas.dias.length - (uso.feedbackEnDias || 0) >= 3 && uso.feedbackPospuesto !== hoy();
+    let fb = {};
+    function tarjetasHoy() {
+        if (P.modo !== 'uso' || !uso || !P.st.configurado) return [];
+        const out = [];
+        if (!pref().notaAvisos && avisosAlAbrir().length) {
+            out.push(`<div class="nota nota--info" role="note">${icon('bell')}<p>Por ahora los avisos aparecen <strong>al abrir la app</strong>. En la app final te llegará una notificación.</p><button type="button" class="link" data-a="modoNotaAvisos" data-fk="nota-avisos">Entendido</button></div>`);
+        }
+        if (feedbackToca()) {
+            const op = (n) => `<button type="button" class="ay-nota-n" role="radio" aria-checked="${fb.facil === n}" data-a="fbFacil" data-v="${n}" data-fk="fb-${n}"><span class="ay-nota-num">${n}</span></button>`;
+            out.push(`<section class="card card--aviso" aria-labelledby="fb-t"><div class="aviso-cab">${P.caja('💬')}<div><h2 class="card-t" id="fb-t">¿Cómo te ha ido?</h2><p class="txt">Unos segundos. Lo verá Victor cuando le cuentes cómo te va (sin montos).</p></div></div>
+                <div role="radiogroup" aria-labelledby="fb-t" class="ay-notas-n fb-notas">${[1, 2, 3, 4, 5].map(op).join('')}</div><p class="fila-s fb-escala"><span>1 · Me costó</span><span>5 · Me encanta</span></p>
+                <div class="campo-g"><label class="campo-l" for="fb-confuso">¿Qué te confundió? <span class="opcional">(opcional)</span></label><div class="campo"><input id="fb-confuso" data-fb="confuso" type="text" maxlength="200" value="${esc(fb.confuso || '')}"></div></div>
+                <div class="campo-g"><label class="campo-l" for="fb-gustaria">¿Qué te gustaría que hiciera? <span class="opcional">(opcional)</span></label><div class="campo"><input id="fb-gustaria" data-fb="gustaria" type="text" maxlength="200" value="${esc(fb.gustaria || '')}"></div></div>
+                ${fb.error ? `<p class="campo-error">${icon('triangle-alert')}<span>Elige un número del 1 al 5</span></p>` : ''}
+                <div class="acciones-2"><button type="button" class="btn" data-a="fbPosponer" data-fk="fb-luego">Ahora no</button><button type="button" class="btn btn--prim" data-a="fbGuardar" data-fk="fb-guardar">Guardar</button></div></section>`);
+        }
+        return out;
+    }
+    document.addEventListener('input', (e) => {
+        if (e.target.dataset && e.target.dataset.fb) fb[e.target.dataset.fb] = e.target.value;
+    });
+    const acc = P.acciones;
+    acc.modoNotaAvisos = () => {
+        guardarPref({ notaAvisos: true });
+        P.render({ foco: '#pantalla h1' });
+    };
+    acc.fbFacil = (d) => {
+        fb.facil = Number(d.v);
+        fb.error = false;
+        P.render({ foco: `[data-fk="fb-${d.v}"]` });
+    };
+    acc.fbPosponer = () => {
+        uso.feedbackPospuesto = hoy();
+        fb = {};
+        guardarUso();
+        P.render({ foco: '#pantalla h1' });
+    };
+    acc.fbGuardar = () => {
+        if (!fb.facil) {
+            fb.error = true;
+            P.render({ foco: '[data-fk="fb-1"]' });
+            return;
+        }
+        uso.feedback.push({ fecha: hoy(), facil: fb.facil, confuso: (fb.confuso || '').trim(), gustaria: (fb.gustaria || '').trim() });
+        uso.feedbackEnDias = uso.metricas.dias.length;
+        fb = {};
+        guardarUso();
+        P.render({ foco: '#pantalla h1' });
+        P.avisar('¡Gracias! Lo verá Victor cuando le cuentes cómo te va');
+        P.emitir('feedback:guardado');
+    };
+
+    // ------------------------------------------------------------------ «Contarle a Victor cómo me va»
+    /** Quita montos y los nombres que la persona les puso a sus cosas (lugares, pagos, apartados…). */
+    const nombresDe = (st) =>
+        [...(st.lugares || []), ...(st.medios || []), ...(st.tarjetas || []), ...(st.prestamos || []), ...(st.pagos || []), ...(st.apartados || []), ...(st.ingresos || []), ...(st.logros || []), ...(st.cerrados || [])]
+            .map((x) => x && x.nombre)
+            .filter((n) => n && n.trim().length > 2)
+            .map((n) => n.trim());
+    /** Junta los nombres que hay ahora (incluso si luego se cambian o borran antes de guardar). */
+    function recordarNombres() {
+        if (!uso || P.modo !== 'uso' || !P.st) return;
+        const vistos = new Set(uso.nombresVistos || []);
+        const antes = vistos.size;
+        for (const n of nombresDe(P.st)) vistos.add(n);
+        if (vistos.size !== antes) uso.nombresVistos = [...vistos];
+    }
+    function sinDatosFinancieros(texto) {
+        const u = uso || leerUso();
+        let t = String(texto || '').replace(/\$\s*\d[\d,]*(\.\d+)?|\b\d[\d,]*\.\d{1,2}\b|\b\d{2,}(,\d{3})+\b/g, '[monto]');
+        const nombres = new Set([...(u.st ? nombresDe(u.st) : []), ...(u.nombresVistos || [])]);
+        for (const n of [...nombres].sort((a, b) => b.length - a.length)) t = t.replace(new RegExp(n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), '[nombre]');
+        return t;
+    }
+    const fechaCorta = (iso) => {
+        const [y, m, d] = iso.split('-').map(Number);
+        return `${d} ${M.MESES_CORTOS[m - 1]} ${y}`;
+    };
+    const NOMBRE_PANTALLA = { hoy: 'Hoy', pagos: 'Pagos', midinero: 'Mi dinero', mes: 'Mes', anotar: 'Anotar', desglose: 'Detalle del libre', pago: 'Ficha de pago', tarjeta: 'Ficha de tarjeta', apartado: 'Ficha de apartado', lugar: 'Ficha de lugar', lugares: 'Lugares y medios', ingreso: 'Ficha de ingreso', reparte: 'Reparte', aldia: 'Pongámonos al día', menu: 'Menú', cuadrar: 'Cuadrar', pagado: 'Pagado', apartar: 'Apartar', pagarYa: 'Pagar ya', mover: 'Mover dinero', moverApartado: 'Mover apartado', usar: 'Usar apartado', liberar: 'Liberar apartado', meta: 'Editar apartado', nuevoIngreso: 'Ingreso nuevo o editado', ingresoLlego: 'Me cayó', nuevoPago: 'Pago nuevo', editarPago: 'Editar pago', decidirPago: 'Decidir pago', nuevaDeuda: 'Tarjeta o préstamo', deuda: 'Abonar deuda', estadoCuenta: 'Estado de cuenta', editarRegistro: 'Editar anotación', yaLoUse: 'Ya lo usé', yaNoAplica: 'Ya no aplica', medio: 'Medio de pago', apariencia: 'Apariencia', avisos: 'Avisos', aprende: 'Aprende', espacio: 'Espacio', invitar: 'Invitar' };
+    function textoContar() {
+        const u = uso || leerUso();
+        const m = u.metricas;
+        const e = entrenamiento();
+        const dias = [...m.dias].sort();
+        const top = Object.entries(m.pantallas)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 5)
+            .map(([k, n]) => `${NOMBRE_PANTALLA[k] || 'Otra pantalla'} (${n})`);
+        const practicas = Object.keys(e.practicas || {}).length;
+        const lineas = [
+            `PamPlanea · ${VERSION} · cómo me va`,
+            `Nombre: ${(u.nombre || (u.st && u.st.nombre) || '').trim() || '(sin nombre)'}`,
+            dias.length ? `Fechas: del ${fechaCorta(dias[0])} al ${fechaCorta(dias.at(-1))} · abrí la app ${dias.length} ${dias.length === 1 ? 'día' : 'días'}` : 'Fechas: todavía no la uso',
+            `Instalada: ${m.instalada || instalada() ? 'sí' : 'no'} · Entrenamiento: ${e.tour === 'hecho' ? 'hice el recorrido' : e.tour === 'saltado' ? 'salté el recorrido' : 'no lo hice'}${practicas ? `, ${practicas} ${practicas === 1 ? 'ejemplo practicado' : 'ejemplos practicados'}` : ''}`,
+            `Lo que hice: ${m.anotaciones} ${m.anotaciones === 1 ? "anotación" : "anotaciones"} · ${m.pagados} ${m.pagados === 1 ? "pago marcado" : "pagos marcados"} como Pagado · ${m.cuadres} ${m.cuadres === 1 ? "cuadre" : "cuadres"} · Reparte ${m.reparte} ${m.reparte === 1 ? 'vez' : 'veces'} · Pongámonos al día ${m.alDia} ${m.alDia === 1 ? 'vez' : 'veces'}`,
+            `Pantallas que más usé: ${top.length ? top.join(' · ') : '—'}`,
+            `Veces que la app no me entendió al anotar: ${m.noEntendio}`,
+        ];
+        if (u.feedback.length) {
+            lineas.push('', 'Cómo me ha ido:');
+            for (const f of u.feedback) lineas.push(`- ${fechaCorta(f.fecha)}: ${f.facil} de 5${f.confuso ? ` · Me confundió: ${sinDatosFinancieros(f.confuso)}` : ''}${f.gustaria ? ` · Me gustaría: ${sinDatosFinancieros(f.gustaria)}` : ''}`);
+        }
+        if ((A.contarMas || '').trim()) lineas.push('', `Algo más: ${sinDatosFinancieros(A.contarMas.trim())}`);
+        return lineas.join('\n');
+    }
+
+    // ------------------------------------------------------------------ copia, restaurar y borrar
+    const nombreCopia = () => `pamplanea-copia-${hoy()}.json`;
+    function contenidoCopia() {
+        guardarUso();
+        return JSON.stringify({ app: 'pamplanea-prototipo', tipo: 'copia-uso', esquema: ESQUEMA, version: VERSION, fecha: new Date().toISOString(), datos: uso }, null, 1);
+    }
+    function descargarCopia() {
+        const blob = new Blob([contenidoCopia()], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = Object.assign(document.createElement('a'), { href: url, download: nombreCopia() });
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 2000);
+        uso.ultimaCopia = new Date().toISOString();
+        guardarUso();
+        P.emitir('datos:copia');
+    }
+    async function compartirCopia() {
+        const archivo = new File([contenidoCopia()], nombreCopia(), { type: 'application/json' });
+        try {
+            await navigator.share({ files: [archivo], title: 'Copia de PamPlanea' });
+            uso.ultimaCopia = new Date().toISOString();
+            guardarUso();
+        } catch {
+            /* la persona canceló */
+        }
+    }
+    const puedeCompartirArchivo = () => {
+        try {
+            return !!(navigator.canShare && navigator.canShare({ files: [new File(['{}'], 'x.json', { type: 'application/json' })] }));
+        } catch {
+            return false;
+        }
+    };
+    /** Valida una copia: que sea de este prototipo, de un esquema conocido y con datos con forma. */
+    function validarCopia(texto) {
+        let obj;
+        try {
+            obj = JSON.parse(texto);
+        } catch {
+            return { error: 'El archivo no es una copia de PamPlanea (no se pudo leer).' };
+        }
+        if (!obj || obj.app !== 'pamplanea-prototipo' || obj.tipo !== 'copia-uso') return { error: 'Ese archivo no es una copia de PamPlanea.' };
+        if (typeof obj.esquema !== 'number' || obj.esquema > ESQUEMA) return { error: 'Esa copia es de una versión más nueva de la app. Actualiza la app y vuelve a intentarlo.' };
+        const datos = migrarUso(obj.datos);
+        if (!datos || !datos.st || !Array.isArray(datos.st.lugares) || !Array.isArray(datos.st.registros)) return { error: 'La copia está incompleta o dañada.' };
+        return { datos, fecha: obj.fecha, resumen: `${datos.st.lugares.length} lugares · ${datos.st.pagos.length} pagos · ${datos.st.registros.length} movimientos` };
+    }
+    function restaurar(datos) {
+        uso = datos;
+        uso.introVista = true;
+        P.almacen.escribir(CLAVE_USO, uso);
+        entrarUso();
+        P.emitir('datos:restaurado');
+    }
+    function borrarTodo() {
+        P.almacen.borrar(CLAVE_USO);
+        uso = null;
+        guardarPref({ modo: 'uso', notaAvisos: false });
+        entrarUso();
+        P.emitir('datos:borrado');
+    }
+
+    // ------------------------------------------------------------------ paneles («Casos y ayuda» los pinta)
+    const A = (P.modos = {});
+    let restaurando = null;
+    let borrar = 0;
+    function vistaElegir() {
+        return `<div class="ay-bienvenida"><p class="ay-bien-t">¡Hola! Esto es PamPlanea.</p><p class="txt">Te ayuda a saber <strong>cuánto te queda libre hasta tu próximo ingreso</strong> y a que no se te olvide ningún pago. Es una versión de prueba.</p></div>
+            <div class="opciones-grandes elegir" role="group" aria-label="¿Cómo quieres empezar?">
+                <button type="button" class="opcion-g elegir-op" data-a="modoElegir" data-v="entrenamiento" data-fk="elegir-aprender">${P.caja('🎓')}<span class="opcion-g-txt"><span class="opcion-g-t">Aprender a usarla <span class="pronto">Recomendado</span></span><span class="fila-s">Te la enseño en 3 minutos con datos de ejemplo. Luego puedes practicar.</span></span>${icon('chevron-right', 'ico-xs')}</button>
+                <button type="button" class="opcion-g elegir-op" data-a="modoElegir" data-v="uso" data-fk="elegir-usar">${P.caja('💰')}<span class="opcion-g-txt"><span class="opcion-g-t">Usarla con mis datos</span><span class="fila-s">Con tu dinero real. Se guarda solo en este teléfono.</span></span>${icon('chevron-right', 'ico-xs')}</button>
+            </div>
+            <p class="fila-s centro">Puedes cambiar cuando quieras desde la letra de arriba. Lo de un modo no toca lo del otro.</p>
+            <p class="ay-version">${esc(VERSION)}</p>`;
+    }
+    function vistaIntroUso() {
+        return `<section class="ay-card ay-card--prim" aria-labelledby="iu-t"><h3 class="ay-h3" id="iu-t">${icon('smartphone', 'ico-s')}Antes de empezar</h3>
+                <ul class="ay-puntos"><li><strong>Tus datos se guardan solo en este teléfono.</strong> Nadie más los ve: ni Victor.</li><li><strong>Es una versión de prueba:</strong> si algo no cuadra, avísale a Victor.</li><li><strong>Instálala en tu pantalla de inicio</strong> para no perder tus datos.${/iPhone|iPad|iPod/.test(navigator.userAgent) ? ' En iPhone, <strong>instálala antes de empezar</strong>: la app instalada no ve lo que pongas en Safari, y Safari puede borrar los datos de páginas que no abres en varios días.' : ''}</li><li>De vez en cuando, guarda una copia (en tu letra → «Tus datos»).</li></ul></section>
+            ${instalada() ? '' : `<section class="ay-card" aria-labelledby="iu-i">${'<h3 class="ay-h3" id="iu-i">' + icon('smartphone', 'ico-s') + 'Cómo instalarla</h3>'}${P.ayuda.pasosInstalar()}</section>`}
+            <button type="button" class="btn btn--prim btn--48 btn--full" data-a="modoIntroOk" data-fk="intro-empezar">Empezar</button>
+            <button type="button" class="link" data-a="modoCambiar" data-v="entrenamiento" data-fk="intro-aprender">Mejor primero aprender a usarla</button>
+            <p class="ay-version">${esc(VERSION)}</p>`;
+    }
+    function vistaDatos() {
+        const u = uso || leerUso();
+        const copia = u.ultimaCopia ? `Tu última copia: ${fechaCorta(u.ultimaCopia.slice(0, 10))}.` : 'Todavía no has guardado una copia.';
+        const r = restaurando;
+        return `<section class="ay-card ay-card--prim" aria-labelledby="dt-c"><h3 class="ay-h3" id="dt-c">${icon('receipt-text', 'ico-s')}Guardar copia de mis datos</h3>
+                <p class="txt">Descarga un archivo con todo lo que llevas. Guárdalo o mándatelo por WhatsApp. ${copia}</p>
+                <div class="ay-acc"><button type="button" class="btn btn--prim btn--48" data-a="modoCopia" data-fk="dt-copia">Guardar copia</button>${puedeCompartirArchivo() ? '<button type="button" class="btn btn--48" data-a="modoCompartirCopia" data-fk="dt-compartir">Compartir copia</button>' : ''}</div></section>
+            <section class="ay-card" aria-labelledby="dt-r"><h3 class="ay-h3" id="dt-r">${icon('rotate-ccw', 'ico-s')}Restaurar una copia</h3>
+                ${r && r.error ? `<p class="campo-error">${icon('triangle-alert')}<span>${esc(r.error)}</span></p>` : ''}
+                ${r && r.datos ? `<div class="nota nota--atencion" role="alertdialog" aria-labelledby="dt-r-c">${icon('triangle-alert')}<div><p id="dt-r-c"><strong>¿Reemplazar tus datos con esta copia?</strong> Copia del ${esc(fechaCorta((r.fecha || '').slice(0, 10) || hoy()))}: ${esc(r.resumen)}. Lo que tienes ahora se reemplaza.</p><div class="ay-acc"><button type="button" class="btn" data-a="modoRestaurarNo" data-fk="dt-r-no">Cancelar</button><button type="button" class="btn btn--peligro" data-a="modoRestaurarSi" data-fk="dt-r-si">Sí, reemplazar</button></div></div></div>` : `<p class="txt">Elige el archivo «pamplanea-copia-…json». Antes de reemplazar te pido confirmar.</p><label class="btn btn--48 btn--full" for="dt-archivo" data-fk="dt-elegir">Elegir archivo</label><input id="dt-archivo" class="sr-only" type="file" accept="application/json,.json" data-copia>`}</section>
+            <section class="ay-card" aria-labelledby="dt-b"><h3 class="ay-h3" id="dt-b">${icon('trash-2', 'ico-s')}Borrar todos mis datos</h3>
+                ${borrar === 0 ? `<p class="txt">Borra todo lo de «Usarla con mis datos» en este teléfono. Los ejemplos no se tocan.</p><button type="button" class="link link--peligro" data-a="modoBorrar" data-v="1" data-fk="dt-borrar">${icon('trash-2', 'ico-s')}Borrar todos mis datos</button>` : borrar === 1 ? `<div class="nota nota--atencion" role="alertdialog" aria-labelledby="dt-b1">${icon('triangle-alert')}<div><p id="dt-b1"><strong>¿Borrar todos tus datos?</strong> Lugares, pagos, apartados y todo lo anotado.</p><div class="ay-acc"><button type="button" class="btn" data-a="modoBorrar" data-v="0" data-fk="dt-b-no">Cancelar</button><button type="button" class="btn btn--peligro" data-a="modoBorrar" data-v="2" data-fk="dt-b-si">Sí, borrar</button></div></div></div>` : `<div class="nota nota--atencion" role="alertdialog" aria-labelledby="dt-b2">${icon('triangle-alert')}<div><p id="dt-b2"><strong>Última confirmación: esto no se puede deshacer.</strong> ${u.ultimaCopia ? 'Tienes una copia guardada.' : 'No has guardado ninguna copia.'}</p><div class="ay-acc"><button type="button" class="btn" data-a="modoBorrar" data-v="0" data-fk="dt-b2-no">Cancelar</button><button type="button" class="btn btn--peligro" data-a="modoBorrarYa" data-fk="dt-b2-si">Borrar para siempre</button></div></div></div>`}</section>
+            <p class="ay-version">${esc(VERSION)} · Tus datos solo están en este teléfono</p>`;
+    }
+    function vistaContar() {
+        const u = uso || leerUso();
+        return `<p class="txt">Esto es lo que le vas a mandar a Victor. <strong>No lleva montos ni los nombres de tus cuentas, pagos o apartados</strong>: solo cuánto usas la app y lo que tú le cuentes.</p>
+            <div class="campo-g"><label class="campo-l" for="ct-nombre">Tu nombre o apodo</label><div class="campo"><input id="ct-nombre" data-ct="nombre" type="text" autocomplete="off" value="${esc(u.nombre || (u.st && u.st.nombre) || '')}"></div></div>
+            <div class="campo-g"><label class="campo-l" for="ct-mas">¿Algo más que quieras contarle? <span class="opcional">(opcional)</span></label><textarea id="ct-mas" class="ay-textarea" data-ct="mas" rows="3">${esc(A.contarMas || '')}</textarea></div>
+            <button type="button" class="btn btn--48 btn--full" data-a="modoContarArmar" data-fk="ct-armar">Ver el texto completo</button>
+            ${P.ayuda.compartirHtml(textoContar())}`;
+    }
+    function vistaAyudaUso() {
+        return `<section class="ay-card ay-card--prim" aria-labelledby="au-t"><h3 class="ay-h3" id="au-t">${icon('smartphone', 'ico-s')}Usando tus datos</h3><p class="txt">Todo lo que anotas se queda solo en este teléfono. Si algo no cuadra, avísale a Victor.</p>
+                <div class="pila"><button type="button" class="btn btn--48 btn--full" data-a="ayIr" data-v="contar" data-fk="au-contar">${icon('receipt-text', 'ico-s')}Contarle a Victor cómo me va</button><button type="button" class="btn btn--48 btn--full" data-a="ayIr" data-v="datos" data-fk="au-datos">${icon('rotate-ccw', 'ico-s')}Tus datos: copia, restaurar, borrar</button>${instalada() ? '' : `<button type="button" class="btn btn--48 btn--full" data-a="ayIr" data-v="instalar" data-fk="au-instalar">${icon('smartphone', 'ico-s')}Instalar en tu teléfono</button>`}</div></section>
+            <section class="ay-card" aria-labelledby="au-a"><h3 class="ay-h3" id="au-a">${icon('book-open', 'ico-s')}Aprender</h3><p class="txt">El modo entrenamiento usa datos de ejemplo: nada de lo que hagas ahí toca tus datos.</p><div class="pila"><button type="button" class="btn btn--48 btn--full" data-a="modoCambiar" data-v="tour" data-fk="au-tour">Ver el recorrido de 3 minutos</button><button type="button" class="btn btn--48 btn--full" data-a="modoCambiar" data-v="entrenamiento" data-fk="au-entrenamiento">Ir al modo entrenamiento</button></div></section>
+            ${P.ayuda.vistaApariencia()}
+            <p class="ay-version">${esc(VERSION)} · Tus datos solo están en este teléfono · Sin rastreadores</p>`;
+    }
+
+    // ------------------------------------------------------------------ acciones
+    acc.modoElegir = (d) => {
+        A.elegir = false;
+        P.ayuda.cerrar({ foco: false });
+        if (d.v === 'uso') entrarUso();
+        else entrarEntrenamiento({ tour: true });
+        P.emitir('modo:elegido:' + d.v);
+    };
+    acc.modoIntroOk = () => {
+        uso.introVista = true;
+        guardarUso();
+        P.ayuda.cerrar({ foco: false });
+        P.render({ nueva: true });
+        P.emitir('modo:introUso');
+    };
+    acc.modoCambiar = (d) => {
+        P.ayuda.cerrar({ foco: false });
+        if (d.v === 'uso') entrarUso();
+        else entrarEntrenamiento({ tour: d.v === 'tour' });
+        P.avisar(d.v === 'uso' ? 'Estás usando tus datos' : 'Modo entrenamiento: datos de ejemplo', { check: false });
+        P.emitir('modo:cambio:' + (d.v === 'tour' ? 'entrenamiento' : d.v));
+    };
+    acc.modoCopia = () => {
+        descargarCopia();
+        P.ayuda.pintar();
+        const el = $('[data-fk="dt-copia"]');
+        if (el) el.focus();
+        P.avisar('Copia descargada: ' + nombreCopia());
+    };
+    acc.modoCompartirCopia = () => compartirCopia();
+    acc.modoRestaurarNo = () => {
+        restaurando = null;
+        P.ayuda.pintar({ foco: '[data-fk="dt-elegir"]' });
+    };
+    acc.modoRestaurarSi = () => {
+        const datos = restaurando.datos;
+        restaurando = null;
+        P.ayuda.cerrar({ foco: false });
+        restaurar(datos);
+        P.avisar('Listo: restauramos tu copia');
+    };
+    acc.modoBorrar = (d) => {
+        borrar = Number(d.v);
+        P.ayuda.pintar({ foco: borrar === 1 ? '[data-fk="dt-b-no"]' : borrar === 2 ? '[data-fk="dt-b2-no"]' : '[data-fk="dt-borrar"]' });
+    };
+    acc.modoBorrarYa = () => {
+        borrar = 0;
+        P.ayuda.cerrar({ foco: false });
+        borrarTodo();
+        P.avisar('Borramos tus datos', { check: false });
+    };
+    acc.modoContarArmar = () => {
+        P.ayuda.pintar({ foco: '#ay-texto' });
+        const t = $('#ay-texto');
+        if (t) t.select();
+    };
+    document.addEventListener('change', (e) => {
+        const el = e.target;
+        if (!el.matches || !el.matches('input[data-copia]') || !el.files || !el.files[0]) return;
+        const lector = new FileReader();
+        lector.onload = () => {
+            restaurando = validarCopia(String(lector.result));
+            P.ayuda.pintar({ foco: restaurando.error ? '[data-fk="dt-elegir"]' : '[data-fk="dt-r-no"]' });
+        };
+        lector.readAsText(el.files[0]);
+    });
+    document.addEventListener('input', (e) => {
+        const el = e.target;
+        if (!el.dataset || !el.dataset.ct) return;
+        if (el.dataset.ct === 'mas') A.contarMas = el.value;
+        if (el.dataset.ct === 'nombre' && uso) {
+            uso.nombre = el.value;
+            guardarUso();
+        }
+        const t = $('#ay-texto');
+        if (t) t.value = textoContar();
+    });
+
+    /** Filas extra del menú de la letra, según el modo. */
+    function menuExtra(fila) {
+        if (P.enGuia) return '';
+        const filas = P.modo === 'uso'
+            ? [fila('receipt-text', 'Contarle a Victor cómo me va', 'Sin montos: solo cómo usas la app', 'menuIr', 'data-ir="contar"'), fila('rotate-ccw', 'Tus datos', 'Guardar copia, restaurar o borrar', 'menuIr', 'data-ir="datos"'), fila('play', 'Aprender a usarla', 'Modo entrenamiento con datos de ejemplo', 'menuIr', 'data-ir="modoEntrenamiento"')]
+            : [fila('smartphone', 'Usarla con mis datos', 'Tu dinero real, solo en este teléfono', 'menuIr', 'data-ir="modoUso"'), fila('play', 'Ver el recorrido otra vez', '3 minutos', 'menuIr', 'data-ir="tour"'), fila('list-checks', 'Practicar con ejemplos', '13 ejercicios cortos', 'menuIr', 'data-ir="practica"')];
+        return `<p class="campo-l campo-l--sec menu-sec">${P.modo === 'uso' ? 'Estás usando tus datos' : 'Estás en modo entrenamiento'}</p><ul class="lista card">${filas.join('')}</ul>`;
+    }
+    function irMenu(ir) {
+        if (ir === 'contar' || ir === 'datos' || ir === 'practica') {
+            P.ayuda.abrir(ir);
+            return true;
+        }
+        if (ir === 'modoUso' || ir === 'modoEntrenamiento' || ir === 'tour') {
+            acc.modoCambiar({ v: ir === 'modoUso' ? 'uso' : ir === 'tour' ? 'tour' : 'entrenamiento' });
+            return true;
+        }
+        return false;
+    }
+
+    Object.assign(A, {
+        arrancar,
+        alVolver,
+        guardarUso,
+        migrarUso,
+        validarCopia,
+        textoContar,
+        sinDatosFinancieros,
+        avisosAlAbrir,
+        avisoPorId,
+        tarjetasHoy,
+        menuExtra,
+        irMenu,
+        pintarAviso,
+        entrenamiento,
+        guardarEntrenamiento,
+        hoy,
+        cambiar: (modo) => acc.modoCambiar({ v: modo }),
+        CLAVE_USO,
+        iniciar() {
+            const pintarApp = P.render;
+            P.render = (...args) => {
+                pintarApp(...args);
+                recordarNombres();
+            };
+            P.ayuda.registrar('elegir', 'PamPlanea', vistaElegir);
+            P.ayuda.registrar('introUso', 'Usarla con mis datos', vistaIntroUso);
+            P.ayuda.registrar('datos', 'Tus datos', vistaDatos);
+            P.ayuda.registrar('contar', 'Contarle a Victor', vistaContar);
+            P.ayuda.registrar('ayudaUso', 'Ayuda', vistaAyudaUso);
+            pintarAviso();
+            // Enlace de tester (?set=A / ?set=B) la primera vez: directo a la prueba guiada, con los ejemplos.
+            if (A.elegir && !P.enGuia && /[?&]set=[ab]/i.test(location.search)) {
+                A.elegir = false;
+                guardarPref({ modo: 'entrenamiento' });
+                P.ayuda.abrir('bienvenida');
+            } else if (A.elegir && !P.enGuia) P.ayuda.abrir('elegir');
+            else if (P.modo === 'uso' && uso && !uso.introVista) P.ayuda.abrir('introUso');
+        },
+    });
+})();

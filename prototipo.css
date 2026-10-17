@@ -2669,6 +2669,171 @@ html.instalada.modo-real {
     --aviso-h: 40px;
 }
 
+/* ------------------------------------------------------------------ v2.2 · modos */
+.aviso-proto--uso {
+    background: color-mix(in srgb, var(--tone-azul) 12%, var(--color-surface));
+}
+.elegir {
+    gap: 10px;
+}
+.elegir-op {
+    min-height: 96px;
+    align-items: center;
+}
+.elegir-op .opcion-g-t {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    font-size: 17px;
+}
+.elegir-op .ico-xs {
+    flex-shrink: 0;
+    color: var(--color-text-muted);
+}
+.menu-sec {
+    margin: 4px 0 -4px;
+}
+.confirmar {
+    margin-top: 4px;
+}
+.ay-victor > summary {
+    min-height: 44px;
+    cursor: pointer;
+    list-style: none;
+}
+.ay-victor > summary::-webkit-details-marker {
+    display: none;
+}
+.ay-victor > summary::after {
+    margin-left: auto;
+    color: var(--color-primary);
+    content: '›';
+    font-size: 20px;
+}
+.ay-victor[open] > summary::after {
+    transform: rotate(90deg);
+}
+.ay-victor > .ay-card {
+    padding: 0;
+    border: 0;
+}
+.ay-caso--ej {
+    align-items: flex-start;
+    text-align: left;
+}
+.ay-caso--ej .ay-caso-t {
+    display: grid;
+    gap: 2px;
+}
+.ay-como {
+    display: grid;
+    gap: 8px;
+    padding-left: 22px;
+    font-size: 15px;
+    line-height: 22px;
+    list-style: decimal;
+}
+label.btn {
+    cursor: pointer;
+}
+.fb-notas {
+    margin-top: 2px;
+}
+.fb-notas .ay-nota-n {
+    min-height: 48px;
+}
+.fb-escala {
+    display: flex;
+    justify-content: space-between;
+    margin-top: -4px;
+}
+
+/* ------------------------------------------------------------------ v2.2 · recorrido de entrenamiento */
+.capa-tour:empty {
+    display: none;
+}
+.capa-tour {
+    position: absolute;
+    inset: 0;
+    z-index: 400;
+}
+.tour-velo {
+    position: absolute;
+    inset: 0;
+    background: rgb(0 0 0 / 0.55);
+}
+.tour-foco {
+    position: absolute;
+    border: 2px solid var(--color-surface-2);
+    border-radius: 18px;
+    box-shadow:
+        0 0 0 3px var(--color-primary),
+        0 0 0 9999px rgb(0 0 0 / 0.55);
+    pointer-events: none;
+}
+.tour-card {
+    position: absolute;
+    right: 12px;
+    left: 12px;
+    display: grid;
+    gap: 8px;
+    padding: 16px;
+    border: 1px solid var(--color-border);
+    border-radius: 18px;
+    background: var(--color-surface-2);
+    box-shadow: var(--app-shadow-overlay);
+}
+.tour-card--pie {
+    bottom: calc(var(--safe-bottom) + 12px);
+}
+.tour-card--centro {
+    top: 50%;
+    transform: translateY(-50%);
+}
+.tour-t {
+    font-size: 19px;
+    font-weight: 600;
+    line-height: 26px;
+}
+.tour-acc {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: 4px;
+}
+.tour-n {
+    color: var(--color-text-muted);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+}
+.tour-btns {
+    display: flex;
+    gap: 8px;
+}
+.tour-btns .btn {
+    min-width: 96px;
+    min-height: 44px;
+}
+.tour-card .link {
+    justify-self: start;
+    margin-left: -8px;
+}
+@media (prefers-reduced-motion: no-preference) {
+    .tour-foco {
+        transition:
+            top 200ms var(--app-motion-ease),
+            left 200ms var(--app-motion-ease),
+            width 200ms var(--app-motion-ease),
+            height 200ms var(--app-motion-ease);
+    }
+    .tour-card {
+        animation: p-toast 200ms var(--app-motion-ease) both;
+    }
+}
+
 @media (prefers-reduced-motion: reduce) {
     *,
     *::before,

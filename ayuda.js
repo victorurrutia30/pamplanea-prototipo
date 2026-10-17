@@ -238,7 +238,8 @@
         const barra = $('#tarea-bar');
         if (!barra) return;
         const d = datos();
-        const t = enCurso(d) ? tareaActual(d) : null;
+        if (P.practica && P.practica.activa()) return P.practica.pintar(barra);
+        const t = enCurso(d) && P.modo !== 'uso' ? tareaActual(d) : null;
         const ver = !!t && !P.enGuia;
         root.classList.toggle('con-tarea', ver);
         if (!ver) {
@@ -311,7 +312,7 @@
     // ------------------------------------------------------------------ paneles
     const chipsPerfil = (perfil) =>
         PERFIL.map(([campo, pregunta, ops]) => `<div class="campo-g" role="group" aria-labelledby="ay-p-${campo}"><p class="campo-l" id="ay-p-${campo}">${pregunta}</p><div class="chips">${ops.map(([v, t]) => `<button type="button" class="chip" aria-pressed="${perfil[campo] === v}" data-a="ayPerfil" data-campo="${campo}" data-v="${v}" data-fk="ay-p-${campo}-${v}">${perfil[campo] === v ? icon('check', 'ico-xs') : ''}${t}</button>`).join('')}</div></div>`).join('');
-    const pieVersion = () => `<p class="ay-version">${esc(VERSION)} · Datos inventados: no pongas tus datos reales · Sin rastreadores</p>`;
+    const pieVersion = () => `<p class="ay-version">${esc(VERSION)} · Modo entrenamiento: datos de ejemplo · Sin rastreadores</p>`;
     const compartirHtml = (texto, id = 'ay-texto') => `<div class="campo-g"><label class="campo-l" for="${id}">Si no se puede compartir, mantén presionado el texto y cópialo</label><textarea id="${id}" class="ay-textarea ay-texto" readonly rows="9">${esc(texto)}</textarea></div>
         <div class="ay-acc">${navigator.share ? `<button type="button" class="btn btn--prim btn--48" data-a="ayCompartir" data-fk="ay-compartir">Compartir</button>` : ''}${navigator.clipboard && window.isSecureContext ? `<button type="button" class="btn btn--48" data-a="ayCopiar" data-fk="ay-copiar">Copiar</button>` : ''}<button type="button" class="btn btn--48" data-a="aySeleccionar" data-fk="ay-sel">Seleccionar todo</button></div><p class="fila-s" id="ay-copiado" aria-live="polite"></p>`;
 
@@ -333,8 +334,7 @@
         menu: `<svg class="ay-dib" viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="12" r="4" fill="currentColor"/><circle cx="24" cy="24" r="4" fill="currentColor"/><circle cx="24" cy="36" r="4" fill="currentColor"/></svg>`,
         listo: `<svg class="ay-dib" viewBox="0 0 48 48" aria-hidden="true"><rect x="6" y="6" width="36" height="36" rx="9" fill="#ba1679"/><path d="M18 34V14h7.5c4.2 0 7 2.6 7 6.4S29.7 27 25.5 27H22v7h-4Zm4-10.6h3c1.9 0 3-1 3-2.6s-1.1-2.5-3-2.5h-3v5.1Z" fill="#fff"/></svg>`,
     };
-    function vistaInstalar() {
-        const enFlujo = A.enFlujo;
+    function pasosInstalar() {
         let pasos;
         if (instalada()) pasos = `<p class="txt">${icon('circle-check', 'ico-s')} Ya la tienes instalada.</p>`;
         else if (esIOS && !esSafariIOS) pasos = `<div class="nota nota--info" role="note">${icon('info')}<p><strong>En iPhone se instala desde Safari.</strong> Copia el enlace y ábrelo en Safari; ahí sigue los pasos.</p></div>${navigator.clipboard && window.isSecureContext ? `<button type="button" class="btn btn--48 btn--full" data-a="ayCopiarEnlace" data-fk="ay-copiar-enlace">Copiar el enlace</button><p class="fila-s" id="ay-enlace-ok" aria-live="polite"></p>` : `<p class="txt ay-enlace">${esc(location.href.split('#')[0])}</p>`}`;
@@ -342,6 +342,11 @@
         else if (promptInstalar) pasos = `<button type="button" class="btn btn--prim btn--48 btn--full" data-a="ayInstalar" data-fk="ay-instalar">${icon('smartphone', 'ico-s')}Instalar</button><p class="fila-s">Aparece en tu pantalla de inicio como cualquier app y abre sin internet.</p>`;
         else if (esAndroid) pasos = `<ol class="ay-pasos-dib"><li>${dibujo.menu}<span>Toca el menú <strong>⋮</strong> de Chrome (arriba a la derecha).</span></li><li>${dibujo.agregar}<span>Elige <strong>«Instalar app»</strong> o <strong>«Agregar a la pantalla principal»</strong>.</span></li><li>${dibujo.listo}<span>Confirma. Aparece el ícono de PamPlanea.</span></li></ol>`;
         else pasos = `<p class="txt">En la computadora no hace falta instalarla. En el teléfono, abre el mismo enlace y aquí verás cómo.</p>`;
+        return pasos;
+    }
+    function vistaInstalar() {
+        const enFlujo = A.enFlujo;
+        const pasos = pasosInstalar();
         return `<section class="ay-card ay-card--prim" aria-labelledby="ay-inst"><h3 class="ay-h3" id="ay-inst">${icon('smartphone', 'ico-s')}Tenla en tu pantalla de inicio</h3>
                 <p class="txt">Así la abres como una app, a pantalla completa y sin internet. Es opcional.</p>
                 ${pasos}</section>
@@ -432,15 +437,22 @@
         const lista = `<section class="ay-card" aria-labelledby="ay-l-t"><h3 class="ay-h3" id="ay-l-t">Elegir un caso</h3>${p.estado === 'activa' ? '<p class="fila-s">Elegir un caso pausa la prueba.</p>' : ''}
             <ul class="ay-casos">${CASOS.map((c) => `<li><button type="button" class="ay-caso" data-a="ayCaso" data-v="${c.id}" aria-current="${caso && caso.id === c.id ? 'true' : 'false'}" data-fk="ay-caso-${c.id}"><span class="ay-caso-cod">${c.id}</span><span class="ay-caso-t">${esc(c.titulo)}</span>${(d.notas[c.id] || '').trim() ? `<span class="ay-caso-ok">${icon('check', 'ico-xs')}<span class="sr-only">con notas</span></span>` : ''}</button></li>`).join('')}</ul>
             <p class="campo-l">Explorar libre</p><div class="ay-acc"><button type="button" class="btn btn--48" data-a="ayPersona" data-v="ana" data-fk="ay-ana">Ana · quincenal</button><button type="button" class="btn btn--48" data-a="ayPersona" data-v="carlos" data-fk="ay-carlos">Carlos · semanal</button></div></section>`;
-        const temas = [['serena-claro', 'Serena claro'], ['serena-oscuro', 'Serena oscuro'], ['ancla-claro', 'Ancla claro'], ['ancla-oscuro', 'Ancla oscuro']];
-        const apariencia = `<section class="ay-card" aria-labelledby="ay-t-t"><h3 class="ay-h3" id="ay-t-t">${icon('palette', 'ico-s')}Apariencia</h3><div class="chips" role="group" aria-labelledby="ay-t-t">${temas.map(([v, t]) => `<button type="button" class="chip" aria-pressed="${P.tema === v}" data-a="ayTema" data-v="${v}" data-fk="ay-tema-${v}">${P.tema === v ? icon('check', 'ico-xs') : ''}${t}</button>`).join('')}</div></section>`;
+        const apariencia = vistaApariencia();
+        const e = P.modos ? P.modos.entrenamiento() : { practicas: {} };
+        const aprender = `<section class="ay-card ay-card--prim" aria-labelledby="ay-ap-t"><h3 class="ay-h3" id="ay-ap-t">${icon('book-open', 'ico-s')}Modo entrenamiento</h3><p class="txt">Datos de ejemplo (Ana y Carlos): practica sin miedo, nada toca tus datos.</p>
+            <div class="pila"><button type="button" class="btn btn--prim btn--48 btn--full" data-a="ayIr" data-v="practica" data-fk="ay-practica">${icon('list-checks', 'ico-s')}Practicar con ejemplos${Object.keys(e.practicas || {}).length ? ` · ${Object.keys(e.practicas).length} de ${CASOS.length}` : ''}</button><button type="button" class="btn btn--48 btn--full" data-a="modoCambiar" data-v="tour" data-fk="ay-tour">${icon('play', 'ico-s')}Ver el recorrido de 3 minutos</button><button type="button" class="btn btn--48 btn--full" data-a="modoCambiar" data-v="uso" data-fk="ay-usar">${icon('smartphone', 'ico-s')}Usarla con mis datos</button></div></section>`;
         const datosHtml = `<section class="ay-card" aria-labelledby="ay-d-t"><h3 class="ay-h3" id="ay-d-t">${icon('rotate-ccw', 'ico-s')}Datos</h3>
-            <button type="button" class="btn btn--48 btn--full btn--reiniciar" data-a="ayReiniciar" data-fk="ay-reiniciar">${icon('rotate-ccw', 'ico-s')}Reiniciar datos</button>
-            <p class="fila-s">Vuelve ${caso ? 'este caso' : 'la app'} al inicio. Tus notas y respuestas no se borran.</p>
+            <button type="button" class="btn btn--48 btn--full btn--reiniciar" data-a="ayReiniciar" data-fk="ay-reiniciar">${icon('rotate-ccw', 'ico-s')}Reiniciar ejemplos</button>
+            <p class="fila-s">Vuelve ${caso ? 'este caso' : 'los ejemplos'} al inicio. Solo el entrenamiento: tus datos reales no se tocan.</p>
             ${A.confirmar === 'borrar' ? `<div class="nota nota--atencion" role="note">${icon('triangle-alert')}<div><p><strong>¿Borrar todo?</strong> Se borran tus notas, tus respuestas y lo que hiciste en la app.</p><div class="ay-acc"><button type="button" class="btn" data-a="ayBorrar" data-v="no" data-fk="ay-borrar-no">Cancelar</button><button type="button" class="btn btn--peligro" data-a="ayBorrar" data-v="si" data-fk="ay-borrar-si">Sí, borrar todo</button></div></div></div>` : `<button type="button" class="link link--peligro" data-a="ayBorrar" data-v="pregunta" data-fk="ay-borrar">${icon('trash-2', 'ico-s')}Borrar todo, también mis notas</button>`}
             ${P.almacen.disponible ? '' : '<p class="fila-s">Este navegador no deja guardar: lo que hagas se pierde al cerrar.</p>'}
             <a class="link" href="index.html?guia=1">${icon('eye', 'ico-s')}Ver la guía completa (para computadora)</a></section>`;
-        return `${prueba}${instalar}${actual}${notas}${lista}${apariencia}${datosHtml}${pieVersion()}<button type="button" class="ay-moderador" data-a="ayIr" data-v="moderador" data-fk="ay-moderador">Modo moderador</button>`;
+        const paraVictor = `<details class="ay-card ay-victor"${p.estado === 'activa' || p.estado === 'fin' ? ' open' : ''}><summary class="ay-h3">${icon('users', 'ico-s')}Para Victor: prueba guiada (sets A y B)</summary>${prueba}<button type="button" class="ay-moderador" data-a="ayIr" data-v="moderador" data-fk="ay-moderador">Modo moderador</button></details>`;
+        return `${p.estado === 'activa' ? prueba : ''}${aprender}${instalar}${actual}${notas}${lista}${apariencia}${datosHtml}${p.estado === 'activa' ? '' : paraVictor}${pieVersion()}`;
+    }
+    function vistaApariencia() {
+        const temas = [['serena-claro', 'Serena claro'], ['serena-oscuro', 'Serena oscuro'], ['ancla-claro', 'Ancla claro'], ['ancla-oscuro', 'Ancla oscuro']];
+        return `<section class="ay-card" aria-labelledby="ay-t-t"><h3 class="ay-h3" id="ay-t-t">${icon('palette', 'ico-s')}Apariencia</h3><div class="chips" role="group" aria-labelledby="ay-t-t">${temas.map(([v, t]) => `<button type="button" class="chip" aria-pressed="${P.tema === v}" data-a="ayTema" data-v="${v}" data-fk="ay-tema-${v}">${P.tema === v ? icon('check', 'ico-xs') : ''}${t}</button>`).join('')}</div></section>`;
     }
     const TITULOS = { inicio: 'Casos y ayuda', bienvenida: 'Prueba de PamPlanea', instalar: 'Instalar la app', tarea: 'Tu tarea', respuesta: 'Cuéntanos', comprension: '¿Qué entendiste?', fin: '¡Gracias!', moderador: 'Modo moderador' };
     const VISTAS = { inicio: vistaInicio, bienvenida: vistaBienvenida, instalar: vistaInstalar, tarea: vistaTarea, respuesta: vistaRespuesta, comprension: vistaComprension, fin: vistaFin, moderador: vistaModerador };
@@ -495,11 +507,34 @@
             if (el) el.focus({ preventScroll: true });
         }
     }
-    Object.assign(A, { abrir: abrirPanel, cerrar, pintarBarra, datos });
+    Object.assign(A, {
+        abrir: abrirPanel,
+        cerrar,
+        pintarBarra,
+        datos,
+        pintar,
+        compartirHtml: (t) => compartirHtml(t),
+        pasosInstalar,
+        vistaApariencia,
+        registrar(id, titulo, vista) {
+            TITULOS[id] = titulo;
+            VISTAS[id] = vista;
+        },
+        /** Al pasar a «Usarla con mis datos»: la prueba A/B (si había) queda en pausa. */
+        salirDePrueba() {
+            const d = datos();
+            if (d.prueba.estado === 'activa') {
+                d.prueba.estado = 'libre';
+                guardar(d);
+            }
+            A.armada = false;
+            pintarBarra();
+        },
+    });
 
     // ------------------------------------------------------------------ acciones
     const acc = P.acciones;
-    acc.abrirAyuda = () => abrirPanel('inicio');
+    acc.abrirAyuda = () => abrirPanel(P.modo === 'uso' ? 'ayudaUso' : 'inicio');
     // Cerrar la tarea sin tocar «Empezar» también la empieza (si no, no correría el tiempo).
     acc.ayCerrar = () => (A.panel === 'tarea' && !A.armada ? comenzarTarea() : cerrar());
     acc.ayIr = (d) => {
@@ -806,7 +841,8 @@
     // El modo se fija antes del primer dibujo para no ver el marco simulado un instante.
     prepararModo();
     A.iniciar = function () {
-        const aviso = $('#aviso-proto');
+        // La franja la pinta modos.js según el modo; esto queda solo por si ese módulo faltara.
+        const aviso = P.modos ? null : $('#aviso-proto');
         if (aviso) aviso.innerHTML = `<span class="aviso-proto-t">${icon('info', 'ico-xs')}<span><span class="nw">Prototipo de prueba ·</span> <span class="nw">no pongas tus datos reales</span></span></span>${P.enGuia ? '' : `<button type="button" class="aviso-proto-b" id="btn-ayuda" data-a="abrirAyuda" data-fk="btn-ayuda" aria-haspopup="dialog">Casos y ayuda</button>`}`;
         P.colorBarra();
         const d = datos();
@@ -814,9 +850,8 @@
         A.nombreTester = d.nombre;
         pintarBarra();
         if (!P.enGuia) {
-            // Primera vez en este teléfono: bienvenida para tester. Si había una tarea a medias, se retoma.
-            if (P.primeraVez) abrirPanel('bienvenida');
-            else if (d.prueba.estado === 'activa') {
+            // Si había una tarea de la prueba A/B a medias (modo entrenamiento), se retoma.
+            if (d.prueba.estado === 'activa' && P.modo !== 'uso') {
                 const t = tareaActual(d);
                 const r = t && d.prueba.tareas[t.id];
                 if (r && r.resultado && !r.facil) {

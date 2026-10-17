@@ -62,6 +62,11 @@
     let guardarTimer = null;
     function guardarAhora() {
         if (!P.guardando || !P.st || P.sinGuardar) return;
+        // Uso normal: sus datos van a su propio lugar (pamplanea-uso:v1), nunca al de los ejemplos.
+        if (P.modo === 'uso') {
+            if (P.modos) P.modos.guardarUso();
+            return;
+        }
         P.almacen.escribir(CLAVE_APP, { formato: FORMATO, caso: P.caso ? P.caso.id : null, persona: P.st.persona, tab: P.ui.tab, tema: P.tema, st: P.st });
     }
     P.guardarYa = guardarAhora;
@@ -221,11 +226,11 @@
             // Dibuja a Ana mientras la guía responde, sin guardar encima de lo guardado.
             P.caso = null;
             P.cargar(D.crearAna(), { tab: 'hoy' });
-        } else if (!restaurar()) {
-            cargarPersona('ana');
-            P.primeraVez = true;
-        }
+        } else if (P.modos) P.modos.arrancar();
+        else if (!restaurar()) cargarPersona('ana');
         if (P.ayuda) P.ayuda.iniciar();
+        if (P.practica) P.practica.iniciar();
+        if (P.modos) P.modos.iniciar();
         try {
             if (P.enGuia) window.parent.postMessage({ fuente: 'pamplanea-proto', tipo: 'listo' }, '*');
         } catch {

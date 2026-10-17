@@ -252,7 +252,7 @@
     P.fechaPagoTexto = fechaPagoTexto;
     function nombreIngreso(hz) {
         if (!hz.ingreso) return 'ingreso';
-        return hz.ingreso.frecuencia === 'quincenal' ? 'quincena' : hz.ingreso.frecuencia === 'semanal' ? 'pago' : hz.ingreso.nombre.toLowerCase();
+        return hz.ingreso.frecuencia === 'quincenal' ? 'quincena' : hz.ingreso.frecuencia === 'semanal' || hz.ingreso.frecuencia === 'catorcenal' ? 'pago' : hz.ingreso.nombre.toLowerCase();
     }
     P.nombreIngreso = nombreIngreso;
     /** «Hasta tu quincena del 30 · en 9 días», «Hasta el viernes · en 2 días», «Hasta fin de mes». */
@@ -287,6 +287,8 @@
             const hecho = !esTarjeta && o.hecho && o.hecho.registro ? st.registros.find((r) => r.id === o.hecho.registro) : null;
             const medio = esTarjeta ? null : M.medio(st, hecho ? hecho.medio : o.pago.medio);
             sub = o.estado === 'porConfirmar' ? 'Según tu estado de cuenta' : esTarjeta ? 'Pago de tarjeta' : medio ? medio.nombre : '';
+            // Un día 29, 30 o 31 en un mes más corto: cae el último día, y se dice.
+            if (!esTarjeta && o.pago.frecuencia === 'mensual' && o.pago.dia > M.partes(o.fecha)[2]) sub += ' · último día del mes';
         } else sub = fechaPagoTexto(o, hz);
         // V2-29 #4: el pago del mismo día del ingreso cuenta en el periodo siguiente; se marca.
         const hzRef = hz || M.horizonte(st);
@@ -443,10 +445,11 @@
         }
 
         // Avisos (notificaciones simuladas) de hoy.
-        const avisos = st.avisos.filter((a) => a.fecha === st.hoy && !P.ui.descartados[a.id] && avisoVigente(a)).slice(0, 3);
+        const avisos = (P.modo === 'uso' && P.modos ? P.modos.avisosAlAbrir() : st.avisos.filter((a) => a.fecha === st.hoy && avisoVigente(a))).filter((a) => !P.ui.descartados[a.id]).slice(0, 3);
+        if (P.modos) tarjetasAviso.push(...P.modos.tarjetasHoy(k));
         const avisosHtml = avisos.length
             ? tarjetaSeccion(
-                  `${icon('bell', 'ico-s')} Avisos de hoy <span class="contador">notificación y correo</span>`,
+                  `${icon('bell', 'ico-s')} Avisos de hoy <span class="contador">${P.modo === 'uso' ? 'al abrir la app' : 'notificación y correo'}</span>`,
                   `<ul class="lista">${avisos
                       .map(
                           (a) => `<li class="fila fila--aviso"><button type="button" class="fila-main fila-main--aviso" data-a="abrirAviso" data-id="${a.id}" data-fk="aviso-${a.id}"><span class="aviso-hora">${esc(a.hora.replace(' a. m.', '').replace(' p. m.', ''))}</span><span class="fila-txt"><span class="aviso-l"><strong>${esc(a.titulo)}.</strong> ${esc(a.texto)}</span></span></button><button type="button" class="icon-btn" data-a="descartar" data-id="${a.id}" aria-label="Quitar aviso ${esc(a.titulo)}">${icon('x')}</button></li>`,
@@ -643,7 +646,7 @@
                 <div class="acciones-2"><button type="button" class="btn btn--prim btn--48" data-a="hoja" data-hoja="cuadrar" data-fk="md-cuadrar">${icon('scale', 'ico-s')}Cuadrar</button><button type="button" class="btn btn--48" data-a="hoja" data-hoja="mover" data-fk="md-mover">${icon('arrow-left-right', 'ico-s')}Mover</button></div>
             </section>
             ${reparticion(k)}
-            ${tarjetaSeccion('Dónde está', `<ul class="lista">${lugares}</ul>`, { id: 'md-lugares' })}`;
+            ${tarjetaSeccion('Dónde está', `<ul class="lista">${lugares}</ul><div class="card-pie"><button type="button" class="btn btn--full" data-a="abrir" data-tipo="lugares" data-fk="md-lugares-ver">${icon('wallet', 'ico-s')}Lugares y medios de pago</button></div>`, { id: 'md-lugares' })}`;
         const apartadosActivos = st.apartados;
         const apHtml = apartadosActivos
             .map((a) => {
@@ -828,7 +831,7 @@
         const hechas = M.ocurrenciasPago(st, p, p.desde, M.sumarDias(st.hoy, 70)).filter((o) => o.hecho);
         const historia = [...hechas.map((o) => ({ fecha: o.fecha, monto: o.monto, estado: o.estado })), ...(p.previos || []).map((x) => ({ ...x, estado: 'pagado' }))].sort((a, b) => (a.fecha < b.fecha ? 1 : -1));
         const medio = M.medio(st, p.medio);
-        const frecuencia = p.frecuencia === 'semanal' ? `Cada ${M.DIAS[p.diaSemana]}` : p.frecuencia === 'unico' ? `Una vez, el ${M.fechaLarga(p.fecha)}` : `Cada mes, el ${p.dia}`;
+        const frecuencia = p.frecuencia === 'semanal' ? `Cada ${M.DIAS[p.diaSemana]}` : p.frecuencia === 'unico' ? `Una vez, el ${M.fechaLarga(p.fecha)}` : `Cada mes, el ${p.dia}${p.dia > 28 ? ' (o el último día, si el mes es más corto)' : ''}`;
         const avisoTexto = (a) => (a.tipo === 'recibo' ? `Revisar el recibo · el ${a.dia}` : a.tipo === 'antes' ? `Un día antes · 8:00 a. m.` : 'El día que vence · 8:00 a. m.');
         const atrasTexto = P.ui.stack.length > 1 ? 'Atrás' : P.ui.tab === 'midinero' ? 'Mi dinero' : P.ui.tab === 'hoy' ? 'Hoy' : P.ui.tab === 'mes' ? 'Mes' : 'Pagos';
         const estadoProx = prox
@@ -856,6 +859,7 @@
     S.tarjeta = function ({ id }) {
         const st = P.st;
         const t = M.tarjeta(st, id);
+        if (!t) return S.midinero();
         const info = M.tarjetaInfo(st, t);
         const ult = info.ult;
         const atrasTexto = P.ui.stack.length > 1 ? 'Atrás' : P.ui.tab === 'midinero' ? 'Mi dinero' : P.ui.tab === 'hoy' ? 'Hoy' : 'Pagos';
@@ -893,6 +897,7 @@
     S.lugar = function ({ id }) {
         const st = P.st;
         const l = M.lugar(st, id);
+        if (!l) return S.midinero();
         const saldo = M.saldoLugar(st, id);
         const medios = st.medios.filter((m) => m.lugar === id);
         const regs = st.registros.filter((r) => M.lugaresDe(st, r).includes(id) || (r.tipo === 'cuadre' && r.lugar === id)).sort((a, b) => (a.fecha === b.fecha ? b.seq - a.seq : a.fecha < b.fecha ? 1 : -1));
@@ -907,6 +912,7 @@
                 <p class="fila-s">Tienes</p><p class="cifra">${dinero(saldo)}</p>
                 <p class="fila-s">Cuadrado el ${esc(M.fechaLarga(l.cuadre.fecha))} (${esc(M.haceDias(l.cuadre.fecha, st.hoy))}). Tu saldo parte de ese cuadre.</p>
                 <div class="acciones-2"><button type="button" class="btn btn--prim btn--48" data-a="hoja" data-hoja="cuadrar" data-id="${id}" data-fk="l-cuadrar">${icon('scale', 'ico-s')}Cuadrar</button><button type="button" class="btn btn--48" data-a="hoja" data-hoja="mover" data-id="${id}" data-fk="l-mover">${icon('arrow-left-right', 'ico-s')}Mover</button></div>
+                <div class="card-pie"><button type="button" class="link" data-a="hoja" data-hoja="lugar" data-id="${id}" data-fk="l-editar">${icon('pencil', 'ico-s')}Editar o eliminar</button></div>
             </section>
             ${tarjetaSeccion('Después de tu último cuadre', despues.length ? `<ul class="lista">${despues.map((r) => filaRegistro(r)).join('')}</ul>` : '<p class="vacio">Nada anotado desde el cuadre.</p>', { id: 'l-desp' })}
             ${cuadre ? `<div class="cuadre-marca">${caja('⚖️')}<p><strong>Cuadre del ${esc(M.fechaCorta(cuadre.fecha))}: dijiste ${dinero(cuadre.monto)}.</strong> ${dif === 0 ? 'Cuadró exacto con lo anotado.' : `Según lo anotado tenías ${dinero(cuadre.esperado)}: ${dinero(Math.abs(dif))} quedaron sin detalle.`}</p></div>` : ''}
@@ -936,7 +942,7 @@
                 </div>
             </section>
             <div class="nota nota--info" role="note">${icon('info')}<p>Apartar no mueve tu dinero de lugar: es una etiqueta. Sigue en ${esc(st.lugares.map((l) => l.nombre).join(' y '))}.</p></div>
-            ${tarjetaSeccion('Meta', `<div class="dato"><p class="dato-n">${a.meta ? dinero(a.meta) : 'Sin meta'}</p><p class="fila-s">${a.metaFecha ? 'Para el ' + esc(M.fechaLarga(a.metaFecha)) : 'Sin fecha'}</p></div><div class="card-pie"><button type="button" class="link" data-a="hoja" data-hoja="meta" data-id="${a.id}" data-fk="ap-meta">${a.meta ? 'Cambiar meta' : 'Ponerle meta'}</button></div>`, { id: 'ap-meta-t' })}
+            ${tarjetaSeccion('Meta', `<div class="dato"><p class="dato-n">${a.meta ? dinero(a.meta) : 'Sin meta'}</p><p class="fila-s">${a.metaFecha ? 'Para el ' + esc(M.fechaLarga(a.metaFecha)) : 'Sin fecha'}</p></div><div class="card-pie"><button type="button" class="link" data-a="hoja" data-hoja="meta" data-id="${a.id}" data-fk="ap-meta">${a.meta ? 'Editar nombre y meta' : 'Editar nombre o ponerle meta'}</button></div>`, { id: 'ap-meta-t' })}
             ${tarjetaSeccion('Historial', a.historial.length ? `<ul class="lista">${a.historial.map((h) => `<li class="fila"><div class="fila-main fila-main--quieta">${caja(h.tipo === 'usar' ? '🎉' : h.tipo === 'liberar' ? '🔓' : '🐷')}<span class="fila-txt"><span class="fila-t">${h.tipo === 'apartar' ? 'Apartaste' : h.tipo === 'liberar' ? 'Liberaste' : h.tipo === 'usar' ? 'Lo usaste' : h.tipo === 'entra' ? 'Llegó de ' + esc(h.de) : 'Pasaste a ' + esc(h.a)}</span><span class="fila-s">${esc(M.capital(M.fechaLarga(h.fecha)))}</span></span><span class="fila-m">${montoHtml(h.monto, 'neutro')}</span></div></li>`).join('')}</ul>` : '<p class="vacio">Todavía nada.</p>', { id: 'ap-hist' })}
         </div>`;
     };
@@ -944,8 +950,10 @@
     S.ingreso = function ({ id }) {
         const st = P.st;
         const ing = M.ingreso(st, id);
+        if (!ing) return S.pagos();
         const atrasTexto = P.ui.stack.length > 1 ? 'Atrás' : P.ui.tab === 'hoy' ? 'Hoy' : 'Pagos';
-        const frecuencia = ing.frecuencia === 'quincenal' ? 'Cada quincena, el 15 y el 30' : ing.frecuencia === 'semanal' ? `Cada ${M.DIAS[ing.diaSemana]}` : ing.frecuencia === 'unico' ? `Una vez, el ${M.fechaLarga(ing.fecha)}` : `Cada mes, el ${ing.dia}`;
+        const [d1, d2] = ing.dias || [15, 30];
+        const frecuencia = ing.frecuencia === 'quincenal' ? `Cada quincena, el ${d1} y el ${d2 >= 30 ? (d2 === 31 ? 'último día' : '30 (o el último día)') : d2}` : ing.frecuencia === 'semanal' ? `Cada ${M.DIAS[ing.diaSemana]}` : ing.frecuencia === 'catorcenal' ? 'Cada 14 días' : ing.frecuencia === 'unico' ? `Una vez, el ${M.fechaLarga(ing.fecha)}` : `Cada mes, el ${ing.dia}${ing.dia > 28 ? ' (o el último día)' : ''}`;
         const pendientes = M.ocurrenciasIngreso(st, ing, ing.desde, M.sumarDias(st.hoy, 400)).filter((o) => o.estado !== 'llego');
         const prox = pendientes[0];
         const llegadas = Object.entries(ing.llegadas).sort((a, b) => (a[0] < b[0] ? 1 : -1));
@@ -957,10 +965,27 @@
                 ${prox ? `<p class="fila-s">Próximo: ${esc(M.capital(M.fechaLarga(prox.fecha)))}</p>${prox.fecha <= st.hoy || ing.extra ? `<button type="button" class="btn btn--prim btn--48 btn--full" data-a="hoja" data-hoja="ingresoLlego" data-id="${ing.id}" data-fecha="${prox.fecha}" data-fk="ing-llego">Ya llegó</button>` : ''}` : ''}
             </section>
             ${tarjetaSeccion('Llegadas', llegadas.length ? `<ul class="lista">${llegadas.map(([f, l]) => `<li class="fila"><div class="fila-main fila-main--quieta">${caja(ing.emoji)}<span class="fila-txt"><span class="fila-t">${esc(M.capital(M.fechaLarga(f)))}</span><span class="fila-s">Llegó</span></span><span class="fila-m">${montoHtml(l.monto, 'ingreso')}</span></div></li>`).join('')}</ul>` : '<p class="vacio">Todavía no ha llegado.</p>', { id: 'i-hist' })}
+            ${ing.activo === false ? '' : `<div class="pie-acciones"><button type="button" class="btn btn--full" data-a="hoja" data-hoja="nuevoIngreso" data-id="${ing.id}" data-fk="editar-ingreso">${icon('pencil', 'ico-s')}Editar</button></div>`}
         </div>`;
     };
 
     // ---- Tu espacio, invitar y aprende
+    /** Lugares y medios de pago: crear, editar y eliminar (con confirmación y Deshacer). */
+    S.lugares = function () {
+        const st = P.st;
+        const atrasTexto = P.ui.stack.length > 1 ? 'Atrás' : P.ui.tab === 'midinero' ? 'Mi dinero' : 'Hoy';
+        const tipoLugar = { efectivo: 'Efectivo', banco: 'Banco o cooperativa', billetera: 'Billetera en el celular' };
+        const filasL = st.lugares.map((l) => `<li class="fila"><button type="button" class="fila-main" data-a="hoja" data-hoja="lugar" data-id="${l.id}" data-fk="lm-l-${l.id}">${caja(l.emoji)}<span class="fila-txt"><span class="fila-t">${esc(l.nombre)}</span><span class="fila-s">${esc(tipoLugar[l.tipo] || '')} · toca para editar</span></span><span class="fila-m">${montoHtml(M.saldoLugar(st, l.id))}</span></button></li>`).join('');
+        const filasM = st.medios.filter((m) => !m.oculto).map((m) => {
+            const de = m.tarjeta ? 'Tarjeta de crédito: la pagas después' : m.lugar ? 'Sale de ' + (M.lugar(st, m.lugar)?.nombre || '—') : '';
+            return `<li class="fila"><button type="button" class="fila-main" data-a="hoja" data-hoja="medio" data-id="${m.id}" data-fk="lm-m-${m.id}">${caja(m.emoji)}<span class="fila-txt"><span class="fila-t">${esc(m.nombre)}</span><span class="fila-s">${esc(de)}</span></span>${icon('chevron-right', 'ico-xs')}</button></li>`;
+        }).join('');
+        return `<div class="pg">
+            ${encabezado('Lugares y medios', 'Dónde está tu dinero y con qué pagas', { atras: atrasTexto })}
+            ${tarjetaSeccion('Lugares', `<ul class="lista">${filasL}</ul><div class="card-pie"><button type="button" class="btn btn--full" data-a="hoja" data-hoja="lugar" data-fk="lm-nuevo-lugar">${icon('plus', 'ico-s')}Lugar</button></div>`, { id: 'lm-lugares' })}
+            ${tarjetaSeccion('Medios de pago', `<p class="txt txt--card">Al anotar te pregunto con cuál pagaste; puedes escribir su nombre («súper 25 cuscatlán»).</p><ul class="lista">${filasM}</ul><div class="card-pie"><button type="button" class="btn btn--full" data-a="hoja" data-hoja="medio" data-fk="lm-nuevo-medio">${icon('plus', 'ico-s')}Medio de pago</button></div>`, { id: 'lm-medios' })}
+        </div>`;
+    };
     S.espacio = function () {
         const st = P.st;
         return `<div class="pg">
@@ -1025,7 +1050,7 @@
             P.renderBanner();
         },
         abrirAviso: (d) => {
-            const a = P.st.avisos.find((x) => x.id === d.id);
+            const a = P.st.avisos.find((x) => x.id === d.id) || (P.modos ? P.modos.avisoPorId(d.id) : null);
             P.ui.banner = null;
             P.renderBanner();
             P.emitir('aviso:abierto' + (a && a.clave ? ':' + a.clave : ''));

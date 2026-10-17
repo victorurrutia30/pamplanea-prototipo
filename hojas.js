@@ -169,6 +169,11 @@
     const pie2 = (accion, texto, { fk = 'hoja-ok', cancelar = 'Cancelar', peligro = false } = {}) =>
         `<button type="button" class="btn btn--48" data-a="cerrarHoja" data-fk="hoja-cancelar">${cancelar}</button><button type="button" class="btn btn--48 ${peligro ? 'btn--peligro' : 'btn--prim'}" data-a="${accion}" data-fk="${fk}">${texto}</button>`;
     const pie1 = (accion, texto, fk = 'hoja-ok') => `<button type="button" class="btn btn--prim btn--48" data-a="${accion}" data-fk="${fk}">${texto}</button>`;
+    /** Confirmación dentro de la hoja: «¿Eliminar…?» [Cancelar] [Sí, eliminar]. */
+    function confirmarHtml(titulo, texto, accion, fk) {
+        return `<div class="nota nota--atencion confirmar" role="alertdialog" aria-labelledby="cf-${fk}">${icon('triangle-alert')}<div><p id="cf-${fk}"><strong>${titulo}</strong> ${texto}</p><div class="ay-acc"><button type="button" class="btn" data-a="valor" data-campo="confirmarEliminar" data-v="no" data-fk="${fk}-no">Cancelar</button><button type="button" class="btn btn--peligro" data-a="${accion}" data-fk="${fk}-si">Sí, eliminar</button></div></div></div>`;
+    }
+    P.confirmarHtml = (...a) => confirmarHtml(...a);
     function error(h, campo, texto) {
         return h.intento && h.errores.includes(campo) ? `<p class="campo-error" id="err-${campo}">${icon('triangle-alert')}<span>${esc(texto)}</span></p>` : '';
     }
@@ -191,7 +196,7 @@
             .map((n) => `<button type="button" class="dia" aria-pressed="${Number(valor) === n}" data-a="valor" data-campo="${campo}" data-v="${n}" data-fk="dia-${campo}-${n}" aria-label="Día ${n}">${n}</button>`)
             .join('')}</div>${error(h, campo, 'Elige el día')}</div>`;
     }
-    const medios = (st) => st.medios.map((m) => ({ v: m.id, t: m.nombre, e: m.emoji }));
+    const medios = (st) => st.medios.filter((m) => !m.oculto).map((m) => ({ v: m.id, t: m.nombre, e: m.emoji }));
     const lugares = (st) => st.lugares.map((l) => ({ v: l.id, t: l.nombre, e: l.emoji, s: dinero(M.saldoLugar(st, l.id)) }));
     function fechasCortas(st, extra = null) {
         const lista = [{ v: st.hoy, t: 'Hoy' }, { v: M.sumarDias(st.hoy, -1), t: 'Ayer' }, { v: M.sumarDias(st.hoy, -2), t: 'Antier' }];
@@ -563,6 +568,8 @@
         const h = P.ui.hoja;
         const st = P.st;
         const previo = h.d;
+        // Registro de uso: el intérprete no entendió lo escrito (se cuenta, el texto no se guarda).
+        if (previo && !previo.tipo && h.texto && h.texto.trim()) P.emitir('anotar:noEntendio');
         h.d = aplicarContexto(st, h, borradorVacio(st, d.v, { monto: previo ? previo.monto : null, nombre: previo && d.v === 'gasto' ? previo.nombre : null, lugar: h.ctxLugar, medio: h.ctxMedio }));
         h.modo = 'form';
         h.manual = {};
@@ -647,6 +654,7 @@
         const h = P.ui.hoja;
         const st = P.st;
         if (!h.d || !h.d.tipo) {
+            if (h.d && h.texto && h.texto.trim()) P.emitir('anotar:noEntendio');
             h.intento = true;
             h.errores = ['tipo'];
             P.render({ foco: '#anotar-q' });
@@ -740,7 +748,7 @@
             if (hz.ingreso && !hz.esHoy) noCuenta.push(`Tu ${esc(P.nombreIngreso(hz))} del ${M.partes(hz.fecha)[2]} (${dinero(hz.ocurrencia.monto, { aprox: true })}): suma cuando llegue.`);
             if (hz.esHoy) noCuenta.push(`Tu ${esc(P.nombreIngreso(hz))} de hoy: suma cuando confirmes que te cayó.`);
             for (const o of hz.atrasadas || []) noCuenta.push(`Tu ${esc(o.ingreso.nombre.toLowerCase())} del ${M.fechaCorta(o.fecha)}: falta confirmar si llegó.`);
-            for (const i of st.ingresos.filter((x) => x.extra)) {
+            for (const i of st.ingresos.filter((x) => x.extra && x.activo !== false)) {
                 const o = M.ocurrenciasIngreso(st, i, st.hoy, M.sumarDias(st.hoy, 400)).find((x) => x.estado !== 'llego');
                 if (o) noCuenta.push(`${esc(i.nombre)} (${dinero(o.monto, { aprox: o.aprox })}, ${M.fechaCorta(o.fecha)}): suma cuando llegue.`);
             }
@@ -786,11 +794,12 @@
                     <ul class="lista card">
                         ${fila('users', 'Tu espacio', esc(st.espacio), 'menuIr', 'data-ir="espacio"')}
                         ${fila('calendar-clock', 'Cómo te pagan', p ? esc(p.nombre) : 'Varía', 'menuIr', p ? `data-ir="ingreso" data-id="${p.id}"` : 'data-ir="pagos"')}
-                        ${fila('wallet', 'Lugares y medios de pago', esc(st.medios.map((m) => m.nombre).join(' · ')), 'menuIr', 'data-ir="midinero"')}
-                        ${fila('bell', 'Avisos', 'Notificación de la app y correo', 'menuIr', 'data-ir="avisos"')}
+                        ${fila('wallet', 'Lugares y medios de pago', esc(st.medios.filter((m) => !m.oculto).map((m) => m.nombre).join(' · ')), 'menuIr', 'data-ir="lugares"')}
+                        ${fila('bell', 'Avisos', P.modo === 'uso' ? 'Se muestran al abrir la app' : 'Notificación de la app y correo', 'menuIr', 'data-ir="avisos"')}
                         ${fila('book-open', 'Aprende', 'Consejos cortos', 'menuIr', 'data-ir="aprende"')}
                         ${fila('palette', 'Apariencia', 'Serena o Ancla, claro u oscuro', 'menuIr', 'data-ir="apariencia"')}
-                    </ul>`,
+                    </ul>
+                    ${P.modos ? P.modos.menuExtra(fila) : ''}`,
             };
         },
     };
@@ -802,6 +811,7 @@
         }
         P.cerrarHoja({ sinFoco: true });
         if (d.ir === 'midinero' || d.ir === 'pagos') P.irTab(d.ir);
+        else if (P.modos && P.modos.irMenu(d.ir)) return;
         else P.abrir(d.ir, d.id);
     };
     H.apariencia = {
@@ -1128,16 +1138,25 @@
     H.meta = {
         iniciar(h) {
             const a = M.apartado(P.st, h.id);
+            h.nombre = a.nombre;
             h.monto = a.meta ? M.montoCampo(a.meta) : '';
             h.metaFecha = a.metaFecha || '';
+            h.confirmarEliminar = false;
         },
         html(h) {
+            const a = M.apartado(P.st, h.id);
             return {
-                titulo: 'Meta del apartado',
-                cuerpo: `${campoMonto(h, { label: '¿Cuánto quieres juntar?', valor: h.monto, ayuda: 'Opcional. Déjalo vacío para apartar a tu ritmo.' })}
-                    <div class="campo-g"><label class="campo-l" for="f-metaFecha">¿Para cuándo? <span class="opcional">(opcional)</span></label><div class="campo"><input id="f-metaFecha" data-campo="metaFecha" type="date" value="${esc(h.metaFecha)}"></div><p class="campo-ayuda">Con fecha, al repartir tu ingreso te sugerimos cuánto apartar para llegar.</p></div>`,
+                titulo: `Editar ${esc(a.nombre)}`,
+                cuerpo: `${campoTexto(h, { campo: 'nombre', label: 'Nombre', valor: h.nombre, errorTexto: 'Ponle un nombre' })}
+                    ${campoMonto(h, { label: '¿Cuánto quieres juntar?', valor: h.monto, ayuda: 'Opcional. Déjalo vacío para apartar a tu ritmo.' })}
+                    <div class="campo-g"><label class="campo-l" for="f-metaFecha">¿Para cuándo? <span class="opcional">(opcional)</span></label><div class="campo"><input id="f-metaFecha" data-campo="metaFecha" type="date" value="${esc(h.metaFecha)}"></div><p class="campo-ayuda">Con fecha, al repartir tu ingreso te sugerimos cuánto apartar para llegar.</p></div>
+                    ${h.confirmarEliminar ? confirmarHtml(`¿Eliminar ${esc(a.nombre)}?`, a.monto ? `Sus ${dinero(a.monto)} vuelven a «Sin apartar».` : 'No tiene dinero adentro.', 'apartadoEliminar', 'ap-eliminar') : `<button type="button" class="link link--peligro" data-a="valor" data-campo="confirmarEliminar" data-v="si" data-fk="ap-eliminar">${icon('trash-2', 'ico-s')}Eliminar apartado</button>`}`,
                 pie: pie2('metaOk', 'Guardar'),
             };
+        },
+        alValor(h, campo, v) {
+            if (campo === 'confirmarEliminar') h.confirmarEliminar = v === 'si';
+            else h[campo] = v;
         },
         alCampo(h, campo, el) {
             h[campo] = el.value;
@@ -1146,10 +1165,21 @@
     P.acciones.metaOk = () => {
         const h = P.ui.hoja;
         const monto = M.leerMonto(h.monto);
+        const faltan = [...((h.nombre || '').trim() ? [] : ['nombre']), ...(String(h.monto || '').trim() && monto === null ? ['monto'] : [])];
+        if (!validar(h, faltan)) return;
         P.ui.hoja = null;
         P.cambiar((s) => {
-            Object.assign(M.apartado(s, h.id), { meta: monto || null, metaFecha: /^\d{4}-\d{2}-\d{2}$/.test(h.metaFecha || '') ? h.metaFecha : null });
-        }, { aviso: 'Meta guardada' });
+            Object.assign(M.apartado(s, h.id), { nombre: h.nombre.trim(), meta: monto || null, metaFecha: /^\d{4}-\d{2}-\d{2}$/.test(h.metaFecha || '') ? h.metaFecha : null });
+        }, { aviso: 'Cambios guardados', claves: ['guardado:apartadoEditar'] });
+    };
+    P.acciones.apartadoEliminar = () => {
+        const h = P.ui.hoja;
+        const a = M.apartado(P.st, h.id);
+        P.ui.hoja = null;
+        P.cambiar((s) => {
+            s.apartados = s.apartados.filter((x) => x.id !== h.id);
+        }, { aviso: `Eliminaste ${a.nombre}`, claves: ['guardado:apartadoEliminar'] });
+        if (P.ui.stack.at(-1)?.tipo === 'apartado') P.atras();
     };
     H.usar = {
         iniciar(h) {
@@ -1330,9 +1360,14 @@
                 titulo: h.editar ? `Editar ${esc(h.nombre)}` : 'Tarjeta o préstamo',
                 cuerpo: `${tipos}${campos}${tipo && !h.editar ? `<p class="fila-s">${h.tipoDeuda === 'tarjeta' ? 'Al guardar, su pago aparece solo en Pagos según tu estado de cuenta.' : 'Al guardar, la cuota aparece sola en Pagos.'}</p>` : ''}`,
                 pie: pie2('nuevaDeudaOk', h.editar ? 'Guardar cambios' : 'Guardar', { fk: 'deuda-ok' }),
+                ...(h.editar && h.tarjetaId ? { cuerpo: `${tipos}${campos}${h.confirmarEliminar ? confirmarHtml(`¿Eliminar ${esc(h.nombre)}?`, 'Deja de aparecer en Pagos y en tu libre. Las compras que anotaste se quedan en tu historial.', 'tarjetaEliminar', 'tarjeta-eliminar') : `<button type="button" class="link link--peligro" data-a="valor" data-campo="confirmarEliminar" data-v="si" data-fk="tarjeta-eliminar">${icon('trash-2', 'ico-s')}Eliminar tarjeta</button>`}` } : {}),
             };
         },
         alValor(h, campo, v) {
+            if (campo === 'confirmarEliminar') {
+                h.confirmarEliminar = v === 'si';
+                return;
+            }
             h[campo] = v;
             if (campo === 'tipoDeuda') {
                 h.intento = false;
@@ -1342,6 +1377,17 @@
         alCampo(h, campo, el) {
             h[campo] = el.value;
         },
+    };
+    P.acciones.tarjetaEliminar = () => {
+        const h = P.ui.hoja;
+        const t = M.tarjeta(P.st, h.tarjetaId);
+        P.ui.hoja = null;
+        P.cambiar((s) => {
+            s.tarjetas = s.tarjetas.filter((x) => x.id !== h.tarjetaId);
+            for (const m of s.medios) if (m.tarjeta === h.tarjetaId) Object.assign(m, { oculto: true, tarjeta: null, eraTarjeta: h.tarjetaId });
+            s.reservasTarjeta = (s.reservasTarjeta || []).filter((x) => x.tarjeta !== h.tarjetaId);
+        }, { aviso: `Eliminaste ${t.nombre}`, claves: ['guardado:tarjetaEliminar'] });
+        if (P.ui.stack.at(-1)?.tipo === 'tarjeta') P.atras();
     };
     const diaValido = (v) => /^\d{1,2}$/.test(String(v || '').trim()) && +v >= 1 && +v <= 31;
     P.acciones.nuevaDeudaOk = () => {
@@ -1442,32 +1488,47 @@
     H.nuevoIngreso = {
         iniciar(h) {
             const st = P.st;
-            h.nombre = '';
-            h.monto = '';
-            h.frecuencia = 'unico';
-            h.dia = null;
-            h.lugar = M.principal(st) ? M.principal(st).lugar : st.lugares[0].id;
+            const ing = h.id ? M.ingreso(st, h.id) : null;
+            if (ing) {
+                const dias = ing.dias || [15, 30];
+                Object.assign(h, { editar: true, nombre: ing.nombre, monto: M.montoCampo(ing.monto), frecuencia: ing.frecuencia, dia: ing.dia || null, diaSemana: ing.diaSemana ?? 5, fecha: ing.fecha || '', d1: String(dias[0]), d2: String(dias[1]), lugar: ing.lugar, principal: !!ing.principal });
+                if (ing.frecuencia === 'unico') h.dia = Number(M.partes(ing.fecha)[2]);
+            } else Object.assign(h, { nombre: '', monto: '', frecuencia: 'unico', dia: null, diaSemana: 5, fecha: '', d1: '15', d2: '30', lugar: M.principal(st) ? M.principal(st).lugar : st.lugares[0].id, principal: false });
+            h.confirmarEliminar = false;
         },
         html(h) {
             const st = P.st;
             const sugeridos = [['Salario de mi pareja', '💼'], ['Remesa', '🌎'], ['Comisión', '📈'], ['Bono', '📈'], ['Aguinaldo', '🎁'], ['Quincena 25', '🎁'], ['Turno del cuchubal', '🤝']];
+            const f = h.frecuencia;
+            const cuando =
+                f === 'quincenal'
+                    ? `<div class="ob-2">${campoDia(h, 'd1', 'Primer pago, el día')}${campoDia(h, 'd2', 'Segundo pago, el día', '31 = último día del mes')}</div>`
+                    : f === 'semanal'
+                      ? opciones(h, { campo: 'diaSemana', label: '¿Qué día?', lista: [1, 2, 3, 4, 5, 6, 0].map((n) => ({ v: n, t: M.capital(M.DIAS[n]) })), valor: h.diaSemana })
+                      : f === 'catorcenal'
+                        ? `<div class="campo-g"><label class="campo-l" for="f-fecha">¿Cuándo es el próximo pago?</label><div class="campo"><input id="f-fecha" data-campo="fecha" type="date" value="${esc(h.fecha)}" ${inv(h, 'fecha')}></div>${error(h, 'fecha', 'Elige la fecha')}</div>`
+                        : selectorDia(h, 'dia', h.dia, f === 'unico' ? '¿Qué día llega? (el próximo)' : '¿Qué día del mes? (29, 30 o 31: en meses cortos, el último día)');
+            const principal = M.principal(st);
             return {
-                titulo: 'Ingreso esperado',
-                cuerpo: `<p class="txt">No suma a tu libre hasta que llegue. Cuando llegue, te ayudo a repartirlo.</p>
-                    ${opciones(h, { campo: 'sugerido', label: 'Ideas', lista: sugeridos.map(([t, e]) => ({ v: t, t, e })), valor: h.nombre })}
+                titulo: h.editar ? `Editar ${esc(h.nombre)}` : 'Ingreso esperado',
+                cuerpo: `${h.editar ? '' : `<p class="txt">No suma a tu libre hasta que llegue. Cuando llegue, te ayudo a repartirlo.</p>${opciones(h, { campo: 'sugerido', label: 'Ideas', lista: sugeridos.map(([t, e]) => ({ v: t, t, e })), valor: h.nombre })}`}
                     ${campoTexto(h, { campo: 'nombre', label: 'Nombre', valor: h.nombre, placeholder: 'Ej. Salario de Luis', errorTexto: 'Ponle un nombre' })}
                     ${campoMonto(h, { label: '¿Cuánto más o menos?', valor: h.monto })}
-                    ${opciones(h, { campo: 'frecuencia', label: '¿Cada cuánto?', lista: [{ v: 'quincenal', t: 'Cada quincena' }, { v: 'mensual', t: 'Cada mes' }, { v: 'semanal', t: 'Cada semana' }, { v: 'unico', t: 'Una vez' }], valor: h.frecuencia })}
-                    ${h.frecuencia === 'mensual' || h.frecuencia === 'unico' ? selectorDia(h, 'dia', h.dia, h.frecuencia === 'unico' ? '¿Qué día llega? (el próximo)' : '¿Qué día del mes?') : ''}
-                    ${opciones(h, { campo: 'lugar', label: '¿Dónde cae?', lista: lugares(st), valor: h.lugar })}`,
-                pie: pie2('nuevoIngresoOk', 'Guardar'),
+                    ${opciones(h, { campo: 'frecuencia', label: '¿Cada cuánto?', lista: [{ v: 'quincenal', t: 'Cada quincena' }, { v: 'mensual', t: 'Cada mes' }, { v: 'semanal', t: 'Cada semana' }, { v: 'catorcenal', t: 'Cada 14 días' }, { v: 'unico', t: 'Una vez' }], valor: f })}
+                    ${cuando}
+                    ${opciones(h, { campo: 'lugar', label: '¿Dónde cae?', lista: lugares(st), valor: h.lugar })}
+                    ${f !== 'unico' ? `<div class="chips"><button type="button" class="chip" aria-pressed="${h.principal}" data-a="valor" data-campo="principal" data-v="${!h.principal}" data-fk="ing-principal">${h.principal ? icon('check', 'ico-xs') : ''}Es mi ingreso principal</button></div><p class="fila-s">${h.principal ? 'Tu libre se calcula hasta que llegue este.' : principal && principal.id !== h.id ? `Tu ingreso principal es «${esc(principal.nombre)}».` : 'Sin ingreso principal, ves tu libre hasta fin de mes.'}</p>` : ''}
+                    ${h.editar ? (h.confirmarEliminar ? confirmarHtml(`¿Ya no esperas «${esc(h.nombre)}»?`, 'Deja de aparecer en Pagos. Lo que ya llegó se queda en tu historial.', 'ingresoEliminar', 'ing-eliminar') : `<button type="button" class="link link--peligro" data-a="valor" data-campo="confirmarEliminar" data-v="si" data-fk="ing-eliminar">${icon('trash-2', 'ico-s')}Ya no lo espero</button>`) : ''}`,
+                pie: pie2('nuevoIngresoOk', h.editar ? 'Guardar cambios' : 'Guardar'),
             };
         },
         alValor(h, campo, v) {
             if (campo === 'sugerido') {
                 h.nombre = v;
                 if (v === 'Aguinaldo' || v === 'Quincena 25') h.frecuencia = 'unico';
-            } else h[campo] = v;
+            } else if (campo === 'principal') h.principal = v === 'true';
+            else if (campo === 'confirmarEliminar') h.confirmarEliminar = v === 'si';
+            else h[campo] = v;
         },
         alCampo(h, campo, el) {
             h[campo] = el.value;
@@ -1475,18 +1536,171 @@
     };
     P.acciones.nuevoIngresoOk = () => {
         const h = P.ui.hoja;
+        const st = P.st;
         const monto = M.leerMonto(h.monto);
-        const faltan = [...(h.nombre.trim() ? [] : ['nombre']), ...(monto ? [] : ['monto']), ...((h.frecuencia === 'mensual' || h.frecuencia === 'unico') && !h.dia ? ['dia'] : [])];
+        const f = h.frecuencia;
+        const diaOk = (v) => /^\d{1,2}$/.test(String(v || '').trim()) && +v >= 1 && +v <= 31;
+        const faltan = [...(h.nombre.trim() ? [] : ['nombre']), ...(monto ? [] : ['monto']), ...((f === 'mensual' || f === 'unico') && !h.dia ? ['dia'] : []), ...(f === 'quincenal' && !diaOk(h.d1) ? ['d1'] : []), ...(f === 'quincenal' && !diaOk(h.d2) ? ['d2'] : []), ...(f === 'catorcenal' && !/^\d{4}-\d{2}-\d{2}$/.test(h.fecha || '') ? ['fecha'] : [])];
         if (!validar(h, faltan)) return;
+        P.ui.hoja = null;
+        const n = M.normalizar(h.nombre);
+        const datos = {
+            nombre: h.nombre.trim(),
+            monto,
+            frecuencia: f,
+            dia: f === 'mensual' ? Number(h.dia) : undefined,
+            dias: f === 'quincenal' ? [Number(h.d1), Number(h.d2)].sort((a, b) => a - b) : undefined,
+            diaSemana: f === 'semanal' ? Number(h.diaSemana) : undefined,
+            fecha: f === 'unico' ? M.proximoDia(st.hoy, Number(h.dia)) : f === 'catorcenal' ? h.fecha : undefined,
+            lugar: h.lugar,
+            principal: f !== 'unico' && !!h.principal,
+        };
+        datos.extra = !datos.principal;
+        P.cambiar(
+            (s) => {
+                if (datos.principal) for (const x of s.ingresos) if (x.id !== h.id && x.principal) Object.assign(x, { principal: false, extra: true });
+                if (h.editar) Object.assign(M.ingreso(s, h.id), datos);
+                else {
+                    const emoji = /aguinaldo|quincena 25/.test(n) ? '🎁' : /remesa/.test(n) ? '🌎' : /cuchubal/.test(n) ? '🤝' : /comision|bono/.test(n) ? '📈' : '💼';
+                    s.ingresos.push({ id: 'i' + s.seq++, emoji, categoria: /remesa/.test(n) ? 'remesa' : 'otro', aprox: true, desde: s.hoy, llegadas: {}, ...datos });
+                }
+            },
+            { aviso: h.editar ? 'Cambios guardados' : 'Ingreso esperado guardado', claves: [h.editar ? 'guardado:ingresoEditar' : 'guardado:ingresoEsperado'] },
+        );
+    };
+    P.acciones.ingresoEliminar = () => {
+        const h = P.ui.hoja;
+        const ing = M.ingreso(P.st, h.id);
+        P.ui.hoja = null;
+        P.cambiar((s) => {
+            Object.assign(M.ingreso(s, h.id), { activo: false, principal: false, extra: true });
+            s.ingresos = s.ingresos.filter((x) => x.id !== h.id || Object.keys(x.llegadas).length);
+        }, { aviso: `Ya no esperas «${ing.nombre}»`, claves: ['guardado:ingresoEliminar'] });
+        if (P.ui.stack.at(-1)?.tipo === 'ingreso') P.atras();
+    };
+
+    // ================================================================== LUGARES Y MEDIOS (crear, editar, eliminar)
+    const TIPOS_LUGAR = [{ v: 'efectivo', t: 'Efectivo', e: '💵' }, { v: 'banco', t: 'Banco o cooperativa', e: '🏦' }, { v: 'billetera', t: 'Billetera en el celular', e: '📱' }];
+    H.lugar = {
+        iniciar(h) {
+            const l = h.id ? M.lugar(P.st, h.id) : null;
+            Object.assign(h, l ? { editar: true, clase: l.tipo, nombre: l.nombre } : { clase: 'banco', nombre: '', monto: '', debito: true });
+            h.confirmarEliminar = false;
+        },
+        html(h) {
+            const st = P.st;
+            const l = h.editar ? M.lugar(st, h.id) : null;
+            return {
+                titulo: h.editar ? `Editar ${esc(l.nombre)}` : 'Nuevo lugar',
+                cuerpo: `${h.editar ? `<p class="txt">${esc(TIPOS_LUGAR.find((x) => x.v === l.tipo)?.t || '')} · tienes ${dinero(M.saldoLugar(st, l.id))}. Para cambiar el saldo, usa «Cuadrar».</p>` : opciones(h, { campo: 'clase', label: '¿Qué es?', lista: TIPOS_LUGAR, valor: h.clase })}
+                    ${campoTexto(h, { campo: 'nombre', label: 'Nombre', valor: h.nombre, placeholder: h.clase === 'banco' ? 'Ej. Banco Cuscatlán' : h.clase === 'billetera' ? 'Ej. Billetera del celular' : 'Ej. Alcancía', errorTexto: 'Ponle un nombre' })}
+                    ${h.editar ? '' : campoMonto(h, { label: '¿Cuánto tienes ahí hoy?', valor: h.monto, ayuda: 'Más o menos. Es su primer cuadre.', errorTexto: 'Escribe cuánto tienes, aunque sea $0' })}
+                    ${!h.editar && h.clase === 'banco' ? `<div class="chips"><button type="button" class="chip" aria-pressed="${h.debito}" data-a="valor" data-campo="debito" data-v="${!h.debito}" data-fk="lugar-debito">${h.debito ? icon('check', 'ico-xs') : ''}Tengo tarjeta de débito de este banco</button></div>` : ''}
+                    ${h.editar ? (st.lugares.length < 2 ? '<p class="fila-s">Es tu único lugar: no se puede eliminar.</p>' : h.confirmarEliminar ? confirmarHtml(`¿Eliminar ${esc(l.nombre)}?`, `Sus ${dinero(M.saldoLugar(st, l.id))} dejan de contar en «Tienes». Lo que anotaste se queda en tu historial.`, 'lugarEliminar', 'lugar-eliminar') : `<button type="button" class="link link--peligro" data-a="valor" data-campo="confirmarEliminar" data-v="si" data-fk="lugar-eliminar">${icon('trash-2', 'ico-s')}Eliminar lugar</button>`) : ''}`,
+                pie: pie2('lugarOk', h.editar ? 'Guardar cambios' : 'Guardar', { fk: 'lugar-ok' }),
+            };
+        },
+        alValor(h, campo, v) {
+            if (campo === 'debito') h.debito = v === 'true';
+            else if (campo === 'confirmarEliminar') h.confirmarEliminar = v === 'si';
+            else h[campo] = v;
+        },
+        alCampo(h, campo, el) {
+            h[campo] = el.value;
+        },
+    };
+    P.acciones.lugarOk = () => {
+        const h = P.ui.hoja;
+        const nombre = (h.nombre || '').trim();
+        const monto = M.leerMonto(h.monto);
+        if (!validar(h, [...(nombre ? [] : ['nombre']), ...(h.editar || monto !== null ? [] : ['monto'])])) return;
+        P.ui.hoja = null;
+        if (h.editar) {
+            P.cambiar((s) => {
+                M.lugar(s, h.id).nombre = nombre;
+            }, { aviso: 'Cambios guardados', claves: ['guardado:lugarEditar'] });
+            return;
+        }
+        P.cambiar(
+            (s) => {
+                const id = 'l' + s.seq++;
+                s.lugares.push({ id, tipo: h.clase, nombre, emoji: TIPOS_LUGAR.find((x) => x.v === h.clase).e });
+                const r = P.registrar(s, { tipo: 'cuadre', fecha: s.hoy, lugar: id, monto, esperado: monto, primero: true });
+                M.lugar(s, id).cuadre = { fecha: s.hoy, seq: r.seq, monto };
+                if (h.clase === 'banco' && h.debito) s.medios.push({ id: 'm' + s.seq++, nombre: 'Débito ' + nombre.replace(/^banco\s+/i, ''), emoji: '🏦', lugar: id, tarjetaDebito: true });
+                if (h.clase === 'billetera') s.medios.push({ id: 'm' + s.seq++, nombre, emoji: '📱', lugar: id });
+            },
+            { aviso: `${nombre}: guardado`, claves: ['guardado:lugar'] },
+        );
+    };
+    P.acciones.lugarEliminar = () => {
+        const h = P.ui.hoja;
+        const l = M.lugar(P.st, h.id);
+        P.ui.hoja = null;
+        P.cambiar((s) => {
+            s.lugares = s.lugares.filter((x) => x.id !== h.id);
+            for (const m of s.medios) if (m.lugar === h.id) m.oculto = true;
+        }, { aviso: `Eliminaste ${l.nombre}`, claves: ['guardado:lugarEliminar'] });
+        if (P.ui.stack.at(-1)?.tipo === 'lugar') P.atras();
+    };
+    const TIPOS_MEDIO = [{ v: 'debito', t: 'Tarjeta de débito', e: '🏦' }, { v: 'transferencia', t: 'Transferencia', e: '🔁' }, { v: 'billetera', t: 'App o billetera', e: '📱' }, { v: 'credito', t: 'Tarjeta de crédito', e: '💳' }];
+    H.medio = {
+        iniciar(h) {
+            const st = P.st;
+            const m = h.id ? M.medio(st, h.id) : null;
+            Object.assign(h, m ? { editar: true, nombre: m.nombre, lugar: m.lugar || null, clase: m.tarjeta ? 'credito' : m.tarjetaDebito ? 'debito' : 'transferencia' } : { clase: 'debito', nombre: '', lugar: (st.lugares.find((l) => l.tipo === 'banco') || st.lugares[0]).id });
+            h.confirmarEliminar = false;
+        },
+        html(h) {
+            const st = P.st;
+            const m = h.editar ? M.medio(st, h.id) : null;
+            const credito = h.clase === 'credito';
+            return {
+                titulo: h.editar ? `Editar ${esc(m.nombre)}` : 'Nuevo medio de pago',
+                cuerpo: `${h.editar ? '' : opciones(h, { campo: 'clase', label: '¿Qué es?', lista: TIPOS_MEDIO, valor: h.clase })}
+                    ${credito && !h.editar ? '<p class="txt">Las tarjetas de crédito se agregan con su corte y su día de pago.</p>' : `${campoTexto(h, { campo: 'nombre', label: 'Nombre', valor: h.nombre, placeholder: 'Ej. Débito Cuscatlán', errorTexto: 'Ponle un nombre' })}
+                    ${m && m.tarjeta ? '<p class="fila-s">Es una tarjeta de crédito: su corte y pago se editan en su ficha.</p>' : opciones(h, { campo: 'lugar', label: '¿De dónde sale el dinero?', lista: lugares(st), valor: h.lugar, errorTexto: 'Elige de dónde sale' })}`}
+                    ${h.editar && !(m.id === 'efectivo') ? (h.confirmarEliminar ? confirmarHtml(`¿Eliminar ${esc(m.nombre)}?`, 'Ya no aparece para elegir. Lo que pagaste con él se queda en tu historial.', 'medioEliminar', 'medio-eliminar') : `<button type="button" class="link link--peligro" data-a="valor" data-campo="confirmarEliminar" data-v="si" data-fk="medio-eliminar">${icon('trash-2', 'ico-s')}Eliminar medio</button>`) : ''}`,
+                pie: credito && !h.editar ? pie2('medioCredito', 'Seguir', { fk: 'medio-ok' }) : pie2('medioOk', h.editar ? 'Guardar cambios' : 'Guardar', { fk: 'medio-ok' }),
+            };
+        },
+        alValor(h, campo, v) {
+            if (campo === 'confirmarEliminar') h.confirmarEliminar = v === 'si';
+            else h[campo] = v;
+        },
+        alCampo(h, campo, el) {
+            h[campo] = el.value;
+        },
+    };
+    P.acciones.medioCredito = () => {
+        P.ui.hoja = null;
+        P.abrirHoja('nuevaDeuda', { tipoInicial: 'tarjeta' });
+    };
+    P.acciones.medioOk = () => {
+        const h = P.ui.hoja;
+        const nombre = (h.nombre || '').trim();
+        const m = h.editar ? M.medio(P.st, h.id) : null;
+        if (!validar(h, [...(nombre ? [] : ['nombre']), ...(m && m.tarjeta ? [] : h.lugar ? [] : ['lugar'])])) return;
         P.ui.hoja = null;
         P.cambiar(
             (s) => {
-                const n = M.normalizar(h.nombre);
-                const emoji = /aguinaldo|quincena 25/.test(n) ? '🎁' : /remesa/.test(n) ? '🌎' : /cuchubal/.test(n) ? '🤝' : /comision|bono/.test(n) ? '📈' : '💼';
-                s.ingresos.push({ id: 'i' + s.seq++, nombre: h.nombre.trim(), emoji, categoria: 'otro', monto, aprox: true, frecuencia: h.frecuencia, dia: h.dia, diaSemana: 5, fecha: h.frecuencia === 'unico' ? M.proximoDia(s.hoy, h.dia) : undefined, lugar: h.lugar, principal: false, extra: true, desde: s.hoy, llegadas: {} });
+                if (h.editar) {
+                    const x = M.medio(s, h.id);
+                    x.nombre = nombre;
+                    if (!x.tarjeta) x.lugar = h.lugar;
+                    if (x.tarjeta) M.tarjeta(s, x.tarjeta).nombre = nombre;
+                } else s.medios.push({ id: 'm' + s.seq++, nombre, emoji: TIPOS_MEDIO.find((x) => x.v === h.clase).e, lugar: h.lugar, ...(h.clase === 'debito' ? { tarjetaDebito: true } : {}) });
             },
-            { aviso: 'Ingreso esperado guardado', claves: ['guardado:ingresoEsperado'] },
+            { aviso: h.editar ? 'Cambios guardados' : `${nombre}: guardado`, claves: [h.editar ? 'guardado:medioEditar' : 'guardado:medio'] },
         );
+    };
+    P.acciones.medioEliminar = () => {
+        const h = P.ui.hoja;
+        const m = M.medio(P.st, h.id);
+        P.ui.hoja = null;
+        P.cambiar((s) => {
+            M.medio(s, h.id).oculto = true;
+        }, { aviso: `Eliminaste ${m.nombre}`, claves: ['guardado:medioEliminar'] });
     };
 
     // ================================================================== NUEVO PAGO Y EDITAR PAGO
@@ -1713,13 +1927,14 @@
                     ${r.tipo === 'ingreso' ? opciones(h, { campo: 'lugar', label: '¿Dónde cayó?', lista: lugares(st), valor: h.lugar }) : ''}
                     ${opciones(h, { campo: 'fecha', label: 'Fecha', lista: fechasCortas(st, h.orig.fecha), valor: h.fecha })}
                     ${bloqueApartado}
-                    ${r.pago ? '' : `<button type="button" class="link link--peligro" data-a="eliminarRegistro" data-fk="eliminar">${icon('trash-2', 'ico-s')}Eliminar</button>`}`,
+                    ${r.pago ? '' : h.confirmarEliminar ? confirmarHtml('¿Eliminar este movimiento?', 'Sale de tu historial y tus números se recalculan. Podrás deshacerlo.', 'eliminarRegistro', 'eliminar') : `<button type="button" class="link link--peligro" data-a="valor" data-campo="confirmarEliminar" data-v="si" data-fk="eliminar">${icon('trash-2', 'ico-s')}Eliminar</button>`}`,
                 nota: cambios ? '' : 'Sin cambios por guardar',
                 pie: `<button type="button" class="btn btn--48" data-a="cerrarHoja" data-fk="hoja-cancelar">Cancelar</button><button type="button" class="btn btn--48 btn--prim" data-a="editarRegistroOk" data-fk="hoja-ok" ${cambios ? '' : 'disabled'}>Guardar cambios</button>`,
             };
         },
         alValor(h, campo, v) {
-            if (campo === 'verApartados') h.verApartados = v === 'true';
+            if (campo === 'confirmarEliminar') h.confirmarEliminar = v === 'si';
+            else if (campo === 'verApartados') h.verApartados = v === 'true';
             else if (campo === 'apartado') h.apartado = v || null;
             else h[campo] = v;
         },
@@ -2117,7 +2332,9 @@
     };
 
     // ================================================================== PANTALLA: PRIMER DÍA
-    const OB_INGRESOS = [['quincena', '💼', 'Cada quincena', 'El 15 y el 30'], ['mes', '🗓️', 'Cada mes', 'Un día fijo'], ['semana', '🧰', 'Cada semana', 'Obra, maquila, reparto…'], ['varia', '🏪', 'Varía', 'Negocio, ventas o trabajos por día'], ['remesa', '🌎', 'Recibo remesa', 'De familia afuera']];
+    const OB_INGRESOS = [['quincena', '💼', 'Cada quincena', 'Dos veces al mes'], ['mes', '🗓️', 'Cada mes', 'Un día fijo'], ['semana', '🧰', 'Cada semana', 'Obra, maquila, reparto…'], ['catorcena', '📅', 'Cada 14 días', 'Catorcena'], ['varia', '🏪', 'Varía', 'Negocio, ventas o trabajos por día'], ['remesa', '🌎', 'Recibo remesa', 'De familia afuera']];
+    const OB_REGULARES = { quincena: 'La quincena', mes: 'El pago del mes', semana: 'El pago de la semana', catorcena: 'La catorcena' };
+    const lugaresOb = [{ v: 'banco', t: 'En el banco', e: '🏦' }, { v: 'efectivo', t: 'En efectivo', e: '💵' }];
     S.onboarding = function () {
         const ob = P.ui.ob;
         const d = ob.datos;
@@ -2142,15 +2359,25 @@
             const det = (id) => {
                 const x = sel[id];
                 if (!x) return '';
-                if (id === 'quincena') return `<div class="ob-det">${monto('q-monto', '¿Cuánto te cae más o menos cada quincena?', x.monto)}${opcionesOb('q-lugar', '¿Dónde te cae?', [{ v: 'banco', t: 'En el banco', e: '🏦' }, { v: 'efectivo', t: 'En efectivo', e: '💵' }], x.lugar)}</div>`;
-                if (id === 'mes') return `<div class="ob-det">${monto('m-monto', '¿Cuánto más o menos?', x.monto)}${obDias('m-dia', x.dia)}${opcionesOb('m-lugar', '¿Dónde te cae?', [{ v: 'banco', t: 'En el banco', e: '🏦' }, { v: 'efectivo', t: 'En efectivo', e: '💵' }], x.lugar)}</div>`;
-                if (id === 'semana') return `<div class="ob-det">${monto('s-monto', '¿Cuánto más o menos cada semana?', x.monto)}${opcionesOb('s-dia', '¿Qué día te pagan?', [1, 2, 3, 4, 5, 6].map((n) => ({ v: n, t: M.capital(M.DIAS[n]) })), x.dia)}</div>`;
+                if (id === 'quincena') return `<div class="ob-det">${monto('q-monto', '¿Cuánto te cae más o menos cada quincena?', x.monto)}${opcionesOb('q-dias', '¿Qué días?', [{ v: '15-30', t: 'El 15 y el 30' }, { v: '15-31', t: 'El 15 y el último día' }, { v: 'otros', t: 'Otros días' }], x.dias)}${x.dias === 'otros' ? `<div class="ob-2">${obDiaCorto('q-d1', 'Primer pago, el día', x.d1 || '')}${obDiaCorto('q-d2', 'Segundo pago, el día', x.d2 || '')}</div>` : ''}${opcionesOb('q-lugar', '¿Dónde te cae?', lugaresOb, x.lugar)}</div>`;
+                if (id === 'mes') return `<div class="ob-det">${monto('m-monto', '¿Cuánto más o menos?', x.monto)}${obDias('m-dia', x.dia)}<p class="fila-s">Si es el 29, 30 o 31, en los meses más cortos cae el último día.</p>${opcionesOb('m-lugar', '¿Dónde te cae?', lugaresOb, x.lugar)}</div>`;
+                if (id === 'semana') return `<div class="ob-det">${monto('s-monto', '¿Cuánto más o menos cada semana?', x.monto)}${opcionesOb('s-dia', '¿Qué día te pagan?', [1, 2, 3, 4, 5, 6].map((n) => ({ v: n, t: M.capital(M.DIAS[n]) })), x.dia)}${opcionesOb('s-lugar', '¿Dónde te cae?', lugaresOb, x.lugar || 'efectivo')}</div>`;
+                if (id === 'catorcena') return `<div class="ob-det">${monto('c-monto', '¿Cuánto más o menos cada 14 días?', x.monto)}<div class="campo-g"><label class="campo-l" for="ob-c-proximo">¿Cuándo es tu próximo pago?</label><div class="campo"><input id="ob-c-proximo" data-campo="c-proximo" type="date" value="${esc(x.proximo || '')}" min="${st.hoy}"></div></div>${opcionesOb('c-lugar', '¿Dónde te cae?', lugaresOb, x.lugar)}</div>`;
                 if (id === 'varia') return `<div class="ob-det">${opcionesOb('v-horizonte', '¿Hasta cuándo quieres ver tu libre?', [{ v: 'finDeMes', t: 'Hasta fin de mes' }, { v: 'quince', t: 'Los próximos 15 días' }], x.horizonte)}</div>`;
-                if (id === 'remesa') return `<div class="ob-det">${monto('r-monto', '¿Cuánto más o menos?', x.monto)}${opcionesOb('r-cada', '¿Cada cuánto?', [{ v: 'mes', t: 'Cada mes' }, { v: 'llega', t: 'Cuando llega' }], x.cada)}</div>`;
+                if (id === 'remesa') return `<div class="ob-det">${monto('r-monto', '¿Cuánto más o menos?', x.monto)}${opcionesOb('r-cada', '¿Cada cuánto?', [{ v: 'mes', t: 'Cada mes' }, { v: 'llega', t: 'Cuando llega' }], x.cada)}${x.cada === 'mes' ? obDias('r-dia', x.dia) : '<p class="fila-s">Cuando llegue, anótala y te ayudo a repartirla.</p>'}</div>`;
                 return '';
             };
+            // V2-16: con dos ingresos fijos, el número se calcula hasta el principal.
+            const regulares = Object.keys(OB_REGULARES).filter((k) => sel[k]);
+            const principal = regulares.includes(d.principal) ? d.principal : regulares[0];
+            const extras = d.extras || {};
+            const extraHtml = (id, nombre, cuando) => `<div class="ob-op-g"><button type="button" class="opcion-g" aria-pressed="${!!extras[id]}" data-a="obExtra" data-v="${id}" data-fk="ob-x-${id}">${caja('🎁')}<span><span class="opcion-g-t">${nombre}</span><span class="fila-s">${cuando} · no suma a tu libre hasta que llegue</span></span>${extras[id] ? icon('circle-check', 'ico-ok') : ''}</button>${extras[id] ? `<div class="ob-det">${monto('x-' + id, '¿Cuánto más o menos?', extras[id].monto)}</div>` : ''}</div>`;
+            const masInfo = `${regulares.length > 1 ? `<div class="card ob-card">${opcionesOb('principal', '¿Con cuál cuentas para tu número? (el que más pesa)', regulares.map((k) => ({ v: k, t: OB_REGULARES[k] })), principal)}<p class="fila-s">Tu libre se calcula hasta que llegue ese; el otro suma cuando llega.</p></div>` : ''}
+                <p class="campo-l campo-l--sec">¿También recibes…? <span class="opcional">(opcional)</span></p>
+                <div class="ob-ops">${extraHtml('aguinaldo', 'Aguinaldo', 'En diciembre')}${extraHtml('q25', 'Quincena 25', 'En enero')}</div>`;
             return `<div class="pg pg--flujo ob">${cab(1, '¿Cómo te pagan?', 'Elige todas las que te pasen.')}
                 <div class="ob-ops">${OB_INGRESOS.map(([id, e, t, s]) => `<div class="ob-op-g"><button type="button" class="opcion-g" aria-pressed="${!!sel[id]}" data-a="obIngreso" data-v="${id}" data-fk="ob-i-${id}">${caja(e)}<span><span class="opcion-g-t">${t}</span><span class="fila-s">${s}</span></span>${sel[id] ? icon('circle-check', 'ico-ok') : ''}</button>${det(id)}</div>`).join('')}</div>
+                ${masInfo}
                 ${pie(`<button type="button" class="btn btn--48" data-a="obSaltar" data-fk="ob-saltar">Saltar</button>`, `<button type="button" class="btn btn--prim btn--48" data-a="obSiguiente" data-fk="ob-sig">Siguiente</button>`)}
             </div>`;
         }
@@ -2211,10 +2438,10 @@
         if (c === 'nombre') d.nombre = v;
         else if (c === 'efectivo') d.efectivo = v;
         else if (c === 'banco-monto') d.bancoMonto = v;
-        else if (c === 'q-monto') d.ingresos.quincena.monto = v;
-        else if (c === 'm-monto') d.ingresos.mes.monto = v;
-        else if (c === 's-monto') d.ingresos.semana.monto = v;
-        else if (c === 'r-monto') d.ingresos.remesa.monto = v;
+        else if (/^[qmsrc]-/.test(c)) {
+            const g = { q: 'quincena', m: 'mes', s: 'semana', r: 'remesa', c: 'catorcena' }[c[0]];
+            if (d.ingresos[g]) d.ingresos[g][c.slice(2)] = /^d[12]$/.test(c.slice(2)) ? v.replace(/\D/g, '') : v;
+        } else if (c.startsWith('x-') && d.extras && d.extras[c.slice(2)]) d.extras[c.slice(2)].monto = v;
         else if (c === 'p-monto') ob.editando.monto = v;
         else if (c === 'credito-corte') d.credito.corte = v.replace(/\D/g, '');
         else if (c === 'credito-pago') d.credito.pago = v.replace(/\D/g, '');
@@ -2230,8 +2457,9 @@
         const x = ob.datos;
         const v = d.v;
         const [grupo, campo] = d.campo.split('-');
-        const mapa = { q: 'quincena', m: 'mes', s: 'semana', v: 'varia', r: 'remesa' };
+        const mapa = { q: 'quincena', m: 'mes', s: 'semana', v: 'varia', r: 'remesa', c: 'catorcena' };
         if (d.campo === 'banco') x.bancoNombre = v;
+        else if (d.campo === 'principal') x.principal = v;
         else if (d.campo === 'credito-banco') x.credito.banco = v;
         else if (grupo === 'p') ob.editando[campo === 'dsem' ? 'diaSemana' : 'dia'] = Number(v);
         else if (mapa[grupo]) x.ingresos[mapa[grupo]][campo] = /^\d+$/.test(v) ? Number(v) : v;
@@ -2240,9 +2468,16 @@
     P.acciones.obIngreso = (d) => {
         const x = P.ui.ob.datos.ingresos;
         if (x[d.v]) delete x[d.v];
-        else x[d.v] = { quincena: { monto: '', lugar: 'banco' }, mes: { monto: '', dia: 30, lugar: 'banco' }, semana: { monto: '', dia: 5 }, varia: { horizonte: 'finDeMes' }, remesa: { monto: '', cada: 'mes' } }[d.v];
+        else x[d.v] = { quincena: { monto: '', lugar: 'banco', dias: '15-30' }, mes: { monto: '', dia: 30, lugar: 'banco' }, semana: { monto: '', dia: 5, lugar: 'efectivo' }, catorcena: { monto: '', proximo: '', lugar: 'banco' }, varia: { horizonte: 'finDeMes' }, remesa: { monto: '', cada: 'mes', dia: 10 } }[d.v];
         P.render();
         P.emitir('onboarding:ingreso:' + d.v);
+    };
+    P.acciones.obExtra = (d) => {
+        const x = P.ui.ob.datos;
+        x.extras = x.extras || {};
+        if (x.extras[d.v]) delete x.extras[d.v];
+        else x.extras[d.v] = { monto: '' };
+        P.render();
     };
     P.acciones.obMedio = (d) => {
         const m = P.ui.ob.datos.medios;
@@ -2355,11 +2590,33 @@
             const hoyO = M.ocurrenciasIngreso(st, i, st.hoy, st.hoy)[0];
             if (hoyO) i.llegadas[hoyO.fecha] = { monto: i.monto, previa: true };
         };
-        if (ing.quincena) st.ingresos.push({ id: 'quincena', nombre: 'Quincena', emoji: '💼', categoria: 'salario', monto: M.leerMonto(ing.quincena.monto) || 0, aprox: true, frecuencia: 'quincenal', lugar: lugarDe(ing.quincena.lugar), principal: true, desde: M.sumarDias(desde, -40), llegadas: {} });
-        if (ing.mes) st.ingresos.push({ id: 'mensual', nombre: 'Salario', emoji: '💼', categoria: 'salario', monto: M.leerMonto(ing.mes.monto) || 0, aprox: true, frecuencia: 'mensual', dia: ing.mes.dia || 30, lugar: lugarDe(ing.mes.lugar), principal: !ing.quincena, desde: M.sumarDias(desde, -40), llegadas: {} });
-        if (ing.semana) st.ingresos.push({ id: 'semanal', nombre: 'Pago de la semana', emoji: '💼', categoria: 'salario', monto: M.leerMonto(ing.semana.monto) || 0, aprox: true, frecuencia: 'semanal', diaSemana: ing.semana.dia || 5, lugar: 'efectivo', principal: !ing.quincena && !ing.mes, desde: M.sumarDias(desde, -40), llegadas: {} });
-        if (ing.remesa && ing.remesa.cada === 'mes') st.ingresos.push({ id: 'remesa', nombre: 'Remesa', emoji: '🌎', categoria: 'remesa', monto: M.leerMonto(ing.remesa.monto) || 0, aprox: true, frecuencia: 'mensual', dia: 10, lugar: 'efectivo', principal: false, extra: true, desde: M.sumarDias(desde, -40), llegadas: {} });
-        for (const i of st.ingresos) marcarPasadas(i);
+        const atras = M.sumarDias(desde, -40);
+        const diaValido = (n, def) => Math.min(31, Math.max(1, Number(n) || def));
+        if (ing.quincena) {
+            const q = ing.quincena;
+            const dias = q.dias === '15-31' ? [15, 31] : q.dias === 'otros' ? [diaValido(q.d1, 15), diaValido(q.d2, 30)].sort((a, b) => a - b) : [15, 30];
+            st.ingresos.push({ id: 'quincena', nombre: 'Quincena', emoji: '💼', categoria: 'salario', monto: M.leerMonto(q.monto) || 0, aprox: true, frecuencia: 'quincenal', dias, lugar: lugarDe(q.lugar), desde: atras, llegadas: {} });
+        }
+        if (ing.mes) st.ingresos.push({ id: 'mensual', nombre: 'Salario', emoji: '💼', categoria: 'salario', monto: M.leerMonto(ing.mes.monto) || 0, aprox: true, frecuencia: 'mensual', dia: ing.mes.dia || 30, lugar: lugarDe(ing.mes.lugar), desde: atras, llegadas: {} });
+        if (ing.semana) st.ingresos.push({ id: 'semanal', nombre: 'Pago de la semana', emoji: '💼', categoria: 'salario', monto: M.leerMonto(ing.semana.monto) || 0, aprox: true, frecuencia: 'semanal', diaSemana: ing.semana.dia || 5, lugar: lugarDe(ing.semana.lugar || 'efectivo'), desde: atras, llegadas: {} });
+        if (ing.catorcena) st.ingresos.push({ id: 'catorcena', nombre: 'Catorcena', emoji: '💼', categoria: 'salario', monto: M.leerMonto(ing.catorcena.monto) || 0, aprox: true, frecuencia: 'catorcenal', fecha: /^\d{4}-\d{2}-\d{2}$/.test(ing.catorcena.proximo || '') ? ing.catorcena.proximo : st.hoy, lugar: lugarDe(ing.catorcena.lugar), desde: atras, llegadas: {} });
+        // El principal: el que eligió entre sus ingresos fijos, o el primero.
+        const ids = { quincena: 'quincena', mes: 'mensual', semana: 'semanal', catorcena: 'catorcena' };
+        const regulares = Object.keys(ids).filter((k) => ing[k]);
+        const elegido = ids[regulares.includes(d.principal) ? d.principal : regulares[0]];
+        for (const i of st.ingresos) i.principal = i.id === elegido;
+        for (const i of st.ingresos) if (!i.principal) i.extra = true;
+        if (ing.remesa && ing.remesa.cada === 'mes') st.ingresos.push({ id: 'remesa', nombre: 'Remesa', emoji: '🌎', categoria: 'remesa', monto: M.leerMonto(ing.remesa.monto) || 0, aprox: true, frecuencia: 'mensual', dia: ing.remesa.dia || 10, lugar: 'efectivo', principal: false, extra: true, desde: atras, llegadas: {} });
+        // Extras de una vez al año: aguinaldo (12 de diciembre) y Quincena 25 (25 de enero), editables después.
+        const proximaFecha = (mes, dia) => {
+            const [y] = M.partes(st.hoy);
+            const f = M.fechaDe(y, mes, dia);
+            return f >= st.hoy ? f : M.fechaDe(y + 1, mes, dia);
+        };
+        const ext = d.extras || {};
+        if (ext.aguinaldo) st.ingresos.push({ id: 'aguinaldo', nombre: 'Aguinaldo', emoji: '🎁', categoria: 'aguinaldo', monto: M.leerMonto(ext.aguinaldo.monto) || 0, aprox: true, frecuencia: 'unico', fecha: proximaFecha(12, 12), lugar: lugarDe('banco'), principal: false, extra: true, desde: st.hoy, llegadas: {} });
+        if (ext.q25) st.ingresos.push({ id: 'q25', nombre: 'Quincena 25', emoji: '🎁', categoria: 'aguinaldo', monto: M.leerMonto(ext.q25.monto) || 0, aprox: true, frecuencia: 'unico', fecha: proximaFecha(1, 25), lugar: lugarDe('banco'), principal: false, extra: true, desde: st.hoy, llegadas: {} });
+        for (const i of st.ingresos) if (i.frecuencia !== 'unico') marcarPasadas(i);
         if (ing.varia && !st.ingresos.some((i) => i.principal)) st.horizonteVariable = ing.varia.horizonte;
         for (const p of d.pagos) {
             const medioId = p.categoria === 'servicios' && bancoId ? 'debito' : 'efectivo';
@@ -2380,6 +2637,7 @@
         for (const t of k.tarjetas) if (t.pendiente) pend.push(`Tu ${esc(t.t.nombre)}: la contamos cuando anotes tu estado de cuenta.`);
         if (!M.principal(st)) pend.push(st.horizonteVariable === 'quince' ? 'Como tu ingreso varía, vemos los próximos 15 días.' : 'Como tu ingreso varía, vemos hasta fin de mes.');
         if (!st.pagos.length) pend.push('Tus pagos fijos: agrégalos en Pagos cuando quieras.');
+        else if (k.guardando > 0) for (const r of k.reservas.filter((x) => x.guardado > 0)) pend.push(`${esc(r.pago.nombre)} (${M.fechaCorta(r.fecha)}): se junta de a poco con cada pago. Ya van ${r.recibidos} de ${r.cuantos} pagos desde el último ${esc(r.pago.nombre.toLowerCase())}, así que ya separamos ${dinero(r.guardado)}; lo demás sale de tus próximos pagos.`);
         else if (!k.items.length && k.hz.ingreso) pend.push(`Tus pagos fijos vencen después de tu ${P.nombreIngreso(k.hz)} del ${M.partes(k.hz.fecha)[2]}: los cubre esa ${k.hz.ingreso.frecuencia === 'semanal' ? 'semana' : P.nombreIngreso(k.hz)}.`);
         return `<div class="pg pg--flujo">
             <header class="pg-head"><p class="paso">¡Listo!</p><h1 class="h1" tabindex="-1">Tu primer número</h1><p class="sub">Esto es lo que te queda libre, ya sin tus pagos.</p></header>
