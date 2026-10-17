@@ -30,9 +30,9 @@
         }
     }
     const guardado = leer(CLAVE_GUIA, null);
-    if (guardado && guardado.version === window.VERSION_PROTOTIPO) Object.assign(est, { caso: guardado.caso, persona: guardado.persona || 'ana', tema: guardado.tema || 'serena-claro', hechos: guardado.hechos || {}, completos: guardado.completos || {} });
+    if (guardado && guardado.formato === 2) Object.assign(est, { caso: guardado.caso, persona: guardado.persona || 'ana', tema: guardado.tema || 'serena-claro', hechos: guardado.hechos || {}, completos: guardado.completos || {} });
     if (est.caso && !CASOS.some((c) => c.id === est.caso)) est.caso = null;
-    const guardarGuia = () => escribir(CLAVE_GUIA, { version: window.VERSION_PROTOTIPO, caso: est.caso, persona: est.persona, tema: est.tema, hechos: est.hechos, completos: est.completos });
+    const guardarGuia = () => escribir(CLAVE_GUIA, { formato: 2, caso: est.caso, persona: est.persona, tema: est.tema, hechos: est.hechos, completos: est.completos });
     const leerNotas = () => {
         const d = leer(CLAVE_NOTAS, null) || {};
         d.notas = d.notas || {};
@@ -169,6 +169,10 @@
     function pintarObservar() {
         $('#g-obs').innerHTML = CASOS.map((c) => `<article class="g-obs-c"><p class="g-panel-cod">${c.id} · ${PERSONAS[c.persona]}</p><h3 class="g-h3">${esc(c.titulo)}</h3><p>${esc(c.observar)}</p><button type="button" class="g-btn g-btn--sm" data-caso="${c.id}" data-subir>Abrir este caso</button></article>`).join('');
     }
+    function pintarSets() {
+        const sets = window.SETS || {};
+        $('#g-sets').innerHTML = Object.entries(sets).map(([id, tareas]) => `<article class="g-obs-c"><p class="g-panel-cod">Set ${id} · ${tareas.length} tareas · ~15 min</p><ol class="g-set">${tareas.map((t) => `<li><strong>${esc(t.titulo)}</strong>${t.caso ? ` <span class="g-obs-t">(${t.caso})</span>` : ''}<br>«${esc(t.tarea)}»</li>`).join('')}</ol></article>`).join('');
+    }
     function pintarNotas() {
         const d = leerNotas();
         const filas = [...CASOS.map((c) => [c.id, `${c.id} · ${c.titulo}`]), ['general', 'Notas generales']];
@@ -278,5 +282,6 @@
     pintarCasos();
     pintarPanel();
     pintarObservar();
+    pintarSets();
     pintarNotas();
 })();

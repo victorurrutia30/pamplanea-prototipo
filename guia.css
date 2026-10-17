@@ -454,6 +454,12 @@ button {
 .g-obs-c .g-h3 {
     margin: 0;
 }
+.g-set {
+    display: grid;
+    gap: 8px;
+    margin: 4px 0 0;
+    padding-left: 20px;
+}
 .g-notas {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
