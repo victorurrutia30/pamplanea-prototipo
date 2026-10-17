@@ -1,19 +1,64 @@
-# Producto v2 · prototipo de teléfono — versión 2.1
+# Producto v2 · prototipo de teléfono — versión 2.2
 
-**Qué es:** un prototipo clicable de la app completa propuesta en Producto v2, para probarlo con 5–8 personas **en su propio teléfono** (algunas sin experiencia en apps de finanzas) y recoger datos comparables. Es una maqueta de flujo y comprensión, no producción. Datos 100 % inventados.
+**Qué es:** un prototipo clicable de la app completa propuesta en Producto v2. Desde la v2.2 tiene **dos modos**: **entrenamiento** (datos inventados de Ana, recorrido guiado, 13 ejercicios y la prueba A/B para testers) y **uso normal** (la familia cercana de Victor la usa 1–2 semanas con su dinero real, guardado solo en su teléfono). Es una maqueta de flujo y comprensión, no producción.
 
 **Dónde:** repo público `victorurrutia30/pamplanea-prototipo`, publicado con GitHub Pages en <https://victorurrutia30.github.io/pamplanea-prototipo/>. La versión 1 queda como historial en `pamplanea-capturas/v2-prototipo/` (no se tocó).
 
 **Cómo se abre:**
 
 - **Computadora:** doble clic en `index.html` (Chrome o Edge) o el enlace de Pages. Muestra la guía con el teléfono enmarcado (390 × 844), los 13 casos y los dos sets de la prueba guiada.
-- **Teléfono:** el mismo enlace. En pantalla angosta (< 768 px) `index.html` abre la app **a pantalla completa**, con la bienvenida para tester y «Casos y ayuda». Se puede **instalar** (PWA) y abre **sin internet** después de la primera visita.
+- **Teléfono:** el mismo enlace. En pantalla angosta (< 768 px) `index.html` abre la app **a pantalla completa**: la primera vez pregunta «Aprender a usarla» o «Usarla con mis datos». Se puede **instalar** (PWA) y abre **sin internet** después de la primera visita.
 
 Sin servidor propio, sin dependencias, sin CDN, sin analítica ni rastreadores. Fuentes, emoji, íconos y los íconos de la app instalable son locales, con sus licencias (`recursos/licencias`).
 
 **Estado:** brief y acuerdos V2-01…V2-22 APROBADOS por Victor (2026-10-16); **V2-23 a V2-30** y **V2-31 (respuestas v2.1)** APROBADOS por Victor (2026-10-16). Nada de esto está documentado todavía en el repo de la app: se documentará después de las pruebas con personas. Este prototipo no cambia nada del repo de la app.
 
-Versión visible en la app y en la guía: **«Prototipo v2.1 · 2026-10-16»**.
+Versión visible en la app y en la guía: **«Prototipo v2.2 · 2026-10-16»**.
+
+---
+
+## Modos v2.2 (pedido por Victor, 2026-10-16)
+
+**Para quién:** familia cercana de Victor, con su dinero real, 1–2 semanas, en su propio teléfono.
+
+**Excepción de privacidad (autorizada):** el doc 06 de la app pide no guardar nada financiero en el navegador. **Este prototipo es una excepción deliberada y autorizada por Victor** para la prueba familiar: el modo uso guarda montos y nombres en `localStorage` del teléfono. Nunca salen de ahí solos: no hay servidor, analítica ni terceros, y no hay nada financiero en la URL. Lo único que sale es lo que la persona decide mandar (una copia `.json` o el texto de «Contarle a Victor», que no lleva montos ni nombres).
+
+### Entrada
+- Primera vez: bienvenida cálida con **«Aprender a usarla»** (recomendado) y **«Usarla con mis datos»**. Ya no se piden perfil ni set al entrar.
+- Se cambia de modo cuando se quiera desde la letra (menú). **Cada modo tiene sus propios datos.** Al abrir siempre se empieza en Hoy (y al volver a la app en un día nuevo).
+- Los enlaces de tester `?set=A` / `?set=B` siguen llevando directo a la prueba guiada (modo entrenamiento).
+- Franja fija: uso «Versión de prueba · tus datos solo están en este teléfono»; entrenamiento «Modo entrenamiento · datos de ejemplo».
+
+### Modo entrenamiento
+- **«Te enseño la app en 3 minutos»:** 13 pasos sobre los datos de Ana (Hoy y su número, «¿De dónde sale?», Pagos y su calendario, Anotar con texto y dictado, Mi dinero: lugares, apartados, tarjetas y deudas, Mes, la letra). Resalta la zona; Siguiente / Atrás / Saltar; teclado (flechas, Esc, foco atrapado), lector de pantalla (diálogo con título y paso) y movimiento reducido. Si la tarjeta no cabe arriba o abajo de lo resaltado, va al pie.
+- Al final: **[Practicar con ejemplos]** **[Empezar con mis datos]** (y «Seguir mirando los ejemplos»).
+- **Practicar:** los 13 casos como ejercicios opcionales, con instrucción simple, «¡Lo lograste!» cuando la app detecta el último paso y «¿Cómo?» con los pasos (y las simulaciones de fecha que el caso necesite). Sin reloj.
+- La prueba A/B y el Modo moderador quedan dentro de «Casos y ayuda» → «Para Victor: prueba guiada (sets A y B)».
+- **«Reiniciar ejemplos»** reinicia solo el entrenamiento.
+
+### Modo uso normal
+- Pantalla previa honesta («Tus datos se guardan solo en este teléfono. Nadie más los ve», «Es una versión de prueba: si algo no cuadra, avísale a Victor», «Instálala en tu pantalla de inicio para no perder tus datos» con los pasos; en iPhone: instalar antes de empezar y la nota de Safari) + **[Empezar]**.
+- **Fecha y zona horaria reales del teléfono.** No hay fecha simulada ni botones «Simular». (Las pruebas automáticas adelantan la fecha con `window.__fechaPrueba`, que la app publicada nunca pone.)
+- Empieza vacío → primer día: cómo te pagan (quincena con días: «15 y 30», «15 y último día» u otros; mes; semana con día; catorcena con próxima fecha; variable con horizonte; remesa con día; si hay dos o más fijos, cuál es el principal; extras aguinaldo y Quincena 25), cuánto tienes y dónde (obligatorio), con qué pagas y pagos fijos.
+- **Crear, editar y eliminar** (con confirmación y «Deshacer»): ingresos esperados («Ya no lo espero»), pagos, tarjetas y préstamos, lugares, medios de pago, apartados y movimientos. Mi dinero → «Lugares y medios de pago» es la pantalla para lugares y medios.
+- Cuadres, Reparte y Pongámonos al día con fechas reales; Mes con meses y año reales; reserva gradual con fechas reales. **Días 29–31:** en meses más cortos el pago cae el último día y la app lo dice («· último día del mes»).
+- Montos en centavos enteros, USD con 2 decimales; se rechazan montos no positivos, de más de $1,000,000.00 o con basura.
+- El intérprete reconoce los nombres propios de la persona (sus lugares, medios y pagos: «gasolina 20 con BAC», «pasé 50 de Agrícola a efectivo»).
+- **Avisos al abrir la app** («Hoy vence la luz», «Mañana: Colegio», «Luz: venció el … ¿Ya lo pagaste?»), con una nota la primera vez: «En la app final te llegará una notificación».
+
+### Datos seguros
+- Claves: `pamplanea-modo` (modo elegido y nota de avisos), `pamplanea-uso:v1` (datos reales; `esquema: 1` con función de migración: una actualización nunca borra) y `pamplanea-entrenamiento` (recorrido y ejercicios hechos). El entrenamiento sigue en `pamplanea-proto-v2:*`. Todo con `try/catch`.
+- **Guardar copia** descarga `pamplanea-copia-AAAA-MM-DD.json` (`{app, tipo: "copia-uso", esquema, version, fecha, datos}`); **Compartir copia** usa el menú del teléfono cuando existe. **Restaurar** valida el archivo y muestra qué trae antes de reemplazar. **Borrar todos mis datos**: doble confirmación (solo modo uso).
+- **Actualizar** (versión nueva del service worker) conserva los datos reales: probado.
+
+### Contarle a Victor
+- Cada 3 días de uso, Hoy muestra «¿Cómo te ha ido?» (1–5 · ¿Qué te confundió? · ¿Qué te gustaría que hiciera?), que se puede dejar para después.
+- Registro local **sin montos ni nombres**: días que abrió, anotaciones, cuadres, Pagado, Reparte, Pongámonos al día, pantallas usadas (por tipo), veces que el intérprete no entendió (sin el texto), si está instalada y si hizo el entrenamiento.
+- Letra → «Contarle a Victor cómo me va»: texto con nombre o apodo, fechas, respuestas y métricas. Lo que la persona escribe se muestra completo; en el texto que se manda, los montos se cambian por «[monto]» y los nombres de sus cuentas, pagos, apartados, ingresos, tarjetas y préstamos (incluso los que ya borró o renombró) por «[nombre]». Compartir + Copiar + texto seleccionable. Una prueba automática revisa que no se cuele ningún monto ni nombre.
+
+### Revisión v2.2
+- Dos rondas: recorrido completo como novata (13 pasos, ejercicio con «¡Lo lograste!»), y tres personas simuladas desde cero con más de dos semanas cada una: **(a) Marta** quincena «15 y último día», efectivo + banco, tarjeta; **(b) Beto** pago semanal, solo efectivo, alquiler mensual; **(c) Rosa** ingreso variable + remesa. Anotar, Pagado, quincena con Reparte y cuadre, cambio de mes, editar y eliminar.
+- Copia → borrar → restaurar; actualización con datos guardados; separación de modos; `file://` y servido en la subruta de Pages; Chrome y Edge; 390 × 844 en Serena claro y Ancla oscuro.
 
 ---
 
@@ -204,8 +249,9 @@ La fecha simulada es el **miércoles 21 de octubre de 2026** (ver §4).
 - **Logros y Cerrados:** usar un apartado con fecha lo cierra; «Sí, ya lo gasté» → Logro; «No lo usé» o liberar todo uno vencido → Cerrado.
 - **Pongámonos al día:** 10 días sin anotar ni cuadrar, o un día de pago pasado sin confirmar; nunca el mismo día de pago.
 - **Prueba guiada:** cada tarea tiene una condición que la app revisa tras cada acción (por ejemplo, «hay un gasto nuevo de $6.00»); los toques se cuentan en la app, no en la barra de la tarea ni en «Casos y ayuda».
-- **Guardado:** `pamplanea-proto-v2:app` (estado, caso, pestaña, tema; con `formato: 2`), `pamplanea-proto-v2:notas` (nombre, notas, prueba), `pamplanea-proto-v2:dispositivo` (personas en este teléfono y set siguiente) y `pamplanea-proto-v2:guia`. La versión visible no invalida lo guardado.
-- **Service worker:** primero la caché (sin importar `?set=…`), luego la red. Solo por http(s).
+- **Guardado (entrenamiento):** `pamplanea-proto-v2:app` (estado, caso, pestaña, tema; con `formato: 2`), `pamplanea-proto-v2:notas` (nombre, notas, prueba), `pamplanea-proto-v2:dispositivo` (personas en este teléfono y set siguiente) y `pamplanea-proto-v2:guia`. La versión visible no invalida lo guardado.
+- **Guardado (uso normal, v2.2):** ver «Modos v2.2 → Datos seguros».
+- **Service worker:** primero la caché (sin importar `?set=…`), luego la red. Solo por http(s). Caché `pamplanea-proto-v2.2-2026-10-16`.
 
 ## 6. PREGUNTAS PARA VICTOR (no las decidí; el prototipo usa lo de §5)
 
@@ -220,11 +266,21 @@ La fecha simulada es el **miércoles 21 de octubre de 2026** (ver §4).
 9. **Cuadre en Reparte:** al tocar Listo se guarda lo que diga cada campo (si no lo cambiaste, cuadra exacto y cuenta como actividad). ¿O solo si lo cambia?
 10. **«Sí, ya lo gasté» con meta incompleta** (apartado a medias): igual va a Logros. ¿Correcto?
 
+### PREGUNTA PARA VICTOR (v2.2)
+
+11. **Primer número con pago semanal y alquiler mensual:** si alguien empieza a mitad de mes, la reserva gradual supone que ya debió separar lo de los pagos que ya pasaron (Beto: ya van 3 de 5 viernes → $90 de $150 separados desde el primer día, y su libre baja a $30). Ahora «Tu primer número» lo explica. ¿Así, o el primer día debería empezar la reserva en cero?
+12. **«¿Cómo te ha ido?» cada 3 días de uso:** con uso diario sale unas dos veces por semana. ¿Te parece, o cada 5 días?
+13. **iPhone:** la app instalada no ve lo que se puso en Safari. Lo decimos en la pantalla previa («instálala antes de empezar»). ¿Prefieres que en iPhone sin instalar el botón «Empezar» quede detrás de los pasos de instalación?
+14. **Al abrir, siempre Hoy:** la app ya no recuerda la última pestaña (ni al volver en un día nuevo), para que se vean los avisos del día. ¿Correcto?
+15. **Nombres en «Contarle a Victor»:** también se tapan las palabras que coinciden con nombres de sus cosas aunque las use en otro sentido (por ejemplo, si un pago se llama «Casa», «casa» en un comentario sale como [nombre]). Preferimos tapar de más. ¿De acuerdo?
+16. **Cerrar la bienvenida sin elegir** (la X): queda en entrenamiento con Ana y la próxima vez vuelve a preguntar. ¿Así?
+
 ## 7. Lo que no hace (límites)
 
-- Es una maqueta: sin servidor, sin cuentas, sin correo ni notificaciones reales (se simulan). El dictado depende del micrófono del teclado.
+- Es una maqueta: sin servidor, sin cuentas, sin correo ni notificaciones reales (en uso normal los avisos se muestran al abrir la app). El dictado depende del micrófono del teclado.
+- Los datos del modo uso viven solo en ese navegador o en la app instalada: si se borran los datos del navegador, se pierden (por eso «Guardar copia»).
 - **Desktop (V2-28):** no está diseñado; en la computadora se ve la guía con el teléfono enmarcado.
-- Aprende y Ayuda sin contenido. Lugares y medios solo se configuran en el primer día.
+- Aprende sin contenido.
 - Los resúmenes de la prueba viven solo en el teléfono de cada persona hasta que los comparte.
 - Revisión: Chrome y Edge sin ventana (390 × 844 y 1440 × 900), por `file://` y servido en la subruta de Pages; teclado simulado; contraste medido; navegador de iPhone y Android emulado para la guía de instalación; instalación, sin internet y actualización verificados en Chrome. **Sin teléfono real ni lector de pantalla:** pendiente de las pruebas de Victor.
 
@@ -238,16 +294,18 @@ La fecha simulada es el **miércoles 21 de octubre de 2026** (ver §4).
 | `app.js`, `hojas.js` | Pantallas, hojas y recorridos |
 | `casos.js` | Los 13 casos, los sets A y B de la prueba guiada y la versión visible |
 | `arranque.js` | Arranque, guardado en el navegador, casos y simulaciones |
-| `ayuda.js` | Pantalla completa, aviso, «Casos y ayuda», prueba guiada, moderador, instalación y versión nueva |
+| `ayuda.js` | Pantalla completa, «Casos y ayuda», prueba guiada, moderador, instalación y versión nueva |
+| `modos.js` | v2.2: entrada, modo uso (datos reales, fecha real, avisos al abrir), copia/restaurar/borrar, «¿Cómo te ha ido?», registro de uso y «Contarle a Victor» |
+| `tour.js` | v2.2: recorrido de 3 minutos y ejercicios de práctica |
 | `manifest.webmanifest`, `sw.js`, `recursos/iconos/` | App instalable y sin internet |
 | `recursos/` | Piel real (tokens, Instrument Sans, emoji Fluent, íconos Lucide, portadas e ilustraciones) con sus licencias |
-| `README.md` | Para quien llega al repo: instalar, hacer la prueba, enviar el resumen |
+| `README.md` | Para quien llega al repo: los dos modos, instalar, copia de datos, contarle a Victor |
 
-Fuera del repo (en `.gitignore`, solo en la copia local): `capturas/` y `herramientas/` (`recorrer-v2.mjs` 13 casos, `recorrer-sets.mjs` sets A y B, `probar-pwa.mjs`, `instalar-ua.mjs`, `contraste*.mjs`, `generar-iconos.mjs`, `generar-sw.mjs` + `sw.plantilla.js`, `servidor.mjs`).
+Fuera del repo (en `.gitignore`, solo en la copia local): `capturas/` y `herramientas/` (`recorrer-v2.mjs` 13 casos, `recorrer-sets.mjs` sets A y B, `recorrer-modos.mjs` entrada, entrenamiento, tres personas y copia, `probar-pwa.mjs` (también datos reales tras actualizar), `instalar-ua.mjs`, `contraste*.mjs`, `generar-iconos.mjs`, `generar-sw.mjs` + `sw.plantilla.js`, `servidor.mjs`).
 
 ## 9. Qué falta
 
-Nada de lo pedido quedó pendiente. Queda para Victor: probar en su teléfono (instalar, sin internet, un set completo, enviar el resumen, «Nueva persona») y correr la prueba con 5–8 personas; responder §6.
+Nada de lo pedido en la v2.2 quedó pendiente. Queda para Victor: probar la v2.2 en su teléfono (entrenamiento completo, empezar con datos reales, instalar, guardar y restaurar una copia, «Contarle a Victor»), compartirla con la familia y responder §6 (11–16).
 
 ---
 
