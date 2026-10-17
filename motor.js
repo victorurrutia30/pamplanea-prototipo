@@ -96,7 +96,13 @@
         if (!/^\d+(\.\d{1,2})?$/.test(t)) return null;
         const [w, f = ''] = t.split('.');
         const cents = Number(w) * 100 + Number((f + '00').slice(0, 2));
-        return cents > 999999999 ? null : cents;
+        return cents > MONTO_MAX ? null : cents;
+    }
+    /** Tope razonable para cualquier monto que se escribe: $1,000,000.00. */
+    const MONTO_MAX = 100000000;
+    /** «Hoy» en la zona horaria del teléfono (modo uso normal). */
+    function hoyLocal(ahora = new Date()) {
+        return `${ahora.getFullYear()}-${pad(ahora.getMonth() + 1)}-${pad(ahora.getDate())}`;
     }
     const montoCampo = (c) => (c === null || c === undefined ? '' : (c / 100).toFixed(2));
     const suma = (lista, f = (x) => x) => lista.reduce((t, x) => t + f(x), 0);
@@ -158,6 +164,12 @@
             if (regla.fecha >= desde && regla.fecha <= hasta) out.push(regla.fecha);
             return out;
         }
+        if (regla.frecuencia === 'catorcenal') {
+            const ancla = regla.fecha || desde;
+            const k = Math.ceil(diasEntre(ancla, desde) / 14);
+            for (let f = sumarDias(ancla, k * 14); f <= hasta; f = sumarDias(f, 14)) out.push(f);
+            return out;
+        }
         if (regla.frecuencia === 'semanal') {
             let f = desde;
             while (diaSemana(f) !== regla.diaSemana) f = sumarDias(f, 1);
@@ -167,7 +179,8 @@
         let [y, m] = partes(desde);
         const [hy, hm] = partes(hasta);
         while (y < hy || (y === hy && m <= hm)) {
-            const dias = regla.frecuencia === 'quincenal' ? [15, 30] : [regla.dia];
+            // Un día 29, 30 o 31 en un mes más corto cae el último día del mes (fechaDe lo ajusta).
+            const dias = regla.frecuencia === 'quincenal' ? regla.dias || [15, 30] : [regla.dia];
             for (const d of dias) {
                 const f = fechaDe(y, m, d);
                 if (f >= desde && f <= hasta && !out.includes(f)) out.push(f);
@@ -395,7 +408,11 @@
             if (medio(st, id)) return { id, seguro: true };
         }
         const k = categoria(categoriaId);
-        if (k && k.medio && medio(st, k.medio)) return { id: k.medio, seguro: false };
+        if (k && k.medio && medio(st, k.medio) && !medio(st, k.medio).oculto) return { id: k.medio, seguro: false };
+        const tarjetaPropia = st.medios.find((m) => m.tarjeta && !m.oculto);
+        if (k && k.medio === 'bac' && tarjetaPropia) return { id: tarjetaPropia.id, seguro: false };
+        const debito = st.medios.find((m) => m.tarjetaDebito && !m.oculto);
+        if (k && k.medio === 'debito' && debito) return { id: debito.id, seguro: false };
         return { id: st.medios[0] ? st.medios[0].id : null, seguro: false };
     }
 
@@ -442,14 +459,23 @@
             d.dia = +mDia[1];
             t = t.replace(mDia[0], ' ');
         }
-        // Medio dicho en el texto.
-        const credito = st.medios.filter((m) => m.tarjeta);
-        if (/\b(tarjeta|credito)\b/.test(t) && credito.length) {
+        // Medio dicho en el texto: primero por el nombre que le puso la persona, luego por tipo.
+        const activos = st.medios.filter((m) => !m.oculto);
+        const credito = activos.filter((m) => m.tarjeta);
+        const GENERICAS = new Set(['credito', 'debito', 'tarjeta', 'banco', 'efectivo', 'transferencia', 'cuenta', 'billetera']);
+        const palabraDe = (m) => normalizar(m.nombre).split(' ').find((w) => w.length >= 3 && !GENERICAS.has(w) && ` ${t} `.includes(` ${w} `));
+        const porNombre = activos.find((m) => palabraDe(m));
+        if (porNombre) {
+            d.medio = porNombre.id;
+            d.medioExplicito = true;
+            // En «tengo 300 en agrícola» o «pasé 50 de agrícola a efectivo» la palabra es del lugar: se queda.
+            if (d.tipo !== 'cuadre' && d.tipo !== 'mover') t = ` ${t} `.replace(new RegExp(`\\b(con |la |de )*(tarjeta |credito |debito )?${palabraDe(porNombre)}\\b`), ' ').trim();
+        } else if (/\b(tarjeta|credito)\b/.test(t) && credito.length) {
             d.medio = credito[0].id;
             d.medioExplicito = true;
             t = t.replace(/\b(con )?(la )?(tarjeta|credito)( de credito)?\b/, ' ');
-        } else if (/\bdebito\b/.test(t) && st.medios.some((m) => m.tarjetaDebito)) {
-            d.medio = st.medios.find((m) => m.tarjetaDebito).id;
+        } else if (/\bdebito\b/.test(t) && activos.some((m) => m.tarjetaDebito)) {
+            d.medio = activos.find((m) => m.tarjetaDebito).id;
             d.medioExplicito = true;
             t = t.replace(/\b(con )?(la )?debito\b/, ' ');
         } else if (/\befectivo\b/.test(t) && st.medios.some((m) => m.id === 'efectivo')) {
@@ -601,7 +627,7 @@
                 d.a = lugar(st, 'efectivo') ? 'efectivo' : null;
                 d.preguntarComision = true;
             } else {
-                const mDeA = resto.match(/(?:de |desde )?(\w+)(?: a | al | para )(\w+)/);
+                const mDeA = t.match(/(?:de |desde )?(\w+)(?: a | al | para )(\w+)/);
                 if (mDeA) {
                     const busca = (w) => st.lugares.find((x) => normalizar(x.nombre).includes(w) || (w === 'banco' && x.tipo === 'banco'));
                     d.de = busca(mDeA[1])?.id || null;
@@ -636,6 +662,7 @@
     }
 
     window.MOTOR = {
+        MONTO_MAX, hoyLocal,
         MESES, MESES_CORTOS, DIAS, DIAS_CORTOS, pad, sumarDias, diasEntre, diaSemana, partes, diasDelMes, fechaDe, mesMas, fechaCorta, fechaLarga, conDia, diaCorto, relativa, haceDias, ultimoDia, proximoDia,
         dinero, leerMonto, montoCampo, suma, lugar, medio, tarjeta, pago, ingreso, apartado, categoria, principal, sinVS,
         despues, saldoLugar, anteriorAlCuadre, lugaresDe, tienes, apartadoTotal, ultimaActividad, fechasRegla, ocurrenciasPago, ocurrenciasIngreso, tarjetaInfo, ocurrenciasTarjeta,
