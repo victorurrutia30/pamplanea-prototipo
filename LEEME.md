@@ -1,4 +1,4 @@
-# Producto v2 · prototipo de teléfono — versión 2.3.1
+# Producto v2 · prototipo de teléfono — versión 2.4
 
 **Qué es:** un prototipo clicable de la app completa propuesta en Producto v2. Desde la v2.2 tiene **dos modos**: **entrenamiento** (datos inventados de Ana, recorrido guiado, 13 ejercicios y la prueba A/B para testers) y **uso normal** (la familia cercana de Victor la usa 1–2 semanas con su dinero real, guardado solo en su teléfono). Es una maqueta de flujo y comprensión, no producción.
 
@@ -11,9 +11,58 @@
 
 Sin servidor propio, sin dependencias, sin CDN, sin analítica ni rastreadores. Fuentes, emoji, íconos y los íconos de la app instalable son locales, con sus licencias (`recursos/licencias`).
 
-**Estado:** brief y acuerdos V2-01…V2-22 APROBADOS por Victor (2026-10-16); **V2-23 a V2-30** y **V2-31 (respuestas v2.1)** APROBADOS por Victor (2026-10-16); **V2-34 a V2-49** APROBADOS por Victor (2026-10-17) — V2-15 y V2-31 #7 quedan REEMPLAZADAS por V2-34. **V2-50 a V2-55** y la corrección adicional (adelanto de salario) APROBADOS por Victor (2026-10-17). Nada de esto está documentado todavía en el repo de la app: se documentará después de las pruebas con personas. Este prototipo no cambia nada del repo de la app.
+**Estado:** brief y acuerdos V2-01…V2-22 APROBADOS por Victor (2026-10-16); **V2-23 a V2-30** y **V2-31 (respuestas v2.1)** APROBADOS por Victor (2026-10-16); **V2-34 a V2-49** APROBADOS por Victor (2026-10-17) — V2-15 y V2-31 #7 quedan REEMPLAZADAS por V2-34. **V2-50 a V2-55** y la corrección adicional (adelanto de salario) APROBADOS por Victor (2026-10-17). **v2.4 «Entrenamiento a prueba de todo»** y sus tres ajustes previos APROBADOS por Victor (2026-10-17). Nada de esto está documentado todavía en el repo de la app: se documentará después de las pruebas con personas. Este prototipo no cambia nada del repo de la app.
 
-Versión visible en la app y en la guía: **«Prototipo v2.3.1 · 2026-10-17»**.
+Versión visible en la app y en la guía: **«Prototipo v2.4 · 2026-10-17»**.
+
+---
+
+## Prototipo v2.4 (2026-10-17): entrenamiento a prueba de todo
+
+**Para quién:** la familia de Victor (personas sin experiencia en apps de finanzas), antes de poner sus datos. APROBADO por Victor (2026-10-17): «que el usuario entienda a la perfección cómo funciona, súper amigable».
+
+### Antes de la v2.4 (aprobado por Victor; commit `022c170`)
+
+1. **Faltante solo por fechas:** si en total el periodo alcanza pero un pago vence antes de que llegue otro ingreso, el aviso (ámbar) dice el día y la causa: «El 16 te faltarían ~$51 hasta que llegue el adelanto (el 20)», «En total sí te alcanza, pero el seguro vence antes. ¿Lo pagas con tu quincena del 29 o reservas solo $51.00?», con «Pagarlo con tu quincena del 29» (abre «¿Con qué pagas…?» con esa opción ya elegida), «Reservar $51.00» y «No, después veo». Hoy y Pagos → Próxima dicen lo mismo («Ojo: el 16…»). Nunca «entra más de lo que pagas» y «te faltarían» sin la fecha.
+2. **«¿Con qué pagas…?» de un pago lejano:** como mucho tres opciones (la de siempre y las dos más cercanas antes de que venza, más la que ya está elegida) y «Ver más quincenas (5)».
+3. **El entrenamiento y los ejercicios incluyen** pagar con el aguinaldo (V2-52), la tarjeta del primer día (V2-54) y el adelanto con descuento (ver abajo).
+
+### Qué cambió
+
+| Pedido | Dónde se ve |
+| --- | --- |
+| 1. Recorrido nuevo | 15 pasos, una idea por paso y como mucho 2 líneas, con números redondos («Tienes $100 y antes de tu quincena pagas $40: te quedan $60 libres»), de tú y sin culpa: el número · de dónde sale · **anota** · lo que viene · **marca un pago** · tu próxima quincena (y pasar lo que sobra) · **¿con qué lo pagas?** · con el aguinaldo · adelanto de salario · ahorros · **cuadra tu efectivo** · tarjetas y préstamos (y la del primer día) · volver después de días · «¿Lo entendí?». Progreso visible («Recorrido · 3 de 15» y una barra), Atrás, Saltar y retomar donde se quedó («¿Sigues donde te quedaste? · Ibas en el paso 13 de 15» y, en Hoy, «Sigue tu recorrido»). |
+| 2. «Hazlo tú» | En los 4 pasos en negrita la persona hace la acción de verdad con los datos de Ana: una barra arriba («Hazlo tú · 4 de 15») que no tapa la app (las hojas abren debajo de ella) con «Muéstrame» (la app lo hace paso a paso) y «Siguiente» (se puede saltar). Al hacerlo: «¡Lo hiciste! 🎉 · Libre $290.60 → $284.60 · ¡Eso! Ya está anotado: tu libre bajó $6.00». Marcar el teléfono Pagado: «Tu libre no cambió: ya estaba contado. Lo que tienes bajó $15.00». |
+| 3. «¿Lo entendí?» | Tres preguntas (libre, con qué se paga, dónde queda el ahorro), una a la vez. Nunca «incorrecto»: «Casi: a los $100 réstale los $40…». Al final «Te fue bien: 2 de 3. ¿Repasamos lo que faltó?» con «Repasar «Libre: lo que puedes gastar»» (solo ese paso) y «Volver a las preguntas». |
+| 4. Ayuda en el momento | Un «?» discreto (24 px a la vista, 44 px para tocar) junto a **Libre** (en el número), **Próxima quincena**, **Lo pagas con** (ficha del pago), **Ahorros**, **Cuadrar** (en la hoja) y **Deudas**: abre 2–3 líneas con un ejemplo, debajo, sin tapar nada. Con tus datos, la primera vez en Hoy, Pagos, Mi dinero, Cuentas, Ahorros, Deudas y Mes: un consejo corto con «Entendido» (una sola vez por pantalla). |
+| 5. «Aprende» | Tu letra → Aprende: el glosario (Libre, Lo pagas con, Próxima quincena, Ahorros, Cuadrar, Deudas, Tarjeta de crédito, Adelanto de salario, Aguinaldo y bonos, Pongámonos al día, Sin detalle) con los mismos textos que los «?» (`glosario.js`), y «Ver el recorrido» / «Practicar». |
+| 6. «Practicar» | 13 ejercicios de fácil a difícil, con su nivel: Anotar «pupusas 6», Recordatorio del colegio, Usar el ahorro Laptop, Llega la quincena (Fácil) · Volver después de dos semanas, Primer día (ahora con «Tarjeta»), Carlos con poco dinero, Carlos: semanal y alquiler, **Pagar con el aguinaldo** (Media) · **Adelanto de salario**, Llega el estado de cuenta, + Tarjeta o préstamo, Regalo olvidado (Difícil). Los dos nuevos solo están en «Practicar»; la guía sigue con sus 13 recorridos. |
+| 7. Accesibilidad | El foco va al título de cada paso (en «Hazlo tú», a la instrucción, solo al entrar: nunca se le quita el foco a quien está escribiendo); lector de pantalla («Paso 4 de 15»); Escape sale del recorrido, pero en «Hazlo tú» cierra la hoja abierta; botones de 44 px; la celebración no se mueve con «reducir movimiento»; contraste ≥ 4.5:1 en los 4 temas. |
+
+### Decisiones técnicas v2.4 — REVISAR
+
+- **El recorrido usa una Ana preparada:** su luz de octubre ya está pagada y tiene el teléfono ($15) el 25, antes de su quincena, para practicar «Pagado» con un pago que ya está contado (la lección «tu libre no cambia»). Lo que la persona hace en el recorrido se queda en los ejemplos (si lo salta, se queda esa Ana: libre $290.60); «Reiniciar ejemplos» vuelve a la Ana de siempre ($270.60).
+- **Duración:** medida con lectura pausada (160 palabras por minuto) de todo lo que se lee (pasos, celebraciones, preguntas con su explicación y el final), 15 s por cada «Hazlo tú» y 5 s por respuesta: ≤ 4 minutos (ver Calidad).
+- **El progreso del recorrido** se guarda en el entrenamiento del teléfono (`pamplanea-entrenamiento`, `tourPaso`); los consejos ya vistos, en `pamplanea-modo` (`tips`). Nada de esto toca los datos de uso normal: sin cambio de esquema.
+- **El «?» no abre una hoja:** muestra la explicación debajo (así no se pierde lo que estabas haciendo, por ejemplo en «Cuadrar»).
+
+### PENDIENTE (lo vi y no lo toqué)
+
+1. El aviso de un «Hazlo tú» (por ejemplo «Listo. Reservas $20.00 desde hoy») sigue a la vista unos segundos en el paso siguiente.
+2. «Pongámonos al día» se explica en el recorrido, pero no se practica ahí (está en «Practicar»: «Volver después de dos semanas»).
+
+### Calidad (v2.4)
+
+- **`herramientas/v24.mjs`** (por file:// en Serena claro y servida en Ancla oscuro): legibilidad (ninguna palabra de la lista prohibida —periodo, saldo inicial, ledger, ajuste, conciliación, asignación, proyección— ni frases de más de 20 palabras en el recorrido, el glosario y los consejos), duración estimada **3 min 59 s** (436 palabras a 160 por minuto, más 4 × 15 s y 3 × 5 s), el recorrido completo a 390 × 844 como una persona sin experiencia (4 «Hazlo tú»: dos a mano y dos con «Muéstrame»; Atrás; Saltar y retomar; Escape), «¿Lo entendí?» con una respuesta «Casi» y repaso, los 6 «?» (44 px, mismos textos que «Aprende»), los consejos (una vez por pantalla, solo con tus datos), «Practicar» (orden, niveles, los ejercicios del aguinaldo y del adelanto completados por la interfaz), reducir movimiento y contraste en los 4 temas.
+- Las pruebas de aceptación (Victor: Libre $95.00 · ~$7.90 por día; la próxima ~$1,477 · ~$1,196 · ~$281) y todas las de siempre siguen pasando.
+
+### PREGUNTAS PARA VICTOR (v2.4)
+
+21. **¿Lo entendí?** pregunta por el libre, con qué se paga y dónde queda un ahorro. ¿Cambiamos alguna por «al marcar Pagado, tu libre no cambia» (hoy se aprende haciendo)?
+22. **Lo que se hace en el recorrido se queda en los ejemplos** (la persona ve lo que hizo). ¿O prefieres que al terminar vuelva la Ana de siempre?
+23. **«Muéstrame»** hace la acción solo, paso a paso (unos 3 segundos). ¿Así, o prefieres que solo señale dónde tocar?
+24. **Los consejos de la primera vez** salen en 7 pantallas. ¿Agregamos la ficha de un pago y Anotar, o son suficientes?
+25. Para confirmar los 4 minutos: ¿cronometramos a una persona de la familia haciendo el recorrido (sin ayudarla)?
 
 ---
 
@@ -223,7 +272,7 @@ Cómo se revisó: el dinero de Victor seguido por la interfaz del 17 de octubre 
 - Franja fija: uso «Versión de prueba · tus datos solo están en este teléfono»; entrenamiento «Modo entrenamiento · datos de ejemplo».
 
 ### Modo entrenamiento
-- **«Te enseño la app en 3 minutos»:** 13 pasos sobre los datos de Ana (Hoy y su número, «¿De dónde sale?», Pagos y su calendario, Anotar con texto y dictado, Mi dinero: lugares, apartados, tarjetas y deudas, Mes, la letra). Resalta la zona; Siguiente / Atrás / Saltar; teclado (flechas, Esc, foco atrapado), lector de pantalla (diálogo con título y paso) y movimiento reducido. Si la tarjeta no cabe arriba o abajo de lo resaltado, va al pie.
+- *(v2.2; en la v2.4 el recorrido es otro: ver «Prototipo v2.4».)* **«Te enseño la app en 3 minutos»:** 13 pasos sobre los datos de Ana (Hoy y su número, «¿De dónde sale?», Pagos y su calendario, Anotar con texto y dictado, Mi dinero: lugares, apartados, tarjetas y deudas, Mes, la letra). Resalta la zona; Siguiente / Atrás / Saltar; teclado (flechas, Esc, foco atrapado), lector de pantalla (diálogo con título y paso) y movimiento reducido. Si la tarjeta no cabe arriba o abajo de lo resaltado, va al pie.
 - Al final: **[Practicar con ejemplos]** **[Empezar con mis datos]** (y «Seguir mirando los ejemplos»).
 - **Practicar:** los 13 casos como ejercicios opcionales, con instrucción simple, «¡Lo lograste!» cuando la app detecta el último paso y «¿Cómo?» con los pasos (y las simulaciones de fecha que el caso necesite). Sin reloj.
 - La prueba A/B y el Modo moderador quedan dentro de «Casos y ayuda» → «Para Victor: prueba guiada (sets A y B)».
@@ -308,7 +357,7 @@ Cómo se revisó: el dinero de Victor seguido por la interfaz del 17 de octubre 
 ## App instalable (PWA)
 
 - `manifest.webmanifest`: «PamPlanea (prototipo)» / «PamPlanea», `start_url` y `scope` «./» (funciona en la subruta `/pamplanea-prototipo/`), `display: standalone`, colores de Serena, íconos 192 y 512, uno maskable y `apple-touch-icon` 180, generados localmente desde el ícono (`herramientas/generar-iconos.mjs`).
-- `sw.js`: caché **versionada** (hoy `pamplanea-proto-v2.3.1-2026-10-17`) que precarga los 140 archivos publicados; abre sin internet. Una versión nueva se instala en segundo plano y la app muestra «Hay una versión nueva · Actualizar»; al tocarlo guarda y recarga **sin perder datos** (lo guardado tiene su propio formato, independiente de la versión visible). La primera instalación no recarga la página.
+- `sw.js`: caché **versionada** (hoy `pamplanea-proto-v2.4-2026-10-17`) que precarga los 141 archivos publicados; abre sin internet. Una versión nueva se instala en segundo plano y la app muestra «Hay una versión nueva · Actualizar»; al tocarlo guarda y recarga **sin perder datos** (lo guardado tiene su propio formato, independiente de la versión visible). La primera instalación no recarga la página.
 - El service worker y el manifest solo se usan servidos por http(s); por `file://` no se registran y todo funciona igual, sin errores de consola.
 - **Para publicar una versión nueva:** cambiar `VERSION_PROTOTIPO` en `casos.js` y correr `node herramientas/generar-sw.mjs v2.2-AAAA-MM-DD` (regenera la lista y el nombre de la caché). Si `sw.js` no cambia, los teléfonos instalados no se enteran.
 - En modo instalado: safe areas reales, sin barra de estado simulada; la barra de estado de Android toma el color del aviso de prototipo en cada tema.
@@ -444,7 +493,7 @@ La fecha simulada es el **miércoles 21 de octubre de 2026** (ver §4).
 - **Prueba guiada:** cada tarea tiene una condición que la app revisa tras cada acción (por ejemplo, «hay un gasto nuevo de $6.00»); los toques se cuentan en la app, no en la barra de la tarea ni en «Casos y ayuda».
 - **Guardado (entrenamiento):** `pamplanea-proto-v2:app` (estado, caso, pestaña, tema; con `formato: 2`), `pamplanea-proto-v2:notas` (nombre, notas, prueba), `pamplanea-proto-v2:dispositivo` (personas en este teléfono y set siguiente) y `pamplanea-proto-v2:guia`. La versión visible no invalida lo guardado.
 - **Guardado (uso normal, v2.2):** ver «Modos v2.2 → Datos seguros».
-- **Service worker:** primero la caché (sin importar `?set=…`), luego la red. Solo por http(s). Caché `pamplanea-proto-v2.3.1-2026-10-17`.
+- **Service worker:** primero la caché (sin importar `?set=…`), luego la red. Solo por http(s). Caché `pamplanea-proto-v2.4-2026-10-17`.
 
 ## 6. PREGUNTAS PARA VICTOR (no las decidí; el prototipo usa lo de §5)
 
@@ -492,18 +541,21 @@ La fecha simulada es el **miércoles 21 de octubre de 2026** (ver §4).
 | `telefono.html`, `prototipo.css` | La app (enmarcada en la guía o a pantalla completa) |
 | `datos.js`, `motor.js` | Datos inventados y cálculos (libre, reservas, tarjeta, intérprete) |
 | `app.js`, `hojas.js` | Pantallas, hojas y recorridos |
-| `casos.js` | Los 13 casos, los sets A y B de la prueba guiada y la versión visible |
+| `casos.js` | Los 13 casos, los sets A y B de la prueba guiada, los ejercicios de «Practicar» (orden y dos solo de práctica) y la versión visible |
 | `arranque.js` | Arranque, guardado en el navegador, casos y simulaciones |
 | `ayuda.js` | Pantalla completa, «Casos y ayuda», prueba guiada, moderador, instalación y versión nueva |
 | `modos.js` | v2.2: entrada, modo uso (datos reales, fecha real, avisos al abrir), copia/restaurar/borrar, «¿Cómo te ha ido?», registro de uso y «Contarle a Victor» |
-| `tour.js` | v2.2: recorrido de 3 minutos y ejercicios de práctica |
+| `tour.js` | v2.4: recorrido de 4 minutos con «Hazlo tú», «¿Lo entendí?» y retomar; «Practicar» de fácil a difícil |
+| `glosario.js` | v2.4: los textos de los «?», de «Aprende» y los consejos de la primera vez |
 | `manifest.webmanifest`, `sw.js`, `recursos/iconos/` | App instalable y sin internet |
 | `recursos/` | Piel real (tokens, Instrument Sans, emoji Fluent, íconos Lucide, portadas e ilustraciones) con sus licencias |
 | `README.md` | Para quien llega al repo: los dos modos, instalar, copia de datos, contarle a Victor |
 
-Fuera del repo (en `.gitignore`, solo en la copia local): `capturas/` y `herramientas/` (`recorrer-v2.mjs` 13 casos, `recorrer-sets.mjs` sets A y B, `recorrer-modos.mjs` entrada, entrenamiento, tres personas y copia, `probar-pwa.mjs` (también datos reales tras actualizar), `instalar-ua.mjs`, `contraste*.mjs`, `generar-iconos.mjs`, `generar-sw.mjs` + `sw.plantilla.js`, `servidor.mjs`). Nuevo en la v2.3.1: `v231.mjs` (V2-50 a V2-55, la corrección adicional y «Compartir copia»). Nuevos en la v2.3: `aceptacion-v23.mjs` (la prueba de aceptación de Victor, migración, Carlos, reparto, pagado y fecha futura), `entrega2-v23.mjs`, `viaje-v23.mjs` (el viaje del dinero), `probar-motor.mjs` (motor y casos borde), `humo-v23.mjs`, `capturas-ux.mjs` y `contraste-v23.mjs`.
+Fuera del repo (en `.gitignore`, solo en la copia local): `capturas/` y `herramientas/` (`recorrer-v2.mjs` 13 casos, `recorrer-sets.mjs` sets A y B, `recorrer-modos.mjs` entrada, entrenamiento, tres personas y copia, `probar-pwa.mjs` (también datos reales tras actualizar), `instalar-ua.mjs`, `contraste*.mjs`, `generar-iconos.mjs`, `generar-sw.mjs` + `sw.plantilla.js`, `servidor.mjs`). Nuevo en la v2.4: `v24.mjs` (el entrenamiento completo, legibilidad, «?», consejos, «Practicar» y contraste). Nuevo en la v2.3.1: `v231.mjs` (V2-50 a V2-55, la corrección adicional y «Compartir copia»). Nuevos en la v2.3: `aceptacion-v23.mjs` (la prueba de aceptación de Victor, migración, Carlos, reparto, pagado y fecha futura), `entrega2-v23.mjs`, `viaje-v23.mjs` (el viaje del dinero), `probar-motor.mjs` (motor y casos borde), `humo-v23.mjs`, `capturas-ux.mjs` y `contraste-v23.mjs`.
 
 ## 9. Qué falta
+
+**v2.4:** hecho lo pedido (el recorrido nuevo con «Hazlo tú» y «¿Lo entendí?», los «?», «Aprende», los consejos, «Practicar» de fácil a difícil y los tres ajustes previos). Queda lo de «PENDIENTE» en la sección v2.4 y las preguntas 21–25. Para Victor: actualizar, hacer el recorrido completo y luego compartirlo con la familia.
 
 **v2.3.1:** hecho lo pedido (V2-50 a V2-55, la corrección adicional y «Compartir copia»). Queda lo de «PENDIENTE (lo vi y no lo toqué)» en la sección v2.3.1. Para Victor: actualizar sin perder datos, revisar su cuchubal (§ corrección 5a) y marcar su «Adelanto de Salario» como adelanto.
 

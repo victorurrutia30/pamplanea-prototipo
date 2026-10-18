@@ -1,4 +1,4 @@
-# PamPlanea · prototipo v2.3.1
+# PamPlanea · prototipo v2.4
 
 Una versión de prueba de **PamPlanea**: saber cuánto te queda libre hasta tu próximo ingreso y que no se te olvide ningún pago.
 
@@ -6,10 +6,18 @@ Una versión de prueba de **PamPlanea**: saber cuánto te queda libre hasta tu p
 
 Al abrirla eliges uno de dos caminos (y puedes cambiar cuando quieras desde tu letra, arriba a la izquierda):
 
-- **Aprender a usarla** (recomendado): un recorrido de 3 minutos con los datos de ejemplo de Ana y, si quieres, 13 ejercicios cortos para practicar. Nada de lo que hagas ahí toca tus datos.
+- **Aprender a usarla** (recomendado): un recorrido de 4 minutos con los datos de ejemplo de Ana —en cuatro momentos lo haces tú y ves el número cambiar— y, si quieres, 13 ejercicios cortos, de fácil a difícil. Nada de lo que hagas ahí toca tus datos.
 - **Usarla con mis datos:** tu dinero real, con la fecha real de tu teléfono. Empiezas desde cero: cómo te pagan, cuánto tienes y dónde, y tus pagos fijos.
 
 Los dos modos guardan sus datos por separado. Reiniciar los ejemplos no borra tus datos.
+
+## Lo nuevo en la v2.4
+
+- **Un recorrido nuevo, de 4 minutos:** pasos cortos con ejemplos de números redondos. En cuatro momentos lo haces tú (anotar, marcar un pago, elegir con qué lo pagas, cuadrar) y ves cómo cambia tu número; si te trabas, «Muéstrame». Al final, «¿Lo entendí?»: tres preguntas sencillas. Si lo dejas a medias, sigue donde te quedaste.
+- **Ayuda en el momento:** toca «?» junto a Libre, Próxima quincena, Lo pagas con, Ahorros, Cuadrar y Deudas. Los mismos textos están en «Aprende» (tu letra).
+- Con tus datos, la primera vez que abres cada pantalla, un consejo corto (una sola vez).
+- «Practicar»: 13 ejercicios de fácil a difícil, con pagar con el aguinaldo, el adelanto de salario y la tarjeta del primer día.
+- Si a tu próxima quincena le falta solo por las fechas, el aviso dice el día y la causa. «¿Con qué pagas…?» muestra tres opciones y «Ver más quincenas».
 
 ## Lo nuevo en la v2.3.1
 
@@ -62,4 +70,4 @@ La prueba guiada de la v2.1 sigue en el modo entrenamiento: «Casos y ayuda» �
 - Detalle, decisiones y preguntas abiertas: [`LEEME.md`](LEEME.md) (secciones «Prototipo v2.3.1», «Prototipo v2.3» y «Modos v2.2»).
 - Licencias de fuentes, emoji e íconos: [`recursos/licencias`](recursos/licencias).
 
-Prototipo v2.3.1 · 2026-10-17
+Prototipo v2.4 · 2026-10-17
