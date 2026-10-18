@@ -13,7 +13,7 @@ Sin servidor propio, sin dependencias, sin CDN, sin analítica ni rastreadores. 
 
 **Estado:** brief y acuerdos V2-01…V2-22 APROBADOS por Victor (2026-10-16); **V2-23 a V2-30** y **V2-31 (respuestas v2.1)** APROBADOS por Victor (2026-10-16); **V2-34 a V2-49** APROBADOS por Victor (2026-10-17) — V2-15 y V2-31 #7 quedan REEMPLAZADAS por V2-34. Nada de esto está documentado todavía en el repo de la app: se documentará después de las pruebas con personas. Este prototipo no cambia nada del repo de la app.
 
-Versión visible en la app y en la guía: **«Prototipo v2.2 · 2026-10-16»**.
+Versión visible en la app y en la guía: **«Prototipo v2.3 · 2026-10-17»**.
 
 ---
 
@@ -118,6 +118,13 @@ Cómo se revisó: el dinero de Victor seguido por la interfaz del 17 de octubre 
 - «Ahorrar» a lo ancho en Ahorros; calendario con números centrados y la etiqueta arriba de los atajos.
 - Sugerencia sin ingreso fijo (ingreso variable): habla de fechas («Del 1 al 30 nov pagas ~$X…»), no de «te caen».
 
+**Calidad (v2.3)**
+
+- **Prueba de aceptación** (`aceptacion-v23.mjs`, por file:// y servida): Victor el sábado 17 de octubre → «Hasta tu quincena del 29 · en 12 días · Libre $95.00 · ~$7.90 por día», sin avisos rojos, «Próxima quincena (29): entra ~$1,163 · pagos ~$713 · te quedarían ~$450 · incluye ~$566 de tu pareja» (Pagos → Próxima repite los mismos números), sin llegadas antes del 17, «Más adelante» solo con el aguinaldo; migración de datos tipo v1 sin perder nada (respaldo idéntico; solo se quitan las 3 llegadas inventadas); Carlos con sugerencia ámbar y reserva solo si la elige ($125 → $55); el alquiler repartido $100 + $100; corregir y desmarcar un pago pagado; «zapatos 40» para el 25 va a Pagos sin tocar lo que tienes.
+- **Viaje del dinero** (`viaje-v23.mjs`): del 17 de octubre al 2 de noviembre, Hoy = desglose = Pagos = Mi dinero cada día y la repartición suma lo que tiene.
+- **De siempre:** los 13 casos en Serena claro y Ancla oscuro, la prueba guiada A/B, los modos (tres personas de dos semanas, copia → borrar → restaurar, privacidad de «Contarle a Victor»), la app instalable (sin internet y actualizar sin perder datos: esquema 2) y el motor. Contraste de lo nuevo en los 4 temas: mínimo 4.94:1.
+- **Autocrítica:** ronda 1 servida y ronda 2 por file://, en Serena claro, Ancla oscuro y Serena oscuro, mirando las capturas (corregí: «Con tu próximo pago te faltarían…», «El próximo mes (noviembre)», «Bueno saber» en el primer número y la fila «= Libre» que quedaba cortada en el detalle del número).
+
 **Lo que no alcancé (por prioridad)**
 
 1. Un pago vencido aparece en el aviso de Hoy y en «Próximos pagos» (con «Pagado» en los dos). ¿Se quita del aviso cuando ya se ve abajo?
@@ -172,7 +179,7 @@ Cómo se revisó: el dinero de Victor seguido por la interfaz del 17 de octubre 
 - **Avisos al abrir la app** («Hoy vence la luz», «Mañana: Colegio», «Luz: venció el … ¿Ya lo pagaste?»), con una nota la primera vez: «En la app final te llegará una notificación».
 
 ### Datos seguros
-- Claves: `pamplanea-modo` (modo elegido y nota de avisos), `pamplanea-uso:v1` (datos reales; `esquema: 1` con función de migración: una actualización nunca borra) y `pamplanea-entrenamiento` (recorrido y ejercicios hechos). El entrenamiento sigue en `pamplanea-proto-v2:*`. Todo con `try/catch`.
+- Claves: `pamplanea-modo` (modo elegido y nota de avisos), `pamplanea-uso:v1` (datos reales; desde la v2.3 `esquema: 2`, con migración desde el 1 y copia intacta en `pamplanea-uso:respaldo-esquema-1`: una actualización nunca borra) y `pamplanea-entrenamiento` (recorrido y ejercicios hechos). El entrenamiento sigue en `pamplanea-proto-v2:*`. Todo con `try/catch`.
 - **Guardar copia** descarga `pamplanea-copia-AAAA-MM-DD.json` (`{app, tipo: "copia-uso", esquema, version, fecha, datos}`); **Compartir copia** usa el menú del teléfono cuando existe. **Restaurar** valida el archivo y muestra qué trae antes de reemplazar. **Borrar todos mis datos**: doble confirmación (solo modo uso).
 - **Actualizar** (versión nueva del service worker) conserva los datos reales: probado.
 
@@ -240,7 +247,7 @@ Cómo se revisó: el dinero de Victor seguido por la interfaz del 17 de octubre 
 ## App instalable (PWA)
 
 - `manifest.webmanifest`: «PamPlanea (prototipo)» / «PamPlanea», `start_url` y `scope` «./» (funciona en la subruta `/pamplanea-prototipo/`), `display: standalone`, colores de Serena, íconos 192 y 512, uno maskable y `apple-touch-icon` 180, generados localmente desde el ícono (`herramientas/generar-iconos.mjs`).
-- `sw.js`: caché **versionada** (`pamplanea-proto-v2.1-2026-10-16`) que precarga los 138 archivos publicados; abre sin internet. Una versión nueva se instala en segundo plano y la app muestra «Hay una versión nueva · Actualizar»; al tocarlo guarda y recarga **sin perder datos** (lo guardado tiene su propio formato, independiente de la versión visible). La primera instalación no recarga la página.
+- `sw.js`: caché **versionada** (hoy `pamplanea-proto-v2.3-2026-10-17`) que precarga los 140 archivos publicados; abre sin internet. Una versión nueva se instala en segundo plano y la app muestra «Hay una versión nueva · Actualizar»; al tocarlo guarda y recarga **sin perder datos** (lo guardado tiene su propio formato, independiente de la versión visible). La primera instalación no recarga la página.
 - El service worker y el manifest solo se usan servidos por http(s); por `file://` no se registran y todo funciona igual, sin errores de consola.
 - **Para publicar una versión nueva:** cambiar `VERSION_PROTOTIPO` en `casos.js` y correr `node herramientas/generar-sw.mjs v2.2-AAAA-MM-DD` (regenera la lista y el nombre de la caché). Si `sw.js` no cambia, los teléfonos instalados no se enteran.
 - En modo instalado: safe areas reales, sin barra de estado simulada; la barra de estado de Android toma el color del aviso de prototipo en cada tema.
@@ -376,13 +383,13 @@ La fecha simulada es el **miércoles 21 de octubre de 2026** (ver §4).
 - **Prueba guiada:** cada tarea tiene una condición que la app revisa tras cada acción (por ejemplo, «hay un gasto nuevo de $6.00»); los toques se cuentan en la app, no en la barra de la tarea ni en «Casos y ayuda».
 - **Guardado (entrenamiento):** `pamplanea-proto-v2:app` (estado, caso, pestaña, tema; con `formato: 2`), `pamplanea-proto-v2:notas` (nombre, notas, prueba), `pamplanea-proto-v2:dispositivo` (personas en este teléfono y set siguiente) y `pamplanea-proto-v2:guia`. La versión visible no invalida lo guardado.
 - **Guardado (uso normal, v2.2):** ver «Modos v2.2 → Datos seguros».
-- **Service worker:** primero la caché (sin importar `?set=…`), luego la red. Solo por http(s). Caché `pamplanea-proto-v2.2-2026-10-16`.
+- **Service worker:** primero la caché (sin importar `?set=…`), luego la red. Solo por http(s). Caché `pamplanea-proto-v2.3-2026-10-17`.
 
 ## 6. PREGUNTAS PARA VICTOR (no las decidí; el prototipo usa lo de §5)
 
 1. **Sets entre teléfonos distintos:** sin servidor, la alternancia solo funciona en un mismo teléfono. Propongo mandar enlaces alternados `…/?set=A` y `…/?set=B`. ¿Te sirve así?
 2. **iPhone e instalar al inicio:** en iPhone la app instalada guarda sus datos aparte de Safari; si la persona la instala en el paso 2, en la app instalada empieza de nuevo (lo avisamos). ¿Movemos la instalación al final de la prueba en iPhone?
-3. **Reserva gradual con quincena (#7):** hoy le baja a Ana $27.50 por pagos que vencen después del 30 (colegio del 5 y luz del 12). ¿Es lo esperado también para pagos chicos?
+3. ~~**Reserva gradual con quincena (#7):** hoy le baja a Ana $27.50 por pagos que vencen después del 30 (colegio del 5 y luz del 12). ¿Es lo esperado también para pagos chicos?~~ **Ya no aplica (v2.3):** la reserva gradual se reemplazó por V2-34 («Lo pagas con»).
 4. **«Otro monto» en «¿Cuánto pagas?»** se aplica como en el banco: primero al estado de cuenta y lo que sobra a las compras/reserva. ¿Correcto?
 5. **Comprensión «sin tocar nada»:** las tres preguntas ocupan la mitad de abajo y se sigue viendo el número grande. ¿Suficiente?
 6. **Toques registrados:** cuentan solo dentro de la app (no la barra de tarea ni «Casos y ayuda»). ¿Así?
@@ -393,7 +400,7 @@ La fecha simulada es el **miércoles 21 de octubre de 2026** (ver §4).
 
 ### PREGUNTA PARA VICTOR (v2.2)
 
-11. **Primer número con pago semanal y alquiler mensual:** si alguien empieza a mitad de mes, la reserva gradual supone que ya debió separar lo de los pagos que ya pasaron (Beto: ya van 3 de 5 viernes → $90 de $150 separados desde el primer día, y su libre baja a $30). Ahora «Tu primer número» lo explica. ¿Así, o el primer día debería empezar la reserva en cero?
+11. ~~**Primer número con pago semanal y alquiler mensual:** si alguien empieza a mitad de mes, la reserva gradual supone que ya debió separar lo de los pagos que ya pasaron (Beto: ya van 3 de 5 viernes → $90 de $150 separados desde el primer día, y su libre baja a $30). Ahora «Tu primer número» lo explica. ¿Así, o el primer día debería empezar la reserva en cero?~~ **Ya no aplica (v2.3):** no hay reserva automática; si al pago del viernes no le alcanza, la app lo sugiere (V2-34).
 12. **«¿Cómo te ha ido?» cada 3 días de uso:** con uso diario sale unas dos veces por semana. ¿Te parece, o cada 5 días?
 13. **iPhone:** la app instalada no ve lo que se puso en Safari. Lo decimos en la pantalla previa («instálala antes de empezar»). ¿Prefieres que en iPhone sin instalar el botón «Empezar» quede detrás de los pasos de instalación?
 14. **Al abrir, siempre Hoy:** la app ya no recuerda la última pestaña (ni al volver en un día nuevo), para que se vean los avisos del día. ¿Correcto?
@@ -433,11 +440,13 @@ La fecha simulada es el **miércoles 21 de octubre de 2026** (ver §4).
 | `recursos/` | Piel real (tokens, Instrument Sans, emoji Fluent, íconos Lucide, portadas e ilustraciones) con sus licencias |
 | `README.md` | Para quien llega al repo: los dos modos, instalar, copia de datos, contarle a Victor |
 
-Fuera del repo (en `.gitignore`, solo en la copia local): `capturas/` y `herramientas/` (`recorrer-v2.mjs` 13 casos, `recorrer-sets.mjs` sets A y B, `recorrer-modos.mjs` entrada, entrenamiento, tres personas y copia, `probar-pwa.mjs` (también datos reales tras actualizar), `instalar-ua.mjs`, `contraste*.mjs`, `generar-iconos.mjs`, `generar-sw.mjs` + `sw.plantilla.js`, `servidor.mjs`).
+Fuera del repo (en `.gitignore`, solo en la copia local): `capturas/` y `herramientas/` (`recorrer-v2.mjs` 13 casos, `recorrer-sets.mjs` sets A y B, `recorrer-modos.mjs` entrada, entrenamiento, tres personas y copia, `probar-pwa.mjs` (también datos reales tras actualizar), `instalar-ua.mjs`, `contraste*.mjs`, `generar-iconos.mjs`, `generar-sw.mjs` + `sw.plantilla.js`, `servidor.mjs`). Nuevos en la v2.3: `aceptacion-v23.mjs` (la prueba de aceptación de Victor, migración, Carlos, reparto, pagado y fecha futura), `entrega2-v23.mjs`, `viaje-v23.mjs` (el viaje del dinero), `probar-motor.mjs` (motor y casos borde), `humo-v23.mjs`, `capturas-ux.mjs` y `contraste-v23.mjs`.
 
 ## 9. Qué falta
 
-Nada de lo pedido en la v2.2 quedó pendiente. Queda para Victor: probar la v2.2 en su teléfono (entrenamiento completo, empezar con datos reales, instalar, guardar y restaurar una copia, «Contarle a Victor»), compartirla con la familia y responder §6 (11–16).
+**v2.3:** lo pedido en las Entregas 1 y 2 quedó hecho; de la Entrega 3 queda lo listado en «Revisión integral v2.3 → Lo que no alcancé». Queda para Victor: probar la v2.3 en su teléfono con sus datos (actualizar sin perder nada) y responder §6 (17–20); después, compartirla con la familia.
+
+**v2.2:** nada de lo pedido quedó pendiente.
 
 ---
 

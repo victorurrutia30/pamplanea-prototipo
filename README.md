@@ -1,4 +1,4 @@
-# PamPlanea · prototipo v2.2
+# PamPlanea · prototipo v2.3
 
 Una versión de prueba de **PamPlanea**: saber cuánto te queda libre hasta tu próximo ingreso y que no se te olvide ningún pago.
 
@@ -10,6 +10,16 @@ Al abrirla eliges uno de dos caminos (y puedes cambiar cuando quieras desde tu l
 - **Usarla con mis datos:** tu dinero real, con la fecha real de tu teléfono. Empiezas desde cero: cómo te pagan, cuánto tienes y dónde, y tus pagos fijos.
 
 Los dos modos guardan sus datos por separado. Reiniciar los ejemplos no borra tus datos.
+
+## Lo nuevo en la v2.3
+
+- **Tu número dice la verdad:** «Libre» es lo que tienes, menos tus ahorros, menos lo que pagas con ese dinero. Lo que vence después de tu próxima quincena se paga con esa quincena: no baja tu número de hoy. Nada se guarda solo.
+- **«Lo pagas con»:** en cada pago eliges con qué quincena lo pagas, o lo repartes («$100 de esta y $100 de la del 29»).
+- **Tu próxima quincena,** debajo del número: lo que entra, lo que pagas con eso y lo que te quedaría. Si algo no alcanza, una sugerencia (tú decides).
+- **Fechas de verdad:** calendario en pagos e ingresos; en Anotar, una fecha que todavía no llega va a Pagos. Pagos semanales, cada 2 semanas, quincenales, mensuales, cada 3 meses, anuales o en fechas que tú eliges.
+- **Mi dinero con tres puertas:** Cuentas, Ahorros (antes «Apartados») y Deudas. **Pagos** con «Calendario» y «Mis pagos e ingresos».
+- Varios bancos, billeteras y tarjetas desde el primer día; préstamos y suscripciones; descuentos del salario que se pagan solos.
+- Al actualizar, tus datos se pasan solos al formato nuevo; antes se guarda una copia intacta. No se pierde nada de lo que escribiste.
 
 ## Tus datos
 
@@ -40,7 +50,7 @@ La prueba guiada de la v2.1 sigue en el modo entrenamiento: «Casos y ayuda» �
 ## Para el equipo
 
 - Abre `index.html` con doble clic (Chrome o Edge): funciona sin servidor ni internet, con la guía de los 13 casos y los dos sets.
-- Detalle, decisiones y preguntas abiertas: [`LEEME.md`](LEEME.md) (sección «Modos v2.2»).
+- Detalle, decisiones y preguntas abiertas: [`LEEME.md`](LEEME.md) (secciones «Prototipo v2.3» y «Modos v2.2»).
 - Licencias de fuentes, emoji e íconos: [`recursos/licencias`](recursos/licencias).
 
-Prototipo v2.2 · 2026-10-16
+Prototipo v2.3 · 2026-10-17

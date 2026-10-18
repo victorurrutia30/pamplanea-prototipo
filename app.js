@@ -417,7 +417,7 @@
     function tituloPeriodo(x, hz) {
         const st = P.st;
         const p = M.principal(st);
-        if (!p) return `Después, del ${M.fechaCorta(x.inicio)} al ${M.fechaCorta(x.fin)}`;
+        if (!p) return st.horizonteVariable === 'quince' ? `Los 15 días siguientes (hasta el ${M.fechaCorta(x.fin)})` : `El próximo mes (${M.MESES[M.partes(x.inicio)[1] - 1]})`;
         const d = M.partes(x.clave)[2];
         const pendiente = x.clave <= st.hoy;
         // Solo el primero que viene es «el próximo»; los demás se nombran por su fecha.
@@ -541,7 +541,7 @@
         // Sin ingreso fijo (ingreso que varía): se habla de fechas, no de «te caen».
         if (!p) return { titulo: `Del ${M.fechaCorta(x.inicio)} al ${M.fechaCorta(x.fin)} pagas ${dinero(x.pagos, { aprox: true })}${x.entra ? ` y te caen ${dinero(x.entra, { aprox: true })}` : ''}: te faltarían ${dinero(x.deficit, { aprox: true })}.`, texto: '¿Guardas algo de lo que tienes ahora?' };
         if (a.siguiente) {
-            const nombre = !p ? 'después' : semanal ? 'el próximo pago' : p.frecuencia === 'quincenal' ? 'la próxima quincena' : `tu próximo ${p.nombre.toLowerCase()}`;
+            const nombre = semanal ? 'con tu próximo pago' : p.frecuencia === 'quincenal' ? 'la próxima quincena' : `con tu próximo ${p.nombre.toLowerCase()}`;
             return { titulo: `${M.capital(nombre)} te faltarían ${dinero(x.deficit, { aprox: true })}. ¿Guardas algo ${fuente}?`, texto: `${M.capital(cual)} te caen ${dinero(x.entra, { aprox: true })} y ${quePagas}.` };
         }
         return { titulo: `${M.capital(cual)} te caen ${dinero(x.entra, { aprox: true })} y ${quePagas}: te faltarían ${dinero(x.deficit, { aprox: true })}.`, texto: `¿Reservas algo ${fuente}?` };

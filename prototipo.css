@@ -1699,6 +1699,8 @@ button.fila-main:active {
     min-height: 0;
     flex: 1 1 auto;
     align-content: start;
+    /* Filas a su alto completo: la hoja se desplaza y ningún recuadro se encoge ni se corta. */
+    grid-auto-rows: max-content;
     gap: 16px;
     padding: 16px 20px 20px;
     overflow-y: auto;
