@@ -17,10 +17,11 @@
     };
     const PASOS = [
         { antes: irA('hoy'), titulo: 'Te enseño la app en 3 minutos', texto: 'Usamos los datos de Ana, que son de ejemplo. Nada de lo que veas aquí toca tus datos. Puedes saltarlo cuando quieras.' },
-        { antes: irA('hoy'), sel: '.portada', titulo: 'Tu número: lo que te queda libre', texto: 'Es lo que puedes gastar hasta tu próximo ingreso, ya sin tus pagos ni lo que apartaste. Abajo te dice cuánto te toca por día.' },
-        { antes: () => { irA('hoy')(); P.abrirHoja('desglose'); }, sel: '.hoja', titulo: '¿De dónde sale?', texto: 'Si tocas el número, ves la cuenta completa: lo que tienes, menos lo apartado, menos lo que vence antes de tu ingreso.' },
+        { antes: irA('hoy'), sel: '.portada', titulo: 'Tu número: lo que te queda libre', texto: 'Es lo que puedes gastar hasta tu próximo ingreso, ya sin tus ahorros ni lo que pagas con ese dinero. Abajo te dice cuánto te toca por día.' },
+        { antes: () => { irA('hoy')(); P.abrirHoja('desglose'); }, sel: '.hoja', titulo: '¿De dónde sale?', texto: 'Si tocas el número, ves la cuenta completa: lo que tienes, menos tus ahorros, menos lo que pagas con lo que ya tienes antes de tu ingreso.' },
+        { antes: irA('hoy'), sel: '.proy', titulo: 'Tu próxima quincena', texto: 'Cómo quedas cuando te paguen: lo que entra, lo que pagas con ese dinero y lo que te quedaría. Si algo no alcanza, la app te sugiere; nunca guarda nada sola.' },
         { antes: irA('hoy'), sel: 'section[aria-labelledby="h-pagos"]', titulo: 'Lo que viene', texto: 'Tus próximos pagos. Cuando pagues uno, tocas «Pagado» y listo: tu número ya lo tenía contado.' },
-        { antes: irA('pagos'), sel: '.linea', titulo: 'Pagos: tu calendario', texto: 'Qué pagas y cuándo te pagan, en una línea de tiempo. Con «+ Pago» agregas la luz, el colegio o una cuota.' },
+        { antes: () => { P.ui.pagosModo = 'calendario'; irA('pagos')(); }, sel: '.pagos-modo', titulo: 'Pagos: calendario y lista', texto: 'Arriba eliges «Calendario» (qué vence en cada quincena) o «Mis pagos e ingresos» (todo junto). En cada pago eliges con qué ingreso lo pagas, o lo repartes.' },
         { antes: irA('hoy'), sel: '.nav-mas', titulo: '(+) Anotar', texto: 'Para anotar un gasto o un ingreso. Anotar todo es opcional: hay quien solo marca sus pagos.' },
         {
             antes: () => {
@@ -37,9 +38,8 @@
             titulo: 'Escribe como hablas',
             texto: 'Por ejemplo «pupusas 6», o díctalo con el micrófono de tu teclado. Te muestra lo que entendió; si algo no es, lo tocas y lo cambias.',
         },
-        { antes: irA('midinero'), sel: '.total', titulo: 'Mi dinero', texto: 'Cuánto tienes y dónde: efectivo, banco… «Cuadrar» es decirle cuánto tienes de verdad cuando no te cuadra.' },
-        { antes: irA('midinero'), sel: 'section[aria-labelledby="md-ap"]', titulo: 'Apartados', texto: 'Ponle nombre a una parte de tu dinero: emergencias, un viaje. No lo mueve de lugar; solo lo separa de tu libre.' },
-        { antes: irA('midinero'), sel: 'section[aria-labelledby="md-deudas"]', titulo: 'Tarjetas y deudas', texto: 'Tus tarjetas de crédito y cuotas. Su pago aparece solo en Pagos, y el cupo nunca suma a tu libre.' },
+        { antes: irA('midinero'), sel: '.puertas', titulo: 'Mi dinero', texto: 'Cuánto tienes, tus ahorros y lo que debes. Tres puertas: Cuentas (dónde está y con qué pagas; aquí cuadras), Ahorros y Deudas (tarjetas y préstamos).' },
+        { antes: irA('midinero'), sel: '[data-fk="md-ahorros"]', titulo: 'Ahorros', texto: 'Ponle nombre a una parte de tu dinero: emergencias, un viaje. Sigue en tu banco o efectivo; solo deja de contar en tu libre.' },
         { antes: irA('mes'), sel: '.resumen', titulo: 'Mes', texto: 'En qué se te fue el dinero: lo que entró, lo que salió y por categoría. Aquí también corriges lo que anotaste.' },
         { antes: irA('hoy'), sel: '.avatar', titulo: 'Tu letra', texto: 'Aquí cambias entre aprender y usar tus datos, guardas una copia y le cuentas a Victor cómo te va.' },
         { antes: irA('hoy'), fin: true, titulo: '¡Listo! Ya conoces lo principal', texto: '¿Qué quieres hacer ahora?' },

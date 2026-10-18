@@ -17,6 +17,7 @@ const CATEGORIAS = [
     { id: 'tecnologia', nombre: 'Tecnología', emoji: '💻', medio: 'debito', palabras: ['laptop', 'computadora', 'audifonos', 'cargador'] },
     { id: 'servicios', nombre: 'Servicios', emoji: '💡', medio: 'debito', palabras: ['luz', 'agua', 'internet', 'cable'] },
     { id: 'cuotas', nombre: 'Cuotas y deudas', emoji: '🛍️', medio: 'transferencia', palabras: ['cuota', 'prestamo'] },
+    { id: 'suscripciones', nombre: 'Suscripciones', emoji: '📺', medio: 'bac', palabras: ['netflix', 'spotify', 'disney', 'youtube', 'icloud', 'suscripcion', 'gimnasio', 'gym', 'hbo', 'prime'] },
     { id: 'otros', nombre: 'Otros', emoji: '🧩', medio: 'efectivo', palabras: [] },
 ];
 
@@ -36,7 +37,20 @@ const EMOJI_NOMBRE = {
     luz: '💡', agua: '💧', internet: '🌐', cable: '📺', alquiler: '🏠', colegio: '🎓', medicina: '💊', zapatos: '👟', ropa: '👕',
     laptop: '💻', regalo: '🎁', gas: '🔥', recarga: '📱', telefono: '📱', cuchubal: '🤝', remesa: '🌎', gasolina: '⛽', bus: '🚌',
     taxi: '🚕', mercado: '🧺', uniforme: '👕', farmacia: '💊', prestamo: '🏦', cuota: '🛍️', tarjeta: '💳', doctor: '🩺', dentista: '🦷',
+    netflix: '🎬', spotify: '🎵', disney: '📺', youtube: '🎬', gimnasio: '💪', gym: '💪',
 };
+
+/** V2-47: suscripciones frecuentes (sin logos: solo el nombre). Se pagan, si tienes, con tarjeta de crédito (V2-07). */
+const SUSCRIPCIONES = [
+    { id: 'netflix', nombre: 'Netflix', emoji: '🎬' },
+    { id: 'spotify', nombre: 'Spotify', emoji: '🎵' },
+    { id: 'disney', nombre: 'Disney+', emoji: '📺' },
+    { id: 'youtube', nombre: 'YouTube', emoji: '🎬' },
+    { id: 'nube', nombre: 'iCloud o Google', emoji: '🖥️' },
+    { id: 'celular', nombre: 'Plan del celular', emoji: '📱' },
+    { id: 'gimnasio', nombre: 'Gimnasio', emoji: '💪' },
+    { id: 'otra', nombre: 'Otra', emoji: '🧾' },
+];
 
 /** Pagos fijos frecuentes para el primer día y para entender «acuérdame…». */
 const PAGOS_FRECUENTES = [
@@ -224,4 +238,4 @@ function crearNueva() {
     return estadoBase({ persona: 'nueva', nombre: '', espacio: 'Tu espacio', configurado: false });
 }
 
-window.DATOS = { CATEGORIAS, INGRESO_CATEGORIAS, EMOJI_NOMBRE, PAGOS_FRECUENTES, TIPOS_DEUDA, BANCOS, crearAna, crearCarlos, crearNueva, sembrar, c };
+window.DATOS = { CATEGORIAS, INGRESO_CATEGORIAS, EMOJI_NOMBRE, PAGOS_FRECUENTES, TIPOS_DEUDA, BANCOS, SUSCRIPCIONES, crearAna, crearCarlos, crearNueva, sembrar, c };

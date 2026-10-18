@@ -74,6 +74,18 @@ Versión visible en la app y en la guía: **«Prototipo v2.2 · 2026-10-16»**.
 | V2-48 | Ficha del pago → Historial → toca un pago → «Corregir» (monto, medio, fecha con calendario) o «Desmarcar pagado» (confirmación y Deshacer). La nota del cuadre mira la fecha elegida. |
 | «~$597» | `dinero()` nunca pone «+» a un estimado. |
 
+### Cómo quedó la Entrega 2
+
+| Decisión | Dónde se ve |
+| --- | --- |
+| V2-39 | Pagos arriba: **[Calendario] [Mis pagos e ingresos]**. La lista trae «Al mes, más o menos: te entra ~$X · pagas ~$Y», «Lo que te pagan» (frecuencia, dónde cae, «Principal»), «Pagos fijos», «Cuotas y préstamos», «Suscripciones» (con su total al mes), «Descuentos del salario» y «Tarjetas de crédito». Cada fila: nombre, monto, frecuencia, medio, con qué ingreso se paga («Con la quincena de antes de que venza», «…anterior», «Repartido parejo») y el próximo; toca para abrir su ficha y editar. |
+| V2-41 | «Ahorros» en toda la app (Mi dinero, fichas, Reparte «2. ¿Quieres ahorrar algo?», desglose, Anotar «Ahorrar», recorrido, ejercicios, «Contarle a Victor»). «Liberar» → «Sacar». «Sin apartar» → «Fuera de ahorros». La línea «Tus ahorros siguen en tu banco o efectivo; solo les pones nombre». Ya no existe «Guardando para pagos»: lo reservado está dentro de cada pago y en «Reservado para pagos» del desglose. «aparté», «ahorré» y «guardé» → Ahorrar. |
+| V2-45 | Primer día, paso 2: «+ Agregar otro banco» y «+ Agregar billetera» (nombre y cuánto tiene). Paso 3: una tarjeta de débito por banco, la billetera, «Transferencias» (una por banco) y «+ Agregar otra tarjeta de crédito» (banco, corte, pago). Después: Mi dinero → Cuentas → «Agregar lugar» y «Agregar otra tarjeta o medio». |
+| V2-46 | Paso 4: «Cuotas y deudas» con Préstamo, Casa comercial y Tarjeta; cada uno con nombre, cuota y día, y «Otro préstamo» / «Otra casa comercial» / «Otra tarjeta» para agregar más. «¿Cuánto debes?» se pide después, en Deudas. Saltable. |
+| V2-47 | «+ Pago» → «Suscripción» (Netflix, Spotify, Disney+, YouTube, iCloud o Google, Plan del celular, Gimnasio, Otra), solo «Cada mes» o «Cada año», medio por defecto la tarjeta de crédito si hay. También en el paso 4 del primer día. Mes: «Pagas ~$X al mes en suscripciones» (lleva a la lista). |
+| V2-49 | Mi dinero: «Tienes $X · Ahorros $Y · Debes ~$Z» (si hay cuotas sin «cuánto debes», dice «Cuotas $X al mes», nunca «Debes $0.00»), «Así se reparte» y tres puertas: **Cuentas** (Cuadrar, Mover, lugares con su ficha, «Con qué pagas»), **Ahorros** (ahorrar, cada ahorro, Logros y Cerrados) y **Deudas** (tarjetas, préstamos, casa comercial, descuentos del salario; «+ Tarjeta o préstamo»). Cada pantalla con «‹ Mi dinero». La barra inferior no cambió. |
+| Entrenamiento | 13 pasos: el número, «¿De dónde sale?», **tu próxima quincena**, lo que viene, **Pagos: calendario y lista**, Anotar, escribe como hablas, **Mi dinero con tres puertas**, **Ahorros**, Mes, tu letra y fin. Los 13 ejercicios con números nuevos (Ana $270.60; Carlos $125.00 con la sugerencia; C16 y C30 con el aviso agrupado; C23, C31 y C32 por las puertas de Mi dinero). |
+
 ### Decisiones técnicas v2.3 (cómo interpreté lo aprobado)
 
 - **«Ingreso» en «Lo pagas con» = un día de pago del ingreso principal** («tu quincena del 29», «tu pago del viernes 30»). Lo que cae de otros ingresos que se repiten (la pareja, la remesa) en ese periodo se suma como estimado a ese día de pago. Así Victor no ve «te faltan» por sus pagos del 30: el 29 le caen ~$1,163. Sin ingreso principal, se elige entre «lo que tienes ahora» y «lo que tengas cuando venza».
@@ -353,6 +365,7 @@ La fecha simulada es el **miércoles 21 de octubre de 2026** (ver §4).
 17. **Pagar con un ingreso de una vez:** hoy «Lo pagas con» ofrece lo que tienes ahora y tus días de pago (con lo de tu pareja sumado). El aguinaldo, la Quincena 25 o un bono no cuentan por adelantado. ¿Quieres poder decir «la matrícula de enero la pago con el aguinaldo»?
 18. **Tu cuchubal «quincenal con próxima fecha 23-oct»:** lo armé como «Cada quincena, el 8 y el 23». Si en realidad es cada dos viernes (23 oct, 6 nov, 20 nov…), elige «Cada 2 semanas» y la fecha del 23. ¿Cuál es?
 19. **Anotar con fecha futura:** «zapatos 40» para el 25 queda como pago de una vez: no baja lo que tienes, pero sí tu libre de hoy (vence antes de tu quincena del 29, así que se paga con lo que ya tienes). ¿Correcto?
+20. **«Tarjeta» en pagos fijos (V2-46):** la armé como una cuota mensual (nombre, cuánto pagas más o menos y el día), sin corte ni estado de cuenta, porque así se pide «solo nombre, cuota y día». Si la persona quiere anotar compras con ella, la agrega como tarjeta de crédito en el paso 3 o en Deudas. ¿O preferías que «Tarjeta» aquí fuera la tarjeta completa?
 
 ## 7. Lo que no hace (límites)
 

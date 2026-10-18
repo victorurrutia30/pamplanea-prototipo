@@ -1373,6 +1373,55 @@ button.fila-main:active {
     font-weight: 500;
     line-height: 16px;
 }
+/* V2-49: las tres puertas de Mi dinero. */
+.puertas {
+    display: grid;
+    gap: 10px;
+    padding: 0;
+    list-style: none;
+}
+.puerta {
+    display: flex;
+    width: 100%;
+    min-height: 72px;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 14px 14px 16px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-card);
+    background: var(--color-surface-2);
+    box-shadow: var(--app-shadow-card);
+    color: var(--color-text);
+    text-align: left;
+}
+.puerta:hover {
+    border-color: color-mix(in srgb, var(--color-primary) 40%, transparent);
+}
+.puerta:focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+}
+.puerta > .ico-xs {
+    flex-shrink: 0;
+    color: var(--color-text-muted);
+}
+.puerta-txt {
+    display: grid;
+    min-width: 0;
+    flex: 1;
+    gap: 1px;
+}
+.puerta-t {
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 24px;
+}
+.puerta-n {
+    font-size: 20px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    line-height: 28px;
+}
 .total-art {
     width: 108px;
     height: 81px;
@@ -3006,4 +3055,14 @@ label.btn {
         animation: none !important;
         transition: none !important;
     }
+}
+
+/* V2-45: «+ Agregar otro banco / billetera / tarjeta» en el primer día. */
+.ob-mas {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.ob-lugar-c > .link {
+    justify-self: start;
 }

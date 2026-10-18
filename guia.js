@@ -114,7 +114,7 @@
         if (!caso) {
             const ana = est.persona === 'ana';
             panel.innerHTML = `<p class="g-panel-cod">Exploración libre</p><h2 class="g-panel-t">${ana ? 'Ana, pago quincenal' : 'Carlos, pago semanal'}</h2>
-                <p>${ana ? 'Cobra ~$600 el 15 y el 30 en Banco Agrícola. Tiene $40 en efectivo y $1,455.60 en el banco, tarjeta Crédito BAC (corte 15, pago 5, cupo $1,500), luz vencida sin confirmar y tres apartados: Emergencias, Laptop (lista para usar) y Vacaciones.' : 'Cobra ~$90 cada viernes, en efectivo. Tiene $125 y paga $150 de alquiler el día 1: lo paga con su pago del viernes 30 y la app le sugiere reservar lo que falta (él decide). Aporta $10 al cuchubal cada viernes.'}</p>
+                <p>${ana ? 'Cobra ~$600 el 15 y el 30 en Banco Agrícola. Tiene $40 en efectivo y $1,455.60 en el banco, tarjeta Crédito BAC (corte 15, pago 5, cupo $1,500), luz vencida sin confirmar y tres ahorros: Emergencias, Laptop (lista para usar) y Vacaciones.' : 'Cobra ~$90 cada viernes, en efectivo. Tiene $125 y paga $150 de alquiler el día 1: lo paga con su pago del viernes 30 y la app le sugiere reservar lo que falta (él decide). Aporta $10 al cuchubal cada viernes.'}</p>
                 <p class="g-tip">Elige un caso a la izquierda para ver sus pasos. Todo lo que hagas cambia los números de verdad; «Reiniciar datos» vuelve al inicio.</p>`;
             return;
         }

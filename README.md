@@ -29,7 +29,7 @@ En «Ayuda» (arriba a la derecha) están los mismos pasos.
 
 ## Contarle a Victor cómo te va
 
-Tu letra → **«Contarle a Victor cómo me va»**. Arma un texto con tu nombre o apodo, las fechas en que la usaste, lo que más hiciste (anotar, Pagado, cuadrar…) y tus respuestas a «¿Cómo te ha ido?». **No lleva montos ni los nombres de tus cuentas, pagos o apartados**: lo ves completo antes de mandarlo. Toca **«Compartir»** (WhatsApp) o **«Copiar»**.
+Tu letra → **«Contarle a Victor cómo me va»**. Arma un texto con tu nombre o apodo, las fechas en que la usaste, lo que más hiciste (anotar, Pagado, cuadrar…) y tus respuestas a «¿Cómo te ha ido?». **No lleva montos ni los nombres de tus cuentas, pagos o ahorros**: lo ves completo antes de mandarlo. Toca **«Compartir»** (WhatsApp) o **«Copiar»**.
 
 Cada 3 días de uso, Hoy te pregunta «¿Cómo te ha ido?» (1 a 5 y dos preguntas opcionales). Puedes dejarlo para después.
 
