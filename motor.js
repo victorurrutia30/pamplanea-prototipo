@@ -535,7 +535,11 @@
                 }
             }
             const adelantos = resIn.filter((r) => r.adelanto);
-            return { clave, inicio: ini, fin, ingresos, principal: ingresos.find((o) => o.ingreso.principal) || null, otros: ingresos.filter((o) => !o.ingreso.principal), adelantos, entraGuardado: entraRes - suma(adelantos, (r) => r.monto), entra: entraIng + entraRes, entraIng, entraRes, partes: lista, pagos: salePagos + saleRes, salePagos, saleRes, quedan: entraIng + entraRes - salePagos - saleRes, deficit: -minimo, cuando, primero };
+            const quedan = entraIng + entraRes - salePagos - saleRes;
+            // Antes de la v2.4: si el total alcanza pero un pago vence antes de que llegue otro ingreso del periodo,
+            // el faltante es «solo por fechas»: se dice qué llega después y cuándo.
+            const cubre = minimo < 0 ? ingresos.filter((o) => o.fecha > cuando).sort((a, z) => (a.fecha < z.fecha ? -1 : a.fecha > z.fecha ? 1 : 0))[0] || null : null;
+            return { clave, inicio: ini, fin, ingresos, principal: ingresos.find((o) => o.ingreso.principal) || null, otros: ingresos.filter((o) => !o.ingreso.principal), adelantos, entraGuardado: entraRes - suma(adelantos, (r) => r.monto), entra: entraIng + entraRes, entraIng, entraRes, partes: lista, pagos: salePagos + saleRes, salePagos, saleRes, quedan, deficit: -minimo, cuando, primero, cubre, soloFechas: minimo < 0 && quedan >= 0 };
         };
         if (!principal(st)) {
             const fin = hz.modo === 'quince' ? sumarDias(hz.fecha, 14) : fechaDe(...partes(hz.fecha).slice(0, 2), 31);

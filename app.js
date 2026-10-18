@@ -417,7 +417,7 @@
         return ing.principal && ing.frecuencia === 'quincenal' ? `tu quincena del ${M.fechaCorta(fecha)}` : `${ing.principal ? 'tu ' + ing.nombre.toLowerCase() : ing.nombre} del ${M.fechaCorta(fecha)}`;
     };
     /** «de tu pareja», «de la remesa», «de Comisión». */
-    P.deQuien = (ing) => (/pareja|espos|marido|novi/i.test(ing.nombre) ? 'de tu pareja' : ing.categoria === 'remesa' || /remesa/i.test(ing.nombre) ? 'de la remesa' : /adelanto|anticipo/i.test(ing.nombre) ? 'de adelanto' : /aguinaldo/i.test(ing.nombre) ? 'de aguinaldo' : /^bono/i.test(ing.nombre) ? 'de bono' : `de «${ing.nombre}»`);
+    P.deQuien = (ing) => (/pareja|espos|marido|novi/i.test(ing.nombre) ? 'de tu pareja' : ing.categoria === 'remesa' || /remesa/i.test(ing.nombre) ? 'de la remesa' : ing.adelanto || /adelanto|anticipo|vale/i.test(ing.nombre) ? 'de adelanto' : /aguinaldo/i.test(ing.nombre) ? 'de aguinaldo' : /^bono/i.test(ing.nombre) ? 'de bono' : `de «${ing.nombre}»`);
     const ARTICULOS = { alquiler: 'el alquiler', luz: 'la luz', agua: 'el agua', internet: 'el internet', colegio: 'el colegio', telefono: 'el teléfono', cable: 'el cable', prestamo: 'el préstamo', cuchubal: 'el cuchubal', laptop: 'la laptop', regalo: 'el regalo', vacaciones: 'las vacaciones', 'casa comercial': 'la casa comercial', matricula: 'la matrícula', uniformes: 'los uniformes', seguro: 'el seguro' };
     // «Cuchubal (tu aporte)» → «el cuchubal»: basta con que empiece con un nombre conocido.
     P.conArticulo = (nombre) => ARTICULOS[M.normalizar(nombre)] || ARTICULOS[M.normalizar(nombre).replace(/s*(.*)$/, '')] || ARTICULOS[M.normalizar(nombre).split(' ')[0]] || `«${nombre}»`;
@@ -445,6 +445,14 @@
         return `entra ${dinero(x.entra, { aprox: true })} · pagos ${dinero(x.pagos, { aprox: true })} · ${quedan}`;
     }
     P.lineaPeriodo = lineaPeriodo;
+    /** «lo de tu pareja (el 29)», «tu quincena (el 14)», «el adelanto (el 20)»: lo que llega después de un faltante. */
+    function queLlega(o) {
+        const ing = o.ingreso;
+        const quien = ing.principal ? (ing.frecuencia === 'quincenal' ? 'tu quincena' : ing.frecuencia === 'semanal' || ing.frecuencia === 'catorcenal' ? 'tu pago' : `tu ${ing.nombre.toLowerCase()}`) : ing.adelanto || /adelanto|anticipo|vale/i.test(ing.nombre) ? 'el adelanto' : /aguinaldo/i.test(ing.nombre) ? 'el aguinaldo' : /^bono/i.test(ing.nombre) ? 'el bono' : 'lo ' + P.deQuien(ing);
+        return `${quien} (el ${M.partes(o.fecha)[2]})`;
+    }
+    /** Antes de la v2.4: un faltante solo por fechas dice el día y la causa: «El 16 te faltarían ~$51 hasta que llegue lo de tu pareja (el 29)». */
+    P.textoFaltaFechas = (x) => `El ${M.partes(x.cuando)[2]} te faltarían ${dinero(x.deficit, { aprox: true })} hasta que llegue ${x.cubre ? queLlega(x.cubre) : 'lo demás'}`;
     /** «incluye ~$566 de tu pareja y ~$314 de adelanto · te descuentan $314 del adelanto». */
     function incluyePeriodo(x) {
         const partes = x.otros.map((o) => `${dinero(o.monto, { aprox: true })} ${P.deQuien(o.ingreso)}`);
@@ -465,6 +473,7 @@
             <span class="proy-t">${icon('calendar-days', 'ico-s')}${esc(tituloPeriodo(x, k.hz))}</span>
             <span class="proy-l${x.deficit > 0 ? ' proy-l--falta' : ''}">${esc(lineaPeriodo(x))}</span>
             ${inc ? `<span class="proy-s">${esc(inc)}</span>` : ''}
+            ${x.soloFechas ? `<span class="proy-s">Ojo: ${esc(P.textoFaltaFechas(x).replace(/^El /, 'el '))}.</span>` : ''}
             ${icon('chevron-right', 'ico-xs proy-ir')}
         </button>`;
     }
@@ -486,7 +495,13 @@
                 const texto = a.nivel === 'rojo' ? 'Mira qué puedes mover o sacar de tus ahorros, o cambia con qué pagas algo.' : `Te alcanza cuando te caiga ${P.lista(a.esperados.map((x) => `${dinero(x.monto, { aprox: x.aprox })} ${P.deQuien(x.ingreso)}`))}.`;
                 items.push({ id: 'falta', nivel: a.nivel, pago: true, titulo, texto, corto: `te faltan ${dinero(a.faltan)}`, acciones: btn('Ver detalle', 'data-a="hoja" data-hoja="desglose" data-fk="at-falta"') });
             } else if (a.tipo === 'sugerencia') {
-                items.push({ id: 'sug-' + a.periodo.clave, nivel: 'ambar', pago: true, ...textoSugerencia(a), corto: `te faltarían ${dinero(a.periodo.deficit, { aprox: true })} el ${M.partes(a.periodo.clave)[2]}`, acciones: btn(`Sí, ${dinero(a.periodo.deficit)}`, `data-a="hoja" data-hoja="reservar" data-id="${a.periodo.clave}" data-fecha="${a.fuente}" data-fk="at-sug-si"`, true) + btn('No, después veo', `data-a="sugerenciaNo" data-id="${a.periodo.clave}" data-v="${a.periodo.deficit}" data-fk="at-sug-no"`) });
+                const x = a.periodo;
+                const no = btn('No, después veo', `data-a="sugerenciaNo" data-id="${x.clave}" data-v="${x.deficit}" data-fk="at-sug-no"`);
+                // Faltante solo por fechas: «¿Lo pagas con…?» (el pago que vence antes) o «Reservar $51» (solo lo que falta).
+                const acciones = x.soloFechas
+                    ? (x.primero ? btn(`Pagarlo con ${a.fuente === 'ahora' ? 'lo que tienes' : etiquetaFuente(a.fuente)}`, `data-a="hoja" data-hoja="pagarCon" data-id="${x.primero.pago.id}" data-fecha="${x.primero.fecha}" data-sugerida="${a.fuente}" data-fk="at-sug-pagar"`, true) : '') + btn(`Reservar ${dinero(x.deficit)}`, `data-a="hoja" data-hoja="reservar" data-id="${x.clave}" data-fecha="${a.fuente}" data-fk="at-sug-si"`, !x.primero) + no
+                    : btn(`Sí, ${dinero(x.deficit)}`, `data-a="hoja" data-hoja="reservar" data-id="${x.clave}" data-fecha="${a.fuente}" data-fk="at-sug-si"`, true) + no;
+                items.push({ id: 'sug-' + x.clave, nivel: 'ambar', pago: true, ...textoSugerencia(a), corto: `te faltarían ${dinero(x.deficit, { aprox: true })} el ${M.partes(x.soloFechas ? x.cuando : x.clave)[2]}`, acciones });
             } else if (a.tipo === 'sinIngreso') {
                 // V2-52: lo ibas a pagar con un ingreso de una vez que todavía no llega. Se pregunta; nada cambia solo.
                 const x = a.parte;
@@ -572,6 +587,12 @@
         const descuento = M.suma(x.ingresos || [], (o) => o.descuento || 0);
         const caen = `${dinero(x.entra, { aprox: true })}${descuento ? ` (ya sin los ${dinero(descuento)} del adelanto)` : ''}`;
         const fuente = a.fuente === 'ahora' ? 'de lo que tienes ahora' : `de ${etiquetaFuente(a.fuente)}`;
+        // Antes de la v2.4: en total alcanza; falta solo por las fechas. Se dice el día, la causa y qué hacer.
+        if (x.soloFechas) {
+            const art = x.primero ? P.conArticulo(x.primero.pago.nombre) : 'un pago';
+            const loLa = art.startsWith('la ') ? 'la' : art.startsWith('las ') ? 'las' : art.startsWith('los ') ? 'los' : 'lo';
+            return { titulo: `${P.textoFaltaFechas(x)}.`, texto: `En total sí te alcanza, pero ${art} vence antes. ¿${M.capital(loLa)} pagas con ${a.fuente === 'ahora' ? 'lo que tienes ahora' : etiquetaFuente(a.fuente)} o reservas solo ${dinero(x.deficit)}?` };
+        }
         // Sin ingreso fijo (ingreso que varía): se habla de fechas, no de «te caen».
         if (!p) return { titulo: `Del ${M.fechaCorta(x.inicio)} al ${M.fechaCorta(x.fin)} pagas ${dinero(x.pagos, { aprox: true })}${x.entra ? ` y te caen ${dinero(x.entra, { aprox: true })}` : ''}: te faltarían ${dinero(x.deficit, { aprox: true })}.`, texto: '¿Guardas algo de lo que tienes ahora?' };
         if (a.siguiente) {
@@ -801,7 +822,7 @@
         const x = k.periodos.find((y) => y.clave === rango.desde) || (k.proxima && k.proxima.inicio <= rango.desde && rango.desde <= k.proxima.fin ? k.proxima : null);
         if (!x) return '';
         const inc = incluyePeriodo(x);
-        return `<div class="per-res${x.deficit > 0 ? ' per-res--falta' : ''}"><p class="per-res-l">${esc(M.capital(lineaPeriodo(x)))}</p>${inc ? `<p class="fila-s">${esc(M.capital(inc))}.</p>` : ''}${x.deficit > 0 && x.quedan >= 0 ? `<p class="fila-s">Ojo: el ${M.partes(x.cuando)[2]} te faltarían ${dinero(x.deficit, { aprox: true })} hasta que llegue lo demás.</p>` : ''}</div>`;
+        return `<div class="per-res${x.deficit > 0 ? ' per-res--falta' : ''}"><p class="per-res-l">${esc(M.capital(lineaPeriodo(x)))}</p>${inc ? `<p class="fila-s">${esc(M.capital(inc))}.</p>` : ''}${x.soloFechas ? `<p class="fila-s">Ojo: ${esc(P.textoFaltaFechas(x).replace(/^El /, 'el '))}.</p>` : ''}</div>`;
     }
     /** Cuánto es al mes, más o menos, algo que se repite (para comparar y sumar). */
     function alMes(x, monto = x.monto) {

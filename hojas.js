@@ -389,7 +389,7 @@
         if (H[h.tipo].vivo) H[h.tipo].vivo(h);
     };
     P.acciones.cerrarHoja = () => P.cerrarHoja();
-    P.acciones.hoja = (d) => P.abrirHoja(d.hoja, { id: d.id, fecha: d.fecha });
+    P.acciones.hoja = (d) => P.abrirHoja(d.hoja, { id: d.id, fecha: d.fecha, ...(d.sugerida ? { sugerida: d.sugerida } : {}) });
     function validar(h, faltan) {
         h.intento = true;
         h.errores = faltan;
@@ -1139,6 +1139,8 @@
             h.partes = Object.fromEntries(h.fuentes.map((f) => [f, M.montoCampo(M.suma(actual.filter((x) => x.de === f), (x) => x.monto))]));
             const usadas = actual.filter((x) => x.monto > 0);
             h.modo = usadas.length > 1 ? 'repartir' : 'uno:' + (usadas[0] ? usadas[0].de : h.def);
+            // Desde un aviso «¿Lo pagas con…?» llega la opción sugerida ya elegida.
+            if (h.sugerida && h.fuentes.includes(h.sugerida)) h.modo = 'uno:' + h.sugerida;
             h.siempre = !!p.pagarCon;
             h.parejo = !!(p.pagarCon && p.pagarCon.modo === 'parejo');
         },
@@ -1149,11 +1151,14 @@
             const repetido = p.frecuencia !== 'unico' && !!M.principal(st);
             const etiqueta = (f) => (f === 'ahora' ? 'Con lo que tienes ahora' : M.capital('con ' + P.etiquetaFuente(f)));
             const op = (v, t, s) => `<button type="button" class="opcion-g" role="radio" aria-checked="${h.modo === v}" data-a="valor" data-campo="modo" data-v="${v}" data-fk="pc-${v}"><span class="opcion-g-txt"><span class="opcion-g-t">${esc(t)}</span>${s ? `<span class="fila-s">${esc(s)}</span>` : ''}</span></button>`;
-            const opciones1 = [...h.fuentes].reverse().map((f) => op('uno:' + f, etiqueta(f) + (f === h.def ? ' (lo normal)' : ''), quedaEn(k, f))).join('');
+            const vis = fuentesVisibles(h);
+            const ocultas = h.fuentes.length - vis.length;
+            const opciones1 = [...vis].reverse().map((f) => op('uno:' + f, etiqueta(f) + (f === h.def ? ' (lo normal)' : ''), quedaEn(k, f))).join('');
             const repartir = h.fuentes.length > 1 ? op('repartir', 'Repartirlo', 'Tú eliges cuánto de cada uno') : '';
+            const verMas = ocultas ? `<button type="button" class="link link--start" data-a="valor" data-campo="verTodas" data-v="true" data-fk="pc-ver-mas">${icon('chevron-down', 'ico-s')}Ver más ${M.principal(st) && M.principal(st).frecuencia === 'quincenal' ? 'quincenas' : 'opciones'} (${ocultas})</button>` : '';
             const suma = M.suma(h.fuentes, (f) => M.leerMonto(h.partes[f]) || 0);
             const resto = h.total - suma;
-            const camposRepartir = h.modo === 'repartir' ? `<div class="pc-rep">${h.fuentes.map((f) => campoMonto(h, { campo: 'parte:' + f, label: etiqueta(f), valor: h.partes[f], id: 'f-parte-' + f })).join('')}
+            const camposRepartir = h.modo === 'repartir' ? `<div class="pc-rep">${vis.map((f) => campoMonto(h, { campo: 'parte:' + f, label: etiqueta(f), valor: h.partes[f], id: 'f-parte-' + f })).join('')}
                 <div class="chips"><button type="button" class="chip" data-a="valor" data-campo="parejo" data-v="si" data-fk="pc-parejo">Repartir parejo</button></div>
                 <p class="fila-s" id="pc-suma" aria-live="polite">${resto === 0 ? `Suma ${dinero(h.total)}: cuadra.` : resto > 0 ? `Faltan ${dinero(resto)}: van ${P.etiquetaFuente(h.def) === 'lo que tienes ahora' ? 'con lo que tienes' : 'con ' + esc(P.etiquetaFuente(h.def))}.` : `Te pasaste ${dinero(-resto)} de ${dinero(h.total)}.`}</p></div>` : '';
             const reglaPosible = repetido && (h.modo === 'repartir' ? h.parejo : h.modo === 'uno:' + h.def || h.modo === 'uno:' + antesDeDef(st, h));
@@ -1161,6 +1166,7 @@
                 titulo: `¿Con qué pagas ${esc(P.conArticulo(p.nombre))}?`,
                 cuerpo: `<p class="txt">Vence el ${esc(M.fechaLarga(h.fecha))} · ${dinero(h.total, { aprox: h.estimado })}.</p><p class="fila-s">Si lo pagas con lo que ya tienes, queda reservado desde hoy.</p>
                     <div class="opciones-grandes" role="radiogroup" aria-label="Con qué lo pagas">${opciones1}${repartir}</div>
+                    ${verMas}
                     ${camposRepartir}
                     ${reglaPosible ? `<div class="chips"><button type="button" class="chip" aria-pressed="${h.siempre}" data-a="valor" data-campo="siempre" data-v="${!h.siempre}" data-fk="pc-siempre">${h.siempre ? icon('check', 'ico-xs') : ''}Hacerlo así cada vez</button></div>` : ''}
                     ${error(h, 'parte', 'Lo repartido no puede pasar del total')}`,
@@ -1169,11 +1175,14 @@
         },
         alValor(h, campo, v) {
             if (campo === 'siempre') h.siempre = v === 'true';
+            else if (campo === 'verTodas') h.verTodas = v === 'true';
             else if (campo === 'parejo') {
-                // Partes iguales entre lo que tienes ahora y los días de pago hasta que vence.
-                const n = h.fuentes.length;
+                // Partes iguales entre las opciones que se ven (lo que tienes ahora y los días de pago hasta que vence).
+                const vis = fuentesVisibles(h);
+                const n = vis.length;
                 const cuota = Math.floor(h.total / n);
-                h.fuentes.forEach((f, i) => (h.partes[f] = M.montoCampo(i === n - 1 ? h.total - cuota * (n - 1) : cuota)));
+                for (const f of h.fuentes) if (!vis.includes(f)) h.partes[f] = M.montoCampo(0);
+                vis.forEach((f, i) => (h.partes[f] = M.montoCampo(i === n - 1 ? h.total - cuota * (n - 1) : cuota)));
                 h.parejo = true;
             } else h[campo] = v;
         },
@@ -1189,6 +1198,16 @@
             if (el) el.textContent = resto === 0 ? `Suma ${dinero(h.total)}: cuadra.` : resto > 0 ? `Faltan ${dinero(resto)}: van con ${P.etiquetaFuente(h.def)}.` : `Te pasaste ${dinero(-resto)} de ${dinero(h.total)}.`;
         },
     };
+    /**
+     * Antes de la v2.4: de un pago lejano se ven como mucho tres opciones: la de siempre y las dos más
+     * cercanas antes de que venza (y la que ya está elegida). «Ver más quincenas» muestra todas.
+     */
+    function fuentesVisibles(h) {
+        if (h.verTodas || h.fuentes.length <= 3) return h.fuentes;
+        const fechaDe = (f) => (f === 'ahora' ? P.st.hoy : f === 'despues' ? h.fecha : M.esUnico(f) ? M.ingresoDeClave(P.st, f)?.fecha || P.st.hoy : f);
+        const cerca = h.fuentes.filter((f) => f !== h.def).sort((a, b) => (fechaDe(a) < fechaDe(b) ? 1 : fechaDe(a) > fechaDe(b) ? -1 : 0)).slice(0, 2);
+        return h.fuentes.filter((f) => f === h.def || cerca.includes(f) || h.modo === 'uno:' + f || (h.modo === 'repartir' && M.leerMonto(h.partes[f])));
+    }
     /** El día de pago justo antes del de por defecto, como fuente («la quincena anterior»). */
     function antesDeDef(st, h) {
         if (!h.def || h.def === 'ahora' || h.def === 'despues') return null;
@@ -1458,7 +1477,7 @@
             const items = P.atencion(P.calc());
             const cls = (n) => (n === 'rojo' ? 'nota--atencion' : n === 'ambar' ? 'nota--ambar' : 'nota--info');
             return {
-                titulo: items.length ? (items.every((x) => x.pago) ? `${items.length} pagos necesitan atención` : `${items.length} avisos para hoy`) : 'Todo al día',
+                titulo: items.length === 1 ? (items[0].pago ? 'Un pago necesita atención' : 'Un aviso para hoy') : items.length ? (items.every((x) => x.pago) ? `${items.length} pagos necesitan atención` : `${items.length} avisos para hoy`) : 'Todo al día',
                 cuerpo: `${P.modos && P.modos.notaAvisos ? P.modos.notaAvisos() : ''}${items.length ? `<ul class="aten-lista">${items.map((x) => `<li class="nota ${cls(x.nivel)}">${icon(x.nivel === 'info' ? 'bell' : 'triangle-alert')}<div><p class="nota-t">${esc(x.titulo)}</p>${x.texto ? `<p>${esc(x.texto)}</p>` : ''}<div class="nota-acc">${x.acciones}</div></div></li>`).join('')}</ul>` : '<p class="vacio">No hay nada pendiente por hoy.</p>'}`,
                 pie: pie1('cerrarHoja', 'Listo', 'aten-listo'),
             };
