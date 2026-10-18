@@ -564,7 +564,8 @@
             const dia = M.partes(refIngreso.fecha)[2];
             const adelantada = refIngreso.fecha > st.hoy;
             const ch = (v, t) => `<button type="button" class="chip" aria-pressed="${d.cualIngreso === v}" data-a="anotarValor" data-campo="cualIngreso" data-v="${v}" data-fk="cual-${v}">${d.cualIngreso === v ? icon('check', 'ico-xs') : ''}${t}</button>`;
-            out.push(`<div class="pregunta" role="group" aria-labelledby="l-cualIngreso"><p class="campo-l" id="l-cualIngreso">¿Es tu ${esc(cual)} del ${dia}${adelantada ? ' adelantada' : ''} o un ingreso extra?</p><div class="chips">${ch('esperado', `Mi ${esc(cual)} del ${dia}`)}${ch('extra', 'Un ingreso extra')}</div>${error(h, 'cualIngreso', 'Elige una opción')}</div>`);
+            const fem = /^(quincena|catorcena|remesa)/.test(cual);
+            out.push(`<div class="pregunta" role="group" aria-labelledby="l-cualIngreso"><p class="campo-l" id="l-cualIngreso">¿Es tu ${esc(cual)} del ${dia}${adelantada ? (fem ? ' adelantada' : ' adelantado') : ''} o un ingreso extra?</p><div class="chips">${ch('esperado', `Mi ${esc(cual)} del ${dia}`)}${ch('extra', 'Un ingreso extra')}</div>${error(h, 'cualIngreso', 'Elige una opción')}</div>`);
         }
         // V2-29 #11: «aparté 20 luz» cuando la luz ya está en Pagos.
         if (d.tipo === 'apartar' && d.pagoParecido && d.apartarIgual !== 'si') {
@@ -589,7 +590,8 @@
         }
         if (d.tipo === 'ingreso' && d.ingresoRef && (!d.preguntarIngreso || d.cualIngreso === 'esperado')) out.push(`<div class="nota nota--info" role="note">${icon('info')}<p>Al guardar te ayudo a repartirla.</p></div>`);
         if (d.tipo === 'pagoTarjeta') out.push(`<div class="nota nota--info" role="note">${icon('info')}<p>Pagar la tarjeta mueve dinero de tu banco a la tarjeta: no es un gasto nuevo.</p></div>`);
-        if ((d.tipo === 'gasto' || d.tipo === 'ingreso') && d.fecha > st.hoy) out.push(`<div class="nota nota--info" role="note">${icon('calendar-days')}<p><strong>Es para el ${esc(M.fechaLarga(d.fecha))}:</strong> ${d.tipo === 'gasto' ? 'lo pongo en Pagos como pago de una vez. No baja tu dinero hasta que lo pagues.' : 'lo pongo como ingreso esperado. No suma a tu libre hasta que llegue.'}</p></div>`);
+        if ((d.tipo === 'gasto' || d.tipo === 'ingreso') && d.fecha > st.hoy) out.push(`<div class="nota nota--info" role="note">${icon('calendar-days')}<p><strong>Es para el ${esc(M.fechaLarga(d.fecha))}:</strong> ${d.tipo === 'gasto' ? 'lo pongo en Pagos como pago de una vez. No baja tu dinero hasta que lo pagues.' : 'lo pongo como ingreso esperado. No suma a tu libre hasta que llegue.'}${d.adelanto ? ' Después te pregunto de qué quincena te lo descuentan.' : ''}</p></div>`);
+        else if (d.tipo === 'ingreso' && d.adelanto && !d.ingresoRef) out.push(`<div class="nota nota--info" role="note">${icon('info')}<p>Es un adelanto de tu salario: suma hoy. Al guardar te pregunto de qué quincena te lo descuentan.</p></div>`);
         if (d.tipo === 'apartar' && d.monto !== null) {
             const k = P.calc();
             const sin = k.tienes - k.apartado;
@@ -639,7 +641,7 @@
             const ctx = h.ctxMedio ? M.medio(st, h.ctxMedio) : h.ctxLugar ? M.lugar(st, h.ctxLugar) : h.ctxApartado ? M.apartado(st, h.ctxApartado) : null;
             return {
                 titulo: 'Anotar',
-                cuerpo: `${ctx ? `<p class="contexto">${emo(ctx.emoji, 16)} Desde ${esc(ctx.nombre)}</p>` : ''}
+                cuerpo: `${P.tipHtml('anotar')}${ctx ? `<p class="contexto">${emo(ctx.emoji, 16)} Desde ${esc(ctx.nombre)}</p>` : ''}
                     <label class="campo-l" for="anotar-q">¿Qué pasó?</label>
                     <div class="campo campo--grande"><input id="anotar-q" data-campo="texto" type="text" autocomplete="off" autocapitalize="sentences" enterkeyhint="done" spellcheck="false" placeholder="${esc(EJEMPLOS[0])}" value="${esc(h.texto)}" aria-describedby="anotar-mic"></div>
                     <p class="campo-ayuda" id="anotar-mic">${icon('mic', 'ico-s')}Puedes dictar: toca el micrófono de tu teclado.</p>
@@ -840,9 +842,17 @@
         P.ui.hoja = null;
         let texto = 'Guardado';
         let cambiar = null;
+        let adelantoId = null;
         P.cambiar(
             (s) => {
-                if ((d.tipo === 'gasto' || d.tipo === 'ingreso') && d.fecha > s.hoy) {
+                if (d.tipo === 'ingreso' && d.adelanto && !d.ingresoRef) {
+                    // V2-56: un adelanto es un ingreso de una vez; si ya te lo dieron, llegó hoy (o el día que dijiste).
+                    const id = 'i' + s.seq++;
+                    s.ingresos.push({ id, nombre: d.nombre || 'Adelanto de salario', emoji: '💵', categoria: 'otro', tipoIngreso: 'adelanto', monto: d.monto, aprox: false, frecuencia: 'unico', fecha: d.fecha, lugar: d.lugar, principal: false, extra: true, desde: d.fecha < s.hoy ? d.fecha : s.hoy, llegadas: {} });
+                    if (d.fecha <= s.hoy) P.llegoIngreso(s, id, d.fecha, { monto: d.monto, lugar: d.lugar, fecha: d.fecha });
+                    adelantoId = id;
+                    texto = d.fecha > s.hoy ? `Adelanto esperado el ${M.fechaCorta(d.fecha)}` : 'Adelanto anotado';
+                } else if ((d.tipo === 'gasto' || d.tipo === 'ingreso') && d.fecha > s.hoy) {
                     // V2-44: nunca se descuenta (ni se suma) dinero que todavía no salió (ni llegó).
                     if (d.tipo === 'gasto') P.crearPago(s, { nombre: d.nombre, emoji: d.emoji, categoria: d.categoria, monto: d.monto, frecuencia: 'unico', fecha: d.fecha, medio: d.medio });
                     else s.ingresos.push({ id: 'i' + s.seq++, nombre: d.nombre || 'Ingreso', emoji: d.emoji || '💵', categoria: d.categoria || 'otro', monto: d.monto, aprox: false, frecuencia: 'unico', fecha: d.fecha, lugar: d.lugar, principal: false, extra: true, desde: s.hoy, llegadas: {} });
@@ -889,7 +899,9 @@
             { aviso: () => texto, cambiar: () => cambiar, claves },
         );
         clearInterval(rotador);
-        if (siguiente) P.abrir('reparte', siguiente.id, { fecha: siguiente.fecha, monto: siguiente.monto });
+        // V2-56: enseguida, de qué quincena te descuentan el adelanto.
+        if (adelantoId) P.abrirHoja('adelanto', { id: adelantoId, nuevo: true });
+        else if (siguiente) P.abrir('reparte', siguiente.id, { fecha: siguiente.fecha, monto: siguiente.monto });
         else {
             const el = document.querySelector('[data-fk="nav-anotar"]');
             if (el) el.focus({ preventScroll: true });
@@ -1265,10 +1277,21 @@
         }
         return out;
     }
-    const textoSumaAdelanto = (h, a) => {
-        const suma = M.suma(h.opciones.filter((o) => h.partes[o.clave] !== undefined), (o) => M.leerMonto(h.partes[o.clave]) || 0);
-        return suma === a.monto ? `Suman ${dinero(suma)}: todo el adelanto.` : `Suman ${dinero(suma)} de ${dinero(a.monto)}.`;
+    const textoSumaAdelanto = (partes, total, opciones) => {
+        const suma = M.suma(opciones.filter((o) => partes[o.clave] !== undefined), (o) => M.leerMonto(partes[o.clave]) || 0);
+        return suma === total ? `Suman ${dinero(suma)}: todo el adelanto.` : `Suman ${dinero(suma)} de ${dinero(total)}.`;
     };
+    /** Tocar una quincena la agrega (con lo que falta del adelanto) o la quita; si queda una sola, se lleva todo. */
+    function elegirQuincenaAdelanto(partes, clave, total) {
+        if (partes[clave] !== undefined) {
+            delete partes[clave];
+            const quedan = Object.keys(partes);
+            if (quedan.length === 1 && total) partes[quedan[0]] = M.montoCampo(total);
+            return;
+        }
+        const usado = M.suma(Object.values(partes), (x) => M.leerMonto(x) || 0);
+        partes[clave] = M.montoCampo(Math.max(0, (total || 0) - usado));
+    }
     H.adelanto = {
         iniciar(h) {
             const st = P.st;
@@ -1299,7 +1322,7 @@
                 cuerpo: `<p class="txt">${emo(a.emoji, 18)} ${esc(a.nombre)} · ${dinero(a.monto, { aprox: a.aprox })}, el ${esc(M.fechaLarga(a.fecha))}.</p>
                     ${h.opciones.length ? `<div class="campo-g" role="group" aria-labelledby="l-ad"><p class="campo-l" id="l-ad">Elige una, o varias si te lo descuentan en partes</p><div class="chips chips--col">${lista}</div>${error(h, 'elegir', 'Elige de cuál te lo descuentan')}</div>` : `<p class="vacio">No tienes ${cual === 'quincena' ? 'quincenas' : 'pagos'} esperados después de esa fecha. Agrega tu salario con «+ Ingreso esperado».</p>`}
                     ${campos}
-                    ${elegidas.length > 1 ? `<p class="fila-s" id="ad-suma" aria-live="polite">${esc(textoSumaAdelanto(h, a))}</p>` : ''}
+                    ${elegidas.length > 1 ? `<p class="fila-s" id="ad-suma" aria-live="polite">${esc(textoSumaAdelanto(h.partes, a.monto, h.opciones))}</p>` : ''}
                     ${error(h, 'montos', 'Escribe cuánto te descuentan de cada una')}
                     <p class="fila-s">Esa ${cual} ya vendrá con el descuento: no contamos el mismo dinero dos veces.</p>
                     ${h.yaEra ? `<button type="button" class="link link--peligro" data-a="adelantoQuitar" data-fk="ad-quitar">${icon('x', 'ico-s')}No es un adelanto</button>` : ''}`,
@@ -1308,20 +1331,14 @@
         },
         alValor(h, campo, v) {
             if (campo !== 'elegir') return;
-            if (h.partes[v] !== undefined) delete h.partes[v];
-            else {
-                // Al agregar otra, se le propone lo que falta del adelanto.
-                const a = M.ingreso(P.st, h.id);
-                const usado = M.suma(Object.values(h.partes), (x) => M.leerMonto(x) || 0);
-                h.partes[v] = M.montoCampo(Math.max(0, a.monto - usado));
-            }
+            elegirQuincenaAdelanto(h.partes, v, M.ingreso(P.st, h.id).monto);
         },
         alCampo(h, campo, el) {
             if (campo.startsWith('parte:')) h.partes[campo.slice(6)] = el.value;
         },
         vivo(h) {
             const el = document.getElementById('ad-suma');
-            if (el) el.textContent = textoSumaAdelanto(h, M.ingreso(P.st, h.id));
+            if (el) el.textContent = textoSumaAdelanto(h.partes, M.ingreso(P.st, h.id).monto, h.opciones);
         },
     };
     P.acciones.adelantoOk = () => {
@@ -1995,11 +2012,19 @@
                     (s) => {
                         const t = M.tarjeta(s, h.tarjetaId);
                         Object.assign(t, { nombre, corte: corte || t.corte || null, pagoDia, cupo });
-                        // V2-54: sin estado de cuenta todavía, lo que paga normalmente y la fecha de ese pago.
                         const ult = t.estados.at(-1);
-                        if (ult.inicial && h.usual !== null && h.usual !== undefined) {
-                            t.pagoUsual = M.leerMonto(h.usual);
-                            if (h.sinCorte) ult.vence = M.proximoDia(s.hoy, pagoDia);
+                        if (ult.inicial) {
+                            // V2-54: sin estado de cuenta todavía, lo que paga normalmente.
+                            if (h.usual !== null && h.usual !== undefined) t.pagoUsual = M.leerMonto(h.usual);
+                            // V2-57: el ciclo pendiente se recalcula con los días nuevos (corte, vencimiento, avisos y su pago
+                            // en Pagos salen de aquí). Un estado de cuenta ya anotado no se toca.
+                            if (t.corte) {
+                                const base = t.desde && t.desde <= s.hoy ? t.desde : s.hoy;
+                                const corteFecha = M.ultimoDia(base, t.corte);
+                                const [y, m] = M.partes(corteFecha);
+                                const [vy, vm] = M.mesMas(y, m, 1);
+                                Object.assign(ult, { corte: corteFecha, vence: M.fechaDe(vy, vm, t.pagoDia) });
+                            } else ult.vence = M.proximoDia(s.hoy, t.pagoDia);
                         }
                     },
                     { aviso: 'Cambios guardados', claves: ['guardado:deuda:editar'] },
@@ -2089,16 +2114,57 @@
         }
         P.abrir('reparte', h.id, { fecha: h.fechaEsperada, monto });
     };
+    /** V2-56: el tipo de un ingreso que ya existe (los de antes no lo tenían guardado). */
+    function tipoDeIngreso(ing) {
+        if (ing.tipoIngreso) return ing.tipoIngreso;
+        const n = M.normalizar(ing.nombre || '');
+        if (ing.adelanto || /\b(adelanto|anticipo|vale)\b/.test(n)) return 'adelanto';
+        if (/quincena 25/.test(n)) return 'q25';
+        if (ing.categoria === 'aguinaldo' || /aguinaldo/.test(n)) return 'aguinaldo';
+        if (ing.categoria === 'remesa' || /remesa/.test(n)) return 'remesa';
+        if (ing.categoria === 'venta' || /\bventas?\b/.test(n)) return 'venta';
+        if (ing.categoria === 'extra' || /\b(bono|comision)\b/.test(n)) return 'bono';
+        if (ing.categoria === 'salario' || ing.principal || /\b(salario|sueldo|quincena|pago)\b/.test(n)) return 'salario';
+        return 'otro';
+    }
+    P.tipoDeIngreso = tipoDeIngreso;
+    /** V2-56: las quincenas de las que se descuenta el adelanto, dentro del mismo formulario. */
+    function sincronizarAdelanto(st, h) {
+        const ops = opcionesAdelanto(st, { fecha: h.fecha || st.hoy, monto: M.leerMonto(h.monto) || 0 });
+        // Mientras la persona no lo cambie: todo el adelanto, de la primera quincena que viene después.
+        if (h.adAuto) h.adPartes = ops[0] ? { [ops[0].clave]: M.leerMonto(h.monto) ? M.montoCampo(M.leerMonto(h.monto)) : '' } : {};
+        else h.adPartes = Object.fromEntries(Object.entries(h.adPartes || {}).filter(([k]) => ops.some((o) => o.clave === k)));
+        return ops;
+    }
+    function bloqueAdelantoForm(st, h) {
+        const ops = sincronizarAdelanto(st, h);
+        const p = M.principal(st);
+        const cual = p && p.frecuencia === 'quincenal' ? 'quincena' : 'pago';
+        if (!ops.length) return `<div class="campo-g"><p class="campo-l">¿De qué ${cual} te lo descuentan?</p><p class="fila-s">No tienes ${cual === 'quincena' ? 'quincenas' : 'pagos'} esperados después de esa fecha. Agrega tu salario como ingreso esperado y aquí lo eliges.</p></div>`;
+        const elegidas = ops.filter((o) => h.adPartes[o.clave] !== undefined);
+        const chips = ops.map((o) => {
+            const on = h.adPartes[o.clave] !== undefined;
+            return `<button type="button" class="chip" aria-pressed="${on}" data-a="valor" data-campo="adElegir" data-v="${esc(o.clave)}" data-fk="ad-${esc(o.fecha)}">${on ? icon('check', 'ico-xs') : ''}<span>${esc(o.t)}</span><span class="chip-s">${esc(dinero(o.monto, { aprox: true }))}</span></button>`;
+        }).join('');
+        const campos = elegidas.map((o) => campoMonto(h, { campo: 'adParte:' + o.clave, label: elegidas.length > 1 ? `¿Cuánto de ${esc(o.t.charAt(0).toLowerCase() + o.t.slice(1))}?` : '¿Cuánto te descuentan?', valor: h.adPartes[o.clave], id: 'f-ad-' + o.fecha })).join('');
+        const suma = elegidas.length > 1 ? `<p class="fila-s" id="ad-suma" aria-live="polite">${esc(textoSumaAdelanto(h.adPartes, M.leerMonto(h.monto) || 0, ops))}</p>` : '';
+        return `<div class="campo-g" role="group" aria-labelledby="l-ad"><p class="campo-l" id="l-ad">¿De qué ${cual} te lo descuentan?</p><div class="chips chips--col">${chips}</div>${error(h, 'adElegir', `Elige de qué ${cual} te lo descuentan`)}</div>${campos}${suma}${error(h, 'adMontos', 'Escribe cuánto te descuentan')}<p class="fila-s">Esa ${cual} vendrá con el descuento: no contamos el mismo dinero dos veces.</p>`;
+    }
     H.nuevoIngreso = {
         iniciar(h) {
             const st = P.st;
             const ing = h.id ? M.ingreso(st, h.id) : null;
-            if (ing) Object.assign(h, { editar: true, nombre: ing.nombre, monto: M.montoCampo(ing.monto), lugar: ing.lugar, principal: !!ing.principal, ...formFrecuencia(ing) });
-            else {
+            if (ing) {
+                Object.assign(h, { editar: true, nombre: ing.nombre, monto: M.montoCampo(ing.monto), lugar: ing.lugar, principal: !!ing.principal, tipoIng: tipoDeIngreso(ing), ...formFrecuencia(ing) });
+                h.tipoIngAntes = h.tipoIng;
+                h.adPartes = Object.fromEntries(((ing.adelanto && ing.adelanto.descuentos) || []).map((d) => [d.ingreso + '|' + d.fecha, M.montoCampo(d.monto)]));
+                h.adAuto = !Object.keys(h.adPartes).length;
+            } else {
                 // «Los mismos días que yo» para la pareja: se parte de los días del ingreso principal.
                 const p = M.principal(st);
                 const base = p && p.frecuencia === 'quincenal' ? { frecuencia: 'quincenal', dias: p.dias } : { frecuencia: 'unico' };
-                Object.assign(h, { nombre: '', monto: '', lugar: p ? p.lugar : st.lugares[0] ? st.lugares[0].id : null, principal: false, ...formFrecuencia(base) });
+                Object.assign(h, { nombre: '', monto: '', lugar: p ? p.lugar : st.lugares[0] ? st.lugares[0].id : null, principal: false, tipoIng: null, adPartes: {}, adAuto: true, ...formFrecuencia(base) });
+                if (h.tipoInicial) H.nuevoIngreso.alValor(h, 'tipoIng', h.tipoInicial);
             }
             h.descuento = false;
             h.dNombre = 'Préstamo por planilla';
@@ -2108,7 +2174,6 @@
         },
         html(h) {
             const st = P.st;
-            const sugeridos = [['Salario de mi pareja', '💼'], ['Remesa', '🌎'], ['Comisión', '📈'], ['Bono', '📈'], ['Aguinaldo', '🎁'], ['Quincena 25', '🎁'], ['Turno del cuchubal', '🤝']];
             const f = h.frecuencia;
             const principal = M.principal(st);
             const repetido = f !== 'unico' && f !== 'fechas';
@@ -2118,81 +2183,142 @@
                 ? `<div class="campo-g"><div class="chips"><button type="button" class="chip" aria-pressed="${h.descuento}" data-a="valor" data-campo="descuento" data-v="${!h.descuento}" data-fk="ing-descuento">${h.descuento ? icon('check', 'ico-xs') : ''}¿Te descuentan algo del salario?</button></div><p class="fila-s">Por ejemplo, una orden de descuento o un préstamo por planilla.${descuentos.length ? ` Ya tienes: ${esc(descuentos.map((p) => p.nombre).join(', '))}.` : ''}</p>
                     ${h.descuento ? `<div class="ob-det">${campoTexto(h, { campo: 'dNombre', label: '¿Qué te descuentan?', valor: h.dNombre, errorTexto: 'Ponle un nombre' })}${campoMonto(h, { campo: 'dCuota', label: '¿Cuánto cada vez que te pagan?', valor: h.dCuota, id: 'f-dCuota', errorTexto: 'Escribe cuánto te descuentan' })}${campoMonto(h, { campo: 'dDebe', label: '¿Cuánto debes? <span class="opcional">(opcional)</span>', valor: h.dDebe, id: 'f-dDebe' })}<p class="fila-s">Lo que esperas arriba ya es lo que te cae, sin el descuento. Al confirmar tu ingreso, la cuota queda pagada sola: no baja tu libre otra vez y sí baja lo que debes.</p></div>` : ''}</div>`
                 : '';
+            // V2-56: primero «¿Qué es?»; cada tipo trae su frecuencia. «Adelanto» pregunta aquí mismo de qué quincena se descuenta.
+            const tipos = opciones(h, { campo: 'tipoIng', label: '¿Qué es?', lista: D.TIPOS_INGRESO.map((x) => ({ v: x.id, t: x.nombre, e: x.emoji })), valor: h.tipoIng });
+            const adelanto = h.tipoIng === 'adelanto' && f === 'unico' ? bloqueAdelantoForm(st, h) : '';
             return {
                 titulo: h.editar ? `Editar ${esc(h.nombre)}` : 'Ingreso esperado',
-                cuerpo: `${h.editar ? '' : `<p class="txt">No suma a tu libre hasta que llegue. Cuando llegue, te ayudo a repartirlo.</p>${opciones(h, { campo: 'sugerido', label: 'Ideas', lista: sugeridos.map(([t, e]) => ({ v: t, t, e })), valor: h.nombre })}`}
+                cuerpo: `${h.editar ? '' : '<p class="txt">No suma a tu libre hasta que llegue. Cuando llegue, te ayudo a repartirlo.</p>'}
+                    ${tipos}
                     ${campoTexto(h, { campo: 'nombre', label: 'Nombre', valor: h.nombre, placeholder: 'Ej. Salario de Luis', errorTexto: 'Ponle un nombre' })}
-                    ${campoMonto(h, { label: '¿Cuánto te cae más o menos?', valor: h.monto, ayuda: 'Lo que te llega de verdad, ya con descuentos.' })}
-                    ${bloqueFrecuencia(h, { esIngreso: true })}
+                    ${campoMonto(h, { label: h.tipoIng === 'adelanto' ? '¿Cuánto te adelantan?' : '¿Cuánto te cae más o menos?', valor: h.monto, ayuda: h.tipoIng === 'adelanto' ? '' : 'Lo que te llega de verdad, ya con descuentos.' })}
+                    ${adelanto ? calendario(h, 'fecha', h.fecha, { label: '¿Qué día te lo dan?' }) : bloqueFrecuencia(h, { esIngreso: true })}
+                    ${adelanto}
                     ${opciones(h, { campo: 'lugar', label: '¿Dónde cae?', lista: lugares(st), valor: h.lugar })}
                     ${repetido ? `<div class="chips"><button type="button" class="chip" aria-pressed="${h.principal}" data-a="valor" data-campo="principal" data-v="${!h.principal}" data-fk="ing-principal">${h.principal ? icon('check', 'ico-xs') : ''}Es mi ingreso principal</button></div><p class="fila-s">${h.principal ? 'Tu libre se calcula hasta que llegue este.' : principal && principal.id !== h.id ? `Tu ingreso principal es «${esc(principal.nombre)}». Este cuenta como estimado para tus próximos pagos.` : 'Sin ingreso principal, ves tu libre hasta fin de mes.'}</p>` : ''}
                     ${bloqueDescuento}
-                    ${f === 'unico' && !h.editar ? `<div class="campo-g"><div class="chips"><button type="button" class="chip" aria-pressed="${!!h.esAdelanto}" data-a="valor" data-campo="esAdelanto" data-v="${!h.esAdelanto}" data-fk="ing-adelanto">${h.esAdelanto ? icon('check', 'ico-xs') : ''}Es un adelanto de mi salario</button></div><p class="fila-s">${h.esAdelanto ? 'Al guardar te pregunto de qué quincena te lo descuentan.' : 'Márcalo si después te lo descuentan de tu quincena.'}</p></div>` : ''}
                     ${h.editar ? (h.confirmarEliminar ? confirmarHtml(`¿Ya no esperas «${esc(h.nombre)}»?`, 'Deja de aparecer en Pagos. Lo que ya llegó se queda en tu historial.', 'ingresoEliminar', 'ing-eliminar') : `<button type="button" class="link link--peligro" data-a="valor" data-campo="confirmarEliminar" data-v="si" data-fk="ing-eliminar">${icon('trash-2', 'ico-s')}Ya no lo espero</button>`) : ''}`,
                 pie: pie2('nuevoIngresoOk', h.editar ? 'Guardar cambios' : 'Guardar'),
             };
         },
         alValor(h, campo, v) {
-            if (campo === 'sugerido') {
-                h.nombre = v;
-                if (v === 'Aguinaldo' || v === 'Quincena 25' || v === 'Turno del cuchubal' || v === 'Bono') h.frecuencia = 'unico';
+            const st = P.st;
+            if (campo === 'tipoIng') {
+                const t = D.TIPOS_INGRESO.find((x) => x.id === v);
+                if (!t) return;
+                h.tipoIng = v;
+                // El nombre sugerido (si la persona no escribió otro) y la frecuencia de ese tipo.
+                if (!(h.nombre || '').trim() || h.nombreAuto) {
+                    h.nombre = t.sugerido;
+                    h.nombreAuto = true;
+                }
+                if (t.frecuencia === 'unico') h.frecuencia = 'unico';
+                else if (!h.editar && t.frecuencia === 'quincenal') {
+                    const p = M.principal(st);
+                    Object.assign(h, formFrecuencia(p && p.id !== h.id ? p : { frecuencia: 'quincenal', dias: [15, 30] }));
+                } else if (!h.editar && t.frecuencia) h.frecuencia = t.frecuencia;
                 // El aguinaldo llega a más tardar el 20 de diciembre; la Quincena 25, en enero. Se sugiere y se cambia en el calendario.
-                const y = Number(P.st.hoy.slice(0, 4));
-                if (v === 'Aguinaldo' && !h.fecha) h.fecha = `${P.st.hoy <= `${y}-12-12` ? y : y + 1}-12-12`;
-                if (v === 'Quincena 25' && !h.fecha) h.fecha = `${P.st.hoy <= `${y}-01-25` ? y : y + 1}-01-25`;
-                if (v === 'Remesa') h.frecuencia = 'mensual';
-            } else if (campo === 'principal') h.principal = v === 'true';
+                // Si la fecha la puso otro tipo (no la persona), cambia con el tipo.
+                if (t.mes && (!h.fecha || h.fechaAuto)) {
+                    const y = Number(st.hoy.slice(0, 4));
+                    const fecha = M.fechaDe(y, t.mes, t.dia);
+                    h.fecha = fecha >= st.hoy ? fecha : M.fechaDe(y + 1, t.mes, t.dia);
+                    h.fechaAuto = true;
+                } else if (!t.mes && h.fechaAuto) Object.assign(h, { fecha: '', fechaAuto: false });
+                return;
+            }
+            if (campo === 'adElegir') {
+                elegirQuincenaAdelanto(h.adPartes, v, M.leerMonto(h.monto));
+                h.adAuto = false;
+                return;
+            }
+            if (campo === 'principal') h.principal = v === 'true';
             else if (campo === 'descuento') h.descuento = v === 'true';
-            else if (campo === 'esAdelanto') h.esAdelanto = v === 'true';
             else if (campo === 'confirmarEliminar') h.confirmarEliminar = v === 'si';
             else if (campo === 'fechas') alternarFecha(h, v);
             else h[campo] = v;
+            if (campo === 'fecha') h.fechaAuto = false;
         },
         alCampo(h, campo, el) {
+            if (campo.startsWith('adParte:')) {
+                h.adPartes[campo.slice(8)] = el.value;
+                h.adAuto = false;
+                return;
+            }
             h[campo] = el.value;
+            if (campo === 'nombre') h.nombreAuto = false;
+            // Mientras la persona no toque «¿Cuánto te descuentan?», sigue al monto del adelanto.
+            if (campo === 'monto' && h.adAuto) {
+                const claves = Object.keys(h.adPartes || {});
+                if (claves.length === 1) h.adPartes[claves[0]] = M.leerMonto(el.value) ? M.montoCampo(M.leerMonto(el.value)) : '';
+            }
+        },
+        vivo(h) {
+            if (h.tipoIng !== 'adelanto') return;
+            const suma = document.getElementById('ad-suma');
+            if (suma) suma.textContent = textoSumaAdelanto(h.adPartes, M.leerMonto(h.monto) || 0, opcionesAdelanto(P.st, { fecha: h.fecha || P.st.hoy }));
+            if (!h.adAuto) return;
+            for (const [k, v] of Object.entries(h.adPartes || {})) {
+                const el = document.getElementById('f-ad-' + k.split('|')[1]);
+                if (el && el !== document.activeElement) el.value = v;
+            }
         },
     };
     P.acciones.nuevoIngresoOk = () => {
         const h = P.ui.hoja;
+        const st = P.st;
         const monto = M.leerMonto(h.monto);
         const f = h.frecuencia;
         const dCuota = M.leerMonto(h.dCuota);
         const conDescuento = h.descuento && f !== 'unico' && f !== 'fechas';
-        const faltan = [...(h.nombre.trim() ? [] : ['nombre']), ...(monto ? [] : ['monto']), ...faltanFrecuencia(h), ...(conDescuento && !(h.dNombre || '').trim() ? ['dNombre'] : []), ...(conDescuento && !dCuota ? ['dCuota'] : [])];
-        if (!validar(h, faltan)) return;
+        // V2-56: un adelanto se guarda con de qué quincena te lo descuentan (si hay alguna que esperar).
+        const opsAd = h.tipoIng === 'adelanto' && f === 'unico' ? sincronizarAdelanto(st, h) : [];
+        const adElegidas = opsAd.filter((o) => h.adPartes[o.clave] !== undefined);
+        const adVacia = adElegidas.find((o) => !M.leerMonto(h.adPartes[o.clave]));
+        const faltan = [...(h.nombre.trim() ? [] : ['nombre']), ...(monto ? [] : ['monto']), ...faltanFrecuencia(h), ...(opsAd.length && !adElegidas.length ? ['adElegir'] : []), ...(adVacia ? ['adMontos'] : []), ...(conDescuento && !(h.dNombre || '').trim() ? ['dNombre'] : []), ...(conDescuento && !dCuota ? ['dCuota'] : [])];
+        if (!validar(h, faltan)) {
+            if (faltan[0] === 'adMontos') document.getElementById('f-ad-' + adVacia.fecha)?.focus();
+            return;
+        }
         P.ui.hoja = null;
         const n = M.normalizar(h.nombre);
         const { primera, ...regla } = reglaForm(h);
-        if (regla.frecuencia === 'ingreso') Object.assign(regla, { frecuencia: 'quincenal', dias: M.principal(P.st).dias });
+        if (regla.frecuencia === 'ingreso') Object.assign(regla, { frecuencia: 'quincenal', dias: M.principal(st).dias });
         const datos = { nombre: h.nombre.trim(), monto, ...P.reglaDe(regla), lugar: h.lugar, principal: f !== 'unico' && f !== 'fechas' && !!h.principal };
         datos.extra = !datos.principal;
         const dDebe = M.leerMonto(h.dDebe);
-        // Corrección v2.3.1: un adelanto de salario pregunta enseguida de qué quincena te lo descuentan.
-        const esAdelanto = f === 'unico' && !h.editar && !!h.esAdelanto;
-        let nuevoId = null;
+        // V2-56: el tipo se guarda; el adelanto, con de qué quincena(s) te lo descuentan.
+        const tipo = D.TIPOS_INGRESO.find((x) => x.id === h.tipoIng) || null;
+        const descuentos = adElegidas.map((o) => ({ ingreso: o.ingreso, fecha: o.fecha, monto: M.leerMonto(h.adPartes[o.clave]) }));
         P.cambiar(
             (s) => {
                 if (datos.principal) for (const x of s.ingresos) if (x.id !== h.id && x.principal) Object.assign(x, { principal: false, extra: true });
                 let id = h.id;
+                let x;
                 if (h.editar) {
-                    const x = M.ingreso(s, h.id);
+                    x = M.ingreso(s, h.id);
                     for (const k of ['fecha', 'dias', 'dia', 'diaSemana', 'cadaMeses', 'fechas']) delete x[k];
                     Object.assign(x, datos);
+                    // La categoría solo cambia si la persona cambió el tipo (un cuchubal sigue siendo cuchubal).
+                    if (tipo) x.tipoIngreso = tipo.id;
+                    if (tipo && tipo.id !== 'otro' && tipo.id !== h.tipoIngAntes) x.categoria = tipo.categoria;
                 } else {
-                    const emoji = /aguinaldo|quincena 25/.test(n) ? '🎁' : /remesa/.test(n) ? '🌎' : /cuchubal/.test(n) ? '🤝' : /comision|bono/.test(n) ? '📈' : '💼';
+                    const emoji = tipo && tipo.id !== 'otro' ? tipo.emoji : /aguinaldo|quincena 25/.test(n) ? '🎁' : /remesa/.test(n) ? '🌎' : /cuchubal/.test(n) ? '🤝' : /comision|bono/.test(n) ? '📈' : '💼';
+                    const categoria = tipo && tipo.id !== 'otro' ? tipo.categoria : /remesa/.test(n) ? 'remesa' : /aguinaldo|quincena 25/.test(n) ? 'aguinaldo' : /cuchubal/.test(n) ? 'cuchubal' : 'otro';
                     id = 'i' + s.seq++;
-                    nuevoId = id;
-                    s.ingresos.push({ id, emoji, categoria: /remesa/.test(n) ? 'remesa' : /aguinaldo|quincena 25/.test(n) ? 'aguinaldo' : /cuchubal/.test(n) ? 'cuchubal' : 'otro', aprox: true, desde: s.hoy, llegadas: {}, ...datos });
+                    x = { id, emoji, categoria, aprox: true, desde: s.hoy, llegadas: {}, ...datos, ...(tipo ? { tipoIngreso: tipo.id } : {}) };
+                    s.ingresos.push(x);
                 }
+                if (descuentos.length) x.adelanto = { descuentos };
+                else if (!tipo || tipo.id !== 'adelanto' || f !== 'unico') delete x.adelanto;
                 // V2-38: una deuda que se paga sola cada vez que llega este ingreso.
                 if (conDescuento) {
                     const p = P.crearPago(s, { nombre: h.dNombre.trim(), emoji: '🏦', categoria: 'cuotas', monto: dCuota, frecuencia: 'ingreso', conIngreso: id, medio: null });
                     Object.assign(p, { descuento: id, tipoDeuda: 'planilla', deuda: dDebe !== null ? { debe: dDebe } : null, avisos: [] });
                 }
             },
-            { aviso: h.editar ? 'Cambios guardados' : 'Ingreso esperado guardado', claves: [h.editar ? 'guardado:ingresoEditar' : 'guardado:ingresoEsperado', ...(conDescuento ? ['guardado:descuento'] : [])] },
+            { aviso: descuentos.length === 1 ? `Listo: ${P.etiquetaPagoIngreso(descuentos[0].ingreso, descuentos[0].fecha)} vendrá con ${dinero(descuentos[0].monto)} menos` : h.editar ? 'Cambios guardados' : 'Ingreso esperado guardado', claves: [h.editar ? 'guardado:ingresoEditar' : 'guardado:ingresoEsperado', ...(tipo ? ['guardado:ingreso:tipo:' + tipo.id] : []), ...(descuentos.length ? ['guardado:adelanto'] : []), ...(conDescuento ? ['guardado:descuento'] : [])] },
         );
-        if (esAdelanto && nuevoId) P.abrirHoja('adelanto', { id: nuevoId, nuevo: true });
     };
     P.acciones.ingresoEliminar = () => {
         const h = P.ui.hoja;

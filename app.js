@@ -373,7 +373,12 @@
     }
     P.avisoVigente = avisoVigente;
     // ---- v2.4: ayuda en el momento. Un «?» discreto abre 2–3 líneas con un ejemplo (los mismos textos de «Aprende»).
-    const termino = (id) => (window.GLOSARIO || []).find((x) => x.id === id);
+    /** El término del glosario, en la versión de quien no tiene ingreso fijo si hace falta (sin «quincena»). */
+    P.textoTermino = (g) => (P.st && !M.principal(P.st) && g.textoVariable ? { ...g, t: g.tVariable || g.t, texto: g.textoVariable } : g);
+    const termino = (id) => {
+        const g = (window.GLOSARIO || []).find((x) => x.id === id);
+        return g ? P.textoTermino(g) : null;
+    };
     P.qBtn = (id) => {
         const g = termino(id);
         if (!g) return '';
@@ -385,7 +390,8 @@
     };
     /** La primera vez que la persona usa cada pantalla con sus datos: un consejo corto, una sola vez. */
     P.tipHtml = (pantalla) => {
-        const texto = (window.TIPS || {})[pantalla];
+        const tips = window.TIPS || {};
+        const texto = (P.st && !M.principal(P.st) && tips[pantalla + 'Variable']) || tips[pantalla];
         if (P.modo !== 'uso' || !texto || !P.modos || !P.st || !P.st.configurado || P.modos.tipsVistos()[pantalla]) return '';
         return `<div class="tip" role="note">${icon('lightbulb', 'ico-s')}<p>${esc(texto)}</p><button type="button" class="link" data-a="tipOk" data-v="${pantalla}" data-fk="tip-${pantalla}">Entendido</button></div>`;
     };
@@ -434,7 +440,7 @@
         return ing.principal && ing.frecuencia === 'quincenal' ? `tu quincena del ${M.fechaCorta(fecha)}` : `${ing.principal ? 'tu ' + ing.nombre.toLowerCase() : ing.nombre} del ${M.fechaCorta(fecha)}`;
     };
     /** «de tu pareja», «de la remesa», «de Comisión». */
-    P.deQuien = (ing) => (/pareja|espos|marido|novi/i.test(ing.nombre) ? 'de tu pareja' : ing.categoria === 'remesa' || /remesa/i.test(ing.nombre) ? 'de la remesa' : ing.adelanto || /adelanto|anticipo|vale/i.test(ing.nombre) ? 'de adelanto' : /aguinaldo/i.test(ing.nombre) ? 'de aguinaldo' : /^bono/i.test(ing.nombre) ? 'de bono' : `de «${ing.nombre}»`);
+    P.deQuien = (ing) => (/pareja|espos|marido|novi/i.test(ing.nombre) ? 'de tu pareja' : ing.categoria === 'remesa' || /remesa/i.test(ing.nombre) ? 'de la remesa' : ing.adelanto || ing.tipoIngreso === 'adelanto' || /adelanto|anticipo|vale/i.test(ing.nombre) ? 'de adelanto' : /aguinaldo/i.test(ing.nombre) ? 'de aguinaldo' : /^bono/i.test(ing.nombre) ? 'de bono' : `de «${ing.nombre}»`);
     const ARTICULOS = { alquiler: 'el alquiler', luz: 'la luz', agua: 'el agua', internet: 'el internet', colegio: 'el colegio', telefono: 'el teléfono', cable: 'el cable', prestamo: 'el préstamo', cuchubal: 'el cuchubal', laptop: 'la laptop', regalo: 'el regalo', vacaciones: 'las vacaciones', 'casa comercial': 'la casa comercial', matricula: 'la matrícula', uniformes: 'los uniformes', seguro: 'el seguro' };
     // «Cuchubal (tu aporte)» → «el cuchubal»: basta con que empiece con un nombre conocido.
     P.conArticulo = (nombre) => ARTICULOS[M.normalizar(nombre)] || ARTICULOS[M.normalizar(nombre).replace(/s*(.*)$/, '')] || ARTICULOS[M.normalizar(nombre).split(' ')[0]] || `«${nombre}»`;
@@ -465,7 +471,7 @@
     /** «lo de tu pareja (el 29)», «tu quincena (el 14)», «el adelanto (el 20)»: lo que llega después de un faltante. */
     function queLlega(o) {
         const ing = o.ingreso;
-        const quien = ing.principal ? (ing.frecuencia === 'quincenal' ? 'tu quincena' : ing.frecuencia === 'semanal' || ing.frecuencia === 'catorcenal' ? 'tu pago' : `tu ${ing.nombre.toLowerCase()}`) : ing.adelanto || /adelanto|anticipo|vale/i.test(ing.nombre) ? 'el adelanto' : /aguinaldo/i.test(ing.nombre) ? 'el aguinaldo' : /^bono/i.test(ing.nombre) ? 'el bono' : 'lo ' + P.deQuien(ing);
+        const quien = ing.principal ? (ing.frecuencia === 'quincenal' ? 'tu quincena' : ing.frecuencia === 'semanal' || ing.frecuencia === 'catorcenal' ? 'tu pago' : `tu ${ing.nombre.toLowerCase()}`) : ing.adelanto || ing.tipoIngreso === 'adelanto' || /adelanto|anticipo|vale/i.test(ing.nombre) ? 'el adelanto' : /aguinaldo/i.test(ing.nombre) ? 'el aguinaldo' : /^bono/i.test(ing.nombre) ? 'el bono' : 'lo ' + P.deQuien(ing);
         return `${quien} (el ${M.partes(o.fecha)[2]})`;
     }
     /** Antes de la v2.4: un faltante solo por fechas dice el día y la causa: «El 16 te faltarían ~$51 hasta que llegue lo de tu pareja (el 29)». */
@@ -1290,6 +1296,7 @@
         };
         return `<div class="pg">
             ${encabezado(`${emo(p.emoji, 28)} ${esc(p.nombre)}`, `${tipoDeuda ? esc(tipoDeuda.nombre) + ' · ' : ''}${esc(textoFrecuencia(p))}${ing ? '' : ' · ' + esc(medio ? medio.nombre : 'sin medio')}`, { atras: atrasTexto })}
+            ${P.tipHtml('pago')}
             <section class="card ficha-cifra" aria-label="Monto">
                 <p class="cifra">${p.estimado ? dinero(p.monto, { aprox: true }) : dinero(p.monto)}</p>
                 <p class="fila-s">${p.estimado ? 'Estimado: cambia cada vez. Al marcarlo Pagado te pido el monto real.' : tipoDeuda ? 'Cuota fija' : 'Monto fijo'}</p>
@@ -1412,7 +1419,7 @@
         let adelanto = '';
         if (ing.frecuencia === 'unico' && ing.adelanto && (ing.adelanto.descuentos || []).length) {
             adelanto = tarjetaSeccion('Te lo descuentan', `<ul class="mini-desglose">${ing.adelanto.descuentos.map((d) => `<li><span>De ${esc(P.etiquetaPagoIngreso(d.ingreso, d.fecha))}</span><span>${dinero(d.monto)}</span></li>`).join('')}</ul><p class="fila-s">Esa quincena ya viene con el descuento: no contamos el mismo dinero dos veces.</p><div class="card-pie"><button type="button" class="link" data-a="hoja" data-hoja="adelanto" data-id="${ing.id}" data-fk="adelanto-cambiar">Cambiar</button></div>`, { id: 'i-adelanto' });
-        } else if (ing.frecuencia === 'unico' && ing.activo !== false && /adelanto|anticipo|vale/i.test(ing.nombre)) {
+        } else if (ing.frecuencia === 'unico' && ing.activo !== false && (ing.tipoIngreso === 'adelanto' || /adelanto|anticipo|vale/i.test(ing.nombre))) {
             adelanto = tarjetaSeccion('¿Es un adelanto de tu salario?', `<p class="txt txt--card">Si después te lo descuentan de tu quincena, dime de cuál. Así esa quincena ya viene con el descuento y no contamos el mismo dinero dos veces.</p><div class="card-pie"><button type="button" class="btn btn--full" data-a="hoja" data-hoja="adelanto" data-id="${ing.id}" data-fk="adelanto-si">Sí, anotar el descuento</button></div>`, { id: 'i-adelanto' });
         }
         return `<div class="pg">
@@ -1463,7 +1470,7 @@
     };
     /** v2.4: «Aprende» es un glosario sencillo: los mismos textos que salen al tocar «?». */
     S.aprende = function () {
-        const g = window.GLOSARIO || [];
+        const g = (window.GLOSARIO || []).map((x) => P.textoTermino(x));
         const uso = P.modo === 'uso';
         return `<div class="pg">
             ${encabezado('Aprende', 'Las palabras de la app, en sencillo', { atras: 'Hoy' })}
@@ -1493,7 +1500,7 @@
         },
         tipOk: (d) => {
             P.modos.tipVisto(d.v);
-            render({ foco: '#pantalla h1' });
+            render({ foco: P.ui.hoja ? '#hoja-t' : '#pantalla h1' });
             P.emitir('tip:visto:' + d.v);
         },
         tab: (d) => P.irTab(d.tab),

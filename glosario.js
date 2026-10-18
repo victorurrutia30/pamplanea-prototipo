@@ -3,9 +3,10 @@
 // consejos de la primera vez en cada pantalla (uso normal, una sola vez por pantalla).
 'use strict';
 window.GLOSARIO = [
-    { id: 'libre', t: 'Libre', texto: 'Lo que puedes gastar hasta tu próxima quincena. Si tienes $100 y antes pagas $40, te quedan $60 libres.' },
-    { id: 'pagasCon', t: 'Lo pagas con', texto: 'De qué dinero sale cada pago. El alquiler del 30 sale de tu quincena del 29. Puedes cambiarlo o repartirlo: $100 de cada una.' },
-    { id: 'proxima', t: 'Próxima quincena', texto: 'Cómo quedas cuando te paguen: entran $600, pagas $100 con eso y te quedarían $500. Si hoy te sobra, pásalo a la próxima.' },
+    // `textoVariable`: para quien no tiene un ingreso fijo (no se le habla de «tu quincena»).
+    { id: 'libre', t: 'Libre', texto: 'Lo que puedes gastar hasta tu próxima quincena. Si tienes $100 y antes pagas $40, te quedan $60 libres.', textoVariable: 'Lo que puedes gastar hasta fin de mes, o en 15 días si así lo elegiste. Si tienes $100 y pagas $40, te quedan $60.' },
+    { id: 'pagasCon', t: 'Lo pagas con', texto: 'De qué dinero sale cada pago. El alquiler del 30 sale de tu quincena del 29. Puedes cambiarlo o repartirlo: $100 de cada una.', textoVariable: 'De qué dinero sale cada pago: de lo que tienes ahora o de lo que tengas cuando venza. Puedes cambiarlo.' },
+    { id: 'proxima', t: 'Próxima quincena', texto: 'Cómo quedas cuando te paguen: entran $600, pagas $100 con eso y te quedarían $500. Si hoy te sobra, pásalo a la próxima.', tVariable: 'El próximo mes', textoVariable: 'Cómo quedas el mes que viene: lo que esperas que entre y lo que pagas. Si no alcanza, te sugiero guardar algo; tú decides.' },
     { id: 'ahorros', t: 'Ahorros', texto: 'Le pones nombre a una parte de tu dinero: $50 para «Emergencias». No se mueve de tu banco o efectivo; solo deja de contar en tu libre.' },
     { id: 'cuadrar', t: 'Cuadrar', texto: 'Decirle a la app cuánto tienes de verdad. Si cree que tienes $34 y tienes $30, los $4 quedan «sin detalle». Desde ahí sigue la cuenta.' },
     { id: 'deudas', t: 'Deudas', texto: 'Tus tarjetas, préstamos y cuotas. Lo que compras con tarjeta baja tu libre ese día. Una cuota de $25 al mes aparece sola en Pagos.' },
@@ -23,4 +24,10 @@ window.TIPS = {
     ahorros: 'Tus ahorros siguen en tu banco o efectivo: solo les pones nombre.',
     deudas: 'Tus tarjetas, préstamos y cuotas. Su pago aparece solo en Pagos.',
     mes: 'En qué se te fue el dinero este mes. Toca algo para corregirlo.',
+    // Sin ingreso fijo: Hoy y Pagos no hablan de «quincena».
+    hoyVariable: 'Tu número dice cuánto puedes gastar hasta fin de mes (o en 15 días). Tócalo para ver de dónde sale.',
+    pagosVariable: 'Aquí ves qué pagas y cuándo. Toca un pago para ver de qué dinero sale.',
+    // V2-58 (#24): también en Anotar y en la ficha de un pago.
+    anotar: 'Escribe como hablas: «pupusas 6» o «vendí 45». Si algo no es, tócalo y lo cambias.',
+    pago: 'Aquí ves cuándo vence y de qué dinero sale. Cuando lo pagues, toca «Pagado».',
 };

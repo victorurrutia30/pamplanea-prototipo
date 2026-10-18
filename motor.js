@@ -803,6 +803,11 @@
         }
         const nombreDe = (lista) => capital(lista.map((w) => originales[w] || w).join(' '));
 
+        // V2-56: «me dieron adelanto 314», «adelanto 314 el 29»: un adelanto de salario (un ingreso de una vez).
+        if ((!d.tipo || d.tipo === 'ingreso') && palabras.some((w) => w === 'adelanto' || w === 'anticipo')) {
+            d.tipo = 'ingreso';
+            d.adelanto = true;
+        }
         if (!d.tipo) {
             // Sin verbo: ¿es un pago que ya existe? ¿un pago fijo nuevo con día? ¿un gasto?
             const existente = st.pagos.find((p) => p.activo !== false && coincide(resto, p.nombre));
@@ -868,14 +873,18 @@
             }
         }
         if (d.tipo === 'ingreso') {
-            const v = d.verbo;
-            d.categoria = /vendi/.test(v) ? 'venta' : /mandaron|enviaron/.test(v) || /remesa/.test(resto) ? 'remesa' : /pagaron|cayo|cayeron|depositaron|cobre/.test(v) ? 'salario' : 'otro';
+            const v = d.verbo || '';
+            d.categoria = d.adelanto ? 'otro' : /vendi/.test(v) ? 'venta' : /mandaron|enviaron/.test(v) || /remesa/.test(resto) ? 'remesa' : /pagaron|cayo|cayeron|depositaron|cobre/.test(v) ? 'salario' : 'otro';
             const k = categoria(d.categoria);
-            d.emoji = k.emoji;
-            // ¿Es un ingreso esperado que llegó (o se adelantó)?
-            if (d.monto !== null) {
+            d.emoji = d.adelanto ? '💵' : k.emoji;
+            // Un adelanto «el 29»: si ese día no ha llegado, es un ingreso esperado (fecha futura).
+            if (d.adelanto && d.dia !== null) d.fecha = d.dia >= partes(st.hoy)[2] ? proximoDia(st.hoy, d.dia) : ultimoDia(st.hoy, d.dia);
+            // ¿Es un ingreso esperado que llegó (o se adelantó)? Un adelanto con fecha futura es uno nuevo.
+            if (d.monto !== null && !(d.adelanto && d.fecha > st.hoy)) {
                 const candidatos = [];
-                for (const ing of st.ingresos) {
+                // Un adelanto solo se reconoce como un adelanto que se esperaba (nunca como la quincena).
+                const esAdelantoIng = (ing) => ing.adelanto || ing.tipoIngreso === 'adelanto' || /(adelanto|anticipo|vale)/.test(normalizar(ing.nombre));
+                for (const ing of st.ingresos.filter((x) => !d.adelanto || esAdelantoIng(x))) {
                     for (const o of ocurrenciasIngreso(st, ing, sumarDias(st.hoy, -12), sumarDias(st.hoy, 12))) {
                         if (o.estado !== 'llego' && Math.abs(o.monto - d.monto) <= o.monto * 0.3) candidatos.push(o);
                     }
@@ -891,6 +900,7 @@
                     d.cualIngreso = null;
                 }
             }
+            if (!d.nombre && d.adelanto) d.nombre = 'Adelanto de salario';
             if (!d.nombre) d.nombre = d.categoria === 'venta' ? (resto ? 'Venta de ' + nombreDe(palabras).toLowerCase() : 'Venta') : d.categoria === 'remesa' ? 'Remesa' : d.categoria === 'salario' ? 'Pago' : nombreDe(palabras) || 'Ingreso';
             if (!d.lugar) {
                 const p = principal(st);

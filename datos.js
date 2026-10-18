@@ -21,6 +21,17 @@ const CATEGORIAS = [
     { id: 'otros', nombre: 'Otros', emoji: '🧩', medio: 'efectivo', palabras: [] },
 ];
 
+/** V2-56: «¿Qué es?» al agregar un ingreso esperado. Cada tipo trae su frecuencia sugerida (adelanto, aguinaldo y Quincena 25: una vez). */
+const TIPOS_INGRESO = [
+    { id: 'salario', nombre: 'Salario', emoji: '💼', categoria: 'salario', frecuencia: 'quincenal', sugerido: 'Salario' },
+    { id: 'adelanto', nombre: 'Adelanto', emoji: '💵', categoria: 'otro', frecuencia: 'unico', sugerido: 'Adelanto de salario' },
+    { id: 'remesa', nombre: 'Remesa', emoji: '🌎', categoria: 'remesa', frecuencia: 'mensual', sugerido: 'Remesa' },
+    { id: 'aguinaldo', nombre: 'Aguinaldo', emoji: '🎁', categoria: 'aguinaldo', frecuencia: 'unico', sugerido: 'Aguinaldo', mes: 12, dia: 12 },
+    { id: 'q25', nombre: 'Quincena 25', emoji: '🎁', categoria: 'aguinaldo', frecuencia: 'unico', sugerido: 'Quincena 25', mes: 1, dia: 25 },
+    { id: 'bono', nombre: 'Bono o comisión', emoji: '📈', categoria: 'extra', frecuencia: 'unico', sugerido: 'Bono' },
+    { id: 'venta', nombre: 'Venta', emoji: '🏪', categoria: 'venta', frecuencia: 'unico', sugerido: 'Venta' },
+    { id: 'otro', nombre: 'Otro', emoji: '💵', categoria: 'otro', frecuencia: null, sugerido: '' },
+];
 const INGRESO_CATEGORIAS = [
     { id: 'salario', nombre: 'Salario', emoji: '💼' },
     { id: 'venta', nombre: 'Ventas', emoji: '🏪' },
@@ -238,4 +249,4 @@ function crearNueva() {
     return estadoBase({ persona: 'nueva', nombre: '', espacio: 'Tu espacio', configurado: false });
 }
 
-window.DATOS = { CATEGORIAS, INGRESO_CATEGORIAS, EMOJI_NOMBRE, PAGOS_FRECUENTES, TIPOS_DEUDA, BANCOS, SUSCRIPCIONES, crearAna, crearCarlos, crearNueva, sembrar, c };
+window.DATOS = { CATEGORIAS, INGRESO_CATEGORIAS, TIPOS_INGRESO, EMOJI_NOMBRE, PAGOS_FRECUENTES, TIPOS_DEUDA, BANCOS, SUSCRIPCIONES, crearAna, crearCarlos, crearNueva, sembrar, c };

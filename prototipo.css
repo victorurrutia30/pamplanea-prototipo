@@ -3370,3 +3370,26 @@ html.con-hazlo .mask {
     background: var(--home-fg);
     color: var(--color-primary);
 }
+/* v2.4.1 (V2-58 #23): «Muéstrame» señala dónde tocar; no tapa ni bloquea lo que señala. */
+.tour-senal {
+    position: absolute;
+    z-index: 2;
+    border: 3px solid var(--color-primary);
+    border-radius: 14px;
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-primary) 25%, transparent);
+    pointer-events: none;
+}
+@media (prefers-reduced-motion: no-preference) {
+    .tour-senal {
+        animation: tour-latido 1.2s var(--app-motion-ease) infinite;
+    }
+}
+@keyframes tour-latido {
+    0%,
+    100% {
+        box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-primary) 25%, transparent);
+    }
+    50% {
+        box-shadow: 0 0 0 10px color-mix(in srgb, var(--color-primary) 10%, transparent);
+    }
+}
