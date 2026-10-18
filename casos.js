@@ -3,7 +3,7 @@
 // sin decir dónde tocar). Un paso con `clave` se marca solo cuando el teléfono avisa ese evento
 // (una clave o varias alternativas); sin `clave`, lo marca quien observa.
 'use strict';
-window.VERSION_PROTOTIPO = 'Prototipo v2.3.1 · 2026-10-17';
+window.VERSION_PROTOTIPO = 'Prototipo v2.4 · 2026-10-17';
 window.CASOS = [
     {
         id: 'C01', titulo: 'Primer día', persona: 'nueva',
@@ -14,7 +14,7 @@ window.CASOS = [
             { t: '¿Cómo te pagan?: elige «Cada quincena», escribe ~600 y «En el banco».', clave: 'onboarding:ingreso:quincena' },
             { t: 'Siguiente. ¿Cuánto tienes?: elige un banco, escribe cuánto hay y algo de efectivo (este paso no se puede saltar).', clave: 'onboarding:paso3' },
             { t: '¿Con qué pagas?: prueba «Tarjeta de crédito» o sáltalo.', clave: 'onboarding:paso4' },
-            { t: 'Tus pagos fijos: toca «Luz», pon 35 y el día 12; agrega otro si quieres.', clave: 'onboarding:pago:luz' },
+            { t: 'Tus pagos fijos: toca «Luz», pon 35 y el día 12. Si tienes tarjeta, toca «Tarjeta» y pon lo que pagas normalmente (su corte te lo pide después).', clave: 'onboarding:pago:luz' },
             { t: '«Ver mi número» y luego «Ir a Hoy».', clave: 'onboarding:hoy' },
         ],
         esperado: 'Aparece «Tu primer número»: libre hasta tu quincena del 30, ya sin la luz. En Hoy se ve el mismo número y la luz en Próximos pagos.',
@@ -72,7 +72,7 @@ window.CASOS = [
             { t: 'Revisa el monto (~$600 en Banco Agrícola) y toca Siguiente.', clave: 'ingreso:llego:quincena' },
             { t: 'En «Reparte tu quincena» mira «Ya está contado».', clave: 'pantalla:reparte:quincena' },
             { t: 'Acepta o no la sugerencia de apartar.', clave: 'reparte:apartar' },
-            { t: 'Mira «3. ¿Cuadramos?» (opcional), toca Listo y mira Hoy.', clave: 'reparte:fin' },
+            { t: 'Mira «3. ¿Cómo quedas la próxima?» y «4. ¿Cuadramos?» (opcional); toca Listo y mira Hoy.', clave: 'reparte:fin' },
         ],
         esperado: 'Antes: «Libre por ahora» $270.60 con «¿Ya te cayó?» y una sola tarjeta (aunque lleva 10 días sin anotar, V2-31 #10). Después: $815.60 «Hasta tu quincena del 15»; «Ya está contado» trae el colegio y la luz de noviembre (se pagan con esta quincena) y la tarjeta. Sugiere $60.00 a Emergencias (10 %), nunca más que tu libre; con eso, $755.60. «3. ¿Cómo quedas la próxima?» muestra la quincena del 15 y ofrece pasar algo a la próxima; luego «4. ¿Cuadramos?».',
         observar: '¿Entiende que los pagos ya estaban restados? ¿Siente la sugerencia como opcional? ¿Le gustaría hacer esto cada quincena?',
@@ -189,6 +189,55 @@ window.CASOS = [
         esperado: 'Queda claro que hoy una persona lleva el hogar y que invitar viene después (marcado «Próximamente»).',
         observar: '¿Lo usaría con su pareja? ¿Qué le preocuparía compartir? ¿Se entiende que todavía no existe?',
     },
+];
+
+/**
+ * v2.4: ejercicios que solo están en «Practicar» (no son recorridos de la guía): pagar con el aguinaldo
+ * (V2-52) y el adelanto de salario con descuento. La tarjeta del primer día (V2-54) está en C01.
+ */
+window.CASOS_PRACTICA = [
+    {
+        id: 'P-AGUINALDO', titulo: 'Pagar con el aguinaldo', persona: 'ana', variante: 'matricula', inicio: 'pagos',
+        para: 'Elegir que un pago de enero salga del aguinaldo (V2-52).',
+        tarea: 'En enero pagas la matrícula: $100. Quieres pagarla con tu aguinaldo. Díselo a la app.',
+        pasos: [
+            { t: 'En Pagos, toca «Mis pagos e ingresos» y luego «Matrícula».', clave: 'pantalla:pago:matricula' },
+            { t: 'En «Lo pagas con», toca «Cambiar o repartir».', clave: 'hoja:pagarCon' },
+            { t: 'Toca «Ver más quincenas», elige «Con tu aguinaldo del 12 dic» y toca «Guardar».', clave: 'guardado:pagarCon:unico' },
+            { t: 'Mira la ficha: «Con tu aguinaldo del 12 dic». Tu libre de hoy no cambió.' },
+        ],
+        esperado: 'La matrícula dice «Con tu aguinaldo del 12 dic $100.00». El libre de hoy no cambia; la quincena del 30 de noviembre (la del aguinaldo) cuenta los $300 y los $100.',
+        observar: '¿Encuentra «Ver más quincenas»? ¿Entiende que el aguinaldo cuenta hasta que llega?',
+    },
+    {
+        id: 'P-ADELANTO', titulo: 'Adelanto de salario', persona: 'ana', variante: 'adelanto', inicio: 'pagos',
+        para: 'Decir de qué quincena se descuenta un adelanto: esa quincena viene con menos.',
+        tarea: 'Te adelantaron $200 de tu salario y te los descuentan de tu quincena del 30. Díselo a la app.',
+        pasos: [
+            { t: 'En Pagos, toca «Mis pagos e ingresos» y luego «Adelanto de salario».', clave: 'pantalla:ingreso:adelanto' },
+            { t: 'Toca «Sí, anotar el descuento».', clave: 'hoja:adelanto' },
+            { t: 'Elige «Tu quincena del 30», deja $200 y toca «Guardar».', clave: 'guardado:adelanto' },
+            { t: 'Mira en Hoy tu próxima quincena: «te descuentan $200 del adelanto».' },
+        ],
+        esperado: 'Hoy: «Próxima quincena (30) · entra ~$400 … te descuentan $200.00 del adelanto». Al confirmar esa quincena, el monto sugerido ya viene con $200 menos.',
+        observar: '¿Entiende que no se cuenta dos veces? ¿Le queda claro de dónde sale el descuento?',
+    },
+];
+/** v2.4: «Practicar» = 13 ejercicios, de fácil a difícil. */
+window.PRACTICA = [
+    { id: 'C05', nivel: 'Fácil' },
+    { id: 'C11', nivel: 'Fácil' },
+    { id: 'C23', nivel: 'Fácil' },
+    { id: 'C19', nivel: 'Fácil' },
+    { id: 'C26', nivel: 'Media' },
+    { id: 'C01', nivel: 'Media' },
+    { id: 'C33', nivel: 'Media' },
+    { id: 'C20', nivel: 'Media' },
+    { id: 'P-AGUINALDO', nivel: 'Media' },
+    { id: 'P-ADELANTO', nivel: 'Difícil' },
+    { id: 'C16', nivel: 'Difícil' },
+    { id: 'C31', nivel: 'Difícil' },
+    { id: 'C30', nivel: 'Difícil' },
 ];
 
 /**

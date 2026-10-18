@@ -25,6 +25,9 @@
     const guardarPref = (cambios) => P.almacen.escribir(CLAVE_MODO, { ...pref(), ...cambios });
     const entrenamiento = () => ({ tour: null, practicas: {}, ...(P.almacen.leer(CLAVE_ENTRENAMIENTO, null) || {}) });
     const guardarEntrenamiento = (cambios) => P.almacen.escribir(CLAVE_ENTRENAMIENTO, { ...entrenamiento(), ...cambios });
+    /** v2.4: los consejos de la primera vez en cada pantalla (uso normal), una sola vez por pantalla y por teléfono. */
+    const tipsVistos = () => pref().tips || {};
+    const tipVisto = (pantalla) => guardarPref({ tips: { ...tipsVistos(), [pantalla]: true } });
     /** La fecha REAL del teléfono. `window.__fechaPrueba` solo lo ponen las pruebas automáticas. */
     const hoy = () => (typeof window.__fechaPrueba === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(window.__fechaPrueba) ? window.__fechaPrueba : M.hoyLocal());
     const instalada = () => window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
@@ -137,9 +140,11 @@
         if (P.modo === 'uso') guardarUso();
         P.modo = 'entrenamiento';
         guardarPref({ modo: 'entrenamiento' });
-        if (tour || !P.restaurar()) P.cargarPersona('ana');
+        // El recorrido decide qué cargar (empezar de cero o retomar donde se quedó).
+        if (!tour && !P.restaurar()) P.cargarPersona('ana');
         pintarAviso();
         if (tour && P.tour) P.tour.empezar();
+        else if (tour) P.cargarPersona('ana');
     }
     /** Al cargar la página (fuera de la guía): el modo elegido o, la primera vez, la bienvenida. */
     function arrancar() {
@@ -417,7 +422,7 @@
     function vistaElegir() {
         return `<div class="ay-bienvenida"><p class="ay-bien-t">¡Hola! Esto es PamPlanea.</p><p class="txt">Te ayuda a saber <strong>cuánto te queda libre hasta tu próximo ingreso</strong> y a que no se te olvide ningún pago. Es una versión de prueba.</p></div>
             <div class="opciones-grandes elegir" role="group" aria-label="¿Cómo quieres empezar?">
-                <button type="button" class="opcion-g elegir-op" data-a="modoElegir" data-v="entrenamiento" data-fk="elegir-aprender">${P.caja('🎓')}<span class="opcion-g-txt"><span class="opcion-g-t">Aprender a usarla <span class="pronto">Recomendado</span></span><span class="fila-s">Te la enseño en 3 minutos con datos de ejemplo. Luego puedes practicar.</span></span>${icon('chevron-right', 'ico-xs')}</button>
+                <button type="button" class="opcion-g elegir-op" data-a="modoElegir" data-v="entrenamiento" data-fk="elegir-aprender">${P.caja('🎓')}<span class="opcion-g-txt"><span class="opcion-g-t">Aprender a usarla <span class="pronto">Recomendado</span></span><span class="fila-s">Te la enseño en 4 minutos con datos de ejemplo. Luego puedes practicar.</span></span>${icon('chevron-right', 'ico-xs')}</button>
                 <button type="button" class="opcion-g elegir-op" data-a="modoElegir" data-v="uso" data-fk="elegir-usar">${P.caja('💰')}<span class="opcion-g-txt"><span class="opcion-g-t">Usarla con mis datos</span><span class="fila-s">Con tu dinero real. Se guarda solo en este teléfono.</span></span>${icon('chevron-right', 'ico-xs')}</button>
             </div>
             <p class="fila-s centro">Puedes cambiar cuando quieras desde la letra de arriba. Lo de un modo no toca lo del otro.</p>
@@ -456,7 +461,7 @@
     function vistaAyudaUso() {
         return `<section class="ay-card ay-card--prim" aria-labelledby="au-t"><h3 class="ay-h3" id="au-t">${icon('smartphone', 'ico-s')}Usando tus datos</h3><p class="txt">Todo lo que anotas se queda solo en este teléfono. Si algo no cuadra, avísale a Victor.</p>
                 <div class="pila"><button type="button" class="btn btn--48 btn--full" data-a="ayIr" data-v="contar" data-fk="au-contar">${icon('receipt-text', 'ico-s')}Contarle a Victor cómo me va</button><button type="button" class="btn btn--48 btn--full" data-a="ayIr" data-v="datos" data-fk="au-datos">${icon('rotate-ccw', 'ico-s')}Tus datos: copia, restaurar, borrar</button>${instalada() ? '' : `<button type="button" class="btn btn--48 btn--full" data-a="ayIr" data-v="instalar" data-fk="au-instalar">${icon('smartphone', 'ico-s')}Instalar en tu teléfono</button>`}</div></section>
-            <section class="ay-card" aria-labelledby="au-a"><h3 class="ay-h3" id="au-a">${icon('book-open', 'ico-s')}Aprender</h3><p class="txt">El modo entrenamiento usa datos de ejemplo: nada de lo que hagas ahí toca tus datos.</p><div class="pila"><button type="button" class="btn btn--48 btn--full" data-a="modoCambiar" data-v="tour" data-fk="au-tour">Ver el recorrido de 3 minutos</button><button type="button" class="btn btn--48 btn--full" data-a="modoCambiar" data-v="entrenamiento" data-fk="au-entrenamiento">Ir al modo entrenamiento</button></div></section>
+            <section class="ay-card" aria-labelledby="au-a"><h3 class="ay-h3" id="au-a">${icon('book-open', 'ico-s')}Aprender</h3><p class="txt">El modo entrenamiento usa datos de ejemplo: nada de lo que hagas ahí toca tus datos.</p><div class="pila"><button type="button" class="btn btn--48 btn--full" data-a="modoCambiar" data-v="tour" data-fk="au-tour">Ver el recorrido de 4 minutos</button><button type="button" class="btn btn--48 btn--full" data-a="modoCambiar" data-v="entrenamiento" data-fk="au-entrenamiento">Ir al modo entrenamiento</button></div></section>
             ${P.ayuda.vistaApariencia()}
             <p class="ay-version">${esc(VERSION)} · Tus datos solo están en este teléfono · Sin rastreadores</p>`;
     }
@@ -544,7 +549,7 @@
         if (P.enGuia) return '';
         const filas = P.modo === 'uso'
             ? [fila('receipt-text', 'Contarle a Victor cómo me va', 'Sin montos: solo cómo usas la app', 'menuIr', 'data-ir="contar"'), fila('rotate-ccw', 'Tus datos', 'Guardar copia, restaurar o borrar', 'menuIr', 'data-ir="datos"'), fila('play', 'Aprender a usarla', 'Modo entrenamiento con datos de ejemplo', 'menuIr', 'data-ir="modoEntrenamiento"')]
-            : [fila('smartphone', 'Usarla con mis datos', 'Tu dinero real, solo en este teléfono', 'menuIr', 'data-ir="modoUso"'), fila('play', 'Ver el recorrido otra vez', '3 minutos', 'menuIr', 'data-ir="tour"'), fila('list-checks', 'Practicar con ejemplos', '13 ejercicios cortos', 'menuIr', 'data-ir="practica"')];
+            : [fila('smartphone', 'Usarla con mis datos', 'Tu dinero real, solo en este teléfono', 'menuIr', 'data-ir="modoUso"'), fila('play', 'Ver el recorrido otra vez', '4 minutos', 'menuIr', 'data-ir="tour"'), fila('list-checks', 'Practicar con ejemplos', '13 ejercicios, de fácil a difícil', 'menuIr', 'data-ir="practica"')];
         return `<p class="campo-l campo-l--sec menu-sec">${P.modo === 'uso' ? 'Estás usando tus datos' : 'Estás en modo entrenamiento'}</p><ul class="lista card">${filas.join('')}</ul>`;
     }
     function irMenu(ir) {
@@ -575,6 +580,8 @@
         pintarAviso,
         entrenamiento,
         guardarEntrenamiento,
+        tipsVistos,
+        tipVisto,
         hoy,
         cambiar: (modo) => acc.modoCambiar({ v: modo }),
         CLAVE_USO,

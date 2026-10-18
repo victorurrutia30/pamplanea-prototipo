@@ -1247,7 +1247,7 @@
                     const dif = P.calc().libre - libreAntes;
                     return dif < 0 ? `Listo. Reservas ${dinero(-dif)} desde hoy` : dif > 0 ? `Listo. Tu libre sube ${dinero(dif)}` : 'Listo';
                 },
-                claves: ['guardado:pagarCon', 'guardado:pagarCon:' + (h.modo === 'repartir' ? 'repartir' : 'uno')],
+                claves: ['guardado:pagarCon', 'guardado:pagarCon:' + (h.modo === 'repartir' ? 'repartir' : h.modo.startsWith('uno:unico:') ? 'unico' : 'uno')],
             },
         );
         P.emitir('pagarCon:' + p.id);
@@ -1534,7 +1534,7 @@
             const st = P.st;
             return {
                 titulo: 'Cuadrar',
-                cuerpo: `<p class="txt">Dinos cuánto tienes de verdad. Desde ahora tu saldo parte de este número.</p>
+                cuerpo: `<p class="txt txt--q">Dinos cuánto tienes de verdad. Desde ahora tu saldo parte de este número. ${P.qBtn('cuadrar')}</p>${P.qTexto('cuadrar')}
                     ${st.lugares.length > 1 ? opciones(h, { campo: 'lugar', label: '¿Dónde?', lista: lugares(st), valor: h.lugar, errorTexto: 'Elige dónde' }) : ''}
                     ${campoMonto(h, { label: '¿Cuánto tienes ahora?', valor: h.monto, errorTexto: 'Escribe cuánto tienes, aunque sea $0' })}
                     <div id="cuadrar-vivo" aria-live="polite">${vivoCuadre(st, h)}</div>`,

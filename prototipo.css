@@ -3075,3 +3075,298 @@ label.btn {
     align-items: center;
     margin-left: 4px;
 }
+
+/* ------------------------------------------------------------------ v2.4 · entrenamiento a prueba de todo */
+/* Progreso del recorrido («3 de 15») como una barra fina. */
+.tour-prog {
+    height: 4px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: var(--color-surface-3, color-mix(in srgb, var(--color-text) 12%, transparent));
+}
+.tour-prog > span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--color-primary);
+}
+/* «Hazlo tú»: la barra va arriba y no tapa la app; las hojas abren debajo de ella. */
+html.con-hazlo {
+    --tarea-h: 136px;
+}
+html.con-hazlo .mask {
+    padding-top: calc(var(--top-h) + 8px);
+}
+.capa-tour--libre {
+    pointer-events: none;
+}
+.tour-hz {
+    position: absolute;
+    top: calc(var(--safe-top) + var(--aviso-h));
+    right: 0;
+    left: 0;
+    display: grid;
+    height: var(--tarea-h);
+    align-content: start;
+    gap: 6px;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--color-border);
+    background: color-mix(in srgb, var(--color-primary) 8%, var(--color-surface-2));
+    box-shadow: var(--app-shadow-card);
+    pointer-events: auto;
+}
+.tour-hz-cab {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+.tour-hz-n {
+    min-width: 0;
+    color: var(--color-text-muted);
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 18px;
+}
+.tour-hz-cab .link {
+    min-height: 32px;
+    padding: 0 4px;
+}
+.tour-hz-t {
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 20px;
+}
+.tour-hz-t:focus {
+    outline: none;
+}
+.tour-hz-acc {
+    display: grid;
+    grid-template-columns: 44px 1fr 1fr;
+    gap: 8px;
+}
+.tour-hz-acc .btn {
+    min-height: 44px;
+    padding: 0 8px;
+}
+/* La celebración: breve y sin movimiento si la persona lo pidió así. */
+.tour-cel {
+    font-size: 32px;
+    line-height: 40px;
+}
+.tour-num {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    font-size: 17px;
+    font-variant-numeric: tabular-nums;
+    line-height: 24px;
+}
+.tour-num > span {
+    color: var(--color-text-muted);
+    font-size: 14px;
+}
+@media (prefers-reduced-motion: no-preference) {
+    .tour-cel {
+        animation: tour-pop 420ms var(--app-motion-ease) both;
+        transform-origin: left bottom;
+    }
+}
+@keyframes tour-pop {
+    0% {
+        opacity: 0;
+        transform: scale(0.4);
+    }
+    70% {
+        opacity: 1;
+        transform: scale(1.15);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+/* «¿Lo entendí?»: la respuesta buena se marca en verde; la otra, sin rojo («Casi»). */
+.tour-op--bien {
+    border-color: var(--color-success);
+    background: color-mix(in srgb, var(--color-success) 12%, var(--color-surface-2));
+}
+.tour-op--casi {
+    border-color: var(--tone-ambar);
+}
+.tour-op .ico-ok {
+    margin-left: auto;
+    color: var(--color-success);
+}
+.tour-fb {
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--tone-ambar) 12%, var(--color-surface-2));
+}
+.tour-fb--bien {
+    background: color-mix(in srgb, var(--color-success) 12%, var(--color-surface-2));
+}
+.tour-fb:focus {
+    outline: none;
+}
+/* «?» discreto: se ve chico (24 px) y se toca grande (44 px). */
+.q {
+    position: relative;
+    display: inline-grid;
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
+    place-items: center;
+    margin: -10px -8px;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--color-text-muted);
+    vertical-align: middle;
+}
+.q > span {
+    display: grid;
+    width: 24px;
+    height: 24px;
+    place-items: center;
+    border: 1.5px solid currentColor;
+    border-radius: 50%;
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1;
+}
+.q[aria-expanded='true'] > span {
+    border-color: var(--color-primary);
+    background: var(--color-primary);
+    color: var(--color-primary-fg);
+}
+.q-txt {
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--color-primary) 8%, var(--color-surface-2));
+    color: var(--color-text);
+    font-size: 14px;
+    line-height: 20px;
+}
+.q-txt[hidden] {
+    display: none;
+}
+.portada {
+    position: relative;
+}
+.portada > .q {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    z-index: 2;
+    margin: 0;
+    color: var(--home-fg);
+}
+.proy-w {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.proy-w > .proy {
+    flex: 1;
+}
+.proy-w > .q {
+    margin: 0;
+}
+.total-l-w {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.total-l-w > .q {
+    margin: -12px -8px;
+}
+.ficha-cifra--q {
+    position: relative;
+}
+.ficha-cifra--q > .q {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    margin: 0;
+}
+.txt--q > .q {
+    margin: -12px -6px;
+}
+/* El consejo de la primera vez en cada pantalla (uso normal). */
+.tip {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: start;
+    gap: 4px 10px;
+    padding: 12px 14px 6px;
+    border: 1px solid color-mix(in srgb, var(--color-primary) 30%, var(--color-border));
+    border-radius: 16px;
+    background: color-mix(in srgb, var(--color-primary) 6%, var(--color-surface-2));
+    font-size: 14px;
+    line-height: 20px;
+}
+.tip > .ico {
+    margin-top: 2px;
+    color: var(--color-primary);
+}
+.tip > .link {
+    grid-column: 2;
+    justify-self: start;
+    margin-left: -8px;
+}
+/* «Aprende»: el glosario. */
+.glosario {
+    display: grid;
+    gap: 0;
+    padding: 0 16px 8px;
+}
+.glosario-i {
+    padding: 12px 0;
+    border-bottom: 1px solid var(--color-border);
+}
+.glosario-i:last-child {
+    border-bottom: 0;
+}
+.glosario dt {
+    font-weight: 600;
+    line-height: 22px;
+}
+.glosario dd {
+    margin: 2px 0 0;
+    color: var(--color-text-muted);
+    font-size: 14px;
+    line-height: 20px;
+}
+/* «Practicar»: nivel de cada ejercicio. */
+.nivel {
+    display: inline-block;
+    margin-left: 4px;
+    padding: 0 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 18px;
+    vertical-align: middle;
+}
+.nivel--facil {
+    background: color-mix(in srgb, var(--color-success) 18%, var(--color-surface-2));
+    color: var(--color-text);
+}
+.nivel--media {
+    background: color-mix(in srgb, var(--tone-ambar) 20%, var(--color-surface-2));
+    color: var(--color-text);
+}
+.nivel--dificil {
+    background: color-mix(in srgb, var(--color-primary) 18%, var(--color-surface-2));
+    color: var(--color-text);
+}
+.ay-caso-t > .nivel {
+    justify-self: start;
+    margin: 2px 0 0;
+}
+.portada > .q[aria-expanded='true'] > span {
+    border-color: var(--home-fg);
+    background: var(--home-fg);
+    color: var(--color-primary);
+}

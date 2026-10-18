@@ -372,6 +372,23 @@
         return true;
     }
     P.avisoVigente = avisoVigente;
+    // ---- v2.4: ayuda en el momento. Un «?» discreto abre 2–3 líneas con un ejemplo (los mismos textos de «Aprende»).
+    const termino = (id) => (window.GLOSARIO || []).find((x) => x.id === id);
+    P.qBtn = (id) => {
+        const g = termino(id);
+        if (!g) return '';
+        return `<button type="button" class="q" data-a="qVer" data-v="${id}" aria-expanded="${!!(P.ui.qAbiertos || {})[id]}" aria-controls="q-${id}" aria-label="¿Qué es «${esc(g.t)}»?" data-fk="q-${id}"><span aria-hidden="true">?</span></button>`;
+    };
+    P.qTexto = (id) => {
+        const g = termino(id);
+        return g ? `<div class="q-txt" id="q-${id}" role="note" ${(P.ui.qAbiertos || {})[id] ? '' : 'hidden'}><p><strong>${esc(g.t)}:</strong> ${esc(g.texto)}</p></div>` : '';
+    };
+    /** La primera vez que la persona usa cada pantalla con sus datos: un consejo corto, una sola vez. */
+    P.tipHtml = (pantalla) => {
+        const texto = (window.TIPS || {})[pantalla];
+        if (P.modo !== 'uso' || !texto || !P.modos || !P.st || !P.st.configurado || P.modos.tipsVistos()[pantalla]) return '';
+        return `<div class="tip" role="note">${icon('lightbulb', 'ico-s')}<p>${esc(texto)}</p><button type="button" class="link" data-a="tipOk" data-v="${pantalla}" data-fk="tip-${pantalla}">Entendido</button></div>`;
+    };
     /** «el colegio y la luz», «A, B y C». */
     P.lista = (xs) => (xs.length < 2 ? xs.join('') : `${xs.slice(0, -1).join(', ')} y ${xs.at(-1)}`);
     /** V2-31 #1: si la tarjeta tiene dos pagos próximos, la fecha lleva el mes («5 de diciembre»). */
@@ -638,6 +655,7 @@
         if (k.inactivo >= 10) lineas.push(`<span class="portada-v">Con lo último que anotaste, ${esc(M.haceDias(M.ultimaActividad(st), st.hoy))}</span>`);
         const portada = `<div class="portada app-home-pattern">
                 <svg class="app-home-pattern-art" viewBox="0 0 320 180" preserveAspectRatio="xMaxYMax meet" aria-hidden="true" focusable="false">${ART.circles}</svg>
+                ${P.qBtn('libre')}
                 <button type="button" class="portada-b" data-a="hoja" data-hoja="desglose" data-fk="portada" aria-label="${porConfirmar ? 'Libre por ahora' : 'Libre'} ${esc(dinero(k.libre))}. ${esc(textoHorizonte(hz))}. Ver de dónde sale">
                     <span class="portada-h">${esc(textoHorizonte(hz))}</span><span class="portada-l">${porConfirmar ? 'Libre por ahora' : 'Libre'}</span><span class="portada-n">${dinero(k.libre)}</span>${lineas.join('')}
                     <span class="portada-mas">¿De dónde sale? ${icon('chevron-right', 'ico-xs')}</span>
@@ -654,6 +672,8 @@
                 <button type="button" class="btn btn--prim btn--48 btn--full" data-a="abrir" data-tipo="aldia" data-fk="aldia">Empezar</button></section>`);
         }
         if (P.modos) tarjetasAviso.push(...P.modos.tarjetasHoy(k));
+        // v2.4: retomar el recorrido donde se quedó (entrenamiento).
+        if (P.tour && P.tour.tarjetaHoy) tarjetasAviso.push(P.tour.tarjetaHoy());
 
         // Próximos pagos: los que vienen. Los vencidos están en el aviso (V2-55: no se repiten aquí).
         const proximos = proximosPagos(3);
@@ -674,7 +694,9 @@
                 <div class="hoy-saludo"><h1 class="h1" tabindex="-1">${st.nombre ? 'Hola, ' + esc(st.nombre) : 'Hola'}</h1><p class="sub">${esc(fechaHoy)}</p></div>
             </header>
             ${portada}
-            ${proyeccionHtml(k)}
+            ${P.qTexto('libre')}
+            ${proyeccionHtml(k) ? `<div class="proy-w">${proyeccionHtml(k)}${P.qBtn('proxima')}</div>${P.qTexto('proxima')}` : ''}
+            ${P.tipHtml('hoy')}
             ${avisoHoy(atencion(k))}
             ${tarjetasAviso.join('')}
             ${pagosHtml}
@@ -921,6 +943,7 @@
         if (modo === 'lista') {
             return `<div class="pg">
             ${encabezado('Pagos', 'Qué pagas y cuándo te pagan')}
+            ${P.tipHtml('pagos')}
             ${vistas}
             <div class="acciones-2 acciones-2--top"><button type="button" class="btn btn--prim" data-a="hoja" data-hoja="nuevoPago" data-fk="nuevo-pago">${icon('plus', 'ico-s')}Pago</button><button type="button" class="btn" data-a="hoja" data-hoja="nuevoIngreso" data-fk="nuevo-ingreso">${icon('plus', 'ico-s')}Ingreso esperado</button></div>
             ${misPagos()}
@@ -928,6 +951,7 @@
         }
         return `<div class="pg">
             ${encabezado('Pagos', 'Qué pagas y cuándo te pagan')}
+            ${P.tipHtml('pagos')}
             ${vistas}
             <div class="acciones-2 acciones-2--top"><button type="button" class="btn btn--prim" data-a="hoja" data-hoja="nuevoPago" data-fk="nuevo-pago">${icon('plus', 'ico-s')}Pago</button><button type="button" class="btn" data-a="hoja" data-hoja="nuevoIngreso" data-fk="nuevo-ingreso">${icon('plus', 'ico-s')}Ingreso esperado</button></div>
             ${vencidos.length ? tarjetaSeccion(`Por confirmar <span class="contador">${vencidos.length}</span>`, `<p class="txt txt--card">Ya pasó su fecha. ¿Los pagaste?</p><ul class="lista">${vencidos.map((o) => filaPago(o, hz)).join('')}</ul>`, { id: 'p-venc', cls: 'card--venc' }) : ''}
@@ -984,6 +1008,7 @@
         })();
         const puerta = (tipo, ic, titulo, cifra, sub, fk) => `<li><button type="button" class="puerta" data-a="abrir" data-tipo="${tipo}" data-fk="${fk}"><span class="emo emo--ico" aria-hidden="true">${icon(ic)}</span><span class="puerta-txt"><span class="puerta-t">${titulo}</span><span class="puerta-n">${cifra}</span><span class="fila-s">${esc(sub)}</span></span>${icon('chevron-right', 'ico-xs')}</button></li>`;
         return `<div class="pg">${encabezado('Mi dinero', 'Dónde está y para qué es')}
+            ${P.tipHtml('midinero')}
             ${resumen}
             ${reparticion(k)}
             <ul class="puertas" aria-label="Tu dinero por partes">
@@ -1013,6 +1038,7 @@
             .join('');
         return `<div class="pg">
             ${encabezado('Cuentas', 'Dónde está tu dinero y con qué pagas', { atras: P.atrasDe('Mi dinero') })}
+            ${P.tipHtml('cuentas')}
             <section class="total" aria-labelledby="cu-total">
                 <div class="total-cab"><div><h2 class="total-l" id="cu-total">Tienes</h2><p class="total-n">${dinero(k.tienes)}</p><p class="total-s">En ${esc(P.lista(st.lugares.map((l) => l.nombre)))}</p></div></div>
                 <div class="acciones-2"><button type="button" class="btn btn--prim btn--48" data-a="hoja" data-hoja="cuadrar" data-fk="md-cuadrar">${icon('scale', 'ico-s')}Cuadrar</button><button type="button" class="btn btn--48" data-a="hoja" data-hoja="mover" data-fk="md-mover">${icon('arrow-left-right', 'ico-s')}Mover</button></div>
@@ -1044,8 +1070,10 @@
             : '';
         return `<div class="pg">
             ${encabezado('Ahorros', 'Le pones nombre a una parte de tu dinero', { atras: P.atrasDe('Mi dinero') })}
+            ${P.tipHtml('ahorros')}
             <section class="total" aria-labelledby="ah-total">
-                <div class="total-cab"><div><h2 class="total-l" id="ah-total">En ahorros</h2><p class="total-n">${dinero(k.apartado)}</p><p class="total-s">Fuera de ahorros: ${dinero(fuera)}</p></div><svg class="total-art" viewBox="0 0 200 150" aria-hidden="true" focusable="false">${ART.illus.ahorros}</svg></div>
+                <div class="total-cab"><div><div class="total-l-w"><h2 class="total-l" id="ah-total">En ahorros</h2>${P.qBtn('ahorros')}</div><p class="total-n">${dinero(k.apartado)}</p><p class="total-s">Fuera de ahorros: ${dinero(fuera)}</p></div><svg class="total-art" viewBox="0 0 200 150" aria-hidden="true" focusable="false">${ART.illus.ahorros}</svg></div>
+                ${P.qTexto('ahorros')}
                 <button type="button" class="btn btn--prim btn--48 btn--full" data-a="hoja" data-hoja="apartar" data-fk="md-apartar">${icon('plus', 'ico-s')}Ahorrar</button>
             </section>
             <div class="nota nota--info" role="note">${icon('info')}<p>Tus ahorros siguen en tu banco o efectivo; solo les pones nombre. No cuentan en tu libre.</p></div>
@@ -1077,7 +1105,8 @@
         }
         return `<div class="pg">
             ${encabezado('Deudas', 'Tarjetas, préstamos y casa comercial', { atras: P.atrasDe('Mi dinero') })}
-            <section class="card ficha-cifra" aria-label="Lo que debes"><p class="fila-s">${deuda.total > 0 || !deuda.sinSaldo ? `Debes en total${deuda.sinSaldo ? ' (lo que tienes anotado)' : ''}` : 'Pagas en cuotas'}</p><p class="cifra">${deuda.total > 0 || !deuda.sinSaldo ? dinero(deuda.total, { aprox: deuda.aprox }) : `${dinero(deuda.cuotasSinSaldo)} al mes`}</p><p class="fila-s">${deuda.sinSaldo ? `${plural(deuda.sinSaldo, 'cuota no tiene', 'cuotas no tienen')} «cuánto debes» anotado. ` : ''}Su pago aparece solo en Pagos. El cupo de una tarjeta nunca suma a tu libre.</p></section>
+            ${P.tipHtml('deudas')}
+            <section class="card ficha-cifra ficha-cifra--q" aria-label="Lo que debes">${P.qBtn('deudas')}<p class="fila-s">${deuda.total > 0 || !deuda.sinSaldo ? `Debes en total${deuda.sinSaldo ? ' (lo que tienes anotado)' : ''}` : 'Pagas en cuotas'}</p><p class="cifra">${deuda.total > 0 || !deuda.sinSaldo ? dinero(deuda.total, { aprox: deuda.aprox }) : `${dinero(deuda.cuotasSinSaldo)} al mes`}</p><p class="fila-s">${deuda.sinSaldo ? `${plural(deuda.sinSaldo, 'cuota no tiene', 'cuotas no tienen')} «cuánto debes» anotado. ` : ''}Su pago aparece solo en Pagos. El cupo de una tarjeta nunca suma a tu libre.</p>${P.qTexto('deudas')}</section>
             ${tarjetaSeccion('Tus deudas', `${filas.length ? `<ul class="lista">${filas.join('')}</ul>` : '<p class="vacio">Si tienes una tarjeta, una cuota o un préstamo, agrégalo aquí y su pago aparece solo en Pagos.</p>'}<div class="card-pie"><button type="button" class="btn btn--full" data-a="hoja" data-hoja="nuevaDeuda" data-fk="md-deuda">${icon('plus', 'ico-s')}Tarjeta o préstamo</button></div>`, { id: 'md-deudas-lista' })}
         </div>`;
     };
@@ -1190,6 +1219,7 @@
             ${grupos.length ? grupos.map((g) => `<div class="grupo"><h3 class="grupo-t">${esc(M.capital(M.diaCorto(g.fecha)))}</h3><ul class="lista card">${g.filas.join('')}</ul></div>`).join('') : '<p class="vacio">Nada con este filtro.</p>'}</section>`;
         return `<div class="pg">
             ${encabezado('Mes', '¿En qué se te fue?')}
+            ${P.tipHtml('mes')}
             <div class="mes-nav"><button type="button" class="icon-btn" data-a="mesNav" data-d="-1" aria-label="Mes anterior" data-fk="mes-ant">${icon('chevron-left')}</button><p class="mes-nav-t" aria-live="polite">${esc(M.capital(M.MESES[m - 1]))} ${y}</p><button type="button" class="icon-btn" data-a="mesNav" data-d="1" aria-label="Mes siguiente" data-fk="mes-sig" ${esActual ? 'disabled' : ''}>${icon('chevron-right')}</button></div>
             <section class="card resumen" aria-label="Resumen del mes">
                 <div class="resumen-dos"><div><p class="fila-s">Entró</p><p class="resumen-n">${montoHtml(r.entro, 'ingreso')}</p></div><div><p class="fila-s">Salió</p><p class="resumen-n resumen-n--salio">${dinero(-r.salio)}</p></div></div>
@@ -1245,7 +1275,7 @@
             const filas = partes.map((x) => `<li><span>${M.esFundado(st, x.de) ? (prox.fecha >= hz.fecha && prox.estado !== 'vencido' ? 'Reservado de lo que tienes ahora' : 'Con lo que tienes ahora') : `Con ${esc(etiquetaFuente(x.de))}`}</span><span>${dinero(x.monto, { aprox: prox.estimado })}</span></li>`).join('');
             const regla = p.pagarCon && p.pagarCon.modo === 'antes' ? 'Siempre con el día de pago anterior.' : p.pagarCon && p.pagarCon.modo === 'parejo' ? 'Siempre repartido parejo entre tus días de pago.' : '';
             const opciones = M.fuentesPara(st, prox.fecha, hz).length > 1;
-            pagasCon = tarjetaSeccion('Lo pagas con', `<div class="dato"><p class="fila-s">${esc(M.capital(M.fechaLarga(prox.fecha)))}${regla ? ' · ' + esc(regla) : ''}</p><ul class="mini-desglose">${filas}</ul></div>${opciones ? `<div class="card-pie"><button type="button" class="link" data-a="hoja" data-hoja="pagarCon" data-id="${p.id}" data-fecha="${prox.fecha}" data-fk="pagar-con">Cambiar o repartir</button></div>` : '<p class="fila-s">Vence antes de tu próximo ingreso: sale de lo que ya tienes.</p>'}`, { id: 'f-con' });
+            pagasCon = tarjetaSeccion('Lo pagas con', `${P.qTexto('pagasCon')}<div class="dato"><p class="fila-s">${esc(M.capital(M.fechaLarga(prox.fecha)))}${regla ? ' · ' + esc(regla) : ''}</p><ul class="mini-desglose">${filas}</ul></div>${opciones ? `<div class="card-pie"><button type="button" class="link" data-a="hoja" data-hoja="pagarCon" data-id="${p.id}" data-fecha="${prox.fecha}" data-fk="pagar-con">Cambiar o repartir</button></div>` : '<p class="fila-s">Vence antes de tu próximo ingreso: sale de lo que ya tienes.</p>'}`, { id: 'f-con', accion: P.qBtn('pagasCon') });
         }
         const tipoDeuda = D.TIPOS_DEUDA.find((x) => x.id === p.tipoDeuda);
         const debe = p.deuda && p.deuda.debe !== null && p.deuda.debe !== undefined;
@@ -1431,12 +1461,16 @@
             <button type="button" class="btn btn--prim btn--48 btn--full" data-a="interesInvitar" data-fk="inv-interes" ${st.interesInvitar ? 'disabled' : ''}>${st.interesInvitar ? `${icon('check', 'ico-s')}Te avisaremos` : 'Me interesa'}</button>
         </div>`;
     };
+    /** v2.4: «Aprende» es un glosario sencillo: los mismos textos que salen al tocar «?». */
     S.aprende = function () {
-        const temas = [['💳', 'Cómo leer tu estado de cuenta', 'Pago de contado, pago mínimo y fecha de corte.'], ['⚖️', 'Pago mínimo o pago total', 'Qué pasa con lo que no pagas.'], ['🛟', 'Para qué sirve un fondo de emergencia', 'Cuánto juntar y dónde tenerlo.'], ['🎁', 'Aguinaldo y Quincena 25', 'Cómo repartir lo que llega una vez al año.'], ['🤝', 'El cuchubal en tus cuentas', 'Tu aporte es un pago; tu turno, un ingreso.']];
+        const g = window.GLOSARIO || [];
+        const uso = P.modo === 'uso';
         return `<div class="pg">
-            ${encabezado('Aprende', 'Consejos cortos, sin sermones', { atras: 'Hoy' })}
-            <p class="txt">Mientras usas PamPlanea te damos consejos en el momento justo, como al anotar tu estado de cuenta. Aquí vivirán los temas completos.</p>
-            ${tarjetaSeccion(`Temas <span class="pronto">Próximamente</span>`, `<ul class="lista">${temas.map(([e, t, s]) => `<li class="fila"><div class="fila-main fila-main--quieta">${caja(e)}<span class="fila-txt"><span class="fila-t">${esc(t)}</span><span class="fila-s">${esc(s)}</span></span></div></li>`).join('')}</ul>`, { id: 'apr-temas' })}
+            ${encabezado('Aprende', 'Las palabras de la app, en sencillo', { atras: 'Hoy' })}
+            <div class="acciones-2"><button type="button" class="btn btn--48" data-a="menuIr" data-ir="tour" data-fk="apr-tour">${icon('play', 'ico-s')}Ver el recorrido</button>${uso ? '' : `<button type="button" class="btn btn--48" data-a="menuIr" data-ir="practica" data-fk="apr-practica">${icon('list-checks', 'ico-s')}Practicar</button>`}</div>
+            ${uso ? '<p class="fila-s">El recorrido usa datos de ejemplo: no toca tus datos.</p>' : ''}
+            ${tarjetaSeccion('Glosario', `<dl class="glosario">${g.map((x) => `<div class="glosario-i" id="glo-${x.id}"><dt>${esc(x.t)}</dt><dd>${esc(x.texto)}</dd></div>`).join('')}</dl>`, { id: 'apr-glosario' })}
+            <p class="fila-s">Estos mismos textos salen al tocar «?» junto a cada cosa.</p>
         </div>`;
     };
     S.avisos = function () {
@@ -1450,6 +1484,18 @@
 
     // ------------------------------------------------------------------ acciones de pantalla
     P.acciones = {
+        // v2.4: el «?» abre o cierra su explicación sin volver a dibujar la pantalla (el foco se queda en el botón).
+        qVer: (d) => {
+            P.ui.qAbiertos = { ...(P.ui.qAbiertos || {}), [d.v]: !(P.ui.qAbiertos || {})[d.v] };
+            for (const b of document.querySelectorAll(`[data-a="qVer"][data-v="${d.v}"]`)) b.setAttribute('aria-expanded', String(P.ui.qAbiertos[d.v]));
+            for (const t of document.querySelectorAll(`[id="q-${d.v}"]`)) t.hidden = !P.ui.qAbiertos[d.v];
+            P.emitir('ayuda:termino:' + d.v);
+        },
+        tipOk: (d) => {
+            P.modos.tipVisto(d.v);
+            render({ foco: '#pantalla h1' });
+            P.emitir('tip:visto:' + d.v);
+        },
         tab: (d) => P.irTab(d.tab),
         irTab: (d) => P.irTab(d.tab),
         abrir: (d) => P.abrir(d.tipo, d.id),

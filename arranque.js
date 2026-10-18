@@ -82,7 +82,7 @@
         // Datos guardados por una versión anterior del prototipo: campos nuevos con su valor inicial.
         g.st.reservasTarjeta = g.st.reservasTarjeta || [];
         g.st.cerrados = g.st.cerrados || [];
-        P.caso = g.caso ? window.CASOS.find((x) => x.id === g.caso) || null : null;
+        P.caso = g.caso ? P.buscarCaso(g.caso) || null : null;
         P.cargar(g.st, { tab: g.tab || 'hoy' });
         P.guardando = true;
         P.emitir('restaurado');
@@ -103,6 +103,14 @@
         if (caso.variante === 'quincena') {
             st.hoy = '2026-10-30';
             st.avisos = [];
+        }
+        if (caso.variante === 'matricula') {
+            // Ejercicio v2.4: la matrícula de enero, para pagarla con el aguinaldo (V2-52).
+            st.pagos.push({ id: 'matricula', nombre: 'Matrícula', emoji: '🎒', categoria: 'educacion', monto: c('100'), estimado: false, frecuencia: 'unico', fecha: '2027-01-15', medio: 'transferencia', avisos: [{ tipo: 'antes', dias: 1, on: true }, { tipo: 'vence', on: true }], desde: '2026-10-21', hechos: {}, previos: [] });
+        }
+        if (caso.variante === 'adelanto') {
+            // Ejercicio v2.4: un adelanto de $200 que le descuentan de su quincena del 30.
+            st.ingresos.push({ id: 'adelanto', nombre: 'Adelanto de salario', emoji: '💵', categoria: 'otro', monto: c('200'), aprox: false, frecuencia: 'unico', fecha: '2026-10-23', lugar: 'agricola', principal: false, extra: true, desde: '2026-10-21', llegadas: {} });
         }
         if (caso.variante === 'regalo') {
             // C30: un apartado para el regalo de mamá, cuya fecha (el 10) ya pasó.
@@ -127,8 +135,10 @@
     };
 
     let bannerTimer = null;
+    /** Los 13 recorridos y los ejercicios que solo están en «Practicar» (v2.4). */
+    P.buscarCaso = (id) => [...window.CASOS, ...(window.CASOS_PRACTICA || [])].find((x) => x.id === id);
     function cargarCaso(id, { tab = null } = {}) {
-        const caso = window.CASOS.find((x) => x.id === id);
+        const caso = P.buscarCaso(id);
         if (!caso) return;
         P.caso = caso;
         clearTimeout(bannerTimer);
