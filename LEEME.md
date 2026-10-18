@@ -1,4 +1,4 @@
-# Producto v2 · prototipo de teléfono — versión 2.2
+# Producto v2 · prototipo de teléfono — versión 2.3
 
 **Qué es:** un prototipo clicable de la app completa propuesta en Producto v2. Desde la v2.2 tiene **dos modos**: **entrenamiento** (datos inventados de Ana, recorrido guiado, 13 ejercicios y la prueba A/B para testers) y **uso normal** (la familia cercana de Victor la usa 1–2 semanas con su dinero real, guardado solo en su teléfono). Es una maqueta de flujo y comprensión, no producción.
 
@@ -11,9 +11,82 @@
 
 Sin servidor propio, sin dependencias, sin CDN, sin analítica ni rastreadores. Fuentes, emoji, íconos y los íconos de la app instalable son locales, con sus licencias (`recursos/licencias`).
 
-**Estado:** brief y acuerdos V2-01…V2-22 APROBADOS por Victor (2026-10-16); **V2-23 a V2-30** y **V2-31 (respuestas v2.1)** APROBADOS por Victor (2026-10-16). Nada de esto está documentado todavía en el repo de la app: se documentará después de las pruebas con personas. Este prototipo no cambia nada del repo de la app.
+**Estado:** brief y acuerdos V2-01…V2-22 APROBADOS por Victor (2026-10-16); **V2-23 a V2-30** y **V2-31 (respuestas v2.1)** APROBADOS por Victor (2026-10-16); **V2-34 a V2-49** APROBADOS por Victor (2026-10-17) — V2-15 y V2-31 #7 quedan REEMPLAZADAS por V2-34. Nada de esto está documentado todavía en el repo de la app: se documentará después de las pruebas con personas. Este prototipo no cambia nada del repo de la app.
 
 Versión visible en la app y en la guía: **«Prototipo v2.2 · 2026-10-16»**.
+
+---
+
+## Prototipo v2.3 (2026-10-17): el número correcto + feedback de Victor y Pam + revisión integral
+
+**Por qué:** Victor probó con sus datos reales: $120 en efectivo; hasta el 29 solo paga el cuchubal ($25); el 29 le caen ~$597 + ~$566 de su pareja; sus pagos grandes vencen el 30. Su libre real hasta el 29 es ~$95, pero la v2.2 mostró «Libre $0 · Te faltan $209.50» y seis avisos rojos. Causa (reproducida): la reserva gradual automática (V2-31 #7) suponía que de la quincena del 14 (antes de que empezara a usar la app) ya debía haber guardado la mitad de los pagos del 30, y la configuración inicial marcaba como «llegadas» (`previa: true`) las quincenas de los 40 días anteriores, que él nunca anotó.
+
+### Decisiones V2-34 a V2-49 (APROBADAS por Victor, 2026-10-17)
+
+> **V2-15** (reserva gradual) y **V2-31 #7** (reserva gradual para todos los ingresos) quedan **REEMPLAZADAS por V2-34**.
+
+**Entrega 1 — lógica del dinero**
+
+- **V2-34 La persona decide con qué ingreso paga cada pago. NADA AUTOMÁTICO.**
+  - Cada pago (cada ocurrencia, si es recurrente) tiene «Lo pagas con: <ingreso>». Por defecto: el último ingreso esperado que llega en o antes de la fecha de vencimiento (si vence el mismo día que te pagan, se paga con ese ingreso, como en V2-29 #4).
+  - La persona puede cambiarlo a un ingreso anterior o REPARTIRLO en montos que ella elige entre varios ingresos («$100 de esta quincena y $100 de la del 29»). Lo asignado a un ingreso ya recibido queda «reservado» hasta la fecha de vencimiento.
+  - Libre de hoy = Tienes − Ahorros − pagos asignados al periodo actual (los que se pagan con el dinero que ya tienes) − lo que la persona eligió reservar. Nada más.
+  - Sugerir, nunca hacer: si el ingreso asignado no alcanza para lo que se paga con él, UNA sugerencia: «El viernes 30 te caen ~$90 y el alquiler es $150: te faltarían $60. ¿Reservas algo de este viernes? [Sí, $__] [No, después veo]». Para pago semanal + alquiler mensual (Carlos), esta sugerencia reemplaza la reserva automática.
+- **V2-35 «¿Cómo quedo la próxima quincena?»**
+  - Debajo del número de Hoy: «Próxima quincena (29): entra ~$X · pagos ~$Y · te quedarían ~$Z». Los ingresos secundarios entran como estimados («incluye ~$566 de tu pareja»). Al tocarlo, lleva a Pagos → Próxima.
+  - En Reparte y desde el número: «¿Pasas algo de lo que te sobra a la próxima?»: reserva lo que la persona elige del libre actual para el periodo siguiente.
+  - Si a la próxima le faltaría dinero: un solo aviso suave: «La próxima quincena te faltarían $X. ¿Guardas algo de esta?».
+- **V2-36 Frecuencias para pagos e ingresos:** una vez (con fecha), semanal (día), cada 2 semanas, quincenal (dos días o «el mismo día que me pagan»; incluye «15 y último día»), mensual (día o último día), cada N meses (trimestral, anual), fechas a medida. Cuchubal: cualquier frecuencia (Victor lo paga QUINCENAL), con fecha de fin opcional y fecha de tu turno (= ingreso esperado).
+- **V2-37 / V2-44 Fechas específicas, pasadas o futuras:**
+  - Todo formulario de pago o ingreso tiene selector de fecha (calendario accesible; si usas el nativo, que sea accesible y legible en los 4 temas).
+  - En Anotar, el chip de fecha siempre se toca y abre el calendario. Fecha pasada = gasto o ingreso normal (aplica la regla del cuadre). Fecha FUTURA = «Es para el 25: lo pongo en Pagos como pago de una vez» (o «como ingreso esperado» si es ingreso). Nunca se descuenta dinero que todavía no salió.
+- **V2-38 Descuentos del salario:** el ingreso esperado es lo que te cae (neto). En el formulario del ingreso, opcional: «¿Te descuentan algo del salario? (orden de descuento, préstamo por planilla)». Crea una deuda cuya cuota se marca PAGADA SOLA al confirmar ese ingreso: no baja el libre otra vez y sí baja «lo que debes». No preguntar ISSS, AFP ni renta.
+- **V2-40 Ingresos recurrentes:** el calendario muestra solo las ocurrencias del periodo elegido. «Más adelante» muestra solo los ingresos extra de una vez (aguinaldo, Quincena 25, bono), no la lista infinita de cada quincena.
+- **V2-42 Avisos:** en Hoy, como máximo UNO agrupado («2 pagos necesitan atención · Ver»), que abre la lista. Rojo solo si de verdad no alcanza contando los ingresos esperados; ámbar para sugerencias. Nunca «te faltan» por algo que el ingreso asignado ya cubre.
+- **V2-43 Sin historia inventada:** no crear llegadas de ingresos ni pagos antes del día en que la persona empezó a usar la app. En la migración, elimina SOLO las llegadas que la app generó sola antes de esa fecha (si puedes distinguirlas); si no puedes distinguirlas, déjalas y dilo en el reporte.
+- **V2-48** Un pago ya marcado como Pagado se puede abrir y corregir: monto, fecha y medio, o «Desmarcar pagado», con confirmación y Deshacer. Si la fecha queda antes del último cuadre, el aviso de siempre.
+- **Detalle:** nunca mostrar «+~$597»; un estimado se escribe «~$597».
+
+**Entrega 2 — estructura, nombres y feedback de Pam**
+
+- **V2-39 Pagos con dos vistas:** «Calendario» (lo actual, por periodo: Esta quincena / Próxima / Mes) y «Mis pagos e ingresos» (la lista completa de lo que pagas y te pagan: nombre, monto, frecuencia, con qué se paga y con qué ingreso, editable).
+- **V2-41 Nombres:** «Apartados» pasa a llamarse «Ahorros» en toda la app (mismas reglas: etiqueta sobre tu dinero, no se mueve de lugar; una línea: «Tus ahorros siguen en tu banco o efectivo; solo les pones nombre»). Se ELIMINA la sección «Guardado para pagos»: lo reservado se ve dentro de cada pago («Reservando $100 de esta quincena») y como una línea en el desglose de Hoy («Reservado para pagos $X»). El intérprete acepta «aparté», «ahorré» y «guardé».
+- **V2-45 «¿Con qué pagas?»** (configuración y ajustes): se pueden agregar VARIOS de cada tipo (varias débito, varias crédito, billeteras), cada uno con su nombre y su lugar, con «+ Agregar otra».
+- **V2-46** En «Tus pagos fijos» de la configuración: chips Préstamo, Casa comercial y Tarjeta con «+ Otro» para agregar varios; solo nombre, cuota y día; «¿cuánto debes?» se pide después. Saltable.
+- **V2-47 Suscripciones:** tipo de pago con chips (Netflix, Spotify, Disney+, YouTube, iCloud/Google, celular, gimnasio, Otra), mensual o anual, medio por defecto la tarjeta de crédito si tiene (aplica V2-07). En la configuración (paso de pagos fijos) y en «+ Pago». En Mes: «Pagas ~$X al mes en suscripciones».
+- **V2-49 Mi dinero como centro con tres puertas:** arriba un resumen corto (Tienes $X · Ahorros $Y · Debes ~$Z) + la barra «Así se reparte»; debajo tres tarjetas que abren pantallas propias: «Cuentas» (lugares y medios de pago, cuadrar, mover), «Ahorros» y «Deudas» (tarjetas, préstamos, casa comercial). Cada pantalla con su volver. La barra inferior no cambia.
+- Entrenamiento (13 pasos) y 13 ejercicios actualizados con los nombres y comportamientos nuevos.
+
+**Entrega 3 — revisión integral con criterio propio** (APROBADO por Victor, 2026-10-17: «confío en su judgement para cambios que considere pertinentes»). Ver «Revisión integral v2.3» más abajo.
+
+### Cómo quedó la Entrega 1
+
+| Decisión | Dónde se ve |
+| --- | --- |
+| V2-34 | **Ficha de cada pago → «Lo pagas con»**: «Con tu quincena del 29 $200.00» y «Cambiar o repartir» abre «¿Con qué pagas el alquiler?»: cada día de pago desde lo que tienes ahora hasta el que va por defecto (con «Ese día te caen ~$1,163 · te quedarían ~$450»), «Repartirlo» con un monto por cada uno y «Repartir parejo», y «Hacerlo así cada vez» (regla: un día de pago antes, o parejo). En la fila del pago (Hoy y Pagos), solo si la persona lo cambió: «Reservando $100 de lo que tienes ahora · $100 con tu quincena del 29». **Sugerencia** (ámbar): «El viernes 30 te caen ~$90 y ese periodo pagas ~$160 (el cuchubal y el alquiler): te faltarían ~$70. ¿Reservas algo de tu pago del viernes 23? [Sí, $70.00] [No, después veo]»; «Sí» abre «¿Cuánto reservas?» con el monto y «¿De cuál dinero?» (lo que tienes ahora o un día de pago anterior). |
+| V2-35 | Hoy, debajo del número: «Próxima quincena (29) · entra ~$1,163 · pagos ~$713 · te quedarían ~$450 · incluye ~$566 de tu pareja» → Pagos → Próxima, que arriba repite los mismos números. En el desglose y en Reparte («3. ¿Cómo quedas la próxima?»): «¿Pasas algo de lo que te sobra a la próxima?». Si a la próxima le faltaría: «La próxima quincena te faltarían ~$X. ¿Guardas algo de lo que tienes ahora?». |
+| V2-36 | «+ Pago» y «+ Ingreso esperado»: Una vez · Cada semana · Cada 2 semanas · Cada quincena (el mismo día que me pagan / 15 y 30 / 15 y último día / otros días) · Cada mes · Cada 3 meses · Cada año · Otras fechas. Cuchubal: sugiere quincenal, «¿Hasta cuándo aportas?» y «¿Cuándo es tu turno?» (crea el ingreso esperado «Tu turno del cuchubal»). |
+| V2-37 / V2-44 | Calendario propio (cuadrícula del mes, botones de 44 px, nombre completo de cada día para el lector de pantalla, «hoy» marcado, flechas del teclado, tokens de la app en los 4 temas) en pagos, ingresos, Pagado, Corregir, catorcena del primer día y Anotar. En Anotar, el chip de fecha (📅) siempre se toca; con fecha futura: «Es para el 25 de octubre: lo pongo en Pagos como pago de una vez» y al guardar «Lo puse en Pagos para el 25 oct» (o «Ingreso esperado el 25 oct»). |
+| V2-38 | «+ Ingreso esperado» (o editar uno que se repite): «¿Te descuentan algo del salario?» → qué, cuánto cada vez, ¿cuánto debes? (opcional). Ficha del ingreso: «Te descuentan del salario». Al confirmar el ingreso, la cuota queda «Descontado de tu salario» y baja lo que debes; nunca baja el libre. |
+| V2-40 | «Más adelante» = solo ingresos de una vez (aguinaldo, Quincena 25, bono, turno del cuchubal). |
+| V2-42 | Hoy muestra un solo aviso: el único que haya, o «2 pagos necesitan atención · Ver» / «3 avisos para hoy · Ver», que abre «Necesitan atención». Rojo solo si lo que tienes no cubre lo que pagas con eso y ningún ingreso esperado antes lo cubre; si lo cubre (por ejemplo, lo de tu pareja ese mismo día), ámbar: «Te alcanza cuando te caiga ~$566 de tu pareja». |
+| V2-43 | La configuración inicial ya no inventa llegadas; si hoy es día de pago pregunta «¿Ya está en lo que tienes?». El periodo actual empieza en el último día de pago cuyo dinero ya tienes; los de antes de empezar ya están en el primer cuadre. |
+| V2-48 | Ficha del pago → Historial → toca un pago → «Corregir» (monto, medio, fecha con calendario) o «Desmarcar pagado» (confirmación y Deshacer). La nota del cuadre mira la fecha elegida. |
+| «~$597» | `dinero()` nunca pone «+» a un estimado. |
+
+### Decisiones técnicas v2.3 (cómo interpreté lo aprobado)
+
+- **«Ingreso» en «Lo pagas con» = un día de pago del ingreso principal** («tu quincena del 29», «tu pago del viernes 30»). Lo que cae de otros ingresos que se repiten (la pareja, la remesa) en ese periodo se suma como estimado a ese día de pago. Así Victor no ve «te faltan» por sus pagos del 30: el 29 le caen ~$1,163. Sin ingreso principal, se elige entre «lo que tienes ahora» y «lo que tengas cuando venza».
+- **Lo que vence en el periodo actual siempre sale de lo que ya tienes**; solo se puede adelantar (pagar con un ingreso anterior) o repartir, nunca atrasar a un ingreso posterior al vencimiento.
+- **La tarjeta de crédito no tiene «Lo pagas con»**: sigue V2-07 / V2-13 / V2-29 #1 (sale de lo que ya tienes, porque la compra ya se hizo).
+- **Los ingresos de una vez (aguinaldo, bono) no cuentan por adelantado** en la proyección ni como «Lo pagas con» (PREGUNTA PARA VICTOR #17).
+- **Rojo / ámbar:** rojo si lo que tienes no cubre lo que pagas con eso y ningún ingreso esperado antes del próximo día de pago lo cubre; ámbar si sí (por ejemplo, la pareja ese mismo día) y para sugerencias.
+- **La sugerencia mira el próximo mes** (días de pago en los próximos 31 días) y, al aceptar, reserva en el pago más grande de ese día de pago (se ve dentro del pago). «No, después veo» la calla hasta que falte más.
+- **La proyección revisa el saldo día por día:** si un pago vence antes de que llegue otro ingreso del mismo periodo, también cuenta como faltante (se dice «Ojo: el 30 te faltarían…» en Pagos → Próxima).
+- **«~$ por día» por debajo de $10 baja de 10 en 10 centavos** («~$7.90», no «~$7.91»), como pide la prueba de aceptación; desde $10, dólares enteros (V2-29 #12).
+- **«No me va a caer»** (en «¿Cuánto te cayó?» y en Pongámonos al día): el periodo sigue con $0 de ese ingreso; «Todavía no» lo deja pendiente.
+- **Pongámonos al día y Reparte** también confirman los otros ingresos que ya debían llegar (la pareja): «¿También te cayó…?».
+- **Migración esquema 1 → 2:** antes de migrar se guarda una copia intacta en `pamplanea-uso:respaldo-esquema-1`. El día de inicio es el del primer cuadre (el de la configuración). Se quitan SOLO las llegadas marcadas `previa` (las que inventaba la v2.2) anteriores a ese día; la del mismo día queda como «ya estaba en tu primer cuadre». Los ingresos que se repiten empiezan ese día. Nada más cambia: lugares, medios, pagos, ahorros, movimientos, cuadres, respuestas y métricas quedan iguales (probado). Una copia `.json` de esquema 1 se restaura migrada.
 
 ---
 
@@ -70,7 +143,7 @@ Versión visible en la app y en la guía: **«Prototipo v2.2 · 2026-10-16»**.
 4. «No lo anoté»: la fecha se muestra como sugerencia editable (chip con la fecha de la meta).
 5. Correcto: [Pagado] sin preguntar solo a tiempo; los vencidos preguntan la fecha.
 6. El libre nunca se muestra negativo, pero cuando está en $0 SIEMPRE aparece el faltante exacto: «Te faltan $X para cubrir lo que viene» (tocable, lleva al detalle).
-7. Reserva gradual para TODOS los tipos de ingreso: cada pago se reparte entre los días de pago que caen antes de su vencimiento (ej. alquiler del 1 con quincenas 15 y 30 = mitad y mitad). Mostrarlo en el desglose de Hoy, en Mi dinero («Guardando para pagos») y en la ficha del pago. Revisar que los resultados esperados de todos los casos sigan cuadrando y actualizarlos.
+7. ~~Reserva gradual para TODOS los tipos de ingreso~~ — **REEMPLAZADA por V2-34 (2026-10-17)**: cada pago se reparte entre los días de pago que caen antes de su vencimiento (ej. alquiler del 1 con quincenas 15 y 30 = mitad y mitad). Mostrarlo en el desglose de Hoy, en Mi dinero («Guardando para pagos») y en la ficha del pago. Revisar que los resultados esperados de todos los casos sigan cuadrando y actualizarlos.
 8. El formulario de tarjeta pregunta OPCIONAL «¿Tienes tu último estado de cuenta? Total / Mínimo». Si no lo pone, se le pide en el siguiente corte.
 9. Préstamo sin saldo: en Mi dinero dice «Cuota $35 al mes» (en positivo), no «sin saldo».
 10. Si coinciden el día de pago y los 10 días sin anotar: UNA sola tarjeta (el ritual de la quincena incluye el cuadre).
@@ -275,6 +348,12 @@ La fecha simulada es el **miércoles 21 de octubre de 2026** (ver §4).
 15. **Nombres en «Contarle a Victor»:** también se tapan las palabras que coinciden con nombres de sus cosas aunque las use en otro sentido (por ejemplo, si un pago se llama «Casa», «casa» en un comentario sale como [nombre]). Preferimos tapar de más. ¿De acuerdo?
 16. **Cerrar la bienvenida sin elegir** (la X): queda en entrenamiento con Ana y la próxima vez vuelve a preguntar. ¿Así?
 
+### PREGUNTAS PARA VICTOR (v2.3)
+
+17. **Pagar con un ingreso de una vez:** hoy «Lo pagas con» ofrece lo que tienes ahora y tus días de pago (con lo de tu pareja sumado). El aguinaldo, la Quincena 25 o un bono no cuentan por adelantado. ¿Quieres poder decir «la matrícula de enero la pago con el aguinaldo»?
+18. **Tu cuchubal «quincenal con próxima fecha 23-oct»:** lo armé como «Cada quincena, el 8 y el 23». Si en realidad es cada dos viernes (23 oct, 6 nov, 20 nov…), elige «Cada 2 semanas» y la fecha del 23. ¿Cuál es?
+19. **Anotar con fecha futura:** «zapatos 40» para el 25 queda como pago de una vez: no baja lo que tienes, pero sí tu libre de hoy (vence antes de tu quincena del 29, así que se paga con lo que ya tienes). ¿Correcto?
+
 ## 7. Lo que no hace (límites)
 
 - Es una maqueta: sin servidor, sin cuentas, sin correo ni notificaciones reales (en uso normal los avisos se muestran al abrir la app). El dictado depende del micrófono del teclado.
@@ -329,7 +408,7 @@ ACUERDOS
 - V2-12 Navegación del teléfono: Hoy · Pagos · (+) Anotar · Mi dinero · Mes. Ajustes en la foto/menú de la persona en Hoy.
 - V2-13 Tarjeta: el libre descuenta lo que la persona DECIDE pagar (total, mínimo u otro); el resto se ve como deuda en Mi dinero. Las compras del ciclo en curso sí bajan el libre (V2-07).
 - V2-14 Entrada rápida con REGLAS + dictado del teclado del teléfono (el micrófono del teclado convierte voz a texto). Sin IA. Si no entiende, abre el formulario con lo que sí entendió; nunca falla en silencio.
-- V2-15 Reserva gradual: con ingreso semanal y pagos mensuales, el número va guardando por partes («Guardando para el alquiler: $75 de $150»).
+- V2-15 ~~Reserva gradual: con ingreso semanal y pagos mensuales, el número va guardando por partes («Guardando para el alquiler: $75 de $150»).~~ **REEMPLAZADA por V2-34 (2026-10-17).**
 - V2-16 Con dos ingresos (pareja), el horizonte es hasta el INGRESO PRINCIPAL; el otro suma cuando llega.
 - V2-17 «Me deben / le debo a alguien»: FUERA de v1.
 - V2-18 «Pagado con» muestra MEDIOS con nombre (Efectivo · Débito Agrícola · Crédito BAC · Transferencia); cada medio cuelga de un LUGAR (la débito baja su cuenta). NFC = pagar con una de tus tarjetas desde el celular, no es un medio aparte. Debe sentirse inteligente: recuerda el medio usual por tipo de gasto y solo pregunta si hay duda. Transferencia pregunta «¿desde cuál cuenta?» solo si hay más de un banco.

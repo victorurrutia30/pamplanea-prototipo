@@ -1,5 +1,6 @@
 // Producto v2 · prototipo. Motor de demostración: fechas, dinero en centavos, saldo por cuadre,
-// libre hasta el próximo ingreso, reserva gradual, tarjeta, mes y el intérprete de reglas.
+// libre hasta el próximo ingreso, «Lo pagas con» (cada pago se paga con un día de pago que elige la
+// persona, V2-34), proyección de la próxima quincena (V2-35), tarjeta, mes y el intérprete de reglas.
 // No es el cálculo de producción: sirve para que la maqueta cambie sus números de verdad.
 'use strict';
 (() => {
@@ -85,7 +86,8 @@
         let s = '$' + entero + (aprox && cent === 0 ? '' : '.' + pad(cent));
         if (aprox) s = '~' + s;
         if (neg) return '−' + s;
-        return (signo && c > 0 ? '+' : '') + s;
+        // Un estimado se escribe «~$597», nunca «+~$597».
+        return (signo && c > 0 && !aprox ? '+' : '') + s;
     }
     function leerMonto(texto) {
         if (texto === null || texto === undefined) return null;
@@ -156,44 +158,61 @@
         return st.registros.reduce((f, r) => (r.fecha > f ? r.fecha : f), '2000-01-01');
     }
 
-    // ------------------------------------------------------------------ reglas de fechas
+    // ------------------------------------------------------------------ reglas de fechas (V2-36)
+    /**
+     * Fechas de una regla entre `desde` y `hasta` (incluidas). Frecuencias: una vez (`fecha`),
+     * semanal (`diaSemana`), cada 2 semanas (`catorcenal`, `fecha` = una de ellas), quincenal (`dias`),
+     * mensual (`dia`), cada N meses (`meses`: `cadaMeses` y `fecha` = una de ellas) y fechas a medida
+     * (`fechas`). Un día 29, 30 o 31 en un mes más corto cae el último día del mes (fechaDe lo ajusta).
+     */
     function fechasRegla(regla, desde, hasta) {
         const out = [];
         if (desde > hasta) return out;
-        if (regla.frecuencia === 'unico') {
+        const fr = regla.frecuencia;
+        if (fr === 'unico') {
             if (regla.fecha >= desde && regla.fecha <= hasta) out.push(regla.fecha);
             return out;
         }
-        if (regla.frecuencia === 'catorcenal') {
+        if (fr === 'fechas') return [...new Set((regla.fechas || []).filter((f) => f >= desde && f <= hasta))].sort();
+        if (fr === 'catorcenal') {
             const ancla = regla.fecha || desde;
             const k = Math.ceil(diasEntre(ancla, desde) / 14);
             for (let f = sumarDias(ancla, k * 14); f <= hasta; f = sumarDias(f, 14)) out.push(f);
             return out;
         }
-        if (regla.frecuencia === 'semanal') {
+        if (fr === 'semanal') {
             let f = desde;
             while (diaSemana(f) !== regla.diaSemana) f = sumarDias(f, 1);
             for (; f <= hasta; f = sumarDias(f, 7)) out.push(f);
             return out;
         }
+        const ancla = fr === 'meses' && regla.fecha ? partes(regla.fecha) : null;
+        const cada = fr === 'meses' ? Math.max(1, regla.cadaMeses || 12) : 1;
         let [y, m] = partes(desde);
         const [hy, hm] = partes(hasta);
         while (y < hy || (y === hy && m <= hm)) {
-            // Un día 29, 30 o 31 en un mes más corto cae el último día del mes (fechaDe lo ajusta).
-            const dias = regla.frecuencia === 'quincenal' ? regla.dias || [15, 30] : [regla.dia];
-            for (const d of dias) {
-                const f = fechaDe(y, m, d);
-                if (f >= desde && f <= hasta && !out.includes(f)) out.push(f);
+            const salto = ancla ? (y * 12 + m - (ancla[0] * 12 + ancla[1])) % cada : 0;
+            if (salto === 0) {
+                const dias = fr === 'quincenal' ? regla.dias || [15, 30] : [ancla ? ancla[2] : regla.dia];
+                for (const d of dias) {
+                    const f = fechaDe(y, m, d);
+                    if (f >= desde && f <= hasta && !out.includes(f)) out.push(f);
+                }
             }
             [y, m] = mesMas(y, m, 1);
         }
         return out.sort();
     }
+    /** Un pago «el mismo día que me pagan» usa las fechas de ese ingreso (V2-36). */
+    function reglaPago(st, p) {
+        if (p.frecuencia !== 'ingreso') return p;
+        return ingreso(st, p.conIngreso) || principal(st) || { frecuencia: 'fechas', fechas: [] };
+    }
 
     function ocurrenciasPago(st, p, desde, hasta) {
         const ini = desde > p.desde ? desde : p.desde;
         const fin = p.hasta && p.hasta < hasta ? p.hasta : hasta;
-        return fechasRegla(p, ini, fin).map((fecha) => {
+        return fechasRegla(reglaPago(st, p), ini, fin).map((fecha) => {
             const hecho = p.hechos[fecha];
             return { pago: p, fecha, monto: hecho && hecho.monto !== undefined ? hecho.monto : p.monto, estimado: !hecho && p.estimado, hecho, estado: hecho ? hecho.estado : fecha < st.hoy ? 'vencido' : 'pendiente' };
         });
@@ -202,7 +221,8 @@
         const ini = desde > ing.desde ? desde : ing.desde;
         return fechasRegla(ing, ini, hasta).map((fecha) => {
             const llegada = ing.llegadas[fecha];
-            return { ingreso: ing, fecha, monto: llegada ? llegada.monto : ing.monto, aprox: !llegada && ing.aprox, llegada, estado: llegada ? 'llego' : fecha < st.hoy ? 'porConfirmar' : fecha === st.hoy ? 'hoy' : 'esperado' };
+            const estado = llegada ? (llegada.noLlego ? 'noLlego' : 'llego') : fecha < st.hoy ? 'porConfirmar' : fecha === st.hoy ? 'hoy' : 'esperado';
+            return { ingreso: ing, fecha, monto: llegada ? llegada.monto : ing.monto, aprox: !llegada && ing.aprox, llegada, estado };
         });
     }
 
@@ -264,114 +284,237 @@
         return out;
     }
 
-    // ------------------------------------------------------------------ horizonte, reservas y libre
+    // ------------------------------------------------------------------ periodos, «Lo pagas con» y libre (V2-34, V2-35)
+    /** El día en que la persona empezó a usar la app: antes de eso no hay historia (V2-43). */
+    const inicioDe = (st) => st.inicio || '0000-01-01';
+    /** Los días de pago (los del ingreso principal) entre dos fechas: es el calendario, sin importar desde cuándo se lleva. */
+    function cortes(st, desde, hasta) {
+        const p = principal(st);
+        return p ? fechasRegla(p, desde, hasta) : [];
+    }
+    const corteAntes = (st, f) => cortes(st, sumarDias(f, -100), sumarDias(f, -1)).at(-1) || null;
+    const corteDespues = (st, f) => cortes(st, sumarDias(f, 1), sumarDias(f, 100))[0] || null;
+    /**
+     * ¿El dinero de ese día de pago ya está en lo que tienes? Sí si la persona confirmó que llegó (o
+     * que no va a llegar: cuenta con $0), o si es de antes de que empezara a llevar ese ingreso: ese
+     * dinero ya está en su primer cuadre. Nunca se inventa una llegada (V2-43).
+     */
+    function fundado(st, fecha) {
+        const p = principal(st);
+        if (!p) return fecha <= st.hoy;
+        const desde = inicioDe(st) > (p.desde || '') ? inicioDe(st) : p.desde;
+        return fecha < desde || !!p.llegadas[fecha];
+    }
+    /** 'ahora' es lo que ya tienes; 'despues', lo que tengas cuando venza (sin ingreso principal). */
+    const esFundado = (st, clave) => clave === 'ahora' || (clave !== 'despues' && fundado(st, clave));
+
     function horizonte(st) {
         const p = principal(st);
         if (!p) {
             const [y, m] = partes(st.hoy);
-            if (st.horizonteVariable === 'quince') return { fecha: sumarDias(st.hoy, 15), modo: 'quince', dias: 15 };
+            if (st.horizonteVariable === 'quince') return { fecha: sumarDias(st.hoy, 15), modo: 'quince', dias: 15, atrasadas: [] };
             const fin = fechaDe(y, m, 31);
-            return { fecha: sumarDias(fin, 1), modo: 'finDeMes', dias: diasEntre(st.hoy, fin) + 1, fin };
+            return { fecha: sumarDias(fin, 1), modo: 'finDeMes', dias: diasEntre(st.hoy, fin) + 1, fin, atrasadas: [] };
         }
-        const pasadas = ocurrenciasIngreso(st, p, p.desde, st.hoy);
-        const hoyPend = pasadas.find((o) => o.fecha === st.hoy && o.estado !== 'llego');
-        const atrasadas = pasadas.filter((o) => o.estado === 'porConfirmar');
-        const prox = ocurrenciasIngreso(st, p, sumarDias(st.hoy, 1), sumarDias(st.hoy, 70))[0];
-        if (hoyPend) return { fecha: st.hoy, ingreso: p, ocurrencia: hoyPend, esHoy: true, atrasadas, dias: 0, siguiente: prox };
-        // Un día de pago que ya pasó sin confirmar: el horizonte se queda ahí («Libre por ahora»).
-        if (atrasadas.length) return { fecha: atrasadas.at(-1).fecha, ingreso: p, ocurrencia: atrasadas.at(-1), atrasada: true, atrasadas, dias: 0, siguiente: prox };
-        return { fecha: prox.fecha, ingreso: p, ocurrencia: prox, atrasadas, dias: diasEntre(st.hoy, prox.fecha), siguiente: prox };
+        // El periodo actual empieza en el último día de pago cuyo dinero ya tienes.
+        const pasados = cortes(st, sumarDias(st.hoy, -120), st.hoy);
+        const inicioPeriodo = pasados.filter((f) => fundado(st, f)).at(-1) || null;
+        const ocurrencia = (f) => ({ ingreso: p, fecha: f, monto: p.monto, aprox: p.aprox, estado: f === st.hoy ? 'hoy' : f < st.hoy ? 'porConfirmar' : 'esperado' });
+        const pendientes = pasados.filter((f) => (!inicioPeriodo || f > inicioPeriodo) && !fundado(st, f));
+        const atrasadas = pendientes.filter((f) => f < st.hoy).map(ocurrencia);
+        const sig = corteDespues(st, st.hoy) || sumarDias(st.hoy, 30);
+        const siguiente = ocurrencia(sig);
+        const base = { ingreso: p, inicioPeriodo, atrasadas, siguiente };
+        if (pendientes.includes(st.hoy)) return { ...base, fecha: st.hoy, ocurrencia: ocurrencia(st.hoy), esHoy: true, dias: 0 };
+        // Un día de pago que ya pasó sin confirmar: el horizonte se queda ahí («Libre por ahora», V2-29 #3).
+        if (atrasadas.length) return { ...base, fecha: atrasadas.at(-1).fecha, ocurrencia: atrasadas.at(-1), atrasada: true, dias: 0 };
+        return { ...base, fecha: sig, ocurrencia: siguiente, dias: diasEntre(st.hoy, sig) };
     }
 
+    /** El día de pago con que se paga, por defecto, lo que vence en `fecha`: el último que llega en o antes de esa fecha (V2-34; el mismo día cuenta para ese ingreso, V2-29 #4). */
+    function periodoDe(st, fecha, hz = null) {
+        if (!principal(st)) return fecha < (hz || horizonte(st)).fecha ? 'ahora' : 'despues';
+        return cortes(st, sumarDias(fecha, -100), fecha).at(-1) || 'ahora';
+    }
+    /** Con qué se puede pagar algo que vence en `fecha`: lo que ya tienes o un día de pago que llega antes. */
+    function fuentesPara(st, fecha, hz = null) {
+        const def = periodoDe(st, fecha, hz);
+        if (!principal(st)) return def === 'ahora' ? ['ahora'] : ['ahora', 'despues'];
+        const lista = ['ahora'];
+        for (const f of cortes(st, sumarDias(st.hoy, -120), def)) if (!fundado(st, f)) lista.push(f);
+        return lista;
+    }
     /**
-     * Reserva gradual (V2-15, V2-26, V2-31 #7): para todo tipo de ingreso, cada pago mensual que vence
-     * después del próximo ingreso se reparte entre los días de pago que caen antes de su vencimiento
-     * (4 o 5 viernes; quincena 15 y 30 = mitad y mitad). `ideal` es lo
-     * que debería ir guardado con los pagos que ya llegaron; `calcular` lo limita a lo que alcanza.
+     * «Lo pagas con» de una ocurrencia (V2-34): lo que la persona eligió para esa fecha
+     * (`asignaciones`); si no, su regla (`pagarCon`: «un día de pago antes» o «repartirlo parejo»);
+     * si no, el día de pago por defecto. Lo que no cubren los montos elegidos va al de por defecto.
      */
-    function reservas(st, hz) {
-        const p = principal(st);
-        if (!p || p.frecuencia === 'unico') return [];
-        const out = [];
-        for (const pg of st.pagos.filter((x) => x.activo !== false && x.frecuencia === 'mensual')) {
-            const prox = ocurrenciasPago(st, pg, hz.fecha, sumarDias(hz.fecha, 40)).find((o) => o.estado === 'pendiente');
-            if (!prox) continue;
-            const [y, m] = partes(prox.fecha);
-            const [py, pm] = mesMas(y, m, -1);
-            const previa = fechaDe(py, pm, pg.dia);
-            const pagos = fechasRegla(p, sumarDias(previa, 1), sumarDias(prox.fecha, -1));
-            if (pagos.length < 2) continue;
-            const recibidos = pagos.filter((f) => f <= st.hoy && (p.llegadas[f] || f < p.desde)).length;
-            out.push({ pago: pg, fecha: prox.fecha, total: prox.monto, ideal: Math.round((prox.monto * recibidos) / pagos.length), porIngreso: Math.round(prox.monto / pagos.length), recibidos, cuantos: pagos.length, restantes: pagos.length - recibidos });
+    function asignacion(st, p, fecha, monto, hz = null) {
+        const def = periodoDe(st, fecha, hz);
+        const elegido = p.asignaciones && p.asignaciones[fecha];
+        const regla = principal(st) ? p.pagarCon : null;
+        let lista = [];
+        if (Array.isArray(elegido) && elegido.length) {
+            let resta = monto;
+            for (const x of elegido) {
+                const m = Math.min(resta, Math.max(0, x.monto || 0));
+                if (m > 0) lista.push({ de: x.de, monto: m });
+                resta -= m;
+            }
+            if (resta > 0) lista.push({ de: def, monto: resta });
+        } else if (regla && regla.modo === 'antes') {
+            lista = [{ de: corteAntes(st, def) || def, monto }];
+        } else if (regla && regla.modo === 'parejo') {
+            // Partes iguales entre los días de pago de su ciclo, desde el periodo en que lo elegiste.
+            const previa = fechasRegla(reglaPago(st, p), sumarDias(fecha, -400), sumarDias(fecha, -1)).at(-1);
+            const desdeCiclo = previa ? periodoDe(st, previa, hz) : def;
+            let claves = cortes(st, sumarDias(desdeCiclo, 1), def).filter((f) => !regla.desde || f >= regla.desde);
+            if (!claves.length) claves = [def];
+            const cuota = Math.floor(monto / claves.length);
+            lista = claves.map((de, i) => ({ de, monto: i === claves.length - 1 ? monto - cuota * (claves.length - 1) : cuota }));
+        } else lista = [{ de: def, monto }];
+        const junto = [];
+        for (const x of lista) {
+            const y = junto.find((z) => z.de === x.de);
+            if (y) y.monto += x.monto;
+            else junto.push({ ...x });
         }
-        return out.sort((a, b) => (a.fecha < b.fecha ? -1 : 1));
+        return junto;
     }
 
-    /** «~$ por día» (V2-29 #12): hacia abajo, dólares enteros desde $10 y centavos por debajo. */
+    /** «~$ por día» (V2-29 #12): hacia abajo; dólares enteros desde $10 y, por debajo, de 10 en 10 centavos («~$7.90»). */
     function porDiaDe(libre, dias) {
         if (!(dias > 0) || libre <= 0) return null;
         const x = libre / dias;
-        return x >= 1000 ? Math.floor(x / 100) * 100 : Math.floor(x);
+        return x >= 1000 ? Math.floor(x / 100) * 100 : Math.floor(x / 10) * 10;
     }
 
     /** Apartado con fecha de meta vencida y dinero adentro: «¿Ya lo usaste?» (V2-23 c). */
     const apartadosVencidos = (st) => st.apartados.filter((a) => a.metaFecha && a.metaFecha < st.hoy && a.monto > 0);
-    /** ¿Ese día cae el ingreso principal? (V2-29 #4: el pago de ese día cuenta en el periodo siguiente). */
-    function esDiaDeIngreso(st, fecha) {
-        const p = principal(st);
-        return !!p && fechasRegla(p, fecha, fecha).length > 0;
+    /** ¿Ese día cae el ingreso principal? (V2-29 #4: el pago de ese día se paga con ese ingreso). */
+    const esDiaDeIngreso = (st, fecha) => cortes(st, fecha, fecha).length > 0;
+    /** Ingresos que se repiten (el principal y otros, como el de la pareja). Los de una vez no se cuentan por adelantado. */
+    const recurrentes = (st) => st.ingresos.filter((i) => i.activo !== false && i.frecuencia !== 'unico');
+    /** Descuentos del salario (V2-38): cuotas que se pagan solas al confirmar ese ingreso. */
+    const descuentosDe = (st, ingresoId) => st.pagos.filter((p) => p.activo !== false && p.descuento === ingresoId);
+
+    /**
+     * Los próximos días de pago (V2-35): cuánto entra (estimado, también lo de otros ingresos del
+     * periodo), cuánto se paga con ese dinero y cuánto quedaría. `deficit` mira el saldo día por día:
+     * si algo vence antes de que llegue otro ingreso del periodo, también falta.
+     */
+    function proyectar(st, hz, futuro, cuantos = 6) {
+        const reservas = st.reservas || [];
+        const armar = (clave, ini, fin) => {
+            const ingresos = [];
+            for (const ing of recurrentes(st)) for (const o of ocurrenciasIngreso(st, ing, ini, fin)) if (o.estado !== 'llego' && o.estado !== 'noLlego') ingresos.push(o);
+            const resIn = reservas.filter((r) => r.para === clave);
+            const resOut = reservas.filter((r) => r.de === clave);
+            const lista = (futuro[clave] || []).filter((x) => clave !== 'despues' || x.fecha <= fin).sort((a, z) => (a.fecha < z.fecha ? -1 : a.fecha > z.fecha ? 1 : 0));
+            const entraIng = suma(ingresos, (o) => o.monto);
+            const entraRes = suma(resIn, (r) => r.monto);
+            const salePagos = suma(lista, (x) => x.parte);
+            const saleRes = suma(resOut, (r) => r.monto);
+            const eventos = [...ingresos.map((o) => ({ f: o.fecha, m: o.monto })), { f: ini, m: entraRes }, ...lista.map((x) => ({ f: x.fecha < ini ? ini : x.fecha > fin ? fin : x.fecha, m: -x.parte, x })), { f: fin, m: -saleRes }].sort((a, z) => (a.f < z.f ? -1 : a.f > z.f ? 1 : z.m - a.m));
+            let saldo = 0;
+            let minimo = 0;
+            let cuando = null;
+            let primero = null;
+            for (const e of eventos) {
+                saldo += e.m;
+                if (saldo < minimo) {
+                    minimo = saldo;
+                    cuando = e.f;
+                    if (!primero && e.x) primero = e.x;
+                }
+            }
+            return { clave, inicio: ini, fin, ingresos, principal: ingresos.find((o) => o.ingreso.principal) || null, otros: ingresos.filter((o) => !o.ingreso.principal), entra: entraIng + entraRes, entraIng, entraRes, partes: lista, pagos: salePagos + saleRes, salePagos, saleRes, quedan: entraIng + entraRes - salePagos - saleRes, deficit: -minimo, cuando, primero };
+        };
+        if (!principal(st)) {
+            const fin = hz.modo === 'quince' ? sumarDias(hz.fecha, 14) : fechaDe(...partes(hz.fecha).slice(0, 2), 31);
+            return [armar('despues', hz.fecha, fin)];
+        }
+        const out = [];
+        let b = hz.atrasadas.length ? hz.atrasadas[0].fecha : hz.esHoy ? st.hoy : hz.fecha;
+        for (let i = 0; i < cuantos && b; i++) {
+            const sig = corteDespues(st, b);
+            out.push(armar(b, b, sig ? sumarDias(sig, -1) : sumarDias(b, 30)));
+            b = sig;
+        }
+        return out;
     }
 
     function calcular(st) {
         const hz = horizonte(st);
         const t = tienes(st);
         const ap = apartadoTotal(st);
-        const limite = sumarDias(hz.fecha, -1);
-        const ayer = sumarDias(st.hoy, -1);
-        const items = [];
-        for (const p of st.pagos.filter((x) => x.activo !== false)) {
-            for (const o of ocurrenciasPago(st, p, p.desde, limite > ayer ? limite : ayer)) {
-                if (o.estado === 'pendiente' || o.estado === 'vencido') items.push(o);
+        const items = []; // con lo que ya tienes, vence antes de tu próximo ingreso (o ya venció)
+        const reservados = []; // con lo que ya tienes, pero vence después: queda reservado (V2-34)
+        const futuro = {}; // con un ingreso que todavía no llega, por día de pago
+        const lejos = sumarDias(st.hoy, 400);
+        for (const p of st.pagos) {
+            if (p.activo === false || p.descuento) continue;
+            for (const o of ocurrenciasPago(st, p, p.desde, lejos)) {
+                if (o.estado !== 'pendiente' && o.estado !== 'vencido') continue;
+                for (const parte of asignacion(st, p, o.fecha, o.monto, hz)) {
+                    const x = { ...o, parte: parte.monto, de: parte.de };
+                    if (esFundado(st, parte.de)) (o.estado === 'vencido' || o.fecha < hz.fecha ? items : reservados).push(x);
+                    else (futuro[parte.de] = futuro[parte.de] || []).push(x);
+                }
             }
         }
-        items.sort((a, b) => (a.fecha < b.fecha ? -1 : 1));
+        const porFecha = (a, b) => (a.fecha < b.fecha ? -1 : a.fecha > b.fecha ? 1 : 0);
+        items.sort(porFecha);
+        reservados.sort(porFecha);
         const tarjetas = st.tarjetas.map((x) => tarjetaInfo(st, x));
-        const porPagar = suma(items, (o) => o.monto);
+        const porPagar = suma(items, (x) => x.parte);
+        const reservadoPagos = suma(reservados, (x) => x.parte);
+        // V2-07, V2-13, V2-29 #1: la tarjeta siempre se paga con lo que ya tienes.
         const enTarjetas = suma(tarjetas, (x) => x.enLibre);
         const reservadoTarjetas = suma(tarjetas, (x) => x.reservado);
-        // Primero apartados, pagos y tarjetas; la reserva gradual toma lo que quede (V2-29 #5).
-        const base = t - ap - porPagar - enTarjetas;
-        const res = reservas(st, hz);
-        let queda = Math.max(0, base);
-        for (const r of res) {
-            r.guardado = Math.min(r.ideal, queda);
-            r.falta = r.ideal - r.guardado;
-            queda -= r.guardado;
-            // La cuota se recalcula con los días de pago que quedan antes del vencimiento.
-            r.siguiente = r.restantes ? Math.ceil((r.total - r.guardado) / r.restantes) : r.total - r.guardado;
-        }
-        const guardando = suma(res, (r) => r.guardado);
-        // Nunca negativo: lo que falta se dice en los avisos.
-        const libre = Math.max(0, base - guardando);
+        // V2-35: lo que la persona pasó de lo que tiene a un próximo día de pago.
+        const reservasProxima = (st.reservas || []).filter((r) => esFundado(st, r.de) && !esFundado(st, r.para));
+        const reservadoProxima = suma(reservasProxima, (r) => r.monto);
+        const obligaciones = porPagar + enTarjetas + reservadoPagos + reservadoProxima;
+        // V2-34: Libre = Tienes − Ahorros − lo que pagas con lo que ya tienes − lo que elegiste reservar. Nada más.
+        const disponible = t - obligaciones;
+        const base = disponible - ap;
+        const libre = Math.max(0, base);
         const porDia = porDiaDe(libre, hz.dias);
+        const periodos = proyectar(st, hz, futuro);
         const avisos = [];
-        if (t < ap) avisos.push({ tipo: 'apartados', faltan: ap - t });
-        let b = t - ap - enTarjetas;
-        for (const o of items) {
-            b -= o.monto;
-            if (b < 0) {
-                avisos.push({ tipo: 'faltaria', ocurrencia: o, faltan: Math.min(-b, o.monto) });
-                break;
+        const faltaPagos = Math.max(0, -disponible);
+        if (faltaPagos > 0) {
+            // Rojo solo si de verdad no alcanza: si lo cubre algo que todavía esperas antes de tu próximo día de pago, es una sugerencia (V2-42).
+            const esperados = [];
+            for (const ing of st.ingresos) {
+                if (ing.activo === false || ing.principal) continue;
+                for (const o of ocurrenciasIngreso(st, ing, sumarDias(st.hoy, -45), sumarDias(hz.fecha, -1))) if (o.estado !== 'llego' && o.estado !== 'noLlego') esperados.push(o);
             }
+            let b = t - enTarjetas - reservadoProxima;
+            let primero = null;
+            for (const x of items) {
+                b -= x.parte;
+                if (b < 0) {
+                    primero = x;
+                    break;
+                }
+            }
+            avisos.push({ tipo: 'falta', faltan: faltaPagos, nivel: suma(esperados, (o) => o.monto) >= faltaPagos ? 'ambar' : 'rojo', esperados, primero });
         }
-        for (const r of res) if (r.falta > 0) avisos.push({ tipo: 'reserva', reserva: r, faltan: r.falta });
-        for (const x of tarjetas) if (x.pendiente && x.pedir) avisos.push({ tipo: 'estado', info: x });
-        for (const a of apartadosVencidos(st)) avisos.push({ tipo: 'apartadoVencido', apartado: a });
+        const sinCubrir = Math.max(0, ap - Math.max(0, disponible));
+        if (sinCubrir > 0) avisos.push({ tipo: 'apartados', faltan: sinCubrir, nivel: 'ambar' });
+        // Una sola sugerencia: el primer día de pago (en el próximo mes) al que le faltaría (V2-34, V2-35).
+        // «Después veo» la calla hasta que falte más.
+        const vistas = st.sugerenciasVistas || {};
+        const i = periodos.findIndex((x) => x.deficit > 0 && diasEntre(st.hoy, x.inicio) <= 31 && !(vistas[x.clave] >= x.deficit));
+        if (i >= 0) avisos.push({ tipo: 'sugerencia', periodo: periodos[i], fuente: i === 0 ? 'ahora' : periodos[i - 1].clave, siguiente: i === 0, nivel: 'ambar' });
+        for (const x of tarjetas) if (x.pendiente && x.pedir) avisos.push({ tipo: 'estado', info: x, nivel: 'ambar' });
+        for (const a of apartadosVencidos(st)) avisos.push({ tipo: 'apartadoVencido', apartado: a, nivel: 'info' });
         const inactivo = diasEntre(ultimaActividad(st), st.hoy);
         // «Pongámonos al día» (V2-29 #6): 10 días sin anotar ni cuadrar, o un día de pago sin confirmar.
         const alDia = !hz.esHoy && (inactivo >= 10 || (hz.atrasadas || []).length > 0);
-        const falta = Math.max(0, -base) + suma(res, (r) => r.falta);
-        return { hz, tienes: t, apartado: ap, items, porPagar, tarjetas, enTarjetas, reservadoTarjetas, reservas: res, guardando, base, deficit: Math.max(0, -base), falta, libre, porDia, avisos, inactivo, alDia };
+        return { hz, tienes: t, apartado: ap, items, reservados, porPagar, reservadoPagos, reservasProxima, reservadoProxima, tarjetas, enTarjetas, reservadoTarjetas, obligaciones, disponible, base, faltaPagos, falta: Math.max(0, -base), sinCubrir, libre, porDia, periodos, proxima: periodos[0] || null, futuro, avisos, inactivo, alDia };
     }
 
     // ------------------------------------------------------------------ mes
@@ -424,7 +567,7 @@
         ['pago', /^(acuerdame|recuerdame|recordame|recordarme|recordar|avisame|recordatorio)\b/],
         ['pagoTarjeta', /^(pague|abone|cancele)( a)? (la )?tarjeta\b/],
         ['ingreso', /^(me pagaron|me cayo|me cayeron|me depositaron|cobre|recibi|me mandaron|me enviaron|vendi|gane|me dieron|me llego|me llegaron)\b/],
-        ['apartar', /^(aparte|apartar|guarde|ahorre|separe)\b/],
+        ['apartar', /^(aparte|apartar|guarde|guardar|ahorre|ahorrar|separe)\b/],
         ['liberar', /^(libere|liberar)\b/],
         ['cuadre', /^(tengo|me quedan|me queda)\b/],
         ['mover', /^(retire|saque|pase|transferi|movi|deposite)\b/],
@@ -666,6 +809,7 @@
         MESES, MESES_CORTOS, DIAS, DIAS_CORTOS, pad, sumarDias, diasEntre, diaSemana, partes, diasDelMes, fechaDe, mesMas, fechaCorta, fechaLarga, conDia, diaCorto, relativa, haceDias, ultimoDia, proximoDia,
         dinero, leerMonto, montoCampo, suma, lugar, medio, tarjeta, pago, ingreso, apartado, categoria, principal, sinVS,
         despues, saldoLugar, anteriorAlCuadre, lugaresDe, tienes, apartadoTotal, ultimaActividad, fechasRegla, ocurrenciasPago, ocurrenciasIngreso, tarjetaInfo, ocurrenciasTarjeta,
-        horizonte, reservas, calcular, resumenMes, medioUsual, normalizar, entender, faltan, capital, porDiaDe, apartadosVencidos, esDiaDeIngreso, coincide,
+        horizonte, calcular, resumenMes, medioUsual, normalizar, entender, faltan, capital, porDiaDe, apartadosVencidos, esDiaDeIngreso, coincide,
+        inicioDe, cortes, corteAntes, corteDespues, fundado, esFundado, periodoDe, fuentesPara, asignacion, reglaPago, recurrentes, descuentosDe, proyectar,
     };
 })();

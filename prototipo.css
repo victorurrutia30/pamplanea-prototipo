@@ -477,6 +477,78 @@ button.portada-b:active {
     text-decoration: underline;
     text-underline-offset: 3px;
 }
+/* V2-35: «Próxima quincena (29): entra ~$X · pagos ~$Y · te quedarían ~$Z», debajo del número. */
+.proy {
+    position: relative;
+    display: grid;
+    width: 100%;
+    min-height: 44px;
+    gap: 2px;
+    padding: 12px 40px 12px 16px;
+    border: 1px solid var(--color-border);
+    border-radius: 16px;
+    background: var(--color-surface-2);
+    box-shadow: var(--app-shadow-card);
+    color: var(--color-text);
+    text-align: left;
+}
+.proy:hover {
+    border-color: color-mix(in srgb, var(--color-primary) 40%, transparent);
+}
+.proy-t {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 20px;
+}
+.proy-t .ico {
+    color: var(--color-primary);
+}
+.proy-l {
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
+    line-height: 20px;
+}
+.proy-l--falta {
+    color: var(--tone-ambar);
+    font-weight: 600;
+}
+.proy-s {
+    color: var(--color-text-muted);
+    font-size: 12px;
+    line-height: 16px;
+}
+.proy-ir {
+    position: absolute;
+    top: 50%;
+    right: 14px;
+    transform: translateY(-50%);
+    color: var(--color-text-muted);
+}
+/* Resumen del periodo arriba de la línea de tiempo de Pagos. */
+.per-res {
+    display: grid;
+    gap: 2px;
+    padding: 10px 14px;
+    border-radius: 14px;
+    background: color-mix(in srgb, var(--color-primary) 6%, var(--color-surface-2));
+}
+.per-res--falta {
+    background: color-mix(in srgb, var(--tone-ambar-fill) 10%, var(--color-surface-2));
+}
+.per-res-l {
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
+    line-height: 20px;
+}
+.fila-s--res {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--color-text);
+}
 .card--aviso {
     display: grid;
     gap: 12px;
@@ -1136,6 +1208,78 @@ button.fila-main:active {
     font-weight: 600;
 }
 
+/* ------------------------------------------------------------------ calendario (V2-37) */
+.campo-fecha {
+    display: grid;
+    gap: 10px;
+}
+.cal-cab {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+.cal-mes {
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 24px;
+}
+.cal-sem,
+.cal-dias {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 4px;
+}
+.cal-sem span {
+    color: var(--color-text-muted);
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 16px;
+    text-align: center;
+}
+.cal-d {
+    display: inline-flex;
+    min-width: 0;
+    min-height: 44px;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    text-align: center;
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    background: var(--color-surface-2);
+    color: var(--color-text);
+    font-size: 16px;
+    font-variant-numeric: tabular-nums;
+    line-height: 24px;
+}
+.cal-d:hover:not(:disabled) {
+    border-color: var(--color-control-border);
+}
+.cal-d:focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+}
+.cal-d--hoy {
+    border: 2px solid var(--color-primary);
+    font-weight: 600;
+}
+.cal-d[aria-pressed='true'] {
+    border-color: var(--color-primary);
+    background: var(--color-primary);
+    color: var(--color-primary-fg);
+    font-weight: 600;
+}
+.cal-d:disabled {
+    border-color: transparent;
+    background: transparent;
+    color: var(--color-text-muted);
+    opacity: 0.55;
+}
+.cal-elegido strong {
+    color: var(--color-text);
+}
+
 /* ------------------------------------------------------------------ notas */
 .nota {
     display: flex;
@@ -1167,6 +1311,27 @@ button.fila-main:active {
 }
 .nota--atencion > .ico {
     color: var(--color-danger);
+}
+/* V2-42: ámbar para sugerencias; el rojo (nota--atencion) queda para cuando de verdad no alcanza. */
+.nota--ambar {
+    border-color: color-mix(in srgb, var(--tone-ambar-fill) 55%, transparent);
+    background: color-mix(in srgb, var(--tone-ambar-fill) 9%, var(--color-surface-2));
+}
+.nota--ambar > .ico {
+    color: var(--tone-ambar);
+}
+.nota .ay-acc,
+.nota .chips {
+    margin-top: 8px;
+}
+.nota-acc {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+}
+.nota-t {
+    font-weight: 600;
 }
 .nota--ok {
     border-color: color-mix(in srgb, var(--color-success) 40%, transparent);

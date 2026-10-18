@@ -14,7 +14,9 @@
     const CLAVE_MODO = 'pamplanea-modo';
     const CLAVE_USO = 'pamplanea-uso:v1';
     const CLAVE_ENTRENAMIENTO = 'pamplanea-entrenamiento';
-    const ESQUEMA = 1;
+    /** Respaldo intacto de lo guardado antes de migrar (por si acaso: nunca se pierde nada). */
+    const CLAVE_RESPALDO = 'pamplanea-uso:respaldo-esquema-1';
+    const ESQUEMA = 2;
     const $ = (s) => document.querySelector(s);
     const dinero = M.dinero;
 
@@ -37,20 +39,62 @@
      */
     function migrarUso(obj) {
         if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return null;
-        const x = { ...obj };
+        const x = structuredClone(obj);
         if (!x.esquema) x.esquema = 1;
         if (typeof x.esquema !== 'number' || x.esquema > ESQUEMA) return null;
-        // if (x.esquema === 1) { …transformar…; x.esquema = 2; }
+        if (x.esquema === 1) {
+            migrarDe1a2(x);
+            x.esquema = 2;
+        }
         x.metricas = { ...metricasVacias(), ...(x.metricas || {}) };
         x.feedback = Array.isArray(x.feedback) ? x.feedback : [];
         if (x.st) {
-            for (const k of ['lugares', 'medios', 'tarjetas', 'apartados', 'logros', 'pagos', 'ingresos', 'registros', 'avisos', 'reservasTarjeta', 'cerrados']) x.st[k] = Array.isArray(x.st[k]) ? x.st[k] : [];
+            for (const k of ['lugares', 'medios', 'tarjetas', 'apartados', 'logros', 'pagos', 'ingresos', 'registros', 'avisos', 'reservasTarjeta', 'cerrados', 'reservas']) x.st[k] = Array.isArray(x.st[k]) ? x.st[k] : [];
             x.st.persona = 'uso';
         }
         return x;
     }
+    /**
+     * Esquema 1 → 2 (Prototipo v2.3, V2-34 y V2-43). La historia empieza el día en que la persona
+     * empezó a usar la app (su primer cuadre). Se quitan SOLO las llegadas que la app inventó sola
+     * (las marcó `previa`) antes de ese día; la de ese mismo día queda como «ya estaba en tu primer
+     * cuadre». Todo lo que la persona escribió (montos, nombres, pagos, ahorros, movimientos, cuadres,
+     * respuestas) queda igual: el modelo nuevo solo agrega campos.
+     */
+    function migrarDe1a2(x) {
+        const st = x.st;
+        if (!st) return;
+        const primeros = (st.registros || []).filter((r) => r && r.tipo === 'cuadre' && r.primero).map((r) => r.fecha).sort();
+        const fechas = (st.registros || []).map((r) => r && r.fecha).filter(Boolean).sort();
+        const creado = typeof x.creado === 'string' && /^\d{4}-\d{2}-\d{2}/.test(x.creado) ? M.hoyLocal(new Date(x.creado)) : null;
+        const inicio = st.inicio || primeros[0] || fechas[0] || creado || st.hoy || M.hoyLocal();
+        st.inicio = inicio;
+        let quitadas = 0;
+        let delPrimerDia = 0;
+        for (const ing of st.ingresos || []) {
+            ing.llegadas = ing.llegadas && typeof ing.llegadas === 'object' ? ing.llegadas : {};
+            for (const [f, l] of Object.entries(ing.llegadas)) {
+                if (!l || !l.previa) continue;
+                if (f < inicio) {
+                    delete ing.llegadas[f];
+                    quitadas++;
+                } else {
+                    ing.llegadas[f] = { monto: l.monto, enCuadre: true };
+                    delPrimerDia++;
+                }
+            }
+            if (ing.frecuencia !== 'unico' && (!ing.desde || ing.desde < inicio)) ing.desde = inicio;
+        }
+        for (const p of st.pagos || []) p.hechos = p.hechos && typeof p.hechos === 'object' ? p.hechos : {};
+        x.migracion = { de: 1, a: 2, fecha: new Date().toISOString(), inicio, llegadasInventadasQuitadas: quitadas, llegadasDelPrimerDia: delPrimerDia };
+    }
     let uso = null;
-    const leerUso = () => migrarUso(P.almacen.leer(CLAVE_USO, null)) || usoVacio();
+    function leerUso() {
+        const crudo = P.almacen.leer(CLAVE_USO, null);
+        // Antes de migrar, se guarda una copia intacta (una sola vez).
+        if (crudo && typeof crudo === 'object' && (!crudo.esquema || crudo.esquema < ESQUEMA) && !P.almacen.leer(CLAVE_RESPALDO, null)) P.almacen.escribir(CLAVE_RESPALDO, crudo);
+        return migrarUso(crudo) || usoVacio();
+    }
     function guardarUso() {
         if (!uso) return;
         if (P.modo === 'uso' && P.st) {
@@ -141,7 +185,7 @@
         const st = P.st;
         const out = [];
         const manana = M.sumarDias(st.hoy, 1);
-        for (const p of st.pagos.filter((x) => x.activo !== false)) {
+        for (const p of st.pagos.filter((x) => x.activo !== false && !x.descuento)) {
             for (const o of M.ocurrenciasPago(st, p, M.sumarDias(st.hoy, -31), manana)) {
                 if (o.estado !== 'vencido' && o.estado !== 'pendiente') continue;
                 const art = P.conArticulo(p.nombre);
@@ -349,6 +393,7 @@
     }
     function borrarTodo() {
         P.almacen.borrar(CLAVE_USO);
+        P.almacen.borrar(CLAVE_RESPALDO);
         uso = null;
         guardarPref({ modo: 'uso', notaAvisos: false });
         entrarUso();
@@ -523,6 +568,8 @@
         hoy,
         cambiar: (modo) => acc.modoCambiar({ v: modo }),
         CLAVE_USO,
+        CLAVE_RESPALDO,
+        ESQUEMA,
         iniciar() {
             const pintarApp = P.render;
             P.render = (...args) => {
