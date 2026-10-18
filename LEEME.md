@@ -1,4 +1,4 @@
-# Producto v2 · prototipo de teléfono — versión 2.3
+# Producto v2 · prototipo de teléfono — versión 2.3.1
 
 **Qué es:** un prototipo clicable de la app completa propuesta en Producto v2. Desde la v2.2 tiene **dos modos**: **entrenamiento** (datos inventados de Ana, recorrido guiado, 13 ejercicios y la prueba A/B para testers) y **uso normal** (la familia cercana de Victor la usa 1–2 semanas con su dinero real, guardado solo en su teléfono). Es una maqueta de flujo y comprensión, no producción.
 
@@ -11,9 +11,70 @@
 
 Sin servidor propio, sin dependencias, sin CDN, sin analítica ni rastreadores. Fuentes, emoji, íconos y los íconos de la app instalable son locales, con sus licencias (`recursos/licencias`).
 
-**Estado:** brief y acuerdos V2-01…V2-22 APROBADOS por Victor (2026-10-16); **V2-23 a V2-30** y **V2-31 (respuestas v2.1)** APROBADOS por Victor (2026-10-16); **V2-34 a V2-49** APROBADOS por Victor (2026-10-17) — V2-15 y V2-31 #7 quedan REEMPLAZADAS por V2-34. Nada de esto está documentado todavía en el repo de la app: se documentará después de las pruebas con personas. Este prototipo no cambia nada del repo de la app.
+**Estado:** brief y acuerdos V2-01…V2-22 APROBADOS por Victor (2026-10-16); **V2-23 a V2-30** y **V2-31 (respuestas v2.1)** APROBADOS por Victor (2026-10-16); **V2-34 a V2-49** APROBADOS por Victor (2026-10-17) — V2-15 y V2-31 #7 quedan REEMPLAZADAS por V2-34. **V2-50 a V2-55** y la corrección adicional (adelanto de salario) APROBADOS por Victor (2026-10-17). Nada de esto está documentado todavía en el repo de la app: se documentará después de las pruebas con personas. Este prototipo no cambia nada del repo de la app.
 
-Versión visible en la app y en la guía: **«Prototipo v2.3 · 2026-10-17»**.
+Versión visible en la app y en la guía: **«Prototipo v2.3.1 · 2026-10-17»**.
+
+---
+
+## Prototipo v2.3.1 (2026-10-17): ajustes puntuales + corrección adicional
+
+**Alcance:** solo estos cambios y sus efectos directos (sin revisión integral). Sin cambio de esquema: lo nuevo son campos opcionales (`tarjeta.pagoUsual`, `tarjeta.desde`, `ingreso.adelanto`) y claves `unico:<id>` en «Lo pagas con»; los datos de antes se leen igual.
+
+### Decisiones V2-50 a V2-55 (APROBADAS por Victor, 2026-10-17)
+
+- **V2-50 Anotar sin teclado de golpe:** en el teléfono (`pointer: coarse`) el (+) abre la hoja sin enfocar el campo: se ven el campo, la nota del micrófono y los atajos; el teclado sale al tocar el campo o un atajo que pide escribir. En la computadora (`pointer: fine`), foco directo al campo. El lector de pantalla va al título de la hoja. Escape y la vuelta del foco, igual.
+- **V2-51** Se **ACEPTA** el cambio de la E3 a V2-16: un ingreso que llega antes de su día queda para su quincena; «Usarla desde ya» disponible. Ver «Revisión integral v2.3» (queda **APROBADO**).
+- **V2-52 (#17)** Un pago se puede asignar («Lo pagas con») a un ingreso esperado de una vez (aguinaldo, Quincena 25, bono). No cuenta hasta que llega. Si llega la fecha de vencimiento y el ingreso no ha llegado: un aviso ámbar «La matrícula la ibas a pagar con el aguinaldo, que todavía no llega. ¿Con qué la pagas?».
+- **V2-53 (#19)** Confirmado: una compra anotada con fecha futura dentro del periodo actual baja el libre de hoy y no baja «Tienes». Sin cambio de código.
+- **V2-54 (#20)** El chip «Tarjeta» de los pagos fijos de la configuración crea una **tarjeta de crédito real** (nombre, día de pago, «¿Cuánto pagas normalmente?») con su pago en Pagos y su ficha en Deudas. El día de corte y el estado de cuenta se piden después, como V2-24.
+- **V2-55** Pendientes chicos de la v2.3: **a)** un pago vencido ya no aparece dos veces en Hoy: queda en el aviso agrupado y sale de «Próximos pagos»; **b)** Pagos → Mes trae arriba «Entra ~$X · pagos ~$Y · queda ~$Z», con los números del motor.
+- **#18** El cuchubal de Victor se queda «cada quincena, el 8 y el 23». Sin cambio.
+
+### Cómo quedó (v2.3.1)
+
+| Decisión | Dónde se ve |
+| --- | --- |
+| V2-50 | (+) en el teléfono: hoja «Anotar» con el foco en su título (sin teclado); «Gasté», «Recibí»… sí abren el teclado en su primer campo. En la computadora, el cursor ya está en «¿Qué pasó?». |
+| V2-51 | Sin cambio de código (ya estaba en la v2.3). |
+| V2-52 | Ficha del pago → «Cambiar o repartir»: «Con tu aguinaldo del 12 dic · Te caen ~$1,000 el 12 dic · no cuenta hasta que llegue» (solo ingresos de una vez que llegan antes de que venza y que todavía no llegan). La ficha dice «Con tu aguinaldo del 12 dic $100.00»; el detalle del número: «Aguinaldo (~$1,000, 12 dic): suma cuando llegue; con eso pagas la matrícula». Cuando llega, lo asignado queda reservado de lo que tienes. Si vence (o la persona dijo «No me va a caer») sin que llegue: aviso ámbar con «Elegir con qué». |
+| V2-53 | Documentado (§6 #19). |
+| V2-54 | Primer día, paso 4 → «Tarjeta» → «Tarjeta de crédito»: Nombre, «¿Cuánto pagas normalmente?», «¿Qué día la pagas?» y «Tu día de corte y tu estado de cuenta te los pido después». Queda en Deudas («Pagas ~$100 el 5 · estado de cuenta por anotar»), en Pagos (~$100 estimado, con «Pagado») y en Hoy («Incluye tarjeta ~$100, vence el 5»). Desde 10 días antes de que venza: «¿Ya te llegó tu estado de cuenta?», que pide también el día de corte. |
+| V2-55 a | Hoy: «Próximos pagos» solo trae lo que viene; los vencidos están en el aviso (todos desde que empezaste, con cada nombre una vez: «Alquiler (3), Luz (3)…»). |
+| V2-55 b | Pagos → Mes: «Entra ~$1,163 · pagos ~$713 · queda ~$450 · Lo que te pagan y lo que pagas en octubre. Sin tus gastos del día a día (esos están en la pestaña Mes)». |
+
+### Corrección adicional (pedida por Victor con sus datos reales; adelanto APROBADO por Victor, 2026-10-17)
+
+Victor vio «entra ~$1,163 · te faltarían ~$33» y un aviso ámbar falso: su próxima quincena (29 oct – 13 nov) recibe quincena ~$597 + pareja ~$566 + «Adelanto de Salario» ~$314 = ~$1,477 y paga ~$1,196: le quedan ~$281.
+
+1. **La proyección de un periodo cuenta TODOS los ingresos esperados con fecha en ese periodo**, también los de una vez (adelanto, aguinaldo, bono, Quincena 25), como estimados («incluye ~$566 de tu pareja y ~$314 de adelanto»). «No suma hasta que llegue» sigue solo para el libre de HOY. El aviso de faltante usa la misma cuenta. Lo que pagas con un ingreso de una vez (V2-52) va en el periodo de ese ingreso.
+2. **Adelanto de salario:** al crear un ingreso de una vez, «Es un adelanto de mi salario» → «¿De qué quincena te lo descuentan?» (tus próximas quincenas; una o varias, con «¿Cuánto?» de cada una; por defecto todo el adelanto de la primera). Esa quincena baja en la proyección y en el calendario («Quincena ~$283 · Esperado · te descuentan $314.00 del adelanto»), y al confirmarla el monto sugerido ya viene con el descuento. Nunca se cuenta dos veces. Si el periodo queda corto, el aviso normal lo dice con tiempo («El 14 te caen ~$949 (ya sin los $314.00 del adelanto)…») y ofrece reservar de antes. Para los datos que ya existen: la ficha de un ingreso de una vez llamado «Adelanto…» (o «Anticipo», «Vale») pregunta «¿Es un adelanto de tu salario?».
+3. **«Más adelante» empieza después del periodo «Próxima»:** un ingreso de una vez se ve solo en el periodo de su fecha.
+4. **Tarjeta agregada después de empezar (V2-43):** no muestra un pago con fecha de antes de que empezaras (ni de antes de agregarla): espera su siguiente corte. «Corta el 21» si todavía no llega; «cortó el 21» si ya pasó (y el botón «Llegó mi estado de cuenta» aparece desde el corte).
+5. **Revisado:** (a) **el cuchubal en $50 el 30-oct** no es una suma de la app (ninguna pantalla junta dos cuotas en una fila; cada fila muestra el monto guardado). En la v2.2 el cuchubal se guardaba siempre **cada semana (viernes por defecto)**, y el 30-oct es viernes: tus datos tienen ese cuchubal semanal con $50. Arreglo: Pagos → Mis pagos e ingresos → Cuchubal → Editar → «Cada quincena», 8 y 23, $25. (b) **Un «Préstamo» creado como pago normal** ahora ofrece en su ficha «¿Es una deuda? · Anotarla en Deudas» (tipo y «¿Cuánto debes?»): es el mismo pago, no se duplica.
+
+**«Compartir copia» no funcionaba (reportado por Victor):** compartía un archivo `.json`, que Chrome en Android no deja compartir, y el error se tragaba (el botón no hacía nada). Ahora comparte el mismo contenido como `pamplanea-copia-AAAA-MM-DD.txt`; si el teléfono no deja compartir, la descarga y lo dice («Tu teléfono no dejó compartirla: la guardé en Descargas»). «Restaurar» acepta `.json` y `.txt`.
+
+### Decisiones técnicas v2.3.1 (cómo interpreté lo aprobado)
+
+- **V2-52:** si el ingreso de una vez no llega a tiempo, **nada cambia solo**: el pago sigue sin bajar tu libre hasta que elijas con qué pagarlo («Elegir con qué»), o lo marques Pagado. El aviso también sale si dijiste que ese ingreso no va a llegar. Solo se ofrecen ingresos de una vez con fecha en o antes del vencimiento. Si ese ingreso se borra o cambia a una fecha posterior al vencimiento, el pago vuelve a su ingreso de siempre.
+- **V2-54:** hasta su primer estado de cuenta, la tarjeta cuenta en tu libre lo que pagas normalmente (estimado, V2-13: lo que decides pagar), con su fecha de pago; lo que debes de verdad queda «Por confirmar» (en Mi dinero cuenta como «Cuotas $X al mes», nunca «Debes $0.00» ni un «Debes» inventado). El estado de cuenta (con el día de corte) se pide desde 10 días antes de que venza. **Las «Tarjeta» creadas como cuota con la v2.3 se dejan como están** (siguen funcionando como cuota, con su historial; Victor y Pam empezaron con la v2.2, que no tenía ese chip). Para llevarla como tarjeta: Deudas → «+ Tarjeta o préstamo» → Tarjeta de crédito, y «Ya no aplica» en la cuota.
+- **V2-55 a:** el aviso de vencidos ahora trae todos los vencidos desde que empezaste (antes, los de los últimos 62 días), porque ya no se ven en «Próximos pagos».
+- **V2-55 b:** el mes cuenta lo que llegó o pagaste (por lo que fue) y lo demás por lo esperado; también lo vencido de ese mes. No cuenta los descuentos del salario (lo que te cae ya viene sin ellos) ni lo saltado; una tarjeta sin monto todavía se dice aparte («+ tus tarjetas»).
+- **Adelanto:** el descuento se guarda en el adelanto (`adelanto.descuentos`: de qué ingreso, qué fecha y cuánto). Si el adelanto no va a llegar, no se descuenta nada. Se ofrecen las próximas quincenas de tus ingresos que se repiten (no las de tu pareja ni la remesa), hasta 75 días después.
+- **Editar una deuda que no es mensual** abre el formulario de pago de siempre (el de deudas es solo mensual), así no se pierde su frecuencia.
+
+### PENDIENTE (lo vi y no lo toqué)
+
+1. Cuando a un periodo le falta solo por las fechas (un pago vence antes de que llegue otro ingreso del mismo periodo), el aviso dice «El 14 te caen ~$949 … y ese periodo pagas ~$925: te faltarían ~$51», que suena contradictorio. Debería decir «el 16 te faltarían ~$51 hasta que llegue lo demás» (como ya lo dice Pagos → Próxima).
+2. «¿Con qué pagas…?» de un pago lejano (la matrícula de enero) lista todas las quincenas hasta esa fecha (8 opciones). Se podría mostrar las tres más útiles y «Ver más».
+3. El recorrido y los ejercicios todavía no enseñan V2-52, V2-54 ni el adelanto (queda para la v2.4 «Entrenamiento a prueba de todo»).
+
+### Calidad (v2.3.1)
+
+- **`herramientas/v231.mjs`** (por file:// y servida, en Serena claro y Ancla oscuro): V2-50 (390 táctil: foco en el título, el atajo sí abre el teclado, Escape devuelve el foco al (+); 1440: foco directo), V2-55 (Ana sin la luz vencida repetida; octubre de Victor «Entra ~$1,163 · pagos ~$713 · queda ~$450»), la corrección con el escenario de Victor (libre $95.00 sin cambio; próxima «entra ~$1,477 · pagos ~$1,196 · te quedarían ~$281», sin aviso; «Más adelante» sin el adelanto), el adelanto (su quincena del 14 en ~$283, «te descuentan $314.00 del adelanto», confirmar sugiere $283.00, repartido $60 + $40, aviso a tiempo), V2-52 (con y sin llegada del aguinaldo), la tarjeta agregada después de empezar («corta» / «cortó el 21»), «¿Es una deuda?», V2-54 (primer día con «Tarjeta»: libre $200.00, «Cuotas $100.00 al mes», estado de cuenta con día de corte) y «Compartir copia» (comparte .txt; si no deja, descarga; restaurar desde .txt).
+- La prueba de aceptación v2.3 (Victor: Libre $95.00 · ~$7.90 por día) y las de siempre siguen pasando.
+- Una ronda visual a 390 × 844 en Serena claro y Ancla oscuro de lo que cambió (`capturas/v231/`).
 
 ---
 
@@ -90,7 +151,7 @@ Versión visible en la app y en la guía: **«Prototipo v2.3 · 2026-10-17»**.
 
 Cómo se revisó: el dinero de Victor seguido por la interfaz del 17 de octubre al 2 de noviembre (anota, paga a tiempo, a la pareja le pagan antes, llega la quincena, paga el 30, corrige un pago, cuadra con diferencia, revisa Mes) comprobando cada día que Hoy, el desglose, Pagos y Mi dinero digan lo mismo y que la repartición sume lo que tiene (`herramientas/viaje-v23.mjs`); los tres perfiles (Ana quincena con tarjeta y deuda; Carlos semanal solo efectivo; Rosa variable + remesa) en las pruebas de siempre; casos borde en el motor (cambio de año, febrero, ingreso que no llega, ingreso adelantado, cambio de ingreso principal); 44 capturas por tema (Serena claro y Ancla oscuro) y contraste medido en los 4 temas (mínimo 4.94:1).
 
-**CAMBIO A DECISIÓN APROBADA — REVISAR**
+**CAMBIO A DECISIÓN APROBADA — REVISAR** → **APROBADO por Victor (V2-51, 2026-10-17)**
 
 1. **V2-16 («el otro ingreso suma cuando llega») — si llega ANTES de su día de pago, es de esa quincena.** Encontré: a la pareja de Victor le pagan el 28 lo del 29; la v2.3 sumaba esos $566 al libre de hoy («Libre $661 hasta el 29»), aunque son para los pagos del 30: un número que «miente». Cambié: lo que llega antes de su quincena queda para esa quincena (el libre de hoy no sube y la próxima dice «incluye $566.00 de tu pareja, que ya llegó»), con «Usarla desde ya» en Reparte y en el desglose por si la persona lo quiere ahora. Lo que llega en su fecha sigue sumando como siempre.
 
@@ -127,9 +188,9 @@ Cómo se revisó: el dinero de Victor seguido por la interfaz del 17 de octubre 
 
 **Lo que no alcancé (por prioridad)**
 
-1. Un pago vencido aparece en el aviso de Hoy y en «Próximos pagos» (con «Pagado» en los dos). ¿Se quita del aviso cuando ya se ve abajo?
-2. «Lo pagas con» con un ingreso de una vez (aguinaldo) → PREGUNTA #17.
-3. Pagos → «Mes» todavía no trae un resumen del mes (entra / pagas) como «Esta quincena» y «Próxima».
+1. *(Hecho en la v2.3.1, V2-55 a.)* Un pago vencido aparece en el aviso de Hoy y en «Próximos pagos» (con «Pagado» en los dos). ¿Se quita del aviso cuando ya se ve abajo?
+2. *(Hecho en la v2.3.1, V2-52.)* «Lo pagas con» con un ingreso de una vez (aguinaldo) → PREGUNTA #17.
+3. *(Hecho en la v2.3.1, V2-55 b.)* Pagos → «Mes» todavía no trae un resumen del mes (entra / pagas) como «Esta quincena» y «Próxima».
 4. Probar con lector de pantalla y en teléfonos reales (Android e iPhone); las pruebas son con Chrome y Edge emulando 390 × 844.
 5. Desktop (V2-28).
 
@@ -180,7 +241,7 @@ Cómo se revisó: el dinero de Victor seguido por la interfaz del 17 de octubre 
 
 ### Datos seguros
 - Claves: `pamplanea-modo` (modo elegido y nota de avisos), `pamplanea-uso:v1` (datos reales; desde la v2.3 `esquema: 2`, con migración desde el 1 y copia intacta en `pamplanea-uso:respaldo-esquema-1`: una actualización nunca borra) y `pamplanea-entrenamiento` (recorrido y ejercicios hechos). El entrenamiento sigue en `pamplanea-proto-v2:*`. Todo con `try/catch`.
-- **Guardar copia** descarga `pamplanea-copia-AAAA-MM-DD.json` (`{app, tipo: "copia-uso", esquema, version, fecha, datos}`); **Compartir copia** usa el menú del teléfono cuando existe. **Restaurar** valida el archivo y muestra qué trae antes de reemplazar. **Borrar todos mis datos**: doble confirmación (solo modo uso).
+- **Guardar copia** descarga `pamplanea-copia-AAAA-MM-DD.json` (`{app, tipo: "copia-uso", esquema, version, fecha, datos}`); **Compartir copia** usa el menú del teléfono cuando existe y manda el mismo contenido como `pamplanea-copia-AAAA-MM-DD.txt` (Chrome en Android no deja compartir .json); si el teléfono no deja, la descarga y lo dice. **Restaurar** acepta .json y .txt, valida el archivo y muestra qué trae antes de reemplazar. **Borrar todos mis datos**: doble confirmación (solo modo uso).
 - **Actualizar** (versión nueva del service worker) conserva los datos reales: probado.
 
 ### Contarle a Victor
@@ -247,7 +308,7 @@ Cómo se revisó: el dinero de Victor seguido por la interfaz del 17 de octubre 
 ## App instalable (PWA)
 
 - `manifest.webmanifest`: «PamPlanea (prototipo)» / «PamPlanea», `start_url` y `scope` «./» (funciona en la subruta `/pamplanea-prototipo/`), `display: standalone`, colores de Serena, íconos 192 y 512, uno maskable y `apple-touch-icon` 180, generados localmente desde el ícono (`herramientas/generar-iconos.mjs`).
-- `sw.js`: caché **versionada** (hoy `pamplanea-proto-v2.3-2026-10-17`) que precarga los 140 archivos publicados; abre sin internet. Una versión nueva se instala en segundo plano y la app muestra «Hay una versión nueva · Actualizar»; al tocarlo guarda y recarga **sin perder datos** (lo guardado tiene su propio formato, independiente de la versión visible). La primera instalación no recarga la página.
+- `sw.js`: caché **versionada** (hoy `pamplanea-proto-v2.3.1-2026-10-17`) que precarga los 140 archivos publicados; abre sin internet. Una versión nueva se instala en segundo plano y la app muestra «Hay una versión nueva · Actualizar»; al tocarlo guarda y recarga **sin perder datos** (lo guardado tiene su propio formato, independiente de la versión visible). La primera instalación no recarga la página.
 - El service worker y el manifest solo se usan servidos por http(s); por `file://` no se registran y todo funciona igual, sin errores de consola.
 - **Para publicar una versión nueva:** cambiar `VERSION_PROTOTIPO` en `casos.js` y correr `node herramientas/generar-sw.mjs v2.2-AAAA-MM-DD` (regenera la lista y el nombre de la caché). Si `sw.js` no cambia, los teléfonos instalados no se enteran.
 - En modo instalado: safe areas reales, sin barra de estado simulada; la barra de estado de Android toma el color del aviso de prototipo en cada tema.
@@ -383,7 +444,7 @@ La fecha simulada es el **miércoles 21 de octubre de 2026** (ver §4).
 - **Prueba guiada:** cada tarea tiene una condición que la app revisa tras cada acción (por ejemplo, «hay un gasto nuevo de $6.00»); los toques se cuentan en la app, no en la barra de la tarea ni en «Casos y ayuda».
 - **Guardado (entrenamiento):** `pamplanea-proto-v2:app` (estado, caso, pestaña, tema; con `formato: 2`), `pamplanea-proto-v2:notas` (nombre, notas, prueba), `pamplanea-proto-v2:dispositivo` (personas en este teléfono y set siguiente) y `pamplanea-proto-v2:guia`. La versión visible no invalida lo guardado.
 - **Guardado (uso normal, v2.2):** ver «Modos v2.2 → Datos seguros».
-- **Service worker:** primero la caché (sin importar `?set=…`), luego la red. Solo por http(s). Caché `pamplanea-proto-v2.3-2026-10-17`.
+- **Service worker:** primero la caché (sin importar `?set=…`), luego la red. Solo por http(s). Caché `pamplanea-proto-v2.3.1-2026-10-17`.
 
 ## 6. PREGUNTAS PARA VICTOR (no las decidí; el prototipo usa lo de §5)
 
@@ -409,10 +470,10 @@ La fecha simulada es el **miércoles 21 de octubre de 2026** (ver §4).
 
 ### PREGUNTAS PARA VICTOR (v2.3)
 
-17. **Pagar con un ingreso de una vez:** hoy «Lo pagas con» ofrece lo que tienes ahora y tus días de pago (con lo de tu pareja sumado). El aguinaldo, la Quincena 25 o un bono no cuentan por adelantado. ¿Quieres poder decir «la matrícula de enero la pago con el aguinaldo»?
-18. **Tu cuchubal «quincenal con próxima fecha 23-oct»:** lo armé como «Cada quincena, el 8 y el 23». Si en realidad es cada dos viernes (23 oct, 6 nov, 20 nov…), elige «Cada 2 semanas» y la fecha del 23. ¿Cuál es?
-19. **Anotar con fecha futura:** «zapatos 40» para el 25 queda como pago de una vez: no baja lo que tienes, pero sí tu libre de hoy (vence antes de tu quincena del 29, así que se paga con lo que ya tienes). ¿Correcto?
-20. **«Tarjeta» en pagos fijos (V2-46):** la armé como una cuota mensual (nombre, cuánto pagas más o menos y el día), sin corte ni estado de cuenta, porque así se pide «solo nombre, cuota y día». Si la persona quiere anotar compras con ella, la agrega como tarjeta de crédito en el paso 3 o en Deudas. ¿O preferías que «Tarjeta» aquí fuera la tarjeta completa?
+17. **RESPONDIDA (V2-52): sí.** **Pagar con un ingreso de una vez:** hoy «Lo pagas con» ofrece lo que tienes ahora y tus días de pago (con lo de tu pareja sumado). El aguinaldo, la Quincena 25 o un bono no cuentan por adelantado. ¿Quieres poder decir «la matrícula de enero la pago con el aguinaldo»?
+18. **RESPONDIDA: se queda «cada quincena, el 8 y el 23».** **Tu cuchubal «quincenal con próxima fecha 23-oct»:** lo armé como «Cada quincena, el 8 y el 23». Si en realidad es cada dos viernes (23 oct, 6 nov, 20 nov…), elige «Cada 2 semanas» y la fecha del 23. ¿Cuál es?
+19. **RESPONDIDA (V2-53): correcto.** **Anotar con fecha futura:** «zapatos 40» para el 25 queda como pago de una vez: no baja lo que tienes, pero sí tu libre de hoy (vence antes de tu quincena del 29, así que se paga con lo que ya tienes). ¿Correcto?
+20. **RESPONDIDA (V2-54): la tarjeta completa.** **«Tarjeta» en pagos fijos (V2-46):** la armé como una cuota mensual (nombre, cuánto pagas más o menos y el día), sin corte ni estado de cuenta, porque así se pide «solo nombre, cuota y día». Si la persona quiere anotar compras con ella, la agrega como tarjeta de crédito en el paso 3 o en Deudas. ¿O preferías que «Tarjeta» aquí fuera la tarjeta completa?
 
 ## 7. Lo que no hace (límites)
 
@@ -440,9 +501,11 @@ La fecha simulada es el **miércoles 21 de octubre de 2026** (ver §4).
 | `recursos/` | Piel real (tokens, Instrument Sans, emoji Fluent, íconos Lucide, portadas e ilustraciones) con sus licencias |
 | `README.md` | Para quien llega al repo: los dos modos, instalar, copia de datos, contarle a Victor |
 
-Fuera del repo (en `.gitignore`, solo en la copia local): `capturas/` y `herramientas/` (`recorrer-v2.mjs` 13 casos, `recorrer-sets.mjs` sets A y B, `recorrer-modos.mjs` entrada, entrenamiento, tres personas y copia, `probar-pwa.mjs` (también datos reales tras actualizar), `instalar-ua.mjs`, `contraste*.mjs`, `generar-iconos.mjs`, `generar-sw.mjs` + `sw.plantilla.js`, `servidor.mjs`). Nuevos en la v2.3: `aceptacion-v23.mjs` (la prueba de aceptación de Victor, migración, Carlos, reparto, pagado y fecha futura), `entrega2-v23.mjs`, `viaje-v23.mjs` (el viaje del dinero), `probar-motor.mjs` (motor y casos borde), `humo-v23.mjs`, `capturas-ux.mjs` y `contraste-v23.mjs`.
+Fuera del repo (en `.gitignore`, solo en la copia local): `capturas/` y `herramientas/` (`recorrer-v2.mjs` 13 casos, `recorrer-sets.mjs` sets A y B, `recorrer-modos.mjs` entrada, entrenamiento, tres personas y copia, `probar-pwa.mjs` (también datos reales tras actualizar), `instalar-ua.mjs`, `contraste*.mjs`, `generar-iconos.mjs`, `generar-sw.mjs` + `sw.plantilla.js`, `servidor.mjs`). Nuevo en la v2.3.1: `v231.mjs` (V2-50 a V2-55, la corrección adicional y «Compartir copia»). Nuevos en la v2.3: `aceptacion-v23.mjs` (la prueba de aceptación de Victor, migración, Carlos, reparto, pagado y fecha futura), `entrega2-v23.mjs`, `viaje-v23.mjs` (el viaje del dinero), `probar-motor.mjs` (motor y casos borde), `humo-v23.mjs`, `capturas-ux.mjs` y `contraste-v23.mjs`.
 
 ## 9. Qué falta
+
+**v2.3.1:** hecho lo pedido (V2-50 a V2-55, la corrección adicional y «Compartir copia»). Queda lo de «PENDIENTE (lo vi y no lo toqué)» en la sección v2.3.1. Para Victor: actualizar sin perder datos, revisar su cuchubal (§ corrección 5a) y marcar su «Adelanto de Salario» como adelanto.
 
 **v2.3:** lo pedido en las Entregas 1 y 2 quedó hecho; de la Entrega 3 queda lo listado en «Revisión integral v2.3 → Lo que no alcancé». Queda para Victor: probar la v2.3 en su teléfono con sus datos (actualizar sin perder nada) y responder §6 (17–20); después, compartirla con la familia.
 

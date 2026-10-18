@@ -1,4 +1,4 @@
-# PamPlanea · prototipo v2.3
+# PamPlanea · prototipo v2.3.1
 
 Una versión de prueba de **PamPlanea**: saber cuánto te queda libre hasta tu próximo ingreso y que no se te olvide ningún pago.
 
@@ -10,6 +10,15 @@ Al abrirla eliges uno de dos caminos (y puedes cambiar cuando quieras desde tu l
 - **Usarla con mis datos:** tu dinero real, con la fecha real de tu teléfono. Empiezas desde cero: cómo te pagan, cuánto tienes y dónde, y tus pagos fijos.
 
 Los dos modos guardan sus datos por separado. Reiniciar los ejemplos no borra tus datos.
+
+## Lo nuevo en la v2.3.1
+
+- **Tu próxima quincena cuenta todo lo que te cae ese periodo**, también un adelanto, el aguinaldo o un bono. Tu número de hoy sigue igual: eso solo suma cuando llega.
+- **Adelanto de salario:** dile de qué quincena te lo descuentan y esa quincena ya viene con el descuento. Nunca se cuenta dos veces.
+- Un pago se puede pagar con el aguinaldo (o un bono). Si llega la fecha y no ha llegado, la app te pregunta con qué lo pagas.
+- La «Tarjeta» del primer día es una tarjeta de crédito de verdad; el día de corte y el estado de cuenta te los pide después.
+- En el teléfono, Anotar ya no abre el teclado de golpe. Un pago vencido sale una sola vez en Hoy. Pagos → Mes trae un resumen arriba.
+- «Compartir copia» ya funciona en Android (manda un archivo .txt; «Restaurar» acepta .json y .txt).
 
 ## Lo nuevo en la v2.3
 
@@ -25,7 +34,7 @@ Los dos modos guardan sus datos por separado. Reiniciar los ejemplos no borra tu
 
 - **Se guardan solo en tu teléfono.** No hay servidor, cuentas, analítica ni rastreadores. Nadie más los ve, ni Victor.
 - **Es una versión de prueba:** si algo no cuadra, avísale a Victor.
-- **Guarda una copia de vez en cuando:** tu letra → **«Tus datos»** → **«Guardar copia»** (descarga un archivo `pamplanea-copia-AAAA-MM-DD.json`) o **«Compartir copia»** (para mandártela por WhatsApp o correo). Con **«Restaurar una copia»** la vuelves a cargar (te pide confirmar antes de reemplazar). **«Borrar todos mis datos»** pide confirmar dos veces.
+- **Guarda una copia de vez en cuando:** tu letra → **«Tus datos»** → **«Guardar copia»** (descarga un archivo `pamplanea-copia-AAAA-MM-DD.json`) o **«Compartir copia»** (para mandártela por WhatsApp o correo; va como `pamplanea-copia-AAAA-MM-DD.txt`). Con **«Restaurar una copia»** la vuelves a cargar (te pide confirmar antes de reemplazar). **«Borrar todos mis datos»** pide confirmar dos veces.
 - Cuando hay una versión nueva verás «Hay una versión nueva · Actualizar»: actualizar **no borra** tus datos.
 
 ## Instálala en tu pantalla de inicio
@@ -50,7 +59,7 @@ La prueba guiada de la v2.1 sigue en el modo entrenamiento: «Casos y ayuda» �
 ## Para el equipo
 
 - Abre `index.html` con doble clic (Chrome o Edge): funciona sin servidor ni internet, con la guía de los 13 casos y los dos sets.
-- Detalle, decisiones y preguntas abiertas: [`LEEME.md`](LEEME.md) (secciones «Prototipo v2.3» y «Modos v2.2»).
+- Detalle, decisiones y preguntas abiertas: [`LEEME.md`](LEEME.md) (secciones «Prototipo v2.3.1», «Prototipo v2.3» y «Modos v2.2»).
 - Licencias de fuentes, emoji e íconos: [`recursos/licencias`](recursos/licencias).
 
-Prototipo v2.3 · 2026-10-17
+Prototipo v2.3.1 · 2026-10-17
