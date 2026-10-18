@@ -318,11 +318,16 @@
         }
         // El periodo actual empieza en el último día de pago cuyo dinero ya tienes.
         const pasados = cortes(st, sumarDias(st.hoy, -120), st.hoy);
-        const inicioPeriodo = pasados.filter((f) => fundado(st, f)).at(-1) || null;
+        let inicioPeriodo = pasados.filter((f) => fundado(st, f)).at(-1) || null;
         const ocurrencia = (f) => ({ ingreso: p, fecha: f, monto: p.monto, aprox: p.aprox, estado: f === st.hoy ? 'hoy' : f < st.hoy ? 'porConfirmar' : 'esperado' });
         const pendientes = pasados.filter((f) => (!inicioPeriodo || f > inicioPeriodo) && !fundado(st, f));
         const atrasadas = pendientes.filter((f) => f < st.hoy).map(ocurrencia);
-        const sig = corteDespues(st, st.hoy) || sumarDias(st.hoy, 30);
+        let sig = corteDespues(st, st.hoy) || sumarDias(st.hoy, 30);
+        // Revisión v2.3: si el próximo día de pago ya llegó (adelantado), ese periodo ya empezó y el horizonte pasa al siguiente.
+        for (let i = 0; i < 6 && !pendientes.length && fundado(st, sig); i++) {
+            inicioPeriodo = sig;
+            sig = corteDespues(st, sig) || sumarDias(sig, 30);
+        }
         const siguiente = ocurrencia(sig);
         const base = { ingreso: p, inicioPeriodo, atrasadas, siguiente };
         if (pendientes.includes(st.hoy)) return { ...base, fecha: st.hoy, ocurrencia: ocurrencia(st.hoy), esHoy: true, dias: 0 };
@@ -335,6 +340,18 @@
     function periodoDe(st, fecha, hz = null) {
         if (!principal(st)) return fecha < (hz || horizonte(st)).fecha ? 'ahora' : 'despues';
         return cortes(st, sumarDias(fecha, -100), fecha).at(-1) || 'ahora';
+    }
+    /**
+     * Revisión v2.3: una clave guardada (lo elegido en «Lo pagas con» o en «Pasar a la próxima») que ya no
+     * es un día de pago (porque cambió el ingreso principal) se lleva al día de pago que le toca. Así nada
+     * de lo reservado se pierde.
+     */
+    function claveVigente(st, k, hz = null) {
+        if (!k || k === 'ahora' || k === 'despues' || !principal(st)) return k;
+        if (cortes(st, k, k).length) return k;
+        // El día de pago nuevo más cercano (si empatan, el más tarde).
+        const cerca = cortes(st, sumarDias(k, -16), sumarDias(k, 16)).sort((a, b) => Math.abs(diasEntre(k, a)) - Math.abs(diasEntre(k, b)) || (a < b ? 1 : -1))[0];
+        return cerca || periodoDe(st, k, hz);
     }
     /** Con qué se puede pagar algo que vence en `fecha`: lo que ya tienes o un día de pago que llega antes. */
     function fuentesPara(st, fecha, hz = null) {
@@ -358,7 +375,9 @@
             let resta = monto;
             for (const x of elegido) {
                 const m = Math.min(resta, Math.max(0, x.monto || 0));
-                if (m > 0) lista.push({ de: x.de, monto: m });
+                // Nunca con un ingreso que llega después de que vence.
+                const de = claveVigente(st, x.de, hz);
+                if (m > 0) lista.push({ de: de !== 'ahora' && de !== 'despues' && de > fecha ? def : de, monto: m });
                 resta -= m;
             }
             if (resta > 0) lista.push({ de: def, monto: resta });
@@ -403,8 +422,25 @@
      * periodo), cuánto se paga con ese dinero y cuánto quedaría. `deficit` mira el saldo día por día:
      * si algo vence antes de que llegue otro ingreso del periodo, también falta.
      */
-    function proyectar(st, hz, futuro, cuantos = 6) {
-        const reservas = st.reservas || [];
+    /**
+     * Lo reservado para un próximo día de pago (V2-35, «Pasar a la próxima») y, revisión v2.3, lo de otro
+     * ingreso (la pareja) que llegó antes de su día de pago: es de ese periodo, salvo que la persona diga
+     * «Usarlo desde ya» (`usarYa`).
+     */
+    function reservasDe(st, hz) {
+        const out = (st.reservas || []).map((r) => ({ ...r, de: claveVigente(st, r.de, hz), para: claveVigente(st, r.para, hz) }));
+        if (!principal(st)) return out;
+        for (const ing of recurrentes(st)) {
+            if (ing.principal) continue;
+            for (const [f, l] of Object.entries(ing.llegadas || {})) {
+                if (!l || l.noLlego || l.usarYa || l.enCuadre || !(l.monto > 0) || f < hz.fecha) continue;
+                const para = periodoDe(st, f, hz);
+                if (!esFundado(st, para)) out.push({ id: `adelanto:${ing.id}:${f}`, de: 'ahora', para, monto: l.monto, adelanto: { ingreso: ing, fecha: f } });
+            }
+        }
+        return out;
+    }
+    function proyectar(st, hz, futuro, reservas, cuantos = 6) {
         const armar = (clave, ini, fin) => {
             const ingresos = [];
             for (const ing of recurrentes(st)) for (const o of ocurrenciasIngreso(st, ing, ini, fin)) if (o.estado !== 'llego' && o.estado !== 'noLlego') ingresos.push(o);
@@ -428,7 +464,8 @@
                     if (!primero && e.x) primero = e.x;
                 }
             }
-            return { clave, inicio: ini, fin, ingresos, principal: ingresos.find((o) => o.ingreso.principal) || null, otros: ingresos.filter((o) => !o.ingreso.principal), entra: entraIng + entraRes, entraIng, entraRes, partes: lista, pagos: salePagos + saleRes, salePagos, saleRes, quedan: entraIng + entraRes - salePagos - saleRes, deficit: -minimo, cuando, primero };
+            const adelantos = resIn.filter((r) => r.adelanto);
+            return { clave, inicio: ini, fin, ingresos, principal: ingresos.find((o) => o.ingreso.principal) || null, otros: ingresos.filter((o) => !o.ingreso.principal), adelantos, entraGuardado: entraRes - suma(adelantos, (r) => r.monto), entra: entraIng + entraRes, entraIng, entraRes, partes: lista, pagos: salePagos + saleRes, salePagos, saleRes, quedan: entraIng + entraRes - salePagos - saleRes, deficit: -minimo, cuando, primero };
         };
         if (!principal(st)) {
             const fin = hz.modo === 'quince' ? sumarDias(hz.fecha, 14) : fechaDe(...partes(hz.fecha).slice(0, 2), 31);
@@ -472,8 +509,9 @@
         // V2-07, V2-13, V2-29 #1: la tarjeta siempre se paga con lo que ya tienes.
         const enTarjetas = suma(tarjetas, (x) => x.enLibre);
         const reservadoTarjetas = suma(tarjetas, (x) => x.reservado);
-        // V2-35: lo que la persona pasó de lo que tiene a un próximo día de pago.
-        const reservasProxima = (st.reservas || []).filter((r) => esFundado(st, r.de) && !esFundado(st, r.para));
+        // V2-35: lo que la persona pasó de lo que tiene a un próximo día de pago (y lo que llegó antes de su quincena).
+        const reservas = reservasDe(st, hz);
+        const reservasProxima = reservas.filter((r) => esFundado(st, r.de) && !esFundado(st, r.para));
         const reservadoProxima = suma(reservasProxima, (r) => r.monto);
         const obligaciones = porPagar + enTarjetas + reservadoPagos + reservadoProxima;
         // V2-34: Libre = Tienes − Ahorros − lo que pagas con lo que ya tienes − lo que elegiste reservar. Nada más.
@@ -481,7 +519,7 @@
         const base = disponible - ap;
         const libre = Math.max(0, base);
         const porDia = porDiaDe(libre, hz.dias);
-        const periodos = proyectar(st, hz, futuro);
+        const periodos = proyectar(st, hz, futuro, reservas);
         const avisos = [];
         const faltaPagos = Math.max(0, -disponible);
         if (faltaPagos > 0) {
@@ -810,6 +848,6 @@
         dinero, leerMonto, montoCampo, suma, lugar, medio, tarjeta, pago, ingreso, apartado, categoria, principal, sinVS,
         despues, saldoLugar, anteriorAlCuadre, lugaresDe, tienes, apartadoTotal, ultimaActividad, fechasRegla, ocurrenciasPago, ocurrenciasIngreso, tarjetaInfo, ocurrenciasTarjeta,
         horizonte, calcular, resumenMes, medioUsual, normalizar, entender, faltan, capital, porDiaDe, apartadosVencidos, esDiaDeIngreso, coincide,
-        inicioDe, cortes, corteAntes, corteDespues, fundado, esFundado, periodoDe, fuentesPara, asignacion, reglaPago, recurrentes, descuentosDe, proyectar,
+        inicioDe, cortes, corteAntes, corteDespues, fundado, esFundado, periodoDe, fuentesPara, asignacion, reglaPago, recurrentes, descuentosDe, proyectar, claveVigente, reservasDe,
     };
 })();

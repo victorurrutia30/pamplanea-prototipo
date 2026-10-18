@@ -420,6 +420,9 @@
         if (!p) return `Después, del ${M.fechaCorta(x.inicio)} al ${M.fechaCorta(x.fin)}`;
         const d = M.partes(x.clave)[2];
         const pendiente = x.clave <= st.hoy;
+        // Solo el primero que viene es «el próximo»; los demás se nombran por su fecha.
+        const primero = (hz.atrasadas || []).length ? hz.atrasadas[0].fecha : hz.esHoy ? st.hoy : hz.fecha;
+        if (!pendiente && x.clave !== primero) return M.capital(etiquetaFuente(x.clave));
         if (p.frecuencia === 'semanal' || p.frecuencia === 'catorcenal') return pendiente ? `Tu pago del ${M.DIAS[M.diaSemana(x.clave)]} ${d} (falta confirmarlo)` : `Próximo pago (${M.DIAS[M.diaSemana(x.clave)]} ${d})`;
         if (p.frecuencia === 'quincenal') return pendiente ? `Tu quincena del ${d} (falta confirmarla)` : `Próxima quincena (${d})`;
         return pendiente ? `Tu ${p.nombre.toLowerCase()} del ${M.fechaCorta(x.clave)} (falta confirmarlo)` : `Próximo ${p.nombre.toLowerCase()} (${M.fechaCorta(x.clave)})`;
@@ -434,7 +437,8 @@
     /** «incluye ~$566 de tu pareja y $50 que guardaste de esta quincena». */
     function incluyePeriodo(x) {
         const partes = x.otros.map((o) => `${dinero(o.monto, { aprox: true })} ${P.deQuien(o.ingreso)}`);
-        if (x.entraRes) partes.push(`${dinero(x.entraRes)} que guardaste antes`);
+        for (const r of x.adelantos || []) partes.push(`${dinero(r.monto)} ${P.deQuien(r.adelanto.ingreso)}, que ya llegó`);
+        if (x.entraGuardado) partes.push(`${dinero(x.entraGuardado)} que pasaste de antes`);
         return partes.length ? `incluye ${P.lista(partes)}` : '';
     }
     P.incluyePeriodo = incluyePeriodo;
@@ -502,9 +506,10 @@
             if (lista.length === 1) {
                 const o = lista[0];
                 items.push({ id, nivel: id === 'vencidos' ? 'ambar' : 'info', pago: true, corto: corto(lista), titulo: uno(o), texto: o.monto ? dinero(o.monto, { aprox: o.estimado }) + '.' : '', acciones: pagadoBtn(o, `at-${id}-pagado`) + btn('Ver', `data-a="abrir" data-tipo="${o.tarjeta ? 'tarjeta' : 'pago'}" data-id="${o.tarjeta ? o.tarjeta.id : o.pago.id}" data-fk="at-${id}-ver"`) });
-            } else items.push({ id, nivel: id === 'vencidos' ? 'ambar' : 'info', pago: true, corto: corto(lista), titulo: varios(lista.length), texto: `${P.lista(lista.map(nombreO))} · ${dinero(total)}.`, acciones: btn('Ver en Pagos', `data-a="irTab" data-tab="pagos" data-fk="at-${id}-pagos"`) });
+            } else items.push({ id, nivel: id === 'vencidos' ? 'ambar' : 'info', pago: true, corto: corto(lista), titulo: varios(lista.length), texto: `${P.lista(lista.map(nombreO))} · ${dinero(total, { aprox: lista.some((o) => o.estimado) })}.`, acciones: btn('Ver en Pagos', `data-a="irTab" data-tab="pagos" data-fk="at-${id}-pagos"`) });
         };
-        grupo(vencidos, 'vencidos', (o) => `${nombreO(o)}: venció el ${M.fechaCorta(o.fecha)}. ¿Ya lo pagaste?`, (n) => `${n} pagos vencieron. ¿Ya los pagaste?`, (l) => (l.length === 1 ? `${P.conArticulo(nombreO(l[0]))} vencido` : `${l.length} pagos vencidos`));
+        const loLa = (o) => (P.conArticulo(nombreO(o)).startsWith('la ') ? 'la' : 'lo');
+        grupo(vencidos, 'vencidos', (o) => `${nombreO(o)}: venció el ${M.fechaCorta(o.fecha)}. ¿Ya ${loLa(o)} pagaste?`, (n) => `${n} pagos vencieron. ¿Ya los pagaste?`, (l) => (l.length === 1 ? `${P.conArticulo(nombreO(l[0]))} vencido` : `${l.length} pagos vencidos`));
         grupo(hoyL, 'hoy', (o) => `Hoy vence ${P.conArticulo(nombreO(o))}`, (n) => `Hoy vencen ${n} pagos`, (l) => (l.length === 1 ? `hoy vence ${P.conArticulo(nombreO(l[0]))}` : `hoy vencen ${l.length} pagos`));
         grupo(manana, 'manana', (o) => `Mañana: ${nombreO(o)}`, (n) => `Mañana vencen ${n} pagos`, (l) => (l.length === 1 ? `mañana vence ${P.conArticulo(nombreO(l[0]))}` : `mañana vencen ${l.length} pagos`));
         // Otros ingresos que ya debían llegar (el principal se confirma en el número).
@@ -533,6 +538,8 @@
         const grande = x.partes.slice().sort((m, n) => n.parte - m.parte)[0];
         const quePagas = pagos.length === 1 ? `${P.conArticulo(pagos[0])} es ${dinero(x.salePagos, { aprox: grande && grande.estimado })}` : `ese periodo pagas ${dinero(x.pagos, { aprox: true })} (${P.lista(pagos.slice(0, 3).map((n) => P.conArticulo(n)))}${pagos.length > 3 ? ' y más' : ''})`;
         const fuente = a.fuente === 'ahora' ? 'de lo que tienes ahora' : `de ${etiquetaFuente(a.fuente)}`;
+        // Sin ingreso fijo (ingreso que varía): se habla de fechas, no de «te caen».
+        if (!p) return { titulo: `Del ${M.fechaCorta(x.inicio)} al ${M.fechaCorta(x.fin)} pagas ${dinero(x.pagos, { aprox: true })}${x.entra ? ` y te caen ${dinero(x.entra, { aprox: true })}` : ''}: te faltarían ${dinero(x.deficit, { aprox: true })}.`, texto: '¿Guardas algo de lo que tienes ahora?' };
         if (a.siguiente) {
             const nombre = !p ? 'después' : semanal ? 'el próximo pago' : p.frecuencia === 'quincenal' ? 'la próxima quincena' : `tu próximo ${p.nombre.toLowerCase()}`;
             return { titulo: `${M.capital(nombre)} te faltarían ${dinero(x.deficit, { aprox: true })}. ¿Guardas algo ${fuente}?`, texto: `${M.capital(cual)} te caen ${dinero(x.entra, { aprox: true })} y ${quePagas}.` };
@@ -743,8 +750,9 @@
     /** El resumen del periodo arriba de la línea de tiempo: el mismo número de Hoy (V2-35). */
     function resumenPeriodo(vista, rango, k) {
         if (vista === 'actual') {
-            const res = k.reservadoPagos + k.reservadoProxima;
-            return `<div class="per-res"><p class="per-res-l">Con lo que tienes: por pagar ${dinero(k.porPagar + k.enTarjetas)}${res ? ` · reservado ${dinero(res)}` : ''} · libre <strong>${dinero(k.libre)}</strong></p></div>`;
+            // Los mismos montos que el desglose de Hoy: lo de la tarjeta cubierto por un ahorro va en «reservado».
+            const res = k.reservadoPagos + k.reservadoProxima + k.reservadoTarjetas;
+            return `<div class="per-res"><p class="per-res-l">Con lo que tienes: por pagar ${dinero(k.porPagar + k.enTarjetas - k.reservadoTarjetas)}${res ? ` · reservado ${dinero(res)}` : ''} · libre <strong>${dinero(k.libre)}</strong></p></div>`;
         }
         if (vista !== 'proxima') return '';
         const x = k.periodos.find((y) => y.clave === rango.desde) || (k.proxima && k.proxima.inicio <= rango.desde && rango.desde <= k.proxima.fin ? k.proxima : null);
@@ -967,7 +975,7 @@
             ${encabezado('Ahorros', 'Le pones nombre a una parte de tu dinero', { atras: P.atrasDe('Mi dinero') })}
             <section class="total" aria-labelledby="ah-total">
                 <div class="total-cab"><div><h2 class="total-l" id="ah-total">En ahorros</h2><p class="total-n">${dinero(k.apartado)}</p><p class="total-s">Fuera de ahorros: ${dinero(fuera)}</p></div><svg class="total-art" viewBox="0 0 200 150" aria-hidden="true" focusable="false">${ART.illus.ahorros}</svg></div>
-                <div class="acciones-2"><button type="button" class="btn btn--prim btn--48" data-a="hoja" data-hoja="apartar" data-fk="md-apartar">${icon('plus', 'ico-s')}Ahorrar</button></div>
+                <button type="button" class="btn btn--prim btn--48 btn--full" data-a="hoja" data-hoja="apartar" data-fk="md-apartar">${icon('plus', 'ico-s')}Ahorrar</button>
             </section>
             <div class="nota nota--info" role="note">${icon('info')}<p>Tus ahorros siguen en tu banco o efectivo; solo les pones nombre. No cuentan en tu libre.</p></div>
             ${k.sinCubrir > 0 ? `<div class="nota nota--ambar" role="note">${icon('triangle-alert')}<p><strong>Faltan ${dinero(k.sinCubrir)} para cubrir tus ahorros.</strong> Después de tus pagos no te alcanza para todo lo que guardaste.</p></div>` : ''}
@@ -1165,7 +1173,7 @@
             const filas = partes.map((x) => `<li><span>${M.esFundado(st, x.de) ? (prox.fecha >= hz.fecha && prox.estado !== 'vencido' ? 'Reservado de lo que tienes ahora' : 'Con lo que tienes ahora') : `Con ${esc(etiquetaFuente(x.de))}`}</span><span>${dinero(x.monto, { aprox: prox.estimado })}</span></li>`).join('');
             const regla = p.pagarCon && p.pagarCon.modo === 'antes' ? 'Siempre con el día de pago anterior.' : p.pagarCon && p.pagarCon.modo === 'parejo' ? 'Siempre repartido parejo entre tus días de pago.' : '';
             const opciones = M.fuentesPara(st, prox.fecha, hz).length > 1;
-            pagasCon = tarjetaSeccion('Lo pagas con', `<p class="fila-s">${esc(M.capital(M.fechaLarga(prox.fecha)))}${regla ? ' · ' + esc(regla) : ''}</p><ul class="mini-desglose">${filas}</ul>${opciones ? `<div class="card-pie"><button type="button" class="link" data-a="hoja" data-hoja="pagarCon" data-id="${p.id}" data-fecha="${prox.fecha}" data-fk="pagar-con">Cambiar o repartir</button></div>` : '<p class="fila-s">Vence antes de tu próximo ingreso: sale de lo que ya tienes.</p>'}`, { id: 'f-con' });
+            pagasCon = tarjetaSeccion('Lo pagas con', `<div class="dato"><p class="fila-s">${esc(M.capital(M.fechaLarga(prox.fecha)))}${regla ? ' · ' + esc(regla) : ''}</p><ul class="mini-desglose">${filas}</ul></div>${opciones ? `<div class="card-pie"><button type="button" class="link" data-a="hoja" data-hoja="pagarCon" data-id="${p.id}" data-fecha="${prox.fecha}" data-fk="pagar-con">Cambiar o repartir</button></div>` : '<p class="fila-s">Vence antes de tu próximo ingreso: sale de lo que ya tienes.</p>'}`, { id: 'f-con' });
         }
         const tipoDeuda = D.TIPOS_DEUDA.find((x) => x.id === p.tipoDeuda);
         const debe = p.deuda && p.deuda.debe !== null && p.deuda.debe !== undefined;

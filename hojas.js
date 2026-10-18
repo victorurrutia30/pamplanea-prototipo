@@ -444,6 +444,15 @@
         }
         if (h.ctxLugar && d.tipo === 'ingreso') d.lugar = h.ctxLugar;
         if (h.ctxLugar && d.tipo === 'cuadre') d.lugar = h.ctxLugar;
+        // Revisión v2.3: desde la ficha de un ahorro, «ahorrar» y «sacar» van a ese ahorro y un gasto pregunta si sale de él.
+        if (h.ctxApartado && M.apartado(st, h.ctxApartado)) {
+            if ((d.tipo === 'apartar' || d.tipo === 'liberar') && !d.apartado) {
+                d.apartado = h.ctxApartado;
+                d.nombre = M.apartado(st, h.ctxApartado).nombre;
+                d.pagoParecido = null;
+            }
+            if (d.tipo === 'gasto' && !d.sugerirApartado && M.apartado(st, h.ctxApartado).monto > 0) d.sugerirApartado = h.ctxApartado;
+        }
         return d;
     }
     function chip(campo, texto, { falta = false, abierto = false, etiqueta = '' } = {}) {
@@ -618,7 +627,7 @@
         foco: () => '#anotar-q',
         html(h) {
             const st = P.st;
-            const ctx = h.ctxMedio ? M.medio(st, h.ctxMedio) : h.ctxLugar ? M.lugar(st, h.ctxLugar) : null;
+            const ctx = h.ctxMedio ? M.medio(st, h.ctxMedio) : h.ctxLugar ? M.lugar(st, h.ctxLugar) : h.ctxApartado ? M.apartado(st, h.ctxApartado) : null;
             return {
                 titulo: 'Anotar',
                 cuerpo: `${ctx ? `<p class="contexto">${emo(ctx.emoji, 16)} Desde ${esc(ctx.nombre)}</p>` : ''}
@@ -696,6 +705,7 @@
             if (m) datos.ctxMedio = m.id;
         }
         if (top && top.tipo === 'tarjeta') datos.ctxMedio = P.st.medios.find((x) => x.tarjeta === top.id)?.id;
+        if (top && top.tipo === 'apartado') datos.ctxApartado = top.id;
         P.abrirHoja('anotar', datos);
         let i = 0;
         clearInterval(rotador);
@@ -897,7 +907,7 @@
             // V2-41: lo reservado se ve en una línea (y dentro de cada pago).
             const reservados = [
                 ...k.reservados.map((o) => linea(o, `vence el ${M.fechaCorta(o.fecha)}${parteDe(o)}`)),
-                ...k.reservasProxima.map((r) => `<li><span>${icon('calendar-days', 'ico-xs')} Para ${esc(P.etiquetaFuente(r.para))} <span class="d-sub">lo pasaste de lo que tienes</span></span><span>${dinero(r.monto)}</span></li>`),
+                ...k.reservasProxima.map((r) => filaReserva(r)),
                 ...k.tarjetas.filter((t) => t.reservado).map((t) => `<li><span>${emo(t.t.emoji, 16)} ${esc(t.t.nombre)} <span class="d-sub">de tu ahorro ${esc(t.reservas.map((r) => r.de).join(', '))}, para tu pago del ${esc(P.diaPago(t, t.venceCompras))}</span></span><span>${dinero(t.reservado)}</span></li>`),
             ];
             const reservado = k.reservadoPagos + k.reservadoProxima + k.reservadoTarjetas;
@@ -934,6 +944,24 @@
         P.cerrarHoja({ sinFoco: true });
         if (d.ir === 'apartados') P.acciones.irAhorros();
         else P.irTab(d.ir);
+    };
+
+    /** Lo guardado para un próximo día de pago: pasado a la próxima (se puede quitar) o lo que llegó antes de su quincena (se puede usar desde ya). */
+    function filaReserva(r) {
+        if (r.adelanto) {
+            const ing = r.adelanto.ingreso;
+            return `<li class="d-res"><span>${emo(ing.emoji, 16)} ${esc(ing.nombre)} <span class="d-sub">llegó antes: es de ${esc(P.etiquetaFuente(r.para))}</span><button type="button" class="link link--inline" data-a="usarAdelanto" data-id="${ing.id}" data-fecha="${r.adelanto.fecha}" data-fk="usar-adelanto-${ing.id}">Usarlo desde ya</button></span><span>${dinero(r.monto)}</span></li>`;
+        }
+        return `<li class="d-res"><span>${icon('calendar-days', 'ico-xs')} Para ${esc(P.etiquetaFuente(r.para))} <span class="d-sub">lo pasaste de lo que tienes</span><button type="button" class="link link--inline" data-a="quitarReserva" data-id="${esc(r.id)}" data-fk="quitar-${esc(r.id)}">Quitar</button></span><span>${dinero(r.monto)}</span></li>`;
+    }
+    P.filaReserva = filaReserva;
+    /** Revisión v2.3: lo que llegó antes de su quincena se puede usar desde ya (la persona decide). */
+    P.acciones.usarAdelanto = (d) => {
+        const ing = M.ingreso(P.st, d.id);
+        P.cambiar((s) => {
+            const l = M.ingreso(s, d.id).llegadas[d.fecha];
+            if (l) l.usarYa = true;
+        }, { aviso: `Listo: lo ${P.deQuien(ing)} ya cuenta en tu libre de hoy`, claves: ['guardado:usarAdelanto'] });
     };
 
     // ================================================================== MENÚ DE LA PERSONA
@@ -1113,7 +1141,7 @@
             const reglaPosible = repetido && (h.modo === 'repartir' ? h.parejo : h.modo === 'uno:' + h.def || h.modo === 'uno:' + antesDeDef(st, h));
             return {
                 titulo: `¿Con qué pagas ${esc(P.conArticulo(p.nombre))}?`,
-                cuerpo: `<p class="txt">Vence el ${esc(M.fechaLarga(h.fecha))} · ${dinero(h.total, { aprox: h.estimado })}. Lo que pagas con lo que ya tienes queda reservado hasta ese día; lo que pagas con un ingreso que todavía no llega no baja tu libre de hoy.</p>
+                cuerpo: `<p class="txt">Vence el ${esc(M.fechaLarga(h.fecha))} · ${dinero(h.total, { aprox: h.estimado })}.</p><p class="fila-s">Si lo pagas con lo que ya tienes, queda reservado desde hoy.</p>
                     <div class="opciones-grandes" role="radiogroup" aria-label="Con qué lo pagas">${opciones1}${repartir}</div>
                     ${camposRepartir}
                     ${reglaPosible ? `<div class="chips"><button type="button" class="chip" aria-pressed="${h.siempre}" data-a="valor" data-campo="siempre" data-v="${!h.siempre}" data-fk="pc-siempre">${h.siempre ? icon('check', 'ico-xs') : ''}Hacerlo así cada vez</button></div>` : ''}
@@ -1208,7 +1236,7 @@
             const pagos = [...new Set(per.partes.map((x) => x.pago.nombre))];
             return {
                 titulo: '¿Cuánto reservas?',
-                cuerpo: `<p class="txt">Para ${esc(P.lista(pagos.slice(0, 3).map((n) => P.conArticulo(n))))}${pagos.length > 3 ? ' y más' : ''}: ${esc(P.tituloPeriodo(per, k.hz).toLowerCase())} te faltarían ${dinero(per.deficit, { aprox: true })}.</p>
+                cuerpo: `<p class="txt">Con ${esc(P.etiquetaFuente(per.clave))} te faltarían ${dinero(per.deficit, { aprox: true })} para ${esc(P.lista(pagos.slice(0, 3).map((n) => P.conArticulo(n))))}${pagos.length > 3 ? ' y más' : ''}.</p>
                     ${campoMonto(h, { label: '¿Cuánto?', valor: h.monto, errorTexto: 'Escribe cuánto reservas' })}
                     ${opciones(h, { campo: 'fuente', label: '¿De cuál dinero?', lista, valor: h.fuente, columnas: true })}
                     ${h.fuente === 'ahora' && monto > k.libre ? `<div class="nota nota--ambar" role="note">${icon('info')}<p>Hoy te quedan ${dinero(k.libre)} libres: si reservas más, te faltaría para lo de estos días.</p></div>` : ''}
@@ -2506,7 +2534,16 @@
             (s) => {
                 const r = s.registros.find((x) => x.id === h.id);
                 s.registros = s.registros.filter((x) => x.id !== h.id);
-                if (r.ingreso && r.ocurrencia) delete M.ingreso(s, r.ingreso).llegadas[r.ocurrencia];
+                if (r.ingreso && r.ocurrencia && M.ingreso(s, r.ingreso)) {
+                    delete M.ingreso(s, r.ingreso).llegadas[r.ocurrencia];
+                    // Revisión v2.3: si ese ingreso traía un descuento del salario, el descuento también se deshace.
+                    for (const p of M.descuentosDe(s, r.ingreso)) {
+                        const hecho = p.hechos[r.ocurrencia];
+                        if (!hecho || !hecho.descuento) continue;
+                        if (p.deuda && p.deuda.debe !== null && p.deuda.debe !== undefined) p.deuda.debe += hecho.monto || 0;
+                        delete p.hechos[r.ocurrencia];
+                    }
+                }
             },
             { aviso: 'Eliminado', claves: ['guardado:eliminar'] },
         );
@@ -2538,7 +2575,9 @@
         top.hechas = top.hechas || {};
         const k = P.calc();
         const hz = k.hz;
-        const quePalabra = ing.frecuencia === 'quincenal' ? 'tu quincena' : ing.frecuencia === 'semanal' ? 'tu pago de la semana' : 'tu ' + ing.nombre.toLowerCase();
+        const quePalabra = ing.principal ? (ing.frecuencia === 'quincenal' ? 'tu quincena' : ing.frecuencia === 'semanal' ? 'tu pago de la semana' : 'tu ' + ing.nombre.toLowerCase()) : 'lo ' + P.deQuien(ing);
+        // Revisión v2.3: si llegó antes de su quincena (otro ingreso), se dice y se puede usar desde ya.
+        const adelanto = k.reservasProxima.find((r) => r.adelanto && r.adelanto.ingreso.id === ing.id && r.adelanto.fecha === top.fecha);
         // ¿Hoy también esperabas otro ingreso (la pareja, la remesa)? Se confirma aquí mismo.
         const otros = [];
         for (const x of st.ingresos.filter((i) => i.id !== ing.id && i.activo !== false && i.frecuencia !== 'unico')) {
@@ -2551,7 +2590,7 @@
             ...k.items.map((o) => linea(o, o.estado === 'vencido' ? 'venció el ' + M.partes(o.fecha)[2] : M.fechaCorta(o.fecha))),
             ...k.tarjetas.filter((t) => t.enLibre).map((t) => `<li><span>${emo(t.t.emoji, 16)} ${esc(t.t.nombre)} <span class="d-sub">ya estaba contado</span></span><span>${dinero(t.enLibre)}</span></li>`),
             ...k.reservados.map((o) => linea(o, `reservado · vence el ${M.fechaCorta(o.fecha)}`)),
-            ...k.reservasProxima.map((r) => `<li><span>${icon('calendar-days', 'ico-xs')} Para ${esc(P.etiquetaFuente(r.para))} <span class="d-sub">lo pasaste a la próxima</span></span><span>${dinero(r.monto)}</span></li>`),
+            ...k.reservasProxima.map((r) => filaReserva(r)),
         ];
         const totalContado = k.porPagar + k.enTarjetas + k.reservadoPagos + k.reservadoProxima;
         const proximo = hz.ingreso ? (hz.ingreso.frecuencia === 'quincenal' ? 'tu próxima quincena' : hz.ingreso.frecuencia === 'semanal' ? 'tu próximo pago' : 'tu próximo ingreso') + ` (${M.fechaLarga(hz.fecha)})` : 'fin de mes';
@@ -2579,6 +2618,7 @@
             : '';
         return `<div class="pg pg--flujo">
             <header class="pg-head"><p class="paso">${emo(ing.emoji, 18)} Llegó ${esc(quePalabra)}</p><h1 class="h1" tabindex="-1">Reparte ${esc(quePalabra)}</h1><p class="sub">Te cayeron <strong>${dinero(top.monto)}</strong> en ${esc(M.lugar(st, ing.lugar).nombre)}.${(top.otros || []).length ? ` Y también ${esc(P.lista(top.otros.map((o) => `${dinero(o.monto)} de ${o.nombre}`)))}.` : ''}</p></header>
+            ${adelanto ? `<div class="nota nota--info" role="note">${icon('calendar-days')}<p><strong>Llegó antes de ${esc(P.etiquetaFuente(adelanto.para))}:</strong> la guardamos para esa quincena, así que no suma a tu libre de hoy. <button type="button" class="link link--inline" data-a="usarAdelanto" data-id="${ing.id}" data-fecha="${top.fecha}" data-fk="rep-usar-adelanto">Usarla desde ya</button></p></div>` : ''}
             ${otrosHtml}
             ${P.tarjetaSeccion('1. Ya está contado', `<p class="txt txt--card">Esto vence antes de ${esc(proximo)} o ya lo reservaste, y ya lo separamos de tu libre:</p><ul class="d-items d-items--card">${contado.join('') || '<li><span>Nada por pagar en estas fechas.</span><span></span></li>'}${contado.length ? `<li class="d-total-li"><span>Total contado</span><span>${dinero(totalContado)}</span></li>` : ''}</ul>`, { id: 'rep-contado' })}
             ${top.sugerencias.length ? P.tarjetaSeccion('2. ¿Quieres ahorrar algo?', `<p class="txt txt--card">Te sugerimos; tú decides. Nada se ahorra solo.</p><ul class="sugs">${sug}</ul>`, { id: 'rep-sug' }) : P.tarjetaSeccion('2. ¿Quieres ahorrar algo?', `<p class="txt txt--card">Cuando tengas un ahorro, aquí te sugeriremos cuánto ponerle. Nada se ahorra solo.</p>`, { id: 'rep-sug' })}

@@ -86,6 +86,46 @@ Versión visible en la app y en la guía: **«Prototipo v2.2 · 2026-10-16»**.
 | V2-49 | Mi dinero: «Tienes $X · Ahorros $Y · Debes ~$Z» (si hay cuotas sin «cuánto debes», dice «Cuotas $X al mes», nunca «Debes $0.00»), «Así se reparte» y tres puertas: **Cuentas** (Cuadrar, Mover, lugares con su ficha, «Con qué pagas»), **Ahorros** (ahorrar, cada ahorro, Logros y Cerrados) y **Deudas** (tarjetas, préstamos, casa comercial, descuentos del salario; «+ Tarjeta o préstamo»). Cada pantalla con «‹ Mi dinero». La barra inferior no cambió. |
 | Entrenamiento | 13 pasos: el número, «¿De dónde sale?», **tu próxima quincena**, lo que viene, **Pagos: calendario y lista**, Anotar, escribe como hablas, **Mi dinero con tres puertas**, **Ahorros**, Mes, tu letra y fin. Los 13 ejercicios con números nuevos (Ana $270.60; Carlos $125.00 con la sugerencia; C16 y C30 con el aviso agrupado; C23, C31 y C32 por las puertas de Mi dinero). |
 
+### Revisión integral v2.3 (Entrega 3, con criterio propio, APROBADO por Victor 2026-10-17)
+
+Cómo se revisó: el dinero de Victor seguido por la interfaz del 17 de octubre al 2 de noviembre (anota, paga a tiempo, a la pareja le pagan antes, llega la quincena, paga el 30, corrige un pago, cuadra con diferencia, revisa Mes) comprobando cada día que Hoy, el desglose, Pagos y Mi dinero digan lo mismo y que la repartición sume lo que tiene (`herramientas/viaje-v23.mjs`); los tres perfiles (Ana quincena con tarjeta y deuda; Carlos semanal solo efectivo; Rosa variable + remesa) en las pruebas de siempre; casos borde en el motor (cambio de año, febrero, ingreso que no llega, ingreso adelantado, cambio de ingreso principal); 44 capturas por tema (Serena claro y Ancla oscuro) y contraste medido en los 4 temas (mínimo 4.94:1).
+
+**CAMBIO A DECISIÓN APROBADA — REVISAR**
+
+1. **V2-16 («el otro ingreso suma cuando llega») — si llega ANTES de su día de pago, es de esa quincena.** Encontré: a la pareja de Victor le pagan el 28 lo del 29; la v2.3 sumaba esos $566 al libre de hoy («Libre $661 hasta el 29»), aunque son para los pagos del 30: un número que «miente». Cambié: lo que llega antes de su quincena queda para esa quincena (el libre de hoy no sube y la próxima dice «incluye $566.00 de tu pareja, que ya llegó»), con «Usarla desde ya» en Reparte y en el desglose por si la persona lo quiere ahora. Lo que llega en su fecha sigue sumando como siempre.
+
+**decisión técnica — REVISAR**
+
+*Motor*
+- **Quincena adelantada:** encontré que si la quincena del 30 llegaba el 28, el horizonte se quedaba en el 30 y el libre se podía gastar antes de tiempo. Ahora, si el próximo día de pago ya llegó, ese periodo empieza y el horizonte pasa al siguiente («Hasta tu quincena del 14»).
+- **Cambiar el ingreso principal no pierde nada:** lo elegido en «Lo pagas con» o en «Pasar a la próxima» con un día de pago que ya no existe se lleva al día de pago nuevo más cercano (nunca uno posterior al vencimiento). Antes quedaba restando del libre para siempre.
+- **«Debes» nunca $0.00 de mentira:** si hay cuotas sin «cuánto debes», Mi dinero y Deudas dicen «Cuotas $285.00 al mes».
+
+*Viaje del dinero*
+- **Borrar un ingreso ya confirmado** también deshace su descuento del salario (y lo que debes vuelve a subir).
+- **Pagos → Esta quincena** usa exactamente los mismos montos que el desglose (lo de la tarjeta cubierto por un ahorro va en «reservado»).
+- **Proyección:** distingue «~$566 de tu pareja» (estimado), «$566.00 de tu pareja, que ya llegó» y «$X que pasaste de antes».
+- **Totales agrupados con estimados** llevan «~» («Mañana vencen 7 pagos · ~$688»).
+
+*Módulos*
+- **(+) desde la ficha de un ahorro** respeta el contexto: «ahorrar» o «sacar» van a ese ahorro y un gasto pregunta si sale de él.
+- **«Volver» dice a dónde vuelve** (Cuentas, Ahorros, Deudas, Pagos…). El menú «Cuentas y medios de pago» abre la misma pantalla Cuentas (una sola).
+
+*UX/UI*
+- «Lo pagas con» con su margen; «¿Con qué pagas…?» con un texto corto («Si lo pagas con lo que ya tienes, queda reservado desde hoy»).
+- Solo el primer día de pago que viene se llama «Próximo»; los demás por su fecha («Tu pago del viernes 30»). «¿Cuánto reservas?»: «Con tu pago del viernes 30 te faltarían ~$70 para el cuchubal y el alquiler».
+- «¿Ya la pagaste?» concuerda con el pago (la luz, el alquiler).
+- «Ahorrar» a lo ancho en Ahorros; calendario con números centrados y la etiqueta arriba de los atajos.
+- Sugerencia sin ingreso fijo (ingreso variable): habla de fechas («Del 1 al 30 nov pagas ~$X…»), no de «te caen».
+
+**Lo que no alcancé (por prioridad)**
+
+1. Un pago vencido aparece en el aviso de Hoy y en «Próximos pagos» (con «Pagado» en los dos). ¿Se quita del aviso cuando ya se ve abajo?
+2. «Lo pagas con» con un ingreso de una vez (aguinaldo) → PREGUNTA #17.
+3. Pagos → «Mes» todavía no trae un resumen del mes (entra / pagas) como «Esta quincena» y «Próxima».
+4. Probar con lector de pantalla y en teléfonos reales (Android e iPhone); las pruebas son con Chrome y Edge emulando 390 × 844.
+5. Desktop (V2-28).
+
 ### Decisiones técnicas v2.3 (cómo interpreté lo aprobado)
 
 - **«Ingreso» en «Lo pagas con» = un día de pago del ingreso principal** («tu quincena del 29», «tu pago del viernes 30»). Lo que cae de otros ingresos que se repiten (la pareja, la remesa) en ese periodo se suma como estimado a ese día de pago. Así Victor no ve «te faltan» por sus pagos del 30: el 29 le caen ~$1,163. Sin ingreso principal, se elige entre «lo que tienes ahora» y «lo que tengas cuando venza».

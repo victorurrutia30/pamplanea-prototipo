@@ -3066,3 +3066,10 @@ label.btn {
 .ob-lugar-c > .link {
     justify-self: start;
 }
+/* Lo reservado para la próxima, con su acción («Quitar», «Usarlo desde ya»). */
+.d-res .link--inline {
+    display: inline-flex;
+    min-height: 44px;
+    align-items: center;
+    margin-left: 4px;
+}
