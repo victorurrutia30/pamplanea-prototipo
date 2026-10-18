@@ -1,4 +1,4 @@
-# PamPlanea · prototipo v2.4.1
+# PamPlanea · prototipo v2.5
 
 Una versión de prueba de **PamPlanea**: saber cuánto te queda libre hasta tu próximo ingreso y que no se te olvide ningún pago.
 
@@ -6,10 +6,19 @@ Una versión de prueba de **PamPlanea**: saber cuánto te queda libre hasta tu p
 
 Al abrirla eliges uno de dos caminos (y puedes cambiar cuando quieras desde tu letra, arriba a la izquierda):
 
-- **Aprender a usarla** (recomendado): primero te pregunta cómo te entra el dinero —en fecha fija (quincena, mes o semana) o cuando vendes o trabajas— y te enseña en 4 minutos con un ejemplo como tú (Ana o Rosa); en cuatro momentos lo haces tú y ves el número cambiar. Después, si quieres, 18 ejercicios cortos, primero los de tu versión. Nada de lo que hagas ahí toca tus datos.
+- **Aprender a usarla** (recomendado): primero te pregunta cómo te entra el dinero —en fecha fija (quincena, mes o semana) o cuando vendes o trabajas— y te enseña, a tu ritmo, con un ejemplo como tú (Ana o Rosa). **«Lo esencial»** son 6 pasos que bastan para empezar; en algunos lo haces tú y ves el número cambiar. Después, si quieres, **«Aprende más»**: capítulos cortos que haces cuando quieras, y 18 ejercicios para practicar. Nada de lo que hagas ahí toca tus datos.
 - **Usarla con mis datos:** tu dinero real, con la fecha real de tu teléfono. Empiezas desde cero: cómo te pagan, cuánto tienes y dónde, y tus pagos fijos.
 
 Los dos modos guardan sus datos por separado. Reiniciar los ejemplos no borra tus datos.
+
+## Lo nuevo en la v2.5
+
+- **Un entrenamiento más sencillo, sin apuro:** «Lo esencial» son 6 pasos cortos (tu libre, de dónde sale, anotar, Pagado, con qué pagas cada cosa y cuadrar; si vendes: anotar una venta y un gasto, lo que viene y guardar para el alquiler). Cada paso dice qué estás viendo, para qué te sirve y un ejemplo con números redondos. **Nada avanza solo:** tú tocas «Siguiente».
+- **«Hazlo tú» con flecha:** te dice qué tocar («Toca el botón + de abajo») y te lo señala; si te trabas, «Hazlo por mí» hace un toque a la vez. Al terminar, ves qué cambió y por qué («Tu libre bajó de $400 a $394 porque anotaste $6 de pupusas») y tocas «Entendido».
+- **«Aprende más»:** capítulos cortos, en el orden que quieras y otro día: próxima quincena, ahorros, tarjetas, aguinaldo y adelanto, volver después de días y, si vendes, hasta cuándo ves tu libre. Cada uno termina con una pregunta y queda marcado como hecho. Si sales a medias, sigues donde te quedaste.
+- Si vendes, el próximo mes ya no dice «entra ~$0»: dice que **tus ventas cuentan cuando las anotas** y cuánto llevas vendido este mes. «¿Hasta cuándo ves tu libre?» también está en tu letra → «Cómo te entra el dinero».
+- La primera vez que agregas una tarjeta con tus datos, te ofrece ver cómo funcionan (1 minuto, con datos de ejemplo).
+- «Practicar» dice qué capítulo conviene hacer antes de cada ejercicio. Los «?» y «Aprende» dicen lo mismo que el entrenamiento, con su ejemplo.
 
 ## Lo nuevo en la v2.4.1
 
@@ -75,7 +84,7 @@ La prueba guiada de la v2.1 sigue en el modo entrenamiento: «Casos y ayuda» �
 ## Para el equipo
 
 - Abre `index.html` con doble clic (Chrome o Edge): funciona sin servidor ni internet, con la guía de los 13 casos y los dos sets.
-- Detalle, decisiones y preguntas abiertas: [`LEEME.md`](LEEME.md) (secciones «Prototipo v2.4.1», «Prototipo v2.4», «Prototipo v2.3.1», «Prototipo v2.3» y «Modos v2.2»).
+- Detalle, decisiones y preguntas abiertas: [`LEEME.md`](LEEME.md) (secciones «Prototipo v2.5», «Prototipo v2.4.1», «Prototipo v2.4», «Prototipo v2.3.1», «Prototipo v2.3» y «Modos v2.2»).
 - Licencias de fuentes, emoji e íconos: [`recursos/licencias`](recursos/licencias).
 
-Prototipo v2.4.1 · 2026-10-18
+Prototipo v2.5 · 2026-10-18

@@ -1,6 +1,6 @@
-# Producto v2 · prototipo de teléfono — versión 2.4.1
+# Producto v2 · prototipo de teléfono — versión 2.5
 
-**Qué es:** un prototipo clicable de la app completa propuesta en Producto v2. Desde la v2.2 tiene **dos modos**: **entrenamiento** (datos inventados de Ana, Carlos y Rosa; recorrido guiado en dos versiones —fecha fija o ingresos que varían—, 18 ejercicios y la prueba A/B para testers) y **uso normal** (la familia cercana de Victor la usa 1–2 semanas con su dinero real, guardado solo en su teléfono). Es una maqueta de flujo y comprensión, no producción.
+**Qué es:** un prototipo clicable de la app completa propuesta en Producto v2. Desde la v2.2 tiene **dos modos**: **entrenamiento** (datos inventados de Ana, Carlos y Rosa; entrenamiento en dos versiones —fecha fija o ingresos que varían— con «Lo esencial» y «Aprende más», 18 ejercicios y la prueba A/B para testers) y **uso normal** (la familia cercana de Victor la usa 1–2 semanas con su dinero real, guardado solo en su teléfono). Es una maqueta de flujo y comprensión, no producción.
 
 **Dónde:** repo público `victorurrutia30/pamplanea-prototipo`, publicado con GitHub Pages en <https://victorurrutia30.github.io/pamplanea-prototipo/>. La versión 1 queda como historial en `pamplanea-capturas/v2-prototipo/` (no se tocó).
 
@@ -11,9 +11,206 @@
 
 Sin servidor propio, sin dependencias, sin CDN, sin analítica ni rastreadores. Fuentes, emoji, íconos y los íconos de la app instalable son locales, con sus licencias (`recursos/licencias`).
 
-**Estado:** brief y acuerdos V2-01…V2-22 APROBADOS por Victor (2026-10-16); **V2-23 a V2-30** y **V2-31 (respuestas v2.1)** APROBADOS por Victor (2026-10-16); **V2-34 a V2-49** APROBADOS por Victor (2026-10-17) — V2-15 y V2-31 #7 quedan REEMPLAZADAS por V2-34. **V2-50 a V2-55** y la corrección adicional (adelanto de salario) APROBADOS por Victor (2026-10-17). **v2.4 «Entrenamiento a prueba de todo»** y sus tres ajustes previos APROBADOS por Victor (2026-10-17). **V2-56 a V2-58** y el **entrenamiento en dos versiones** (v2.4.1) APROBADOS por Victor (2026-10-18). Nada de esto está documentado todavía en el repo de la app: se documentará después de las pruebas con personas. Este prototipo no cambia nada del repo de la app.
+**Estado:** brief y acuerdos V2-01…V2-22 APROBADOS por Victor (2026-10-16); **V2-23 a V2-30** y **V2-31 (respuestas v2.1)** APROBADOS por Victor (2026-10-16); **V2-34 a V2-49** APROBADOS por Victor (2026-10-17) — V2-15 y V2-31 #7 quedan REEMPLAZADAS por V2-34. **V2-50 a V2-55** y la corrección adicional (adelanto de salario) APROBADOS por Victor (2026-10-17). **v2.4 «Entrenamiento a prueba de todo»** y sus tres ajustes previos APROBADOS por Victor (2026-10-17). **V2-56 a V2-58** y el **entrenamiento en dos versiones** (v2.4.1) APROBADOS por Victor (2026-10-18). **v2.5 «Entrenamiento sencillo y a fondo»** (estructura, ritmo y claridad) y **V2-59** (respuestas 26–29) APROBADOS por Victor (2026-10-18). Nada de esto está documentado todavía en el repo de la app: se documentará después de las pruebas con personas. Este prototipo no cambia nada del repo de la app.
 
-Versión visible en la app y en la guía: **«Prototipo v2.4.1 · 2026-10-18»**.
+Versión visible en la app y en la guía: **«Prototipo v2.5 · 2026-10-18»**.
+
+---
+
+## Prototipo v2.5 (2026-10-18): entrenamiento sencillo y a fondo, evaluado como persona nueva
+
+**Por qué (feedback de Victor):** el entrenamiento todavía se sentía rápido, incluso con las animaciones; 15 pasos en ≤ 4 minutos era demasiado denso para alguien que nunca usó una app de finanzas. **APROBADO por Victor (2026-10-18):** «que sea más sencillo y cabal de entender»; se quita el tope de 4 minutos; «Lo esencial» (5–6 pasos) + «Aprende más» (capítulos cortos, opcionales); nada avanza solo; una pregunta al final de cada capítulo; respuestas 26–29 (V2-59).
+
+### 1. Evaluación primero: diario de fricción de la v2.4.1 (antes de cambiar nada)
+
+**Cómo:** `herramientas/diario-antes.mjs` recorre las dos versiones de la v2.4.1 a 390 × 844 (Serena claro) como lo haría una persona nueva y guarda **71 capturas** con lo que se lee en cada momento (bienvenida, la pregunta, cada paso, la barra de «Hazlo tú» antes de tocar nada, cada hoja que se abre, la celebración y cada pregunta; `capturas/diario-antes/`). Las miré una por una como tres personas:
+
+- **Doña Marta**, 55 años: nunca usó una app de finanzas; usa WhatsApp y Facebook.
+- **Kevin**, 22 años: primer trabajo, cobra por quincena; impaciente, quiere ir al grano.
+- **Rosa real**: vende comida, cuenta en efectivo, desconfía de las apps.
+
+Leyenda: ✓ entiende · ? duda · 🔤 palabra o número que no le queda claro · ⏩ siente que va rápido · ✗ lo que haría mal. Rosa real no haría la versión fija (no cobra en fecha fija) y Kevin no haría la variable: en esas columnas anoto solo lo que les pasaría si entran por curiosidad («Ver también…»).
+
+#### Versión fija (Ana) — 15 pasos, 4 «Hazlo tú»
+
+| Paso | Doña Marta | Kevin | Rosa real |
+| --- | --- | --- | --- |
+| Entrada: bienvenida y «¿Cómo te entra el dinero?» | ✓ «Aprender a usarla · Recomendado». ⏩ «en 4 minutos» la apura («¿y si no termino?»). ? «fecha fija» le suena a banco. | ✓ elige en 2 s. | ✓ se reconoce en «Me entra cuando vendo». ? «datos de ejemplo»: ¿guarda lo mío? |
+| 1 · Te enseño la app en 4 minutos | ✓ «los datos de Ana». ? detrás, sin explicar: $290.60, «~$32 por día», «Incluye tarjeta $245.00…», tres botones «Pagado». ⏩ «4 minutos». ✗ toca la pantalla de atrás (está bloqueada) y cree que se trabó. | ✓ «Siguiente». | ? «cobra por quincena»: no es lo suyo; «Cambiar de versión» está, pero en letra chica. |
+| 2 · Libre: lo que puedes gastar | ✓ «lo que puedes gastar». ? el ejemplo ($100 − $40 = $60) no se parece a los $290.60 de la pantalla. 🔤 «~$32 por día» y «Incluye tarjeta $245.00, vence el 5 de noviembre» están dentro del resaltado y nadie los explica: «¿ya pagué la tarjeta?». | ✓ le sobra. | — |
+| 3 · ¿De dónde sale? | ? la hoja abre ya bajada, sin su título; la tarjeta sale dos veces. 🔤 «estado de cuenta», «compras nuevas», «~», «¿Pasas algo de lo que te sobra a la próxima?». ⏩ la fórmula va sin los números de la pantalla. | ✓ entiende la resta. ? la tarjeta doble. | — |
+| 4 · Anota en 5 segundos (Hazlo tú) | ? no ubica «(+)»: está abajo, lejos del texto y sin flecha. 🔤 «díctalo con el micrófono». ⏩ «en 5 segundos». ✗ toca «Siguiente» (junto a «Muéstrame») creyendo que así sigue la lección, y se salta el ejercicio. Al guardar, la tarjeta sale sola y tapa el número: no ve el cambio ni sabe por qué cambió. | ✓ en 3 s. ⏩ la celebración tapa el número antes de verlo. | ✓ «pupusas 6» le sale natural. |
+| 5 · Lo que viene | ? «ya está restado», ¿de qué? 🔤 Crédito BAC «el 5 nov» va arriba del separador y Colegio «el 5 nov» abajo: el mismo día en dos grupos. | ? la tarjeta antes de «Con tu quincena del 30». | — |
+| 6 · Marca un pago (Hazlo tú) | ✓ encuentra «Pagado». ? «¿para qué lo marco si no cambia?»: no se ve que baja lo que tienes. | ✗ puede tocar el «Pagado» de Crédito BAC (abre otra hoja). | ✓ |
+| 7 · Tu próxima quincena | 🔤 «~». ? «pásalo a la próxima»: ¿cómo? Todavía no lo necesita. | ✓ le gusta saber cuánto le quedará. | — |
+| 8 · ¿Con qué lo pagas? (Hazlo tú) | ✗ «Ábrelo»: el colegio no se ve (hay que bajar); en su ficha toca «Pagado», que es el botón grande, y lo marca pagado. ? ¿por qué pagar hoy algo que vence después? 🔤 «apartados» en la celebración y «Reservas» en el aviso de abajo: dos palabras para lo mismo. | ✓ lo hace. ? para qué sirve. | — |
+| 9 · Con el aguinaldo | ? «un pago de enero»: Ana no tiene ninguno a la vista. La pantalla pasó a Pagos sin decirlo. | ? no sabe si le toca aguinaldo. | — |
+| 10 · Adelanto de salario | 🔤 «Ingreso esperado» nunca se explicó. Es solo texto: no lo ve ni lo hace. | ✗ le interesa (pide adelantos), quiere hacerlo y no puede. | — |
+| 11 · Ahorros | ? arriba, «Así se reparte» con cuatro números y una barra de colores. ? «ya no cuenta en tu libre»: «¿lo pierdo?». | ✓ | ✓ le gusta que siga en el banco. |
+| 12 · Cuadra tu efectivo (Hazlo tú) | ✗ no sabe que es Cuentas → Cuadrar → Efectivo (tres toques sin flecha). 🔤 «saldo», «sin detalle». Al escribir, la barra de arriba se corre y deja de ver la instrucción. | ✓ con «Muéstrame». | ✓ cuadrar la caja es lo suyo. 🔤 «sin detalle». |
+| 13 · Tarjetas y préstamos | ? «¿por qué baja si no he pagado?». 🔤 «estado de cuenta», «Deudas ~$710». | ⏩ no tiene tarjeta: le sobra. | — |
+| 14 · ¿Volviste después de días? | ? habla de «Pongámonos al día», que no está en la pantalla. 🔤 en el número dice «Ya reservas $20.00 para lo que viene» (del paso 8) y nadie lo explica. | ✓ | — |
+| 15 · ¿Lo entendí? (4 preguntas) y fin | ✗ ya olvidó el paso 2: falla la primera. ✓ el «Casi» es amable. ? el final tiene cuatro botones grandes y un enlace: no sabe cuál tocar. | ✓ rápido. | — |
+
+#### Versión variable (Rosa) — 15 pasos, 4 «Hazlo tú»
+
+| Paso | Doña Marta | Kevin | Rosa real |
+| --- | --- | --- | --- |
+| 1 · Te enseño la app en 4 minutos | ? detrás, en naranja, «te faltarían ~$191» y un aviso: se asusta antes de empezar. | ⏩ 15 pasos otra vez, la mitad repetidos (libre, de dónde sale, ahorros, cuadrar). | ✓ se identifica (pupusas, la remesa de su hijo). ✗ el naranja «te faltarían ~$191» le confirma que «las apps asustan». |
+| 2 · Libre (hasta fin de mes) | ✓ | ✓ | ? «~$7.20 por día»: «yo gasto más en el mercado». |
+| 3 · ¿De dónde sale? | ✓ la resta es corta. 🔤 «El próximo mes (noviembre)» abajo. | ✓ | ✓ |
+| 4 · ¿Hasta cuándo? | ? para qué lo cambiaría. ✗ toca un chip (está bloqueado) y cree que no funciona. | ✓ | ? todavía no le ve uso. |
+| 5 · Anota una venta (Hazlo tú) | ? «(+)» sin flecha; el aviso naranja la distrae. | ✓ | ✓ ver subir el libre le gusta. |
+| 6 · Un gasto del negocio | ✓ «queso 12». | ✓ | ? «¿y lo de la casa?»: se anota igual, pero no se dice. |
+| 7 · Lo que viene | 🔤 «Con lo que tengas cuando venza». | ✓ | ? «¿el alquiler no está restado?». |
+| 8 · La remesa que esperas | ? la pantalla pasó a Pagos sin decirlo; «Ya llegó» no se ve. | ✓ | ✓ le gusta que no cuente hasta que llega. |
+| 9 · El próximo mes | 🔤 «entra ~$0». | ? «~$0». | ✗ «¿Entra $0? ¡Si vendo todos los días!»: siente que la app «no sabe». (→ pregunta 27) |
+| 10 · Guarda para el alquiler (Hazlo tú) | ✗ la hoja abre con $191.00 escrito: agrega «40» al final o no sabe borrar. ? tres textos dentro de la hoja. | ✓ | ? «¿$191 si tengo $113?». |
+| 11 · ¿Semana mala? | ✗ el número cae a $0 solo: «¿qué borré?». Al seguir, vuelve solo. | ? por qué cambió solo. | ✗ se asusta: «me quitó la plata». (→ pregunta 29) |
+| 12 · Ahorros | ? «Así se reparte». | ✓ | ✓ |
+| 13 · Cuadra al final del día (Hazlo tú) | ✗ no sabe dónde (Cuentas → Cuadrar). | ✓ con «Muéstrame». | ✓ es lo que hace cada noche. ? «¿cómo sabe la app que tengo $143?». |
+| 14 · ¿Volviste después de días? | ? «Pongámonos al día» no se ve. El aviso de arriba ahora dice «Sí, $151.00» (antes $191) y nadie dice por qué. | ✓ | ✓ |
+| 15 · ¿Lo entendí? (4 preguntas) | ✓ | ✓ | ✓ la de la semana mala la tranquiliza. |
+
+#### Las 5 fricciones más importantes (antes)
+
+1. **Demasiado de corrido.** 15 pasos con unas 12 ideas y la meta de «4 minutos»: la mitad no hace falta para empezar, y al llegar a «¿Lo entendí?» Marta ya olvidó el paso 2.
+2. **La pantalla muestra lo que nadie explica:** la tarjeta dentro del número, «~», «Próxima quincena», «Así se reparte», y para Rosa el naranja «entra ~$0 · te faltarían ~$191» desde el primer paso.
+3. **«Hazlo tú» sin saber dónde tocar:** «(+)», «Ábrelo», «Cuentas → Cuadrar» sin flecha, y «Siguiente» al lado de «Muéstrame» (Marta lo toca y se salta el ejercicio).
+4. **El cambio pasa demasiado rápido:** la celebración sale sola, tapa el número y no dice por qué cambió.
+5. **Lo que se mueve solo asusta:** la semana mala aparece y desaparece sola, la señal late sin parar y la tarjeta aparece al mismo tiempo que se mueve el resaltado.
+
+También: palabras que no se explican («saldo», «sin detalle», «estado de cuenta», «Ingreso esperado», «apartados» y «Reservas» para lo mismo); instrucciones que nombran cosas que no están en la pantalla («Ya llegó», «Pongámonos al día»); la hoja de reservar abre con un monto que hay que borrar; al escribir, la barra de «Hazlo tú» se corre; el final con cuatro opciones.
+
+### 2. Decisiones que salen del diario — decisión técnica — REVISAR
+
+1. **«Lo esencial» = 6 pasos por versión** (fija: tu libre · de dónde sale · anotar · Pagado · con qué pagas cada cosa · cuadrar; variable: tu libre · anotar una venta · anotar un gasto · lo que viene · guardar para el alquiler · cuadrar al final del día) y **«Aprende más» = 5 capítulos por versión**, de 2 a 4 pasos cada uno, con su pregunta. Fija: Próxima quincena y pasar lo que sobra · Ahorros · Tarjetas y estado de cuenta · Aguinaldo y adelanto · Volver después de días. Variable: ¿Hasta cuándo ves tu libre? · El próximo mes y la remesa · Ahorros (con «¿Semana mala?») · Tarjetas y estado de cuenta · Volver después de días. En la variable no hay «Aguinaldo y adelanto» (habla de quincenas) y «Próxima quincena» es «El próximo mes».
+2. **Cada capítulo prepara sus propios ejemplos y al terminar o salir vuelven al inicio.** «Lo esencial» de la versión fija usa una Ana **sin tarjeta y con números redondos** (libre $400.00) para que el número no diga «Incluye tarjeta…» antes de tiempo; la tarjeta aparece en su capítulo.
+3. **Lo oscuro = «lo verás después».** Se dice una vez al empezar («Te muestro una cosa a la vez. Lo que queda oscuro lo verás después»). Durante «Hazlo tú» también se oscurece lo demás y **solo se puede tocar lo que señala la flecha** (si toca otra cosa: «Toca donde señala la flecha»).
+4. **Cada «Hazlo tú» tiene tres momentos:** primero su explicación (qué es, para qué, ejemplo) con un botón «Hazlo tú»; luego la barra con una instrucción concreta y una flecha que sigue a la persona («Toca el botón + de abajo» → «Escribe «pupusas 6»» → «Toca «Guardar»»); al final, la pausa con antes → después y el porqué, y solo «Entendido».
+5. **«Hazlo por mí» hace un solo toque a la vez** (la flecha pasa al siguiente). Reemplaza «Muéstrame» en dos toques (V2-58 #23): la flecha ya está siempre. En la barra, «Siguiente» pasa a «Saltar este paso» (más chico), para que no se confunda con seguir.
+6. **«Salir» en vez de «Saltar»:** guarda dónde ibas; al volver, «¿Sigues donde te quedaste?».
+7. **La pausa aparece casi un segundo después de la acción**, para ver primero el número cambiar en la pantalla.
+8. **Respuesta 27, colateral directo:** para quien no tiene ingreso fijo, el aviso ámbar del próximo mes tampoco dice «te faltarían ~$191»: dice cuánto paga y que sus ventas cuentan cuando las anota.
+9. **Se quita «4 minutos»** de todos los textos (bienvenida, menú, ayuda, README).
+10. **Un solo lugar para los textos:** el entrenamiento, los «?» y «Aprende» leen el mismo glosario (para qué + ejemplo).
+
+### 3. Qué cambió (APROBADO por Victor, 2026-10-18)
+
+| Pedido | Cómo quedó |
+| --- | --- |
+| **Sin tope de 4 minutos** | Ningún texto habla de minutos: «Te la enseño paso a paso, con datos de ejemplo. Vas a tu ritmo.» (bienvenida), «Aprender a usarla · Lo esencial y capítulos cortos» (menú), «Aprender a usarla: lo esencial y más» (Casos y ayuda). |
+| **«Lo esencial»** | «Aprender a usarla» → «¿Cómo te entra el dinero?» → una intro («Lo esencial · 6 pasos»: con quién se practica y «Te muestro una cosa a la vez. Lo que queda oscuro lo verás después», con «Cambiar de versión») → 6 pasos → una pregunta → **[Empezar con mis datos] [Aprender más]** (y «Seguir mirando los ejemplos»). Tablas abajo. |
+| **«Aprende más»** | Un panel con la versión elegida («Tu versión: fecha fija (con Ana) · Cambiar»), «Lo esencial» y los 5 capítulos de esa versión, cada uno con su estado: «3 pasos y una pregunta», «Ibas en el paso 2 de 3» o **«Hecho»** (y «2 de 5 hechos»). Se abre al final de «Lo esencial», desde el menú (tu letra → «Aprender a usarla»), desde «Aprende» y desde «Casos y ayuda». Con tus datos también se abre: al tocar un capítulo pasa al modo entrenamiento y al final ofrece «Volver a mis datos». |
+| **Sugerido en el momento** | Con tus datos, la primera vez que guardas una tarjeta de crédito (Mi dinero → Deudas → «+ Tarjeta o préstamo»): «¿Quieres ver cómo funcionan las tarjetas? (1 min)» [Ahora no] [Ver ahora]. Si la tarjeta se agregó el primer día, la misma oferta aparece una vez en Hoy. «Ver ahora» abre el capítulo «Tarjetas y estado de cuenta» de tu versión (por tu ingreso: fijo o no) y al final «Volver a mis datos» (tus datos quedan como estaban). |
+| **Una pregunta por capítulo** | Al final de «Lo esencial» y de cada capítulo: una pregunta con tres respuestas. Si falla: «Casi: …» (la misma explicación amable), **«Repasar este paso»** (solo ese paso, con «Volver a la pregunta») y «Seguir». Si acierta: «¡Así es! …» y «Terminar». |
+| **Nada avanza solo** | Ni pasos, ni resaltados, ni ejemplos: todo espera a que la persona toque. La semana mala ya no aparece sola (V2-59 #29). La pausa después de «Hazlo tú» espera «Entendido». |
+| **Cada paso: qué ves → para qué → ejemplo** | El título dice qué estás viendo («Este número es tu libre», «Aquí ves de dónde sale»); debajo, para qué te sirve; y un recuadro «Ejemplo» con números redondos. Una idea por paso, cada parte en ≤ 2 líneas a 390 px, frases ≤ 20 palabras, sin palabras prohibidas. |
+| **Animaciones calmadas** | Lo oscuro y el resaltado entran despacio (450 ms), el resaltado late suave **dos veces** y se queda; la tarjeta aparece **después** (450 ms de espera, 320 ms de entrada). En «Hazlo tú», la flecha baja dos veces hacia lo que hay que tocar y se queda quieta. Con «reducir movimiento», nada se mueve. |
+| **«Hazlo tú»** | Primero se explica (con su botón «Hazlo tú»). Luego una barra arriba con una instrucción concreta («Toca el botón + de abajo.» → «Escribe «pupusas 6» en «¿Qué pasó?».» → «Revisa lo que entendí y toca «Guardar».»), una **flecha** y un anillo sobre lo que hay que tocar; lo demás queda oscuro y no se puede tocar («Toca donde señala la flecha»). «Hazlo por mí» hace **un solo toque** a la vez. «Saltar este paso» y «Atrás» (vuelve a la explicación). |
+| **Pausa con antes → después** | Casi un segundo después de la acción (para ver el número cambiar), una tarjeta sobre lo que cambió: «Libre $400.00 → $394.00» y «Tu libre bajó de $400 a $394 porque anotaste $6 de pupusas.», con un solo botón: **«Entendido»**. Los números son los del motor. |
+| **Indicador** | «Lo esencial · paso 2 de 6» (y «Ahorros · paso 1 de 3», «… · Hazlo tú», «… · ¿Lo entendí?», «Repaso») con una barra fina. «Salir» guarda dónde ibas: en Hoy, «Sigue donde te quedaste · «Lo esencial» (fecha fija): vas en el paso 3 de 6», y al volver, «¿Sigues donde te quedaste?» [Seguir] [Empezar de nuevo]. |
+| **Nunca un concepto antes de tiempo** | «Lo esencial» de la versión fija usa una Ana sin tarjeta (la tarjeta tiene su capítulo); para quien vende ya no hay «entra ~$0 · te faltarían» en naranja (V2-59 #27). Lo que no se explica queda oscuro, y la intro dice que lo verás después. |
+| **«Practicar»** | Los mismos 18 ejercicios; cada uno dice **«Antes: «Lo esencial»»** (o «Ahorros», «Tarjetas y estado de cuenta»…), con «(hecho)» si ya hiciste ese capítulo; abajo, «Ver los capítulos». |
+| **«?» y «Aprende»** | Leen el mismo glosario que el entrenamiento: «Libre: Es lo que puedes gastar… Ejemplo: Tienes $100…». «Aprende» muestra los términos de tu versión (sin «quincena» si lo que te entra varía) y «Aprender a usarla». |
+
+### 4. V2-59 · Respuestas 26–29 (APROBADAS por Victor, 2026-10-18)
+
+| # | Respuesta | Cómo quedó |
+| --- | --- | --- |
+| 26 | Rosa (vende pupusas, remesa sin fecha fija) se queda. | Sin cambio: Rosa sigue siendo el ejemplo de la versión «Me entra cuando vendo o trabajo». |
+| 27 | Para quien vende, el próximo mes no dice «entra ~$0», sino «Tus ventas cuentan cuando las anotas» (y lo vendido este mes como referencia, sin sumarlo). | Sin ingreso fijo y sin nada esperado: Hoy dice **«El próximo mes (noviembre) · pagas ~$191 · tus ventas cuentan cuando las anotas · este mes llevas $316.00 en ventas»**, sin el color de «falta». Lo mismo en «¿De dónde sale?», Pagos → Próxima y Reparte. Si sí espera algo (una remesa mensual), sigue «entra ~$150 · pagos… » y abajo «tus ventas cuentan cuando las anotas». **Colateral:** el aviso del próximo mes dice «Del 1 nov al 30 nov pagas ~$191. Tus ventas cuentan cuando las anotas. ¿Guardas algo de lo que tienes ahora?» (ya no «te faltarían ~$191») y «¿Cuánto reservas?» dice «El próximo mes pagas ~$191: el alquiler, la luz, el agua y más. Tus ventas cuentan cuando las anotas.». |
+| 28 | «¿Hasta cuándo ves tu libre?» también en Tu cuenta → «Cómo te entra el dinero». | El menú (tu letra) dice **«Cómo te entra el dinero»** (antes «Cómo te pagan»). Sin ingreso fijo: «Varía · ves tu libre hasta fin de mes» y abre una hoja con «¿Hasta cuándo ves tu libre?» (Hasta fin de mes / Los próximos 15 días), su explicación del glosario y «Ver lo que esperas que te llegue». Con ingreso fijo abre su ingreso, como antes. |
+| 29 | «¿Semana mala?» deja de aparecer y desaparecer solo: es un ejemplo que se abre con «Ver un ejemplo» y se cierra con «Volver a mis números». | En «Ahorros y semanas malas» (versión variable), el paso «Si vendes poco, tu libre puede llegar a $0» tiene **«Ver un ejemplo»**: el número de Rosa pasa a $0.00 con «Faltan $30.00 para cubrir tus ahorros» y la tarjeta dice «Así se vería una semana mala · Libre en $0 y te digo cuánto falta. Puedes sacar de un ahorro. Sin culpa.» con un solo botón: **«Volver a mis números»**. Salir con el ejemplo abierto también lo quita. |
+
+### 5. Los pasos, uno por uno
+
+Leyenda: ✋ «Hazlo tú» (explicación → barra con flecha → pausa con «Entendido»). Entre comillas, la pausa que se ve con los ejemplos de cada capítulo (números del motor).
+
+#### Versión fija (Ana, cobra por quincena)
+
+| Capítulo | Pasos | Pregunta |
+| --- | --- | --- |
+| **Lo esencial** (6) · Ana sin tarjeta, libre $400.00 | 1 Este número es tu libre · 2 Aquí ves de dónde sale (la hoja «¿De dónde sale?») · 3 ✋ Este botón + es para anotar («Tu libre bajó de $400 a $394 porque anotaste $6 de pupusas») · 4 ✋ Estos son tus próximos pagos → «Pagado» del teléfono («Tu libre no cambió: el teléfono ya estaba restado. Lo que tienes bajó $15.», con «Tienes $1,309.00 → $1,294.00») · 5 Aquí ves con qué pagas el colegio («Lo pagas con», en su ficha, desde Pagos) · 6 ✋ Aquí cuadras tu efectivo (Cuentas → Cuadrar → Efectivo → $15 → «Tu libre bajó de $394 a $390 porque tenías $4 menos de lo que creía la app») | Tienes $100 y antes de tu quincena pagas $40. ¿Cuánto tienes libre? (repasa el paso 1) |
+| **Próxima quincena y pasar lo que sobra** (4) | 1 Esta es tu próxima quincena · 2 Mira el signo ~ en «~$600» · 3 ✋ Aquí pasas lo que te sobra (¿De dónde sale? → «¿Pasas algo…?» → 50 → «Tu libre bajó de $400 a $350 porque pasaste $50 a tu próxima quincena», con «Te quedarían ~$545 → ~$595») · 4 Aquí cambias o repartes un pago («Cambiar o repartir») | ¿Qué quiere decir el signo ~? (repasa el paso 2) |
+| **Ahorros** (3) | 1 Aquí están tus ahorros · 2 ✋ Así guardas en un ahorro (Ahorrar → 50 → Emergencias → «Tu libre bajó de $400 a $350 porque guardaste $50 en Emergencias», con «En ahorros $900.00 → $950.00») · 3 Este es tu ahorro para la laptop (su «Usar») | Pones $50 en «Emergencias». ¿Dónde queda ese dinero? (paso 1) |
+| **Tarjetas y estado de cuenta** (4) · Ana con su Crédito BAC, libre $300.00 | 1 Tu número incluye la tarjeta · 2 ✋ Anota una compra con tarjeta («zapatos 30 tarjeta» → «Tu libre bajó de $300 a $270 porque compraste $30 con tarjeta, aunque la pagues después») · 3 Esto es «Deudas» · 4 Este es tu estado de cuenta (la ficha de la tarjeta) | Compras $30 con tarjeta. ¿Cuándo baja tu libre? (paso 1) |
+| **Aguinaldo y adelanto** (3) | 1 Aquí ves tu aguinaldo («Más adelante») · 2 Aquí ves la matrícula de enero (ya va con el aguinaldo) · 3 Aquí anotas un adelanto de salario («+ Ingreso esperado») | El aguinaldo llega el 12 de diciembre. ¿Cuándo suma? (paso 1) |
+| **Volver después de días** (2) · Ana el 6 de noviembre | 1 Si pasas días sin abrirla («Pongámonos al día») · 2 ✋ Ponte al día en un minuto (Empezar → «Sí, me cayó» → Siguiente → «Marcar todos como pagados» → Siguiente → Listo → «Tu libre subió de $400 a $945 porque confirmaste lo que te llegó y lo que pagaste») | Volviste después de dos semanas. ¿Qué haces? (paso 1) |
+
+#### Versión variable (Rosa, vende pupusas; nunca dice «quincena»)
+
+| Capítulo | Pasos | Pregunta |
+| --- | --- | --- |
+| **Lo esencial** (6) · Rosa, libre $80.00 hasta fin de mes | 1 Este número es tu libre · 2 ✋ Este botón + es para anotar («vendí 45» → «Tu libre subió de $80 a $125 porque anotaste $45 de ventas») · 3 ✋ Con el mismo botón anotas un gasto («queso 12» → «Tu libre bajó de $125 a $113 porque anotaste $12 de queso») · 4 Estos son tus próximos pagos · 5 ✋ Este aviso te ayuda con el alquiler («Sí, $191.00» → «Borra el número y escribe 40» → Reservar → «Tu libre bajó de $113 a $73 porque guardaste $40 para el alquiler») · 6 ✋ Aquí cuadras al final del día ($140 → «Tu libre bajó de $73 a $70 porque tenías $3 menos de lo que creía la app») | Tienes $100 y antes de fin de mes pagas $40. ¿Cuánto tienes libre? (paso 1) |
+| **¿Hasta cuándo ves tu libre?** (3) | 1 Tu libre llega hasta fin de mes · 2 ✋ Cámbialo a 15 días (tu número → «Los próximos 15 días» → «Tu libre ahora llega hasta el 5 nov: son ~$5.30 por día», con «Por día ~$7.20 → ~$5.30») · 3 También lo cambias en tu cuenta (tu letra → «Cómo te entra el dinero», V2-59 #28) | Tu libre dice «Hasta fin de mes». ¿Lo puedes cambiar? (paso 1) |
+| **El próximo mes y la remesa** (3) | 1 Así quedas el próximo mes (V2-59 #27) · 2 Esta es la remesa que esperas · 3 ✋ Cuando llegue, dilo aquí (Pagos → Remesa de Josué → «Ya llegó» → Siguiente → Listo → «Tu libre subió de $80 a $230 porque llegó la remesa de $150») | Esperas una remesa de $150 que no ha llegado. ¿Cuenta? (paso 2) |
+| **Ahorros y semanas malas** (3) | 1 Aquí están tus ahorros · 2 ✋ Así guardas en un ahorro ($20 en Emergencias → «Tu libre bajó de $80 a $60…») · 3 Si vendes poco, tu libre puede llegar a $0 («Ver un ejemplo» / «Volver a mis números», V2-59 #29) | Semana mala y libre en $0. ¿Qué significa? (paso 3) |
+| **Tarjetas y estado de cuenta** (4) · Rosa con una tarjeta de ejemplo («Crédito Agrícola», $20 el 5 nov), libre $100.00 | 1 Tu número incluye la tarjeta · 2 ✋ Anota una compra con tarjeta («harina 30 tarjeta» → «Tu libre bajó de $100 a $70 porque compraste $30 con tarjeta, aunque la pagues después») · 3 Esto es «Deudas» · 4 Este es tu estado de cuenta | Compras $30 con tarjeta. ¿Cuándo baja tu libre? (paso 1) |
+| **Volver después de días** (2) · Rosa el 2 de noviembre, sin anotar desde el 20 de octubre | 1 Si pasas días sin abrirla · 2 ✋ Ponte al día en un minuto (Empezar → Siguiente → «Pagado» de la cuota → Siguiente → «Contaste tu efectivo: escribe 250» → Listo → «Tu libre subió de $0 a $74 porque contaste tu efectivo: lo que vendiste estos días ya cuenta») | Volviste después de dos semanas. ¿Qué haces? (paso 1) |
+
+### 6. Segunda vuelta: el diario con la versión nueva
+
+Repetí el recorrido como las tres personas con la v2.5 («Lo esencial» de las dos versiones y los 10 capítulos), mirando las capturas de `v25.mjs` (Serena claro por file:// y Serena oscuro servida, 390 × 844). ✓ se resolvió · ⚠ queda.
+
+| Momento | Doña Marta | Kevin | Rosa real |
+| --- | --- | --- | --- |
+| Entrada e intro | ✓ «Te la enseño paso a paso… Vas a tu ritmo»: sin reloj. ✓ La intro dice cuántos pasos son y que lo oscuro lo verá después. | ✓ | ✓ «Usamos los datos de Rosa: vende pupusas…»: se reconoce. |
+| Tu libre | ✓ El número es redondo ($400 / $80) y sin la línea de la tarjeta. ⚠ «~$44 por día» sigue dentro del resaltado sin explicarse (el «~» se explica en «Próxima quincena»). | ✓ | ✓ |
+| De dónde sale (fija) | ✓ La hoja abre con su título y el marco rodea solo la cuenta ($1,315 − $900 − $15 = $400). ⚠ El ejemplo usa otros números ($1,000 / $600 / $100) que los de Ana, que están justo arriba. | ✓ | — |
+| Anotar | ✓ «Toca el botón + de abajo» con flecha; solo se puede tocar el +; «Saltar este paso» ya no se confunde con seguir. ✓ La pausa: «Tu libre bajó de $400 a $394 porque anotaste $6 de pupusas» y «Entendido». | ✓ «Hazlo por mí» de a un toque. ⚠ Son tres toques más que antes (explicación, «Hazlo tú», «Entendido»). | ✓ «Tu libre subió de $80 a $125 porque anotaste $45 de ventas». |
+| Pagado (fija) | ✓ Lo lee antes («Tu libre no cambia: ya estaba restado») y la pausa lo confirma: «Tienes $1,309.00 → $1,294.00». | ✓ Solo puede tocar el «Pagado» del teléfono (ya no el de la tarjeta). | — |
+| Con qué pagas (fija) · Lo que viene (variable) | ✓ Una sola idea, en la ficha del colegio («‹ Pagos» dice dónde está). ⚠ «Cambiar o repartir» se ve y se explica hasta su capítulo. | ✓ | ✓ «La cuota de $45 vence el 25: ya está restada». |
+| Guardar para el alquiler (variable) | ✓ «Toca «Sí, $191.00»» → «Borra el número y escribe 40». ⚠ Borrar un número en el teléfono le sigue costando. | ✓ | ✓ El aviso ya no dice «te faltarían ~$191»: «Tus ventas cuentan cuando las anotas». ✓ «Tú decides cuánto: nada se guarda solo». |
+| Cuadrar | ✓ La flecha la lleva: «Cuadrar» → «Efectivo» → $15 → «Cuadrar»; la hoja ya no dice «saldo». ✓ «Tu libre bajó de $394 a $390 porque tenías $4 menos de lo que creía la app». ⚠ «sin detalle» sigue como palabra (el ejemplo la explica). | ✓ | ✓ «Aquí cuadras al final del día»: lo que hace cada noche. |
+| ¿Lo entendí? | ✓ Una sola pregunta, justo después de los pasos: ya no olvida. ✓ «Casi: …» y «Repasar este paso». | ✓ | ✓ |
+| Final | ✓ Dos caminos claros: «Empezar con mis datos» o «Aprender más». | ✓ Va directo a sus datos. | ✓ |
+| Aprende más | ✓ Ve qué le falta («0 de 5 hechos») y lo hace otro día; si lo deja a medias, «Sigue donde te quedaste». | ✓ Elige solo lo que le sirve (adelanto, tarjetas). ⚠ «Aguinaldo y adelanto» solo explica: hacerlo está en «Practicar». | ✓ «Volver después de días»: contar su efectivo cuenta lo que vendió sin anotar. ✓ La semana mala solo si la abre. |
+| Siempre | ✓ Nada se mueve solo; el resaltado entra despacio y se queda; la tarjeta aparece después. ⚠ La flecha a veces queda encima de un texto oscurecido de al lado. | ⚠ Más calma también es más toques: para él están «Saltar este paso» y «Hazlo por mí». | ✓ En la versión variable ninguna pantalla dice «quincena» (comprobado en cada paso). |
+
+#### Las 5 fricciones de antes, cómo quedaron
+
+| # | Antes | Ahora |
+| --- | --- | --- |
+| 1 | Demasiado de corrido: 15 pasos, unas 12 ideas y «4 minutos». | **Resuelta.** «Lo esencial» son 6 pasos y una pregunta; lo demás son capítulos de 2 a 4 pasos, cuando la persona quiera, con su marca de «hecho». Sin reloj. |
+| 2 | La pantalla mostraba lo que nadie explicaba (la tarjeta en el número, «~», el naranja de Rosa). | **Casi resuelta.** Sin tarjeta en «Lo esencial», sin naranja para quien vende y lo no explicado queda oscuro («lo verás después»). Queda «~$44 por día» dentro del número. |
+| 3 | «Hazlo tú» sin saber dónde tocar; «Siguiente» al lado de «Muéstrame». | **Resuelta.** Instrucción concreta, flecha que sigue a la persona, solo se toca lo señalado, «Hazlo por mí» de a un toque y «Saltar este paso» aparte. |
+| 4 | El cambio pasaba rápido y sin porqué. | **Resuelta.** La pausa espera a que se vea el número cambiar, dice antes → después y el porqué, y solo sigue con «Entendido». |
+| 5 | Lo que se movía solo asustaba. | **Resuelta.** Nada avanza solo; la semana mala es un ejemplo que se abre y se cierra; el resaltado y la flecha laten dos veces y se quedan; la tarjeta aparece después. |
+
+### Calidad (v2.5)
+
+- **`herramientas/v25.mjs`** (por file:// en Serena claro y servida en la subruta de Pages en Serena oscuro, a 390 × 844): la entrada sin «4 minutos»; **«Lo esencial» en las dos versiones** como persona nueva: el primer «Hazlo tú» **a mano** (tocando y escribiendo de verdad) y los demás con «Hazlo por mí», comprobando que hace **un solo toque** a la vez; en cada paso, el indicador, el título y el «para qué» y el ejemplo **iguales al glosario**, cada uno en **≤ 2 líneas medidas en la pantalla**, el marco rodea lo que explica sin que la tarjeta lo tape, el foco en el título, botones de 44 px y, en la variable, **ninguna pantalla dice «quincena»**; **nada avanza solo** (3 s sin tocar en la intro, un paso, un «Hazlo tú», una pausa y la pregunta de cada «Lo esencial»; 1.5 s en cada capítulo); lo oscuro no se toca; cada pausa con antes → después **del motor**, el porqué en ≤ 2 líneas y **solo «Entendido»**; la pregunta con un error («Casi», nunca «incorrecto»), «Repasar este paso» y vuelta a la pregunta; el final; la **marca de «hecho»**; **retomar** («Salir» → «Sigue donde te quedaste» en Hoy, «Ibas en el paso 3 de 6» en «Aprende más», «Empezar de nuevo», y un capítulo de la versión variable); **los ejemplos vuelven al inicio** al terminar o salir de cada capítulo; **los 10 capítulos** de «Aprende más» completos; V2-59 #27, #28 y #29; la **oferta de tarjetas** (en el momento y en Hoy, una sola vez) y «Volver a mis datos» sin perder nada; «Practicar» con el capítulo de antes en los 18; «?» y «Aprende» con los mismos textos en las dos versiones; legibilidad (sin palabras prohibidas, frases ≤ 20 palabras, sin «quincena» en la variable); calma (el resaltado entra en 450 ms y late 2 veces, la tarjeta después; la flecha baja 2 veces; con «reducir movimiento», nada se mueve); **contraste ≥ 4.5:1 en los 4 temas (mínimo 5.27:1)**. Sin fallos ni errores de consola, por file:// y servida.
+- **Las de siempre** siguen pasando sin errores de consola: motor y casos borde, los 13 casos de la guía, los sets A y B, la guía en la computadora, modos (entrada con «Lo esencial», tres personas de dos semanas, copia → borrar → restaurar, «Contarle a Victor» sin montos ni nombres), **aceptación** (Victor: **Libre $95.00 · ~$7.90 por día**; próxima **~$1,163 · ~$713 · ~$450**), v2.3.1 (la corrección con el adelanto: **~$1,477 · ~$1,196 · ~$281**), entrega 2, viaje del dinero, humo, `v24.mjs` («?», «Aprende», consejos, «Practicar») y `v241.mjs` (V2-56, V2-57, consejos, «Practicar» con Rosa). La app instalable: caché `pamplanea-proto-v2.5-2026-10-18` con los 141 archivos, abre sin internet y **al actualizar no se pierden los datos** (los reales y los ejemplos). Servidas también: aceptación y v2.3.1 en Ancla oscuro, v2.4.1 en Serena oscuro.
+- **Revisión visual:** las 71 capturas de antes y unas 270 nuevas (claro y oscuro), mirándolas como las tres personas; de ahí salieron el resaltado corrido al abrir una hoja, la página que se movía con `scrollIntoView`, «Volver después de días» de Rosa que terminaba en «$0.00 sin cambio», la pausa de «¿Hasta cuándo?» sin sentido y los títulos que repetían la frase de abajo.
+
+### Decisiones técnicas v2.5 — REVISAR
+
+- **Progreso nuevo** en `pamplanea-entrenamiento`: `caps` (por capítulo: `{ paso, hecho }`, con clave `fijo:esencial`, `variable:ahorros`…), `tourVersion` y `tourUltimo` (el último capítulo tocado, para «Sigue donde te quedaste»). El recorrido de la v2.4.1 que ya estaba **hecho** cuenta como «Lo esencial» hecho de esa versión; uno a medias no se puede retomar (los pasos cambiaron) y empieza de nuevo. Nada de esto toca los datos de uso: **sin cambio de esquema**. La oferta de tarjetas se recuerda en `pamplanea-modo` (`ofertaTarjetas`: «vista» o «no»).
+- **Ejemplos por capítulo:** cada capítulo prepara su Ana o su Rosa al empezar y, al terminar o salir, vuelven las de siempre. Para los **números redondos** (libre $400.00, $300.00, $100.00) se mueve el último cuadre del banco (o del efectivo) **solo en esos ejemplos**; los 13 casos y «Practicar» no cambian. La Ana sin tarjeta es la de siempre sin su Crédito BAC (ni sus compras con ella). Rosa, en «Tarjetas», tiene una tarjeta de ejemplo que en sus datos de siempre no tiene.
+- **Si lo que un paso explica ya no está** (por ejemplo, ya te pusiste al día y la tarjeta «Pongámonos al día» se fue) y vuelves a ese paso con «Atrás» o «Repasar», los ejemplos del capítulo vuelven a como empezaron.
+- **Lo oscuro de «Hazlo tú»** es más claro que el de las explicaciones (42 % contra 58 %) para que se vea la pantalla en la que se trabaja. Con una hoja abierta, se puede tocar toda la hoja (para ver y cambiar lo que la app entendió); sin hoja, solo lo que señala la flecha. Con teclado, quien usa lector de pantalla sigue pudiendo moverse por toda la app.
+- **«Tus ventas cuentan cuando las anotas»** se dice a toda persona sin ingreso fijo (como lo pidió la respuesta 27), también a quien trabaja por día. «Este mes llevas $X en ventas» suma lo anotado este mes como «Venta».
+- **Rosa en «Volver después de días»** contó $250 en efectivo al ponerse al día (vendió y no lo anotó): así se ve que cuadrar también cuenta las ventas que no se anotaron.
+- **«Ahora no» en la pregunta de la versión** conserva su nombre interno (`tour-saltar`) para que las pruebas de siempre sigan iguales.
+- **Medir sin mover la página:** el entrenamiento ya no usa `scrollIntoView` (movía el marco de la app y la barra de «Hazlo tú» se salía de la pantalla, la fricción de Marta en el paso 12); mueve solo la lista de la hoja o de la pantalla, y mide cuando termina de subir una hoja.
+- **Pruebas de antes:** lo del recorrido de 15 pasos que había en `v24.mjs` y `v241.mjs` pasó a `v25.mjs`; en esas dos quedan los «?», «Aprende», los consejos, V2-56, V2-57 y «Practicar».
+
+### PENDIENTE (lo vi y no lo toqué)
+
+1. **Teclado real:** en el teléfono, al escribir en un «Hazlo tú», el navegador puede mover la pantalla para mostrar el campo; en las pruebas (sin teclado) la barra queda arriba, pero falta verlo en un teléfono.
+2. La flecha a veces queda encima de un texto oscurecido de al lado (por ejemplo, sobre «Ver todos» cuando señala «Pagado»). No tapa lo que hay que tocar.
+3. «¿Cuánto reservas?» abre con el monto de la sugerencia ($191.00) ya escrito: el paso dice «Borra el número y escribe 40». Para quien tiene menos libre que eso, quizá convendría abrirla vacía.
+4. «Aguinaldo y adelanto» solo explica (no tiene «Hazlo tú»); pagar con el aguinaldo y el adelanto se practican en «Practicar».
+5. Sigue de la v2.4.1: con ingreso fijo, una sugerencia de la app todavía dice «ese periodo pagas…» (texto de la app, fuera del entrenamiento).
+
+### PREGUNTAS PARA VICTOR (v2.5)
+
+31. **«Lo esencial» de la versión fija** tiene tres «Hazlo tú» (anotar, Pagado, cuadrar); «con qué pagas cada cosa» solo se explica (cambiarlo está en «Próxima quincena»). ¿Así, o quieres que en lo esencial también lo cambie?
+32. **Durante «Hazlo tú» solo se puede tocar lo que señala la flecha** (lo demás queda oscuro). ¿Te parece bien, o prefieres que la persona pueda tocar todo, como antes?
+33. **«Tus ventas cuentan cuando las anotas»** aparece a toda persona sin ingreso fijo, también a quien trabaja por día. ¿Usamos «Lo que te entra cuenta cuando lo anotas» para quien no vende?
+34. **La oferta de tarjetas** sale una sola vez (si dice «Ahora no», no vuelve; queda en «Aprende»). ¿Así, o la repetimos una vez más después?
+35. Sigue abierta la 25/30: ¿le pides a una persona de la familia que haga «Lo esencial» sin ayuda (ya sin reloj) y nos cuentas dónde se detuvo?
 
 ---
 
@@ -91,10 +288,10 @@ Versión visible en la app y en la guía: **«Prototipo v2.4.1 · 2026-10-18»**
 
 ### PENDIENTE (lo vi y no lo toqué)
 
-1. Para quien vende, la tarjeta «El próximo mes» dice «entra ~$0» (la app no cuenta ventas que no han pasado). El recorrido lo explica; el texto de la app no cambió (ver pregunta 27).
-2. «Cambiar de versión» está en los pasos explicados; en la barra de «Hazlo tú» no cabe (desde ahí: «Saltar» y volver a entrar).
+1. *(Resuelto en la v2.5, V2-59 #27.)* Para quien vende, la tarjeta «El próximo mes» dice «entra ~$0» (la app no cuenta ventas que no han pasado). El recorrido lo explica; el texto de la app no cambió (ver pregunta 27).
+2. *(v2.5: «Cambiar de versión» está en la intro de «Lo esencial» y en «Aprende más».)* «Cambiar de versión» está en los pasos explicados; en la barra de «Hazlo tú» no cabe (desde ahí: «Saltar» y volver a entrar).
 3. Con ingreso fijo, una sugerencia de la app todavía dice «ese periodo pagas…» (texto de la app, no del recorrido).
-4. Sigue de la v2.4: «Pongámonos al día» se explica en el recorrido, pero se practica en «Practicar» («Volver después de dos semanas»).
+4. *(Resuelto en la v2.5: el capítulo «Volver después de días» tiene su «Hazlo tú».)* Sigue de la v2.4: «Pongámonos al día» se explica en el recorrido, pero se practica en «Practicar» («Volver después de dos semanas»).
 
 ### Calidad (v2.4.1)
 
@@ -105,11 +302,11 @@ Versión visible en la app y en la guía: **«Prototipo v2.4.1 · 2026-10-18»**
 
 ### PREGUNTAS PARA VICTOR (v2.4.1)
 
-26. **Rosa** (pupusas en su casa, remesa de su hijo, alquiler y cuota de la cooperativa): ¿se parece a las personas de tu familia que tienen ingresos que varían, o usamos otro oficio?
-27. Para quien vende, «El próximo mes» dice **«entra ~$0»** porque no cuenta ventas futuras. ¿Lo dejamos así o decimos «tus ventas cuentan cuando las anotas»?
-28. **«¿Hasta cuándo ves tu libre?»** se cambia en «¿De dónde sale?». ¿Basta ahí, o también en «Tu cuenta → Cómo te pagan»?
-29. El paso **«¿Semana mala?»** muestra a Rosa un momento con $20 en efectivo y vuelve a como estaba. ¿Se entiende como ejemplo?
-30. Sigue abierta la 25: ¿cronometramos a una persona de la familia haciendo cada versión (sin ayudarla)?
+26. **RESPONDIDA (V2-59): Rosa se queda.** **Rosa** (pupusas en su casa, remesa de su hijo, alquiler y cuota de la cooperativa): ¿se parece a las personas de tu familia que tienen ingresos que varían, o usamos otro oficio?
+27. **RESPONDIDA (V2-59): «Tus ventas cuentan cuando las anotas».** Para quien vende, «El próximo mes» dice **«entra ~$0»** porque no cuenta ventas futuras. ¿Lo dejamos así o decimos «tus ventas cuentan cuando las anotas»?
+28. **RESPONDIDA (V2-59): también en Tu cuenta → «Cómo te entra el dinero».** **«¿Hasta cuándo ves tu libre?»** se cambia en «¿De dónde sale?». ¿Basta ahí, o también en «Tu cuenta → Cómo te pagan»?
+29. **RESPONDIDA (V2-59): un ejemplo con «Ver un ejemplo» y «Volver a mis números».** El paso **«¿Semana mala?»** muestra a Rosa un momento con $20 en efectivo y vuelve a como estaba. ¿Se entiende como ejemplo?
+30. *(Sigue abierta: ver la 35.)* Sigue abierta la 25: ¿cronometramos a una persona de la familia haciendo cada versión (sin ayudarla)?
 
 ---
 
@@ -453,7 +650,7 @@ Cómo se revisó: el dinero de Victor seguido por la interfaz del 17 de octubre 
 ## App instalable (PWA)
 
 - `manifest.webmanifest`: «PamPlanea (prototipo)» / «PamPlanea», `start_url` y `scope` «./» (funciona en la subruta `/pamplanea-prototipo/`), `display: standalone`, colores de Serena, íconos 192 y 512, uno maskable y `apple-touch-icon` 180, generados localmente desde el ícono (`herramientas/generar-iconos.mjs`).
-- `sw.js`: caché **versionada** (hoy `pamplanea-proto-v2.4.1-2026-10-18`) que precarga los 141 archivos publicados; abre sin internet. Una versión nueva se instala en segundo plano y la app muestra «Hay una versión nueva · Actualizar»; al tocarlo guarda y recarga **sin perder datos** (lo guardado tiene su propio formato, independiente de la versión visible). La primera instalación no recarga la página.
+- `sw.js`: caché **versionada** (hoy `pamplanea-proto-v2.5-2026-10-18`) que precarga los 141 archivos publicados; abre sin internet. Una versión nueva se instala en segundo plano y la app muestra «Hay una versión nueva · Actualizar»; al tocarlo guarda y recarga **sin perder datos** (lo guardado tiene su propio formato, independiente de la versión visible). La primera instalación no recarga la página.
 - El service worker y el manifest solo se usan servidos por http(s); por `file://` no se registran y todo funciona igual, sin errores de consola.
 - **Para publicar una versión nueva:** cambiar `VERSION_PROTOTIPO` en `casos.js` y correr `node herramientas/generar-sw.mjs v2.2-AAAA-MM-DD` (regenera la lista y el nombre de la caché). Si `sw.js` no cambia, los teléfonos instalados no se enteran.
 - En modo instalado: safe areas reales, sin barra de estado simulada; la barra de estado de Android toma el color del aviso de prototipo en cada tema.
@@ -589,7 +786,7 @@ La fecha simulada es el **miércoles 21 de octubre de 2026** (ver §4).
 - **Prueba guiada:** cada tarea tiene una condición que la app revisa tras cada acción (por ejemplo, «hay un gasto nuevo de $6.00»); los toques se cuentan en la app, no en la barra de la tarea ni en «Casos y ayuda».
 - **Guardado (entrenamiento):** `pamplanea-proto-v2:app` (estado, caso, pestaña, tema; con `formato: 2`), `pamplanea-proto-v2:notas` (nombre, notas, prueba), `pamplanea-proto-v2:dispositivo` (personas en este teléfono y set siguiente) y `pamplanea-proto-v2:guia`. La versión visible no invalida lo guardado.
 - **Guardado (uso normal, v2.2):** ver «Modos v2.2 → Datos seguros».
-- **Service worker:** primero la caché (sin importar `?set=…`), luego la red. Solo por http(s). Caché `pamplanea-proto-v2.4.1-2026-10-18`.
+- **Service worker:** primero la caché (sin importar `?set=…`), luego la red. Solo por http(s). Caché `pamplanea-proto-v2.5-2026-10-18`.
 
 ## 6. PREGUNTAS PARA VICTOR (no las decidí; el prototipo usa lo de §5)
 
@@ -641,15 +838,17 @@ La fecha simulada es el **miércoles 21 de octubre de 2026** (ver §4).
 | `arranque.js` | Arranque, guardado en el navegador, casos y simulaciones |
 | `ayuda.js` | Pantalla completa, «Casos y ayuda», prueba guiada, moderador, instalación y versión nueva |
 | `modos.js` | v2.2: entrada, modo uso (datos reales, fecha real, avisos al abrir), copia/restaurar/borrar, «¿Cómo te ha ido?», registro de uso y «Contarle a Victor» |
-| `tour.js` | v2.4: recorrido de 4 minutos con «Hazlo tú», «¿Lo entendí?» y retomar; «Practicar» de fácil a difícil. v2.4.1: dos versiones (fecha fija con Ana, ingresos que varían con Rosa), «¿Cómo te entra el dinero?» y «Cambiar de versión» |
-| `glosario.js` | v2.4: los textos de los «?», de «Aprende» y los consejos de la primera vez |
+| `tour.js` | v2.5: el entrenamiento: «¿Cómo te entra el dinero?», «Lo esencial» y los capítulos de «Aprende más» de cada versión (sus ejemplos, sus pasos, su pregunta), «Hazlo tú» con flecha, la pausa con «Entendido», retomar, «Aprende más» y «Practicar» (con el capítulo de antes) |
+| `glosario.js` | v2.5: un solo lugar para los textos que explican la app (para qué + ejemplo, en las dos versiones): el entrenamiento, los «?» y «Aprende»; y los consejos de la primera vez |
 | `manifest.webmanifest`, `sw.js`, `recursos/iconos/` | App instalable y sin internet |
 | `recursos/` | Piel real (tokens, Instrument Sans, emoji Fluent, íconos Lucide, portadas e ilustraciones) con sus licencias |
 | `README.md` | Para quien llega al repo: los dos modos, instalar, copia de datos, contarle a Victor |
 
-Fuera del repo (en `.gitignore`, solo en la copia local): `capturas/` y `herramientas/` (`recorrer-v2.mjs` 13 casos, `recorrer-sets.mjs` sets A y B, `recorrer-modos.mjs` entrada, entrenamiento, tres personas y copia, `probar-pwa.mjs` (también datos reales tras actualizar), `instalar-ua.mjs`, `contraste*.mjs`, `generar-iconos.mjs`, `generar-sw.mjs` + `sw.plantilla.js`, `servidor.mjs`). Nuevo en la v2.4.1: `v241.mjs` (V2-56 a V2-58, las dos versiones completas con la revisión automática de cada paso y los ejercicios nuevos). Nuevo en la v2.4: `v24.mjs` (el entrenamiento completo, legibilidad, «?», consejos, «Practicar» y contraste). Nuevo en la v2.3.1: `v231.mjs` (V2-50 a V2-55, la corrección adicional y «Compartir copia»). Nuevos en la v2.3: `aceptacion-v23.mjs` (la prueba de aceptación de Victor, migración, Carlos, reparto, pagado y fecha futura), `entrega2-v23.mjs`, `viaje-v23.mjs` (el viaje del dinero), `probar-motor.mjs` (motor y casos borde), `humo-v23.mjs`, `capturas-ux.mjs` y `contraste-v23.mjs`.
+Fuera del repo (en `.gitignore`, solo en la copia local): `capturas/` y `herramientas/` (`recorrer-v2.mjs` 13 casos, `recorrer-sets.mjs` sets A y B, `recorrer-modos.mjs` entrada, entrenamiento, tres personas y copia, `probar-pwa.mjs` (también datos reales tras actualizar), `instalar-ua.mjs`, `contraste*.mjs`, `generar-iconos.mjs`, `generar-sw.mjs` + `sw.plantilla.js`, `servidor.mjs`). Nuevo en la v2.5: `v25.mjs` (el entrenamiento nuevo completo en las dos versiones, V2-59, la oferta de tarjetas, «Practicar», «?» y «Aprende», legibilidad, movimiento y contraste), `diario-antes.mjs` (las 71 capturas de la v2.4.1 para el diario de fricción) y `sonda-v25.mjs` (recorre un capítulo con capturas, para revisar). Nuevo en la v2.4.1: `v241.mjs` (V2-56 a V2-58, las dos versiones completas con la revisión automática de cada paso y los ejercicios nuevos). Nuevo en la v2.4: `v24.mjs` (el entrenamiento completo, legibilidad, «?», consejos, «Practicar» y contraste). Nuevo en la v2.3.1: `v231.mjs` (V2-50 a V2-55, la corrección adicional y «Compartir copia»). Nuevos en la v2.3: `aceptacion-v23.mjs` (la prueba de aceptación de Victor, migración, Carlos, reparto, pagado y fecha futura), `entrega2-v23.mjs`, `viaje-v23.mjs` (el viaje del dinero), `probar-motor.mjs` (motor y casos borde), `humo-v23.mjs`, `capturas-ux.mjs` y `contraste-v23.mjs`.
 
 ## 9. Qué falta
+
+**v2.5:** hecho lo pedido (evaluación con el diario de fricción, «Lo esencial» y «Aprende más» en las dos versiones, ritmo y claridad, V2-59, «Practicar» con su capítulo, los «?» y «Aprende» con los mismos textos). Queda lo de «PENDIENTE» en la sección v2.5 y las preguntas 31–35. Para Victor: actualizar y hacer «Lo esencial» de su versión en el teléfono.
 
 **v2.4:** hecho lo pedido (el recorrido nuevo con «Hazlo tú» y «¿Lo entendí?», los «?», «Aprende», los consejos, «Practicar» de fácil a difícil y los tres ajustes previos). Queda lo de «PENDIENTE» en la sección v2.4 y las preguntas 21–25. Para Victor: actualizar, hacer el recorrido completo y luego compartirlo con la familia.
 
