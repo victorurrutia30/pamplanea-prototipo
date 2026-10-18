@@ -1,10 +1,15 @@
-// Producto v2.4.1 · prototipo. MODO ENTRENAMIENTO «a prueba de todo», en DOS VERSIONES. Al entrar, una sola
-// pregunta («¿Cómo te entra el dinero?») elige el recorrido de ingreso fijo (Ana, que cobra por quincena) o el de
-// ingresos que varían (Rosa, que vende pupusas y recibe una remesa sin fecha fija). Cada uno: pasos cortos (una
-// idea por paso, con números redondos), «Hazlo tú» (la persona hace la acción de verdad; «Muéstrame» primero
-// señala dónde tocar y «Hazlo por mí» lo hace), «¿Lo entendí?» (4 preguntas, con repaso) y retomar donde se
-// quedó. Se puede cambiar de versión en cualquier momento. Al terminar o saltar, los ejemplos vuelven a como
-// estaban. También «Practicar con ejemplos», de fácil a difícil, primero los de tu versión.
+// Producto v2.5 · prototipo. MODO ENTRENAMIENTO «sencillo y a fondo». Una sola pregunta al entrar («¿Cómo te entra el
+// dinero?») elige la versión: fecha fija (Ana, que cobra por quincena) o ingresos que varían (Rosa, que vende pupusas y
+// recibe una remesa). Cada versión tiene «Lo esencial» (6 pasos que bastan para empezar con tus datos) y «Aprende más»
+// (capítulos cortos y opcionales, en cualquier orden y otro día, con su marca de «hecho»).
+// Cada paso sigue el mismo orden: qué estás viendo (el título) → para qué te sirve → un ejemplo con números redondos.
+// Esos textos salen del glosario: son los mismos de los «?» y de «Aprende».
+// NADA avanza solo: siempre es la persona quien toca. El resaltado entra despacio, late dos veces y se queda; la
+// tarjeta aparece después. «Hazlo tú»: una instrucción concreta con una flecha (solo se puede tocar lo que señala),
+// «Hazlo por mí» hace un solo toque a la vez y, al terminar, una pausa con antes → después y el porqué, con
+// «Entendido». Una pregunta al final de cada capítulo («Casi: …» y «Repasar este paso»). Al terminar o salir, los
+// ejemplos vuelven a como estaban; se retoma donde se quedó. También «Practicar con ejemplos», de fácil a difícil, con
+// el capítulo que conviene hacer antes.
 'use strict';
 (() => {
     const P = window.P;
@@ -12,7 +17,9 @@
     const { esc, icon } = P;
     const $ = (s) => document.querySelector(s);
     const dinero = M.dinero;
-    const esperar = (ms) => new Promise((r) => setTimeout(r, ms));
+    /** «$400» sin centavos si no los tiene, «$290.60» si los tiene: para las frases de la pausa. */
+    const corto = (c) => dinero(Math.abs(c)).replace(/\.00$/, '');
+    const glosario = (id, variable) => window.terminoGlosario(id, variable);
 
     // ------------------------------------------------------------------ ayudas para los pasos
     const cerrarHoja = () => P.ui.hoja && P.cerrarHoja({ sinFoco: true });
@@ -20,20 +27,11 @@
         cerrarHoja();
         if (P.ui.tab !== tab || P.ui.stack.length) P.irTab(tab);
     };
-    const foto = () => {
-        const k = P.calc();
-        return { libre: k.libre, tienes: k.tienes, efectivo: M.saldoLugar(P.st, 'efectivo'), proxima: k.proxima };
+    /** Abre una pantalla dentro de una pestaña («‹ Mi dinero» dice de dónde viene). */
+    const abrirEn = (tab, tipo, id) => () => {
+        irA(tab)();
+        P.abrir(tipo, id);
     };
-    /** Escribe en un campo como lo haría la persona (para «Hazlo por mí»). */
-    function escribirEn(sel, valor) {
-        const el = document.querySelector(sel);
-        if (!el) return;
-        el.value = valor;
-        el.dispatchEvent(new Event('input', { bubbles: true }));
-    }
-    const grupo = (titulo) => [...document.querySelectorAll('.grupo')].find((g) => g.querySelector('.grupo-t')?.textContent === titulo) || null;
-    const enPantalla = (tab) => P.ui.tab === tab && !P.ui.stack.length;
-    const hoja = (tipo) => P.ui.hoja && P.ui.hoja.tipo === tipo;
     const abrirDesglose = () => {
         irA('hoy')();
         P.abrirHoja('desglose');
@@ -41,181 +39,122 @@
     const abrirPagos = () => {
         P.ui.pagosModo = 'calendario';
         P.ui.pagosVista = 'actual';
-        irA('pagos')();
+        cerrarHoja();
+        P.irTab('pagos');
     };
-    /** Dónde tocar para anotar algo (sirve para la venta, el gasto y las pupusas). */
+    const grupo = (titulo) => [...document.querySelectorAll('.grupo')].find((g) => g.querySelector('.grupo-t')?.textContent === titulo) || null;
+    /** Una tarjeta de la pantalla por su título («Lo pagas con», «Tus ahorros»…). */
+    const seccion = (titulo) => () => [...document.querySelectorAll('#pantalla section.card')].find((s) => (s.querySelector('.card-t')?.textContent || '').trim().startsWith(titulo)) || null;
+    const enPantalla = (tab) => P.ui.tab === tab && !P.ui.stack.length;
+    const arriba = () => P.ui.stack.at(-1) || null;
+    const hoja = (tipo) => P.ui.hoja && P.ui.hoja.tipo === tipo;
+    const foto = () => {
+        const k = P.calc();
+        return { libre: k.libre, tienes: k.tienes, efectivo: M.saldoLugar(P.st, 'efectivo'), quedan: k.proxima ? k.proxima.quedan : null, apartado: k.apartado, porDia: k.porDia, hasta: k.hz.fecha || null };
+    };
+    /** Señales de «Hazlo tú»: dónde tocar, qué decir y qué hace «Hazlo por mí» (un solo toque). */
+    const tocar = (sel, texto) => ({ sel, texto, hacer: 'tocar' });
+    const escribir = (sel, valor, texto) => ({ sel, texto, hacer: { escribir: valor } });
     const senalAnotar = (frase) => () => {
-        if (!hoja('anotar')) return { sel: '[data-fk="nav-anotar"]', texto: 'Toca el botón (+) de abajo.' };
+        if (!hoja('anotar')) return tocar('[data-fk="nav-anotar"]', 'Toca el botón + de abajo.');
         const q = document.getElementById('anotar-q');
-        if (q && !q.value.trim()) return { sel: '#anotar-q', texto: `Escribe «${frase}» en «¿Qué pasó?».` };
-        return { sel: '[data-fk="anotar-guardar"]', texto: 'Toca «Guardar».' };
+        if (q && M.normalizar(q.value.trim()) !== M.normalizar(frase)) return escribir('#anotar-q', frase, `Escribe «${frase}» en «¿Qué pasó?».`);
+        return tocar('[data-fk="anotar-guardar"]', 'Revisa lo que entendí y toca «Guardar».');
     };
-    const hacerAnotar = (frase, tab = 'hoy') => async () => {
-        irA(tab)();
-        P.acciones.anotar();
-        await esperar(600);
-        escribirEn('#anotar-q', frase);
-        await esperar(1000);
-        if (hoja('anotar')) P.acciones.anotarGuardar();
-    };
-    /** Cuadrar el efectivo: Mi dinero → Cuentas → Cuadrar → Efectivo → cuánto → Cuadrar. */
+    /** Cuadrar el efectivo: Cuentas → Cuadrar → Efectivo → cuánto → Cuadrar. */
     const senalCuadrar = () => {
         if (hoja('cuadrar')) {
             const h = P.ui.hoja;
-            if (h.lugar !== 'efectivo') return { sel: '[data-fk="op-lugar-efectivo"]', texto: 'Elige «Efectivo».' };
-            if (M.leerMonto(h.monto) === null) return { sel: '#f-monto', texto: `Escribe ${M.montoCampo(T.cuadre.di)}.` };
-            return { sel: '[data-fk="hoja-ok"]', texto: 'Toca «Cuadrar».' };
+            if (h.lugar !== 'efectivo') return tocar('[data-fk="op-lugar-efectivo"]', 'Elige «Efectivo».');
+            if (M.leerMonto(h.monto) !== T.cuadre.di) return escribir('#f-monto', M.montoCampo(T.cuadre.di), `Escribe ${corto(T.cuadre.di)} en «¿Cuánto tienes ahora?».`);
+            return tocar('[data-fk="hoja-ok"]', 'Toca «Cuadrar».');
         }
-        const top = P.ui.stack.at(-1);
-        if (top && top.tipo === 'cuentas') return { sel: '[data-fk="md-cuadrar"]', texto: 'Toca «Cuadrar».' };
-        if (!enPantalla('midinero')) return { sel: '[data-fk="nav-midinero"]', texto: 'Toca «Mi dinero» abajo.' };
-        return { sel: '[data-fk="md-cuentas"]', texto: 'Toca «Cuentas».' };
+        const top = arriba();
+        if (top && top.tipo === 'cuentas') return tocar('[data-fk="md-cuadrar"]', 'Toca «Cuadrar».');
+        if (!enPantalla('midinero')) return tocar('[data-fk="nav-midinero"]', 'Toca «Mi dinero» abajo.');
+        return tocar('[data-fk="md-cuentas"]', 'Toca «Cuentas».');
     };
-    const hacerCuadrar = async () => {
-        irA('midinero')();
-        await esperar(300);
-        P.abrir('cuentas');
-        await esperar(800);
-        P.abrirHoja('cuadrar', { id: 'efectivo' });
-        await esperar(700);
-        escribirEn('#f-monto', M.montoCampo(T.cuadre.di));
-        await esperar(1000);
-        if (hoja('cuadrar')) P.acciones.cuadrarOk();
-    };
+    /** Lo que la app cree que hay en efectivo y un número redondo un poco menor (se fija al empezar el paso). */
     const prepararCuadre = () => {
-        irA('midinero')();
-        // Lo que la app cree y un número redondo un poco menor (se fija al empezar el paso).
         const e = M.saldoLugar(P.st, 'efectivo');
         T.cuadre = { cree: e, di: Math.max(0, Math.floor((e - 1) / 500) * 500) };
     };
-    const celebraCuadre = (a, d) => (d.efectivo !== a.efectivo ? `¡Listo! Los ${dinero(Math.abs(a.efectivo - d.efectivo))} de diferencia quedan «sin detalle», sin culpa.` : '¡Listo! Cuadró exacto: tu número ya es el real.');
-    const FIN = { titulo: '¡Listo! Ya sabes lo principal', texto: 'Si dudas, toca «?» o mira «Aprende». ¿Qué quieres hacer ahora?' };
+    const abrirCuentas = () => {
+        prepararCuadre();
+        abrirEn('midinero', 'cuentas')();
+    };
+    /** «Pongámonos al día», paso a paso. `efectivo`: lo que la persona contó (quien vende y no anotó sus ventas). */
+    const senalAlDia = (efectivo = null) => () => {
+        const top = arriba();
+        if (!top || top.tipo !== 'aldia') return enPantalla('hoy') ? tocar('[data-fk="aldia"]', 'Toca «Empezar» en «Pongámonos al día».') : tocar('[data-fk="nav-hoy"]', 'Toca «Hoy» abajo.');
+        if (top.paso === 1) {
+            const si = document.querySelector('[data-fk^="adi-si-"][aria-pressed="false"]');
+            return si ? tocar(`[data-fk="${si.dataset.fk}"]`, 'Sí te llegó: toca «Sí, me cayó».') : tocar('[data-fk="ad-sig"]', 'Toca «Siguiente».');
+        }
+        if (top.paso === 2) {
+            const falta = document.querySelector('[data-fk^="adp-pagado-"][aria-pressed="false"]');
+            if (falta && document.querySelector('[data-fk="ad-todos"]')) return tocar('[data-fk="ad-todos"]', 'Ya pagaste todo: toca «Marcar todos como pagados».');
+            if (falta) return tocar(`[data-fk="${falta.dataset.fk}"]`, 'Ya lo pagaste: toca «Pagado».');
+            return tocar('[data-fk="ad-sig"]', 'Toca «Siguiente».');
+        }
+        if (top.paso === 3) {
+            const campo = document.getElementById('adc-efectivo');
+            if (efectivo !== null && campo && M.leerMonto(campo.value) !== efectivo * 100) return escribir('#adc-efectivo', String(efectivo), `Contaste tu efectivo: escribe ${efectivo} en «Efectivo».`);
+            return tocar('[data-fk="ad-sig"]', efectivo !== null ? 'Toca «Listo».' : 'Deja lo que dice y toca «Listo».');
+        }
+        return null;
+    };
+    /** «Tu libre bajó de $400 a $394 porque anotaste $6 de pupusas». */
+    const cambioLibre = (a, d, porque) => `${d.libre === a.libre ? `Tu libre no cambió: sigue en ${corto(d.libre)}` : `Tu libre ${d.libre < a.libre ? 'bajó' : 'subió'} de ${corto(a.libre)} a ${corto(d.libre)}`}${porque ? ` porque ${porque}` : ''}.`;
+    const filaLibre = (a, d) => ({ l: 'Libre', a: a.libre, d: d.libre });
+    const pausaLibre = (titulo, porque) => (a, d) => ({ titulo, filas: [filaLibre(a, d)], texto: cambioLibre(a, d, porque(a, d)) });
 
-    // ------------------------------------------------------------------ versión 1 · ingreso fijo (Ana, quincena)
-    /** Ana para el recorrido: su luz de octubre ya está pagada y el teléfono ($15) vence el 25, antes de su quincena. */
-    function cargarAna() {
+    // ------------------------------------------------------------------ los ejemplos de cada capítulo
+    /** Deja el libre en un número redondo moviendo el último cuadre de un lugar (solo en los ejemplos del entrenamiento). */
+    function redondear(st, meta, lugarId) {
+        const delta = meta - M.calcular(st).libre;
+        const l = M.lugar(st, lugarId);
+        if (!delta || !l || !l.cuadre) return;
+        const r = st.registros.find((x) => x.tipo === 'cuadre' && x.seq === l.cuadre.seq);
+        if (r) r.monto += delta;
+        l.cuadre = { ...l.cuadre, monto: l.cuadre.monto + delta };
+    }
+    /** Sin tarjeta de crédito: la tarjeta tiene su capítulo y no debe aparecer antes en el número. */
+    function sinTarjetas(st) {
+        const tarjetas = new Set(st.tarjetas.map((t) => t.id));
+        const medios = new Set(st.medios.filter((m) => m.tarjeta).map((m) => m.id));
+        st.tarjetas = [];
+        st.medios = st.medios.filter((m) => !m.tarjeta);
+        st.registros = st.registros.filter((r) => !medios.has(r.medio) && !tarjetas.has(r.tarjeta));
+        st.reservasTarjeta = [];
+        st.avisos = st.avisos.filter((x) => !(x.accion && x.accion.tipo === 'tarjeta'));
+    }
+    /** Ana del entrenamiento: su luz de octubre ya está pagada y el teléfono ($15) vence el 25, antes de su quincena. */
+    function ana({ tarjeta = false, libre = 40000, cambio = null } = {}) {
         P.cargarPersona('ana');
         const st = P.st;
         P.marcarPagado(st, 'luz', '2026-10-12', { monto: 3500, medio: 'debito', fecha: '2026-10-12' });
         const tel = P.crearPago(st, { nombre: 'Teléfono', emoji: '📱', categoria: 'telefono', monto: 1500, frecuencia: 'mensual', dia: 25, medio: 'efectivo' });
         Object.assign(tel, { id: 'telefono', desde: '2026-10-01', nuevo: false });
-        st.recorrido = 'fijo';
-        P.render();
+        if (!tarjeta) sinTarjetas(st);
+        if (cambio) cambio(st);
+        if (libre !== null) redondear(st, libre, 'agricola');
+        return st;
     }
-    const FIJO = {
-        id: 'fijo',
-        persona: 'ana',
-        emoji: '💼',
-        etiqueta: 'Me pagan en fecha fija',
-        sub: 'Quincena, mes o semana',
-        corto: 'fecha fija',
-        cargar: cargarAna,
-        pasos: [
-            { antes: irA('hoy'), titulo: 'Te enseño la app en 4 minutos', texto: 'Usamos los datos de Ana, que cobra por quincena. Si cobras por mes o semana, es igual.' },
-            { antes: irA('hoy'), sel: '.portada', titulo: 'Libre: lo que puedes gastar', texto: 'Tienes $100 y antes de tu quincena pagas $40: te quedan $60.' },
-            { antes: abrirDesglose, sel: '.hoja', titulo: '¿De dónde sale?', texto: 'Lo que tienes, menos ahorros y lo que pagas antes de tu quincena.' },
-            {
-                antes: irA('hoy'),
-                hazlo: true,
-                titulo: 'Anota en 5 segundos',
-                texto: 'Toca (+) y escribe «pupusas 6», o díctalo con el micrófono.',
-                claves: ['guardado:gasto'],
-                celebra: (a, d) => `¡Eso! Tu libre bajó ${dinero(a.libre - d.libre)}.`,
-                senal: senalAnotar('pupusas 6'),
-                muestrame: hacerAnotar('pupusas 6'),
-            },
-            { antes: irA('hoy'), sel: 'section[aria-labelledby="h-pagos"]', titulo: 'Lo que viene', texto: 'Lo que vence antes de tu quincena ya está restado.' },
-            {
-                antes: irA('hoy'),
-                hazlo: true,
-                titulo: 'Marca un pago',
-                texto: 'Ya pagaste el teléfono: toca «Pagado» junto a él.',
-                claves: ['guardado:pagado'],
-                celebra: (a, d) => (d.libre === a.libre ? '¡Listo! Tu libre no cambió: ya estaba contado.' : `¡Listo! Tu libre pasó de ${dinero(a.libre)} a ${dinero(d.libre)}.`),
-                senal: () => (enPantalla('hoy') ? { sel: '[data-fk^="pagado-p-telefono-"]', texto: 'Toca «Pagado» junto al teléfono.' } : { sel: '[data-fk="nav-hoy"]', texto: 'Toca «Hoy» abajo.' }),
-                async muestrame() {
-                    irA('hoy')();
-                    await esperar(300);
-                    const b = document.querySelector('[data-fk^="pagado-p-telefono-"]');
-                    if (b) {
-                        b.scrollIntoView({ block: 'center' });
-                        await esperar(600);
-                        b.click();
-                    } else P.acciones.pagado({ tipo: 'pago', id: 'telefono', fecha: '2026-10-25' });
-                },
-            },
-            {
-                antes: irA('hoy'),
-                sel: '.proy',
-                titulo: 'Tu próxima quincena',
-                // Con los números que se ven en la pantalla (los del motor).
-                texto: () => {
-                    const x = P.calc().proxima;
-                    return x ? `Entran ${dinero(x.entra, { aprox: true })}, pagas ${dinero(x.pagos, { aprox: true })} y te quedarían ${dinero(x.quedan, { aprox: true })}. Si hoy te sobra, pásalo a la próxima.` : 'Lo que entra, lo que pagas y lo que te quedaría.';
-                },
-            },
-            {
-                antes: irA('hoy'),
-                hazlo: true,
-                titulo: '¿Con qué lo pagas?',
-                texto: 'El colegio sale de tu quincena del 30. Ábrelo y págalo con lo que tienes ahora.',
-                claves: ['guardado:pagarCon'],
-                celebra: (a, d) => (a.libre > d.libre ? `¡Bien! ${dinero(a.libre - d.libre)} apartados para el colegio. También puedes repartirlo entre dos quincenas.` : '¡Bien! Así eliges de qué dinero sale cada pago. También puedes repartirlo.'),
-                senal: () => {
-                    if (hoja('pagarCon')) return P.ui.hoja.modo === 'uno:ahora' ? { sel: '[data-fk="pc-ok"]', texto: 'Toca «Guardar».' } : { sel: '[data-fk="pc-uno:ahora"]', texto: 'Elige «Con lo que tienes ahora».' };
-                    const top = P.ui.stack.at(-1);
-                    if (top && top.tipo === 'pago' && top.id === 'colegio') return { sel: '[data-fk="pagar-con"]', texto: 'Toca «Cambiar o repartir».' };
-                    if (!enPantalla('hoy')) return { sel: '[data-fk="nav-hoy"]', texto: 'Toca «Hoy» abajo.' };
-                    return { sel: '[data-fk="p-colegio-2026-11-05"]', texto: 'Toca el colegio en «Próximos pagos».' };
-                },
-                async muestrame() {
-                    irA('hoy')();
-                    P.abrir('pago', 'colegio');
-                    await esperar(800);
-                    P.abrirHoja('pagarCon', { id: 'colegio', fecha: '2026-11-05' });
-                    await esperar(800);
-                    if (!hoja('pagarCon')) return;
-                    P.ui.hoja.modo = 'uno:ahora';
-                    P.render();
-                    await esperar(1000);
-                    P.acciones.pagarConOk();
-                },
-            },
-            { antes: abrirPagos, sel: () => grupo('Más adelante'), titulo: 'Con el aguinaldo', texto: 'Un pago de enero puede salir del aguinaldo; cuenta cuando te cae.' },
-            { antes: abrirPagos, sel: '[data-fk="nuevo-ingreso"]', titulo: 'Adelanto de salario', texto: '¿Te adelantan $100? En «Ingreso esperado» elige «Adelanto»: tu quincena vendrá con $100 menos.' },
-            { antes: irA('midinero'), sel: '[data-fk="md-ahorros"]', titulo: 'Ahorros', texto: 'Ponle nombre a $50: «Emergencias». Sigue en tu banco; ya no cuenta en tu libre.' },
-            {
-                antes: prepararCuadre,
-                hazlo: true,
-                titulo: 'Cuadra tu efectivo',
-                texto: () => `La app cree que tienes ${dinero(T.cuadre.cree)} en efectivo. Di lo que tienes: ${dinero(T.cuadre.di)}.`,
-                claves: ['guardado:cuadre'],
-                celebra: celebraCuadre,
-                senal: senalCuadrar,
-                muestrame: hacerCuadrar,
-            },
-            { antes: irA('midinero'), sel: '[data-fk="md-deudas"]', titulo: 'Tarjetas y préstamos', texto: 'Comprar con tarjeta baja tu libre ese día. Cuando llegue tu estado de cuenta, anótalo.' },
-            { antes: irA('hoy'), titulo: '¿Volviste después de días?', texto: 'Sin culpa: «Pongámonos al día» te pregunta qué llegó y qué pagaste.' },
-            { antes: irA('hoy'), quiz: true, titulo: '¿Lo entendí?', texto: 'Cuatro preguntas rápidas. No es examen.' },
-        ],
-        /** «¿Lo entendí?»: nunca «incorrecto»; si falla una, se ofrece repasar solo ese paso. */
-        preguntas: [
-            { p: 'Tienes $100 y antes de tu quincena pagas $40. ¿Cuánto tienes libre?', ops: ['$100', '$60', '$140'], bien: 1, si: '¡Exacto! $100 menos $40: te quedan $60 para gastar.', casi: 'Casi: $100 menos los $40 que pagas antes: te quedan $60.', repaso: 1 },
-            // V2-58 (#21): marcar Pagado no cambia el libre.
-            { p: 'Cuando marcas un pago como Pagado, ¿qué pasa con tu libre?', ops: ['Baja', 'No cambia, ya estaba contado', 'Sube'], bien: 1, si: '¡Así es! Ya lo tenía restado: solo baja lo que tienes.', casi: 'Casi: ese pago ya estaba restado. Por eso tu libre no cambia.', repaso: 5 },
-            { p: 'Te pagan el 29 y el alquiler vence el 30. ¿Con qué se paga?', ops: ['Con lo que tienes hoy', 'Con tu quincena del 29', 'Con tu aguinaldo'], bien: 1, si: '¡Así es! Se paga con lo que te cae antes. Tú lo puedes cambiar o repartir.', casi: 'Casi: se paga con tu quincena del 29, que llega antes.', repaso: 7 },
-            { p: 'Pones $50 en tu ahorro «Emergencias». ¿Dónde queda ese dinero?', ops: ['En una cuenta nueva', 'Se gasta', 'En tu banco o efectivo, con nombre'], bien: 2, si: '¡Eso! No se mueve: solo le pones nombre y deja de contar en tu libre.', casi: 'Casi: sigue en tu banco o efectivo; solo le pones nombre.', repaso: 10 },
-        ],
-        fin: FIN,
-    };
-
-    // ------------------------------------------------------------------ versión 2 · ingresos que varían (Rosa)
-    function cargarRosa() {
+    function rosa({ libre = null, cambio = null } = {}) {
         P.cargarPersona('rosa');
-        P.st.recorrido = 'variable';
-        P.render();
+        const st = P.st;
+        if (cambio) cambio(st);
+        if (libre !== null) redondear(st, libre, 'efectivo');
+        return st;
     }
-    // Una semana mala, solo para verla: el efectivo baja a $20 y, al salir del paso, vuelve a como estaba.
+    const preparar = (fn, marca) => () => {
+        const st = fn();
+        st.recorrido = marca;
+        P.ui.descartados = {};
+        P.render();
+    };
+    // Una semana mala, solo para verla: el efectivo baja a $20 y «Volver a mis números» lo deja como estaba (V2-59 #29).
     const SEMANA_MALA = 'semana-mala';
     function simularSemanaMala() {
         const st = P.st;
@@ -233,174 +172,414 @@
         M.lugar(st, r.lugar).cuadre = r.antes;
         P.render();
     }
-    const faltaProximo = () => {
-        const x = P.calc().proxima;
-        return x ? x.deficit : 0;
-    };
-    const VARIABLE = {
-        id: 'variable',
-        persona: 'rosa',
-        emoji: '🏪',
-        etiqueta: 'Me entra cuando vendo o trabajo',
-        sub: 'Varía',
-        corto: 'ingresos que varían',
-        cargar: cargarRosa,
-        pasos: [
-            { antes: irA('hoy'), titulo: 'Te enseño la app en 4 minutos', texto: 'Usamos los datos de Rosa: vende pupusas y su hijo le manda remesa.' },
-            { antes: irA('hoy'), sel: '.portada', titulo: 'Libre: lo que puedes gastar', texto: 'Hasta fin de mes. Si tienes $100 y pagas $40, te quedan $60.' },
-            { antes: abrirDesglose, sel: '.hoja', titulo: '¿De dónde sale?', texto: 'Lo que tienes, menos ahorros y lo que pagas antes de fin de mes.' },
-            { antes: abrirDesglose, sel: '[aria-labelledby="l-hz"]', titulo: '¿Hasta cuándo?', texto: 'Tú eliges: hasta fin de mes o los próximos 15 días. Lo cambias aquí.' },
-            {
-                antes: irA('hoy'),
-                hazlo: true,
-                titulo: 'Anota una venta',
-                texto: 'Vendiste $45: toca (+) y escribe «vendí 45».',
-                claves: ['guardado:ingreso'],
-                celebra: (a, d) => (d.libre > a.libre ? `¡Eso! Tu libre subió ${dinero(d.libre - a.libre)}.` : '¡Eso! Tu venta ya está anotada.'),
-                senal: senalAnotar('vendí 45'),
-                muestrame: hacerAnotar('vendí 45'),
-            },
-            {
-                antes: irA('hoy'),
-                hazlo: true,
-                titulo: 'Un gasto del negocio',
-                texto: 'Compraste queso para las pupusas: anota «queso 12».',
-                claves: ['guardado:gasto'],
-                celebra: (a, d) => `¡Listo! Tu libre bajó ${dinero(a.libre - d.libre)}. Lo del negocio se anota igual.`,
-                senal: senalAnotar('queso 12'),
-                muestrame: hacerAnotar('queso 12'),
-            },
-            { antes: irA('hoy'), sel: 'section[aria-labelledby="h-pagos"]', titulo: 'Lo que viene', texto: 'Lo que vence antes de fin de mes, como la cuota del 25, ya está restado.' },
-            { antes: abrirPagos, sel: '[data-fk^="i-remesa-"]', titulo: 'La remesa que esperas', texto: 'No suma hasta que llega. Ese día, ábrela y toca «Ya llegó».' },
-            {
-                antes: irA('hoy'),
-                sel: '.proy',
-                titulo: 'El próximo mes',
-                texto: () => {
-                    const k = P.calc();
-                    const x = k.proxima;
-                    if (!x) return 'Aquí ves lo que pagas después.';
-                    const cuando = k.hz.modo === 'quince' ? 'En los 15 días siguientes' : `En ${M.MESES[M.partes(x.inicio)[1] - 1]}`;
-                    return x.entra ? `${cuando} esperas ${dinero(x.entra, { aprox: true })} y pagas ${dinero(x.pagos, { aprox: true })}.` : `${cuando} pagas ${dinero(x.pagos, { aprox: true })}. Tus ventas no las cuento antes: por eso dice «entra ~$0».`;
-                },
-            },
-            {
-                antes: irA('hoy'),
-                hazlo: true,
-                titulo: 'Guarda para el alquiler',
-                texto: () => `Tus ventas varían: toca «Sí, ${dinero(faltaProximo())}» y escribe 40. Tú decides cuánto.`,
-                claves: ['guardado:reservar'],
-                celebra: (a, d) => `¡Bien! ${dinero(a.libre - d.libre)} guardados para el alquiler. Nada se aparta solo.`,
-                senal: () => {
-                    if (hoja('reservar')) return M.leerMonto(P.ui.hoja.monto) === 4000 ? { sel: '[data-fk="reservar-ok"]', texto: 'Toca «Reservar».' } : { sel: '#f-monto', texto: 'Escribe 40 en «¿Cuánto?».' };
-                    if (!enPantalla('hoy')) return { sel: '[data-fk="nav-hoy"]', texto: 'Toca «Hoy» abajo.' };
-                    return { sel: '[data-fk="at-sug-si"]', texto: `Toca «Sí, ${dinero(faltaProximo())}».` };
-                },
-                async muestrame() {
-                    irA('hoy')();
-                    await esperar(300);
-                    const b = document.querySelector('[data-fk="at-sug-si"]');
-                    if (b) {
-                        b.scrollIntoView({ block: 'center' });
-                        await esperar(600);
-                        b.click();
-                    } else P.abrirHoja('reservar', { id: 'despues', fecha: 'ahora' });
-                    await esperar(700);
-                    escribirEn('#f-monto', '40');
-                    await esperar(1000);
-                    if (hoja('reservar')) P.acciones.reservarOk();
-                },
-            },
-            {
-                antes: () => {
-                    irA('hoy')();
-                    simularSemanaMala();
-                },
-                despues: quitarSemanaMala,
-                sel: '.portada',
-                titulo: '¿Semana mala?',
-                texto: 'Así se vería si vendes poco: libre en $0 y te digo cuánto falta. Sin culpa.',
-            },
-            { antes: irA('midinero'), sel: '[data-fk="md-ahorros"]', titulo: 'Ahorros', texto: 'Ponle nombre a $50: «Emergencias». No se mueve y no cuenta en tu libre.' },
-            {
-                antes: prepararCuadre,
-                hazlo: true,
-                titulo: 'Cuadra al final del día',
-                texto: () => `Cuenta tu efectivo. La app cree que tienes ${dinero(T.cuadre.cree)}: di ${dinero(T.cuadre.di)}.`,
-                claves: ['guardado:cuadre'],
-                celebra: celebraCuadre,
-                senal: senalCuadrar,
-                muestrame: hacerCuadrar,
-            },
-            { antes: irA('hoy'), titulo: '¿Volviste después de días?', texto: 'Sin culpa: «Pongámonos al día» te pregunta qué llegó, qué pagaste y cuánto tienes.' },
-            { antes: irA('hoy'), quiz: true, titulo: '¿Lo entendí?', texto: 'Cuatro preguntas rápidas. No es examen.' },
-        ],
-        preguntas: [
-            { p: 'Tienes $100 y antes de fin de mes pagas $40. ¿Cuánto tienes libre?', ops: ['$100', '$60', '$140'], bien: 1, si: '¡Exacto! $100 menos $40: te quedan $60 para gastar.', casi: 'Casi: $100 menos los $40 que pagas antes: te quedan $60.', repaso: 1 },
-            { p: 'Esperas una remesa de $150 que no ha llegado. ¿Cuenta en tu libre?', ops: ['Sí, ya cuenta', 'No, cuenta cuando llega', 'Solo la mitad'], bien: 1, si: '¡Así es! Suma el día que llega y tocas «Ya llegó».', casi: 'Casi: la remesa suma cuando llega, no antes.', repaso: 7 },
-            { p: 'Tus ventas varían y el alquiler vence el 5. ¿Qué hace la app?', ops: ['Lo aparta sola', 'Te sugiere guardar; tú decides', 'Nada'], bien: 1, si: '¡Eso! Te sugiere cuánto guardar y tú decides.', casi: 'Casi: nunca aparta sola. Te sugiere guardar y tú decides cuánto.', repaso: 9 },
-            { p: 'Tuviste una semana mala y tu libre está en $0. ¿Qué significa?', ops: ['Que hiciste algo mal', 'Que no te sobra', 'Que la app falló'], bien: 1, si: '¡Así es! No te sobra, y te digo cuánto falta. Sin culpa.', casi: 'Casi: $0 es que no te sobra. Te digo cuánto falta, sin culpa.', repaso: 10 },
-        ],
-        fin: FIN,
-    };
-    const RECORRIDOS = { fijo: FIJO, variable: VARIABLE };
-    const otraDe = (id) => (id === 'variable' ? FIJO : VARIABLE);
 
-    // ------------------------------------------------------------------ el recorrido
-    let R = FIJO;
-    const T = (P.tour = { activo: false, elegir: false, i: 0, repaso: null, RECORRIDOS });
-    Object.defineProperties(T, {
-        PASOS: { get: () => R.pasos },
-        PREGUNTAS: { get: () => R.preguntas },
-        FIN: { get: () => R.fin },
-        version: { get: () => R.id },
+    // ------------------------------------------------------------------ versión 1 · fecha fija (Ana)
+    const pasoLibre = { que: 'Este número es tu libre', g: 'libre', antes: irA('hoy'), sel: '.portada' };
+    const pasoAnotar = (frase, porque) => ({
+        que: 'Este botón + es para anotar',
+        g: 'anotar',
+        antes: irA('hoy'),
+        sel: '[data-fk="nav-anotar"]',
+        hazlo: { claves: ['guardado:gasto', 'guardado:ingreso'], senal: senalAnotar(frase), foco: '.portada', pausa: pausaLibre('Mira tu libre', () => porque) },
     });
-    const textoDe = (paso) => (typeof paso.texto === 'function' ? paso.texto() : paso.texto);
-    /** Todos los textos de una versión (para la prueba de legibilidad), con números de ejemplo donde son dinámicos. */
-    T.textos = (version = R.id) => {
-        const r = RECORRIDOS[version];
-        const previo = R;
-        R = r;
-        T.cuadre = T.cuadre || { cree: 3400, di: 3000 };
-        const a = { libre: 29060, tienes: 106460, efectivo: 3400 };
-        const d = { libre: 28460, tienes: 104960, efectivo: 3000 };
-        const conMotor = typeof P.calc === 'function' && P.st;
-        const out = [
-            ...r.pasos.flatMap((p) => [p.titulo, conMotor || typeof p.texto !== 'function' ? textoDe(p) : '', ...(p.celebra ? [p.celebra(a, d), p.celebra(a, a)] : [])]),
-            ...r.preguntas.flatMap((q) => [q.p, ...q.ops, q.si, q.casi]),
-            r.fin.titulo,
-            r.fin.texto,
-            '¿Sigues donde te quedaste?',
-            '¿Cómo te entra el dinero?',
-            TEXTO_ELEGIR,
-            r.etiqueta,
-            r.sub,
-        ];
-        R = previo;
-        return out.filter(Boolean);
+    const pasoCuadrar = {
+        que: 'Aquí cuadras tu efectivo',
+        g: 'cuadrar',
+        antes: abrirCuentas,
+        sel: '#pantalla section.total',
+        hazlo: { claves: ['guardado:cuadre'], senal: senalCuadrar, foco: '#pantalla section.total', pausa: pausaLibre('Cuadraste tu efectivo', (a, d) => (d.efectivo < a.efectivo ? `tenías ${corto(a.efectivo - d.efectivo)} menos de lo que creía la app` : 'ahora la app tiene lo que tienes de verdad')) },
+    };
+    const ESENCIAL_FIJO = {
+        id: 'esencial',
+        titulo: 'Lo esencial',
+        sub: 'Lo que basta para empezar',
+        persona: 'ana',
+        intro: 'Usamos los datos de Ana, que cobra por quincena. Si cobras por mes o semana, es igual.',
+        cargar: preparar(() => ana(), 'fijo:esencial'),
+        pasos: [
+            pasoLibre,
+            { que: 'Aquí ves de dónde sale', g: 'deDondeSale', antes: abrirDesglose, sel: '.hoja .desglose' },
+            pasoAnotar('pupusas 6', 'anotaste $6 de pupusas'),
+            {
+                que: 'Estos son tus próximos pagos',
+                g: 'pagado',
+                antes: irA('hoy'),
+                sel: 'section[aria-labelledby="h-pagos"]',
+                hazlo: {
+                    claves: ['guardado:pagado'],
+                    senal: () => (enPantalla('hoy') ? tocar('[data-fk^="pagado-p-telefono-"]', 'Ya pagaste el teléfono: toca «Pagado» junto a él.') : tocar('[data-fk="nav-hoy"]', 'Toca «Hoy» abajo.')),
+                    foco: '.portada',
+                    pausa: (a, d) => ({ titulo: 'Mira tu libre', filas: [filaLibre(a, d), { l: 'Tienes', a: a.tienes, d: d.tienes }], texto: d.libre === a.libre ? `Tu libre no cambió: el teléfono ya estaba restado. Lo que tienes bajó ${corto(a.tienes - d.tienes)}.` : cambioLibre(a, d, 'marcaste el teléfono') }),
+                },
+            },
+            { que: 'Aquí ves con qué pagas el colegio', g: 'pagasCon', antes: abrirEn('pagos', 'pago', 'colegio'), sel: seccion('Lo pagas con') },
+            pasoCuadrar,
+        ],
+        pregunta: { p: 'Tienes $100 y antes de tu quincena pagas $40. ¿Cuánto tienes libre?', ops: ['$100', '$60', '$140'], bien: 1, si: '¡Exacto! $100 menos $40: te quedan $60 para gastar.', casi: 'Casi: a los $100 réstale los $40 que pagas antes. Te quedan $60.', repaso: 0 },
+    };
+    const PROXIMA = {
+        id: 'proxima',
+        titulo: 'Próxima quincena y pasar lo que sobra',
+        sub: 'Cómo quedas cuando te paguen',
+        persona: 'ana',
+        cargar: preparar(() => ana(), 'fijo:proxima'),
+        pasos: [
+            { que: 'Esta es tu próxima quincena', g: 'proxima', antes: irA('hoy'), sel: '.proy-w' },
+            { que: 'Mira el signo ~ en «~$600»', g: 'aprox', antes: irA('hoy'), sel: '.proy-w' },
+            {
+                que: 'Aquí pasas lo que te sobra',
+                g: 'pasar',
+                antes: abrirDesglose,
+                sel: '[data-fk="d-pasar"]',
+                hazlo: {
+                    claves: ['guardado:pasarProxima'],
+                    senal: () => {
+                        if (hoja('pasarProxima')) return M.leerMonto(P.ui.hoja.monto) === 5000 ? tocar('[data-fk="pasar-ok"]', 'Toca «Guardar».') : escribir('#f-monto', '50', 'Escribe 50 en «¿Cuánto pasas?».');
+                        if (hoja('desglose')) return tocar('[data-fk="d-pasar"]', 'Toca «¿Pasas algo de lo que te sobra a la próxima?».');
+                        return enPantalla('hoy') ? tocar('[data-fk="portada"]', 'Toca tu número.') : tocar('[data-fk="nav-hoy"]', 'Toca «Hoy» abajo.');
+                    },
+                    foco: '.proy-w',
+                    pausa: (a, d) => ({ titulo: 'Mira tu próxima quincena', filas: [filaLibre(a, d), ...(a.quedan !== null ? [{ l: 'Te quedarían', a: a.quedan, d: d.quedan, aprox: true }] : [])], texto: cambioLibre(a, d, `pasaste ${corto(a.libre - d.libre)} a tu próxima quincena`) }),
+                },
+            },
+            { que: 'Aquí cambias o repartes un pago', g: 'repartir', antes: abrirEn('pagos', 'pago', 'colegio'), sel: seccion('Lo pagas con') },
+        ],
+        pregunta: { p: 'Ves «entra ~$600». ¿Qué quiere decir el signo ~?', ops: ['Exactamente $600', 'Más o menos $600', 'Que ya te cayó'], bien: 1, si: '¡Así es! ~ es «más o menos». Cuenta de verdad cuando te cae.', casi: 'Casi: ~ quiere decir «más o menos». Cuenta de verdad cuando te cae.', repaso: 1 },
+    };
+    const pasoAhorros = { que: 'Aquí están tus ahorros', g: 'ahorros', antes: abrirEn('midinero', 'ahorros'), sel: seccion('Tus ahorros') };
+    const pasoAhorrar = (monto) => ({
+        que: 'Así guardas en un ahorro',
+        g: 'ahorrar',
+        antes: abrirEn('midinero', 'ahorros'),
+        sel: '[data-fk="md-apartar"]',
+        hazlo: {
+            claves: ['guardado:apartar'],
+            senal: () => {
+                if (hoja('apartar')) {
+                    const h = P.ui.hoja;
+                    if (M.leerMonto(h.monto) !== monto * 100) return escribir('#f-monto', String(monto), `Escribe ${monto} en «¿Cuánto quieres ahorrar?».`);
+                    if (h.apartado !== 'emergencias') return tocar('[data-fk="op-apartado-emergencias"]', 'Elige «Emergencias».');
+                    return tocar('[data-fk="hoja-ok"]', 'Toca «Ahorrar».');
+                }
+                const top = arriba();
+                if (top && top.tipo === 'ahorros') return tocar('[data-fk="md-apartar"]', 'Toca «Ahorrar».');
+                return enPantalla('midinero') ? tocar('[data-fk="md-ahorros"]', 'Toca «Ahorros».') : tocar('[data-fk="nav-midinero"]', 'Toca «Mi dinero» abajo.');
+            },
+            foco: '#pantalla section.total',
+            pausa: (a, d) => ({ titulo: 'Mira tu libre', filas: [filaLibre(a, d), { l: 'En ahorros', a: a.apartado, d: d.apartado }], texto: cambioLibre(a, d, `guardaste ${corto(d.apartado - a.apartado)} en Emergencias`) }),
+        },
+    });
+    const AHORROS_FIJO = {
+        id: 'ahorros',
+        titulo: 'Ahorros',
+        sub: 'Ponle nombre a una parte de tu dinero',
+        persona: 'ana',
+        cargar: preparar(() => ana(), 'fijo:ahorros'),
+        pasos: [pasoAhorros, pasoAhorrar(50), { que: 'Este es tu ahorro para la laptop', g: 'usar', antes: abrirEn('midinero', 'apartado', 'laptop'), sel: '[data-fk="ap-usar"]' }],
+        pregunta: { p: 'Pones $50 en tu ahorro «Emergencias». ¿Dónde queda ese dinero?', ops: ['En una cuenta nueva', 'Se gasta', 'En tu banco o efectivo, con nombre'], bien: 2, si: '¡Eso! No se mueve: solo le pones nombre y deja de contar en tu libre.', casi: 'Casi: sigue en tu banco o efectivo. Solo le pones nombre.', repaso: 0 },
+    };
+    const pasosTarjeta = (frase, cosa) => [
+        { que: 'Tu número incluye la tarjeta', g: 'tarjeta', antes: irA('hoy'), sel: '.portada' },
+        {
+            que: 'Anota una compra con tarjeta',
+            para: `Escribe «tarjeta» al final: así la app sabe que no salió de tu efectivo.`,
+            ejemplo: `Compraste ${cosa} de $30 con tarjeta: escribes «${frase}».`,
+            antes: irA('hoy'),
+            sel: '[data-fk="nav-anotar"]',
+            hazlo: { claves: ['guardado:gasto'], senal: senalAnotar(frase), foco: '.portada', pausa: pausaLibre('Mira tu libre', (a, d) => `compraste ${corto(a.libre - d.libre)} con tarjeta, aunque la pagues después`) },
+        },
+        { que: 'Esto es «Deudas»', g: 'deudas', antes: abrirEn('midinero', 'deudas'), sel: seccion('Tus deudas') },
+        { que: 'Este es tu estado de cuenta', g: 'estadoCuenta', antes: () => abrirEn('midinero', 'tarjeta', P.st.tarjetas[0].id)(), sel: () => document.querySelector('#pantalla .dato-grid')?.closest('section') || null },
+    ];
+    const PREGUNTA_TARJETA = { p: 'Compras $30 con tu tarjeta de crédito. ¿Cuándo baja tu libre?', ops: ['Hoy, el día que compras', 'Cuando pagas la tarjeta', 'Nunca'], bien: 0, si: '¡Así es! Baja hoy, aunque la pagues después. Así no te llevas sorpresas.', casi: 'Casi: baja hoy, el día que compras. Así no te llevas sorpresas.', repaso: 0 };
+    const TARJETAS_FIJO = {
+        id: 'tarjetas',
+        titulo: 'Tarjetas y estado de cuenta',
+        sub: 'Comprar con tarjeta y su estado de cuenta',
+        persona: 'ana',
+        cargar: preparar(() => ana({ tarjeta: true, libre: 30000 }), 'fijo:tarjetas'),
+        pasos: pasosTarjeta('zapatos 30 tarjeta', 'zapatos'),
+        pregunta: PREGUNTA_TARJETA,
+    };
+    const EXTRAS = {
+        id: 'extras',
+        titulo: 'Aguinaldo y adelanto',
+        sub: 'Lo que te cae una vez',
+        persona: 'ana',
+        cargar: preparar(
+            () =>
+                ana({
+                    cambio: (st) => {
+                        // La matrícula de enero ya va con el aguinaldo (V2-52).
+                        st.pagos.push({ id: 'matricula', nombre: 'Matrícula', emoji: '🎒', categoria: 'educacion', monto: 10000, estimado: false, frecuencia: 'unico', fecha: '2027-01-15', medio: 'transferencia', avisos: [{ tipo: 'vence', on: true }], desde: '2026-10-21', hechos: {}, previos: [], asignaciones: { '2027-01-15': [{ de: 'unico:aguinaldo', monto: 10000 }] } });
+                    },
+                }),
+            'fijo:extras',
+        ),
+        pasos: [
+            { que: 'Aquí ves tu aguinaldo', g: 'aguinaldo', antes: abrirPagos, sel: () => grupo('Más adelante') },
+            { que: 'Aquí ves la matrícula de enero', g: 'pagarConExtra', antes: abrirEn('pagos', 'pago', 'matricula'), sel: seccion('Lo pagas con') },
+            { que: 'Aquí anotas un adelanto de salario', g: 'adelanto', antes: abrirPagos, sel: '[data-fk="nuevo-ingreso"]' },
+        ],
+        pregunta: { p: 'Tu aguinaldo llega el 12 de diciembre. ¿Cuándo suma a tu libre?', ops: ['Desde hoy', 'El día que llega', 'En enero'], bien: 1, si: '¡Así es! Suma el día que llega, no antes.', casi: 'Casi: suma el día que llega. Antes no cuenta.', repaso: 0 },
+    };
+    const pasosVolver = ({ efectivo = null, ejemplo, porque }) => [
+        { que: 'Si pasas días sin abrirla', g: 'alDia', antes: irA('hoy'), sel: 'section[aria-labelledby="av-dia"]' },
+        {
+            que: 'Ponte al día en un minuto',
+            para: 'Te pregunta tres cosas: qué te llegó, qué pagaste y cuánto tienes.',
+            ejemplo,
+            antes: irA('hoy'),
+            sel: 'section[aria-labelledby="av-dia"]',
+            hazlo: { claves: ['aldia:fin'], senal: senalAlDia(efectivo), foco: null, pausa: pausaLibre('¡Listo, estás al día!', () => porque) },
+        },
+    ];
+    const PREGUNTA_VOLVER = { p: 'Volviste después de dos semanas sin anotar. ¿Qué haces?', ops: ['Borras todo y empiezas', 'Tocas «Pongámonos al día»', 'Anotas todo lo que gastaste'], bien: 1, si: '¡Eso! En un minuto quedas al día, sin culpa.', casi: 'Casi: no tienes que anotar todo. «Pongámonos al día» te pregunta lo importante.', repaso: 0 };
+    const VOLVER_FIJO = {
+        id: 'volver',
+        titulo: 'Volver después de días',
+        sub: 'Ponte al día sin culpa',
+        persona: 'ana',
+        cargar: preparar(
+            () =>
+                ana({
+                    cambio: (st) => {
+                        st.hoy = '2026-11-06';
+                        st.avisos = [];
+                    },
+                }),
+            'fijo:volver',
+        ),
+        pasos: pasosVolver({ ejemplo: 'Te llegó la quincena y pagaste lo que vencía: lo marcas y listo.', porque: 'confirmaste lo que te llegó y lo que pagaste' }),
+        pregunta: PREGUNTA_VOLVER,
+    };
+
+    // ------------------------------------------------------------------ versión 2 · ingresos que varían (Rosa)
+    const ESENCIAL_VAR = {
+        id: 'esencial',
+        titulo: 'Lo esencial',
+        sub: 'Lo que basta para empezar',
+        persona: 'rosa',
+        intro: 'Usamos los datos de Rosa: vende pupusas y su hijo le manda remesa.',
+        cargar: preparar(() => rosa(), 'variable:esencial'),
+        pasos: [
+            pasoLibre,
+            pasoAnotar('vendí 45', 'anotaste $45 de ventas'),
+            {
+                que: 'Con el mismo botón anotas un gasto',
+                para: 'Lo del negocio y lo de la casa se anotan igual.',
+                ejemplo: 'Compraste queso por $12: escribes «queso 12».',
+                antes: irA('hoy'),
+                sel: '[data-fk="nav-anotar"]',
+                hazlo: { claves: ['guardado:gasto'], senal: senalAnotar('queso 12'), foco: '.portada', pausa: pausaLibre('Mira tu libre', () => 'anotaste $12 de queso') },
+            },
+            { que: 'Estos son tus próximos pagos', g: 'loQueViene', antes: irA('hoy'), sel: 'section[aria-labelledby="h-pagos"]' },
+            {
+                que: 'Este aviso te ayuda con el alquiler',
+                g: 'guardar',
+                antes: irA('hoy'),
+                sel: '.aviso-hoy',
+                hazlo: {
+                    claves: ['guardado:reservar'],
+                    senal: () => {
+                        if (hoja('reservar')) return M.leerMonto(P.ui.hoja.monto) === 4000 ? tocar('[data-fk="reservar-ok"]', 'Toca «Reservar».') : escribir('#f-monto', '40', 'Borra el número y escribe 40 en «¿Cuánto?».');
+                        if (!enPantalla('hoy')) return tocar('[data-fk="nav-hoy"]', 'Toca «Hoy» abajo.');
+                        const b = document.querySelector('[data-fk="at-sug-si"]');
+                        return tocar('[data-fk="at-sug-si"]', `Toca «${b ? b.textContent.trim() : 'Sí'}».`);
+                    },
+                    foco: '.portada',
+                    pausa: pausaLibre('Mira tu libre', (a, d) => `guardaste ${corto(a.libre - d.libre)} para el alquiler`),
+                },
+            },
+            { ...pasoCuadrar, que: 'Aquí cuadras al final del día' },
+        ],
+        pregunta: { p: 'Tienes $100 y antes de fin de mes pagas $40. ¿Cuánto tienes libre?', ops: ['$100', '$60', '$140'], bien: 1, si: '¡Exacto! $100 menos $40: te quedan $60 para gastar.', casi: 'Casi: a los $100 réstale los $40 que pagas antes. Te quedan $60.', repaso: 0 },
+    };
+    const HORIZONTE = {
+        id: 'horizonte',
+        titulo: '¿Hasta cuándo ves tu libre?',
+        sub: 'Hasta fin de mes o 15 días',
+        persona: 'rosa',
+        cargar: preparar(() => rosa(), 'variable:horizonte'),
+        pasos: [
+            { que: 'Tu libre llega hasta fin de mes', g: 'hastaCuando', antes: irA('hoy'), sel: '.portada' },
+            {
+                que: 'Cámbialo a 15 días',
+                para: 'Toca tu número y, abajo, elige «Los próximos 15 días».',
+                ejemplo: 'Hoy es 21: con 15 días ves hasta el 5 del otro mes.',
+                antes: irA('hoy'),
+                sel: '.portada',
+                hazlo: {
+                    claves: ['guardado:horizonte'],
+                    senal: () => (hoja('desglose') ? tocar('[data-fk="hz-quince"]', 'Toca «Los próximos 15 días».') : enPantalla('hoy') ? tocar('[data-fk="portada"]', 'Toca tu número.') : tocar('[data-fk="nav-hoy"]', 'Toca «Hoy» abajo.')),
+                    foco: '.portada',
+                    pausa: (a, d) => ({ titulo: 'Ahora ves 15 días', filas: [filaLibre(a, d), { l: 'Por día', a: a.porDia, d: d.porDia, aprox: true }], texto: `Tu libre ahora llega hasta el ${d.hasta ? M.fechaCorta(d.hasta) : 'día 15'}${d.porDia !== null ? `: son ${dinero(d.porDia, { aprox: true })} por día` : ''}.` }),
+                },
+            },
+            { que: 'También lo cambias en tu cuenta', para: 'Toca tu letra, arriba, y luego «Cómo te entra el dinero».', ejemplo: 'Ahí eliges: hasta fin de mes o los próximos 15 días.', antes: () => (irA('hoy')(), P.abrirHoja('menu')), sel: '[data-fk="menu-calendar-clock"]' },
+        ],
+        pregunta: { p: 'Tu libre dice «Hasta fin de mes». ¿Lo puedes cambiar?', ops: ['No, es fijo', 'Sí, a los próximos 15 días', 'Solo el primer día'], bien: 1, si: '¡Así es! Lo cambias cuando quieras.', casi: 'Casi: lo cambias cuando quieras, desde tu número o desde tu cuenta.', repaso: 0 },
+    };
+    const PROXIMO_MES = {
+        id: 'proximoMes',
+        titulo: 'El próximo mes y la remesa',
+        sub: 'Lo que viene y lo que esperas',
+        persona: 'rosa',
+        cargar: preparar(() => rosa(), 'variable:proximoMes'),
+        pasos: [
+            { que: 'Así quedas el próximo mes', g: 'proxima', antes: irA('hoy'), sel: '.proy-w' },
+            { que: 'Esta es la remesa que esperas', g: 'remesa', antes: abrirPagos, sel: '[data-fk^="i-remesa-"]' },
+            {
+                que: 'Cuando llegue, dilo aquí',
+                para: 'El día que te llega, abre la remesa y toca «Ya llegó».',
+                ejemplo: 'Llegan $150: ese día tu libre sube $150.',
+                antes: abrirPagos,
+                sel: '[data-fk^="i-remesa-"]',
+                hazlo: {
+                    claves: ['reparte:fin'],
+                    senal: () => {
+                        const top = arriba();
+                        if (top && top.tipo === 'reparte') return tocar('[data-fk="rep-listo"]', 'Toca «Listo».');
+                        if (hoja('ingresoLlego')) return tocar('[data-fk="ing-ok"]', 'Deja lo que dice y toca «Siguiente».');
+                        if (top && top.tipo === 'ingreso') return tocar('[data-fk="ing-llego"]', 'Toca «Ya llegó».');
+                        return enPantalla('pagos') ? tocar('[data-fk^="i-remesa-"]', 'Toca «Remesa de Josué».') : tocar('[data-fk="nav-pagos"]', 'Toca «Pagos» abajo.');
+                    },
+                    foco: '.portada',
+                    pausa: pausaLibre('Llegó la remesa', (a, d) => `llegó la remesa de ${corto(d.libre - a.libre)}`),
+                },
+            },
+        ],
+        pregunta: { p: 'Esperas una remesa de $150 que no ha llegado. ¿Cuenta en tu libre?', ops: ['Sí, ya cuenta', 'No, cuenta cuando llega', 'Solo la mitad'], bien: 1, si: '¡Así es! Suma el día que llega y tocas «Ya llegó».', casi: 'Casi: la remesa suma cuando llega, no antes.', repaso: 1 },
+    };
+    const AHORROS_VAR = {
+        id: 'ahorros',
+        titulo: 'Ahorros y semanas malas',
+        sub: 'Ponle nombre a tu dinero; si vendes poco, sin culpa',
+        persona: 'rosa',
+        cargar: preparar(() => rosa(), 'variable:ahorros'),
+        pasos: [
+            pasoAhorros,
+            pasoAhorrar(20),
+            // V2-59 (#29): la semana mala ya no aparece sola: la persona la abre y la cierra.
+            { que: 'Si vendes poco, tu libre puede llegar a $0', g: 'libreCero', antes: irA('hoy'), sel: '.portada', ejemploVer: { boton: 'Ver un ejemplo', que: 'Así se vería una semana mala', texto: 'Libre en $0 y te digo cuánto falta. Puedes sacar de un ahorro. Sin culpa.', volver: 'Volver a mis números' } },
+        ],
+        pregunta: { p: 'Tuviste una semana mala y tu libre está en $0. ¿Qué significa?', ops: ['Que hiciste algo mal', 'Que no te sobra', 'Que la app falló'], bien: 1, si: '¡Así es! No te sobra, y te digo cuánto falta. Sin culpa.', casi: 'Casi: $0 es que no te sobra. Te digo cuánto falta, sin culpa.', repaso: 2 },
+    };
+    const TARJETAS_VAR = {
+        id: 'tarjetas',
+        titulo: 'Tarjetas y estado de cuenta',
+        sub: 'Comprar con tarjeta y su estado de cuenta',
+        persona: 'rosa',
+        cargar: preparar(
+            () =>
+                rosa({
+                    libre: 10000,
+                    cambio: (st) => {
+                        st.tarjetas.push({ id: 'credito', nombre: 'Crédito Agrícola', emoji: '💳', tipo: 'tarjeta', corte: 10, pagoDia: 5, cupo: 50000, interesesAnio: 0, estados: [{ corte: '2026-10-10', total: 2000, minimo: 500, aPagar: 2000, opcion: 'total', vence: '2026-11-05' }] });
+                        st.medios.push({ id: 'credito', nombre: 'Crédito Agrícola', emoji: '💳', tarjeta: 'credito' });
+                    },
+                }),
+            'variable:tarjetas',
+        ),
+        pasos: pasosTarjeta('harina 30 tarjeta', 'harina'),
+        pregunta: PREGUNTA_TARJETA,
+    };
+    const VOLVER_VAR = {
+        id: 'volver',
+        titulo: 'Volver después de días',
+        sub: 'Ponte al día sin culpa',
+        persona: 'rosa',
+        cargar: preparar(
+            () =>
+                rosa({
+                    cambio: (st) => {
+                        st.hoy = '2026-11-02';
+                        st.avisos = [];
+                    },
+                }),
+            'variable:volver',
+        ),
+        // Quien vende y no anotó sus ventas: al contar su efectivo, lo vendido ya cuenta.
+        pasos: pasosVolver({ efectivo: 250, ejemplo: 'No anotaste tus ventas: cuentas tu efectivo y lo vendido ya cuenta.', porque: 'contaste tu efectivo: lo que vendiste estos días ya cuenta' }),
+        pregunta: PREGUNTA_VOLVER,
+    };
+
+    const VERSIONES = {
+        fijo: { id: 'fijo', emoji: '💼', etiqueta: 'Me pagan en fecha fija', sub: 'Quincena, mes o semana', corto: 'fecha fija', persona: 'ana', caps: [ESENCIAL_FIJO, PROXIMA, AHORROS_FIJO, TARJETAS_FIJO, EXTRAS, VOLVER_FIJO] },
+        variable: { id: 'variable', emoji: '🏪', etiqueta: 'Me entra cuando vendo o trabajo', sub: 'Varía', corto: 'ingresos que varían', persona: 'rosa', caps: [ESENCIAL_VAR, HORIZONTE, PROXIMO_MES, AHORROS_VAR, TARJETAS_VAR, VOLVER_VAR] },
+    };
+    for (const v of Object.values(VERSIONES)) for (const c of v.caps) c.version = v.id;
+    const capDe = (version, id) => (VERSIONES[version] || VERSIONES.fijo).caps.find((c) => c.id === id) || null;
+    const clave = (cap) => `${cap.version}:${cap.id}`;
+    const esVariable = (cap) => cap.version === 'variable';
+    /** Los textos de un paso: el título dice qué estás viendo; el glosario, para qué te sirve y un ejemplo. */
+    const textosPaso = (cap, paso) => {
+        const g = paso.g ? glosario(paso.g, esVariable(cap)) : null;
+        return { que: paso.que, para: paso.para || (g ? g.para : ''), ejemplo: paso.ejemplo || (g ? g.ejemplo : '') };
     };
     const TEXTO_ELEGIR = 'Hay dos versiones. Elige la que se parece a ti; después puedes hacer la otra.';
+    const TEXTO_OSCURO = 'Te muestro una cosa a la vez. Lo que queda oscuro lo verás después.';
 
-    // Lo guardado de cada versión (en v2.4 había un solo recorrido: el de ingreso fijo).
+    // ------------------------------------------------------------------ progreso (pamplanea-entrenamiento)
+    const T = (P.tour = { activo: false, fase: null, cap: null, i: 0, VERSIONES, capDe, esperaPausa: 900 });
     const ent = () => (P.modos ? P.modos.entrenamiento() : {});
-    function versiones() {
+    /** Dónde va cada capítulo. Lo «hecho» de la v2.4.1 (el recorrido de 15 pasos) cuenta como «Lo esencial» hecho. */
+    function progreso() {
         const e = ent();
-        return {
-            pasos: e.tourPasos || (e.tourPaso ? { fijo: e.tourPaso } : {}),
-            hechos: e.tours || (e.tour ? { fijo: e.tour } : {}),
-            ultima: RECORRIDOS[e.tourVersion] ? e.tourVersion : null,
-        };
+        const caps = { ...(e.caps || {}) };
+        for (const [v, estado] of Object.entries(e.tours || (e.tour ? { fijo: e.tour } : {}))) {
+            if (estado === 'hecho' && !caps[v + ':esencial']) caps[v + ':esencial'] = { paso: 0, hecho: true };
+        }
+        return { caps, version: VERSIONES[e.tourVersion] ? e.tourVersion : null, ultimo: e.tourUltimo || null };
     }
-    T.versiones = versiones;
-    /** Para «Contarle a Victor»: qué recorrido hizo o saltó. */
+    T.progreso = progreso;
+    const estadoCap = (cap) => progreso().caps[clave(cap)] || { paso: 0, hecho: false };
+    function guardarCap(cap, cambios) {
+        if (!P.modos) return;
+        const pr = progreso();
+        const k = clave(cap);
+        P.modos.guardarEntrenamiento({ caps: { ...pr.caps, [k]: { ...(pr.caps[k] || { paso: 0, hecho: false }), ...cambios } }, tourVersion: cap.version, tourUltimo: k });
+    }
+    /** Para «Contarle a Victor»: qué hizo del entrenamiento. */
     T.resumen = () => {
-        const v = versiones();
-        const partes = Object.values(RECORRIDOS)
-            .filter((r) => v.hechos[r.id])
-            .map((r) => `${v.hechos[r.id] === 'hecho' ? 'hice' : 'salté'} el recorrido de ${r.corto}`);
+        const pr = progreso();
+        const partes = [];
+        for (const v of Object.values(VERSIONES)) {
+            const esencial = pr.caps[v.id + ':esencial'];
+            const mas = v.caps.filter((c) => c.id !== 'esencial' && (pr.caps[clave(c)] || {}).hecho).length;
+            if (esencial && esencial.hecho) partes.push(`hice «Lo esencial» (${v.corto})${mas ? ` y ${mas} ${mas === 1 ? 'capítulo' : 'capítulos'} de «Aprende más»` : ''}`);
+            else if (esencial && esencial.paso > 0) partes.push(`dejé «Lo esencial» (${v.corto}) en el paso ${Math.min(esencial.paso, 6) + 1}`);
+            else if (mas) partes.push(`hice ${mas} ${mas === 1 ? 'capítulo' : 'capítulos'} de «Aprende más» (${v.corto})`);
+        }
         return partes.length ? partes.join(' y ') : 'no lo hice';
     };
+    /** Todos los textos de una versión (para las pruebas de legibilidad), con números de ejemplo donde son dinámicos. */
+    T.textos = (version) => {
+        const v = VERSIONES[version];
+        const a = { libre: 40000, tienes: 131500, efectivo: 1900, quedan: 54500, apartado: 90000, porDia: 4400, hasta: '2026-10-30' };
+        const d = { libre: 39400, tienes: 130000, efectivo: 1500, quedan: 59500, apartado: 95000, porDia: 4300, hasta: '2026-11-05' };
+        T.cuadre = T.cuadre || { cree: 1900, di: 1500 };
+        const out = [v.etiqueta, v.sub, TEXTO_ELEGIR, TEXTO_OSCURO, '¿Cómo te entra el dinero?', '¿Sigues donde te quedaste?'];
+        for (const cap of v.caps) {
+            out.push(cap.titulo, cap.sub);
+            if (cap.intro) out.push(cap.intro);
+            for (const paso of cap.pasos) {
+                const x = textosPaso(cap, paso);
+                out.push(x.que, x.para, x.ejemplo);
+                if (paso.ejemploVer) out.push(paso.ejemploVer.boton, paso.ejemploVer.que, paso.ejemploVer.texto, paso.ejemploVer.volver);
+                if (paso.hazlo) {
+                    const p = paso.hazlo.pausa(a, d);
+                    out.push(p.titulo, p.texto);
+                }
+            }
+            const q = cap.pregunta;
+            out.push(q.p, ...q.ops, q.si, q.casi);
+            out.push(...finTextos(cap));
+        }
+        return out.filter(Boolean);
+    };
 
+    // ------------------------------------------------------------------ dibujar
     function bloquear(si) {
         for (const id of ['vista', 'nav', 'capa-hoja', 'aviso-proto', 'tarea-bar', 'capa-toast']) {
             const el = document.getElementById(id);
@@ -408,154 +587,71 @@
         }
         document.getElementById('app').classList.toggle('con-tour', si);
     }
-    const libreModo = () => {
-        const paso = R.pasos[T.i];
-        return T.activo && !T.elegir && !T.preguntaRetomar && !!paso.hazlo && !T.hecho && T.repaso === null;
-    };
-    const progreso = () => `<div class="tour-prog" aria-hidden="true"><span style="width:${Math.round(((T.i + 1) * 100) / R.pasos.length)}%"></span></div>`;
-    const btn = (texto, accion, { prim = false, fk = '', v = '', extra = '' } = {}) => `<button type="button" class="btn${prim ? ' btn--prim' : ''}" data-a="${accion}"${v !== '' ? ` data-v="${v}"` : ''} data-fk="${fk}" ${extra}>${texto}</button>`;
-
-    // V2-58 (#23): «Muéstrame» primero señala dónde tocar (con una indicación corta) y sigue a la persona
-    // paso a paso; un segundo toque («Hazlo por mí») hace la acción.
-    function dibujarSenal() {
-        const capa = $('#capa-tour');
-        let marco = capa.querySelector('.tour-senal');
-        const paso = R.pasos[T.i];
-        if (!T.activo || !libreModo() || !T.senal || !paso.senal) {
-            if (marco) marco.remove();
-            return;
-        }
-        const s = paso.senal();
-        const texto = capa.querySelector('#tour-senal-t');
-        if (texto && texto.textContent !== s.texto) texto.textContent = s.texto;
-        const el = s.sel ? document.querySelector(s.sel) : null;
-        if (!el || !el.getClientRects().length) {
-            if (marco) marco.remove();
-            return;
-        }
+    const enHazlo = () => T.activo && T.fase === 'hazlo' && !!(T.cap && T.cap.pasos[T.i] && T.cap.pasos[T.i].hazlo);
+    const btn = (texto, accion, { prim = false, fk = '', v = '', extra = '', cls = '' } = {}) => `<button type="button" class="btn${prim ? ' btn--prim' : ''}${cls ? ' ' + cls : ''}" data-a="${accion}"${v !== '' ? ` data-v="${v}"` : ''} data-fk="${fk}" ${extra}>${texto}</button>`;
+    const enlace = (texto, accion, fk, v = '') => `<button type="button" class="link" data-a="${accion}"${v ? ` data-v="${v}"` : ''} data-fk="${fk}">${texto}</button>`;
+    const barra = (n, de) => `<div class="tour-prog" aria-hidden="true"><span style="width:${Math.round((n * 100) / de)}%"></span></div>`;
+    const rectEn = (el) => {
         const app = document.getElementById('app').getBoundingClientRect();
         const r = el.getBoundingClientRect();
-        if (!marco) {
-            marco = document.createElement('div');
-            marco.className = 'tour-senal';
-            marco.setAttribute('aria-hidden', 'true');
-            capa.appendChild(marco);
-        }
-        Object.assign(marco.style, { top: `${r.top - app.top - 4}px`, left: `${r.left - app.left - 4}px`, width: `${r.width + 8}px`, height: `${r.height + 8}px` });
-    }
-    let senalRaf = 0;
-    const seguirSenal = () => {
-        if (!T.senal) return;
-        cancelAnimationFrame(senalRaf);
-        senalRaf = requestAnimationFrame(dibujarSenal);
+        return { top: r.top - app.top, left: r.left - app.left, width: r.width, height: r.height, appW: app.width, appH: app.height };
     };
-    new MutationObserver(seguirSenal).observe(document.getElementById('app'), { childList: true, subtree: true });
-    document.addEventListener('scroll', seguirSenal, true);
-    document.addEventListener('input', seguirSenal, true);
-
-    /** v2.4.1: «¿Cómo te entra el dinero?» — elige la versión (recuerda cuál hiciste y dónde ibas). */
-    function pintarElegir(capa) {
-        const v = versiones();
-        const op = (r) => {
-            const paso = v.pasos[r.id] || 0;
-            const estado = v.hechos[r.id] === 'hecho' ? `${icon('circle-check', 'ico-xs')}Ya lo hiciste` : paso > 0 && paso < r.pasos.length ? `Ibas en el paso ${paso + 1} de ${r.pasos.length}` : '';
-            return `<button type="button" class="opcion-g elegir-op tour-version" data-a="tourVersion" data-v="${r.id}" data-fk="tour-version-${r.id}">${P.caja(r.emoji)}<span class="opcion-g-txt"><span class="opcion-g-t">${esc(r.etiqueta)}</span><span class="fila-s">${esc(r.sub)}</span>${estado ? `<span class="fila-s tour-version-e">${estado}</span>` : ''}</span>${icon('chevron-right', 'ico-xs')}</button>`;
-        };
-        capa.innerHTML = `<div class="tour-velo" aria-hidden="true"></div><section class="tour-card tour-card--centro" role="dialog" aria-modal="true" aria-labelledby="tour-t" aria-describedby="tour-x"><p class="paso">Recorrido de 4 minutos</p><h2 class="tour-t" id="tour-t" tabindex="-1">¿Cómo te entra el dinero?</h2><p class="txt" id="tour-x">${esc(TEXTO_ELEGIR)}</p><div class="opciones-grandes">${op(FIJO)}${op(VARIABLE)}</div><div class="tour-acc"><button type="button" class="link" data-a="tourCerrar" data-v="saltado" data-fk="tour-saltar">Ahora no</button></div></section>`;
-        capa.querySelector('#tour-t').focus({ preventScroll: true });
+    /** Lo oscuro alrededor de lo que se explica (o se toca): cuatro piezas y, en medio, el hueco. */
+    function oscuro(caja, appW, appH, cls = '') {
+        if (!caja) return `<div class="tour-dim tour-dim--todo${cls}" aria-hidden="true"></div>`;
+        const t = Math.max(0, caja.top);
+        const b = Math.min(appH, caja.top + caja.height);
+        const l = Math.max(0, caja.left);
+        const r = Math.min(appW, caja.left + caja.width);
+        const pieza = (top, left, width, height) => (width > 0 && height > 0 ? `<div class="tour-dim${cls}" style="top:${top}px;left:${left}px;width:${width}px;height:${height}px" aria-hidden="true"></div>` : '');
+        return pieza(0, 0, appW, t) + pieza(b, 0, appW, appH - b) + pieza(t, 0, l, b - t) + pieza(t, r, appW - r, b - t);
+    }
+    const resolver = (sel) => (typeof sel === 'function' ? sel() : sel ? document.querySelector(sel) : null);
+    const visible = (el) => !!el && el.getClientRects().length > 0;
+    /**
+     * Pone a la vista lo que se resalta moviendo solo su lista (la hoja o la pantalla). Nunca `scrollIntoView`: movía
+     * la página entera y la barra de «Hazlo tú» se salía de la pantalla.
+     */
+    function alaVista(el) {
+        const cont = el.closest('.hoja-c') || el.closest('#vista');
+        if (cont) {
+            const r = el.getBoundingClientRect();
+            const c = cont.getBoundingClientRect();
+            const fuera = r.top < c.top + 8 || r.bottom > c.bottom - 8;
+            if (fuera) cont.scrollTop += r.top + r.height / 2 - (c.top + c.height / 2);
+        }
+        // El marco de la app nunca se desplaza (el teclado del teléfono lo maneja el navegador).
+        const app = document.getElementById('app');
+        if (app && app.scrollTop) app.scrollTop = 0;
+    }
+    /** Lo que se mueve en la app (una hoja que sube, una pantalla que entra) termina antes de medir. */
+    function quieto() {
+        const capa = document.getElementById('capa-tour');
+        const corriendo = (document.getAnimations ? document.getAnimations() : []).filter((a) => a.playState === 'running' && a.effect && a.effect.target && !capa.contains(a.effect.target) && Number.isFinite(a.effect.getComputedTiming().endTime));
+        return corriendo.length ? Promise.all(corriendo.map((a) => a.finished.catch(() => null))) : null;
+    }
+    /** El hueco (con un margen) de lo que se resalta. */
+    function cajaDe(el, m = 6) {
+        const r = rectEn(el);
+        return { top: Math.max(0, r.top - m), left: Math.max(4, r.left - m), width: Math.min(r.appW - 8, r.width + m * 2), height: Math.min(r.appH, r.height + m * 2), appW: r.appW, appH: r.appH };
     }
 
-    function pintar() {
-        const capa = $('#capa-tour');
-        document.documentElement.classList.toggle('con-hazlo', libreModo());
-        capa.classList.toggle('capa-tour--libre', libreModo());
-        if (!T.activo) {
-            capa.innerHTML = '';
-            return;
-        }
-        if (T.elegir) return pintarElegir(capa);
-        const n = R.pasos.length;
-        const paso = R.pasos[T.i];
-        // «Hazlo tú»: una barra arriba que no tapa la app; la persona hace la acción de verdad.
-        if (libreModo()) {
-            const s = T.senal && paso.senal ? paso.senal() : null;
-            capa.innerHTML = `<section class="tour-hz" role="region" aria-labelledby="tour-t" aria-describedby="tour-x">${progreso()}
-                <div class="tour-hz-cab"><p class="tour-hz-n"><span class="sr-only">Paso ${T.i + 1} de ${n}. </span><span aria-hidden="true">Hazlo tú · ${T.i + 1} de ${n} · </span>${esc(paso.titulo)}</p><button type="button" class="link" data-a="tourCerrar" data-v="saltado" data-fk="tour-saltar">Saltar</button></div>
-                <p class="tour-hz-t" id="tour-t" tabindex="-1">${s ? `<span id="tour-senal-t" aria-live="polite">${esc(s.texto)}</span><span id="tour-x" class="sr-only">${esc(textoDe(paso))}</span>` : `<span id="tour-x">${esc(textoDe(paso))}</span>`}</p>
-                <div class="tour-hz-acc">${btn(`${icon('chevron-left', 'ico-s')}<span class="sr-only">Atrás</span>`, 'tourMover', { v: -1, fk: 'tour-atras', extra: `aria-label="Atrás"${T.mostrando ? ' disabled' : ''}` })}${btn(T.senal ? `${icon('sparkles', 'ico-s')}Hazlo por mí` : `${icon('play', 'ico-s')}Muéstrame`, 'tourMuestrame', { prim: true, fk: 'tour-muestrame', extra: T.mostrando ? 'disabled' : '' })}${btn('Siguiente', 'tourMover', { v: 1, fk: 'tour-sig', extra: T.mostrando ? 'disabled' : '' })}</div>
-            </section>`;
-            // Solo al entrar al paso: después la persona está usando la app (no se le quita el foco).
-            if (T.enfocar) capa.querySelector('#tour-t').focus({ preventScroll: true });
-            T.enfocar = false;
-            if (T.senal) dibujarSenal();
-            return;
-        }
+    /** La tarjeta del paso: arriba o abajo de lo resaltado (donde haya más espacio), al pie o al centro. */
+    function pintarTarjeta(capa, { el, cab, titulo, cuerpo, acciones, rol = 'dialog' }) {
         const app = document.getElementById('app').getBoundingClientRect();
-        let el = null;
-        if (!T.preguntaRetomar && !paso.quiz && !(paso.hazlo && T.hecho)) el = typeof paso.sel === 'function' ? paso.sel() : paso.sel ? document.querySelector(paso.sel) : null;
-        let foco = '';
+        let caja = null;
         let lado = 'centro';
         let top = 0;
         if (el) {
-            el.scrollIntoView({ block: 'center', behavior: 'instant' });
-            const r = el.getBoundingClientRect();
-            const m = 6;
-            const caja = { top: Math.max(0, r.top - app.top - m), left: Math.max(4, r.left - app.left - m), width: Math.min(app.width - 8, r.width + m * 2), height: Math.min(app.height, r.height + m * 2) };
-            foco = `<div class="tour-foco" style="top:${caja.top}px;left:${caja.left}px;width:${caja.width}px;height:${caja.height}px" aria-hidden="true"></div>`;
-            // La tarjeta va donde haya más espacio: arriba o abajo de lo resaltado.
+            alaVista(el);
+            caja = cajaDe(el);
             const abajo = app.height - (caja.top + caja.height);
             lado = abajo >= caja.top ? 'abajo' : 'arriba';
-            top = lado === 'abajo' ? caja.top + caja.height + 10 : caja.top - 10;
-            // Si lo resaltado ocupa casi toda la pantalla (una hoja abierta), la tarjeta va abajo, encima.
+            top = lado === 'abajo' ? caja.top + caja.height + 12 : caja.top - 12;
             if (Math.max(abajo, caja.top) < 200) lado = 'pie';
         }
-        const preguntas = R.preguntas;
-        const atras = btn('Atrás', 'tourMover', { v: -1, fk: 'tour-atras', extra: T.i === 0 ? 'disabled' : '' });
-        const saltar = '<button type="button" class="link" data-a="tourCerrar" data-v="saltado" data-fk="tour-saltar">Saltar</button>';
-        const pie = (der) => `<div class="tour-acc">${saltar}<div class="tour-btns">${der}</div></div>`;
-        // v2.4.1: en cualquier paso explicado se puede cambiar de versión.
-        const cambiar = '<button type="button" class="link tour-cambiar" data-a="tourElegir" data-fk="tour-cambiar">Cambiar de versión</button>';
-        let cab = `<div class="tour-cab"><p class="paso"><span class="sr-only">Paso ${T.i + 1} de ${n}. </span><span aria-hidden="true">Recorrido · ${T.i + 1} de ${n}</span></p>${cambiar}</div>`;
-        let titulo = paso.titulo;
-        let cuerpo = `<p class="txt" id="tour-x">${esc(textoDe(paso))}</p>`;
-        let acciones = pie(`${atras}${btn('Siguiente', 'tourMover', { prim: true, v: 1, fk: 'tour-sig' })}`);
-        if (T.preguntaRetomar) {
-            cab = `<p class="paso">Recorrido de ${esc(R.corto)}</p>`;
-            titulo = '¿Sigues donde te quedaste?';
-            cuerpo = `<p class="txt" id="tour-x">Ibas en el paso ${T.preguntaRetomar + 1} de ${n}.</p>`;
-            acciones = `<div class="pila"><button type="button" class="btn btn--prim btn--48 btn--full" data-a="tourRetomar" data-v="si" data-fk="tour-seguir">Seguir</button><button type="button" class="btn btn--48 btn--full" data-a="tourRetomar" data-v="no" data-fk="tour-nuevo">Empezar de nuevo</button></div>`;
-        } else if (T.repaso !== null) {
-            // Repaso de un paso desde «¿Lo entendí?».
-            cab = '<p class="paso">Repaso</p>';
-            acciones = `<div class="tour-acc"><span></span><div class="tour-btns">${btn('Volver a las preguntas', 'tourVolverQuiz', { prim: true, fk: 'tour-volver-quiz' })}</div></div>`;
-        } else if (paso.hazlo && T.hecho) {
-            const a = T.antes;
-            const d = T.despues;
-            cab = `<p class="paso"><span class="sr-only">Paso ${T.i + 1} de ${n}. </span><span aria-hidden="true">Hazlo tú · ${T.i + 1} de ${n}</span></p>`;
-            titulo = '¡Lo hiciste!';
-            cuerpo = `<p class="tour-cel" aria-hidden="true">🎉</p>${a.libre !== d.libre ? `<p class="tour-num"><span>Libre</span> ${dinero(a.libre)} ${icon('arrow-right', 'ico-xs')} <strong>${dinero(d.libre)}</strong></p>` : ''}<p class="txt" id="tour-x">${esc(paso.celebra(a, d))}</p>`;
-        } else if (paso.quiz) {
-            const q = preguntas[T.q];
-            cab = `<p class="paso"><span class="sr-only">Paso ${T.i + 1} de ${n}. </span><span aria-hidden="true">${T.q < preguntas.length ? `¿Lo entendí? · pregunta ${T.q + 1} de ${preguntas.length}` : `Recorrido · ${n} de ${n}`}</span></p>`;
-            if (T.q === 0 && !T.empezoQuiz) {
-                cuerpo = `<p class="txt" id="tour-x">${esc(textoDe(paso))}</p>`;
-                acciones = pie(`${atras}${btn('Empezar', 'tourQuiz', { prim: true, fk: 'tour-quiz' })}`);
-            } else if (q) {
-                titulo = q.p;
-                const fb = T.fb;
-                const ops = q.ops.map((t, j) => `<button type="button" class="opcion-g tour-op${fb ? (j === q.bien ? ' tour-op--bien' : j === fb.elegida ? ' tour-op--casi' : '') : ''}" role="radio" aria-checked="${fb ? j === fb.elegida : false}" data-a="tourResponder" data-v="${j}" data-fk="tour-op-${j}" ${fb ? 'aria-disabled="true"' : ''}><span class="opcion-g-t">${esc(t)}</span>${fb && j === q.bien ? icon('circle-check', 'ico-ok') : ''}</button>`).join('');
-                cuerpo = `<div class="opciones-grandes" role="radiogroup" aria-labelledby="tour-t">${ops}</div>${fb ? `<p class="txt tour-fb${fb.ok ? ' tour-fb--bien' : ''}" id="tour-x" role="status" tabindex="-1">${esc(fb.ok ? q.si : q.casi)}</p>` : ''}`;
-                acciones = fb ? `<div class="tour-acc"><span></span><div class="tour-btns">${btn(T.q + 1 < preguntas.length ? 'Siguiente pregunta' : 'Ver cómo te fue', 'tourQuiz', { prim: true, fk: 'tour-quiz' })}</div></div>` : pie(atras);
-            } else {
-                // Al final: cómo le fue, repasar solo lo que no salió y, si quiere, la otra versión.
-                const fallas = preguntas.map((x, j) => (T.res[j] ? null : j)).filter((j) => j !== null);
-                const otra = otraDe(R.id);
-                titulo = R.fin.titulo;
-                cuerpo = `<p class="txt" id="tour-x">${fallas.length ? `Te fue bien: ${preguntas.length - fallas.length} de ${preguntas.length}. ¿Repasamos lo que faltó?` : `¡Todas! Lo entendiste muy bien.`} ${esc(R.fin.texto)}</p>${fallas.length ? `<div class="pila">${fallas.map((j) => btn(`${icon('rotate-ccw', 'ico-s')}Repasar «${esc(R.pasos[preguntas[j].repaso].titulo)}»`, 'tourRepasar', { v: j, fk: 'tour-repasar-' + j })).join('')}</div>` : ''}`;
-                acciones = `<div class="pila"><button type="button" class="btn btn--prim btn--48 btn--full" data-a="tourPracticar" data-fk="tour-practicar">${icon('list-checks', 'ico-s')}Practicar con ejemplos</button><button type="button" class="btn btn--48 btn--full" data-a="tourUsar" data-fk="tour-usar">${icon('smartphone', 'ico-s')}Empezar con mis datos</button><button type="button" class="btn btn--48 btn--full" data-a="tourOtra" data-fk="tour-otra">${icon('play', 'ico-s')}Ver también: ${esc(otra.corto)}</button></div><button type="button" class="link" data-a="tourCerrar" data-v="hecho" data-fk="tour-mirar">Seguir mirando los ejemplos</button>`;
-            }
-        }
-        capa.innerHTML = `${el ? foco : '<div class="tour-velo" aria-hidden="true"></div>'}<section class="tour-card tour-card--${lado}" role="dialog" aria-modal="true" aria-labelledby="tour-t" aria-describedby="tour-x" style="${lado === 'abajo' ? `top:${top}px` : lado === 'arriba' ? `bottom:${app.height - top}px` : ''}">${progreso()}${cab}<h2 class="tour-t" id="tour-t" tabindex="-1">${esc(titulo)}</h2>${cuerpo}${acciones}</section>`;
+        const anillo = caja ? `<div class="tour-foco" style="top:${caja.top}px;left:${caja.left}px;width:${caja.width}px;height:${caja.height}px" aria-hidden="true"></div>` : '';
+        capa.innerHTML = `${oscuro(caja, app.width, app.height)}${anillo}<section class="tour-card tour-card--${lado}" role="${rol}" aria-modal="true" aria-labelledby="tour-t" aria-describedby="tour-x" style="${lado === 'abajo' ? `top:${top}px` : lado === 'arriba' ? `bottom:${app.height - top}px` : ''}">${cab}<h2 class="tour-t" id="tour-t" tabindex="-1">${titulo}</h2><div id="tour-x">${cuerpo}</div>${acciones}</section>`;
         // Si la tarjeta no cabe completa arriba o abajo, va al pie de la pantalla (nunca cortada).
         const card = capa.querySelector('.tour-card');
         const r = card.getBoundingClientRect();
@@ -564,262 +660,506 @@
             card.style.top = '';
             card.style.bottom = '';
         }
-        (capa.querySelector('.tour-fb') && T.enfocarFb ? capa.querySelector('.tour-fb') : capa.querySelector('#tour-t')).focus({ preventScroll: true });
+    }
+    const cabecera = (texto, extra = '') => `<div class="tour-cab"><p class="paso">${texto}</p>${extra}</div>`;
+    const indicador = (cap, i) => `${esc(cap.titulo === 'Lo esencial' ? 'Lo esencial' : cap.titulo)} · paso ${i + 1} de ${cap.pasos.length}`;
+    const cuerpoPaso = (x) => `${x.para ? `<p class="txt tour-para">${esc(x.para)}</p>` : ''}${x.ejemplo ? `<p class="tour-ej"><span class="tour-ej-l">Ejemplo</span><span class="tour-ej-x">${esc(x.ejemplo)}</span></p>` : ''}`;
+    const salir = enlace('Salir', 'tourSalir', 'tour-salir');
+    const pie = (izq, der) => `<div class="tour-acc">${izq}<div class="tour-btns">${der}</div></div>`;
+
+    function pintar() {
+        const capa = $('#capa-tour');
+        const libre = enHazlo();
+        document.documentElement.classList.toggle('con-hazlo', libre);
+        capa.classList.toggle('capa-tour--libre', libre);
+        capa.classList.toggle('tour-entra', !!T.animar);
+        if (!T.activo) {
+            capa.innerHTML = '';
+            T.pintado = null;
+            return;
+        }
+        if (T.fase === 'elegir') pintarElegir(capa);
+        else if (T.fase === 'hazlo') pintarHazlo(capa);
+        else pintarFase(capa);
+        if (T.enfocar !== false) {
+            const f = (T.enfocarFb && capa.querySelector('.tour-fb')) || capa.querySelector('#tour-t');
+            if (f) f.focus({ preventScroll: true });
+        }
         T.enfocarFb = false;
+        T.enfocar = true;
+        T.animar = false;
+        // Para las pruebas: qué está dibujado (la fase y el paso).
+        T.pintado = `${T.fase}:${T.i}`;
     }
     function repintar() {
-        // Esperar a que la pantalla se dibuje para medir lo que se resalta.
-        requestAnimationFrame(() => requestAnimationFrame(pintar));
+        // Esperar a que la pantalla se dibuje (y a que termine de entrar una hoja) para medir lo que se resalta.
+        requestAnimationFrame(() =>
+            requestAnimationFrame(() => {
+                const espera = quieto();
+                if (espera) espera.then(() => requestAnimationFrame(pintar));
+                else pintar();
+            }),
+        );
     }
-    function guardarPaso(i) {
-        if (!P.modos) return;
-        const v = versiones();
-        P.modos.guardarEntrenamiento({ tourVersion: R.id, tourPasos: { ...v.pasos, [R.id]: i } });
+
+    /** «¿Cómo te entra el dinero?» — elige la versión (recuerda lo hecho y dónde ibas). */
+    function pintarElegir(capa) {
+        const pr = progreso();
+        const op = (v) => {
+            const e = pr.caps[v.id + ':esencial'] || {};
+            const esencial = v.caps[0];
+            const estado = e.hecho ? `${icon('circle-check', 'ico-xs')}Ya hiciste «Lo esencial»` : e.paso > 0 ? `Ibas en el paso ${Math.min(e.paso, esencial.pasos.length) + 1} de ${esencial.pasos.length}` : '';
+            return `<button type="button" class="opcion-g elegir-op tour-version" data-a="tourVersion" data-v="${v.id}" data-fk="tour-version-${v.id}">${P.caja(v.emoji)}<span class="opcion-g-txt"><span class="opcion-g-t">${esc(v.etiqueta)}</span><span class="fila-s">${esc(v.sub)}</span>${estado ? `<span class="fila-s tour-version-e">${estado}</span>` : ''}</span>${icon('chevron-right', 'ico-xs')}</button>`;
+        };
+        capa.innerHTML = `<div class="tour-dim tour-dim--todo" aria-hidden="true"></div><section class="tour-card tour-card--centro" role="dialog" aria-modal="true" aria-labelledby="tour-t" aria-describedby="tour-x"><p class="paso">Aprender a usarla</p><h2 class="tour-t" id="tour-t" tabindex="-1">¿Cómo te entra el dinero?</h2><p class="txt" id="tour-x">${esc(TEXTO_ELEGIR)}</p><div class="opciones-grandes">${op(VERSIONES.fijo)}${op(VERSIONES.variable)}</div><div class="tour-acc">${enlace('Ahora no', 'tourCerrar', 'tour-saltar')}</div></section>`;
     }
-    function ir(i) {
-        const previo = R.pasos[T.i];
-        if (previo && previo.despues && i !== T.i) previo.despues();
-        // Lo que se simula en un paso (la semana mala) nunca queda en los ejemplos.
-        quitarSemanaMala();
-        // El aviso de lo que se hizo en un «Hazlo tú» no sigue a la vista en el paso siguiente.
+
+    function pintarFase(capa) {
+        const cap = T.cap;
+        const n = cap.pasos.length;
+        const paso = cap.pasos[T.i];
+        const atras = btn('Atrás', 'tourAtras', { fk: 'tour-atras', extra: T.i === 0 && T.fase === 'paso' && !cap.intro ? 'disabled' : '' });
+        if (T.fase === 'intro') {
+            return pintarTarjeta(capa, {
+                cab: cabecera(`${esc(cap.titulo)} · ${n} pasos`, enlace('Cambiar de versión', 'tourElegir', 'tour-cambiar')),
+                titulo: 'Te enseño lo esencial',
+                cuerpo: `<p class="txt tour-para">${esc(cap.intro)}</p><p class="txt tour-para">${esc(TEXTO_OSCURO)}</p>`,
+                acciones: pie(enlace('Ahora no', 'tourSalir', 'tour-salir'), btn('Empezar', 'tourEmpezarCap', { prim: true, fk: 'tour-empezar' })),
+            });
+        }
+        if (T.fase === 'retomar') {
+            const donde = T.retomarEn >= n ? 'Ibas en la pregunta del final.' : `Ibas en el paso ${T.retomarEn + 1} de ${n}.`;
+            return pintarTarjeta(capa, {
+                cab: cabecera(esc(cap.titulo)),
+                titulo: '¿Sigues donde te quedaste?',
+                cuerpo: `<p class="txt tour-para">${esc(donde)}</p>`,
+                acciones: `<div class="pila"><button type="button" class="btn btn--prim btn--48 btn--full" data-a="tourRetomar" data-v="si" data-fk="tour-seguir">Seguir</button><button type="button" class="btn btn--48 btn--full" data-a="tourRetomar" data-v="no" data-fk="tour-nuevo">Empezar de nuevo</button></div>`,
+            });
+        }
+        if (T.fase === 'paso') {
+            const x = textosPaso(cap, paso);
+            const ver = paso.ejemploVer;
+            if (ver && T.ejemplo) {
+                return pintarTarjeta(capa, { el: resolver(paso.sel), cab: cabecera(indicador(cap, T.i)), titulo: esc(ver.que), cuerpo: `<p class="txt tour-para">${esc(ver.texto)}</p>`, acciones: pie('', btn(esc(ver.volver), 'tourEjemplo', { prim: true, v: 'no', fk: 'tour-ejemplo-volver' })) });
+            }
+            let acciones;
+            if (T.repaso) acciones = pie('', btn('Volver a la pregunta', 'tourVolverPregunta', { prim: true, fk: 'tour-volver-pregunta' }));
+            else if (paso.hazlo) acciones = pie(salir, `${atras}${btn('Hazlo tú', 'tourHazlo', { prim: true, fk: 'tour-hazlo' })}`);
+            else acciones = `${ver ? `<button type="button" class="btn btn--48 btn--full tour-ver" data-a="tourEjemplo" data-v="si" data-fk="tour-ejemplo">${icon('eye', 'ico-s')}${esc(ver.boton)}</button>` : ''}${pie(salir, `${atras}${btn('Siguiente', 'tourSig', { prim: true, fk: 'tour-sig' })}`)}`;
+            return pintarTarjeta(capa, { el: resolver(paso.sel), cab: `${barra(T.i + 1, n)}${cabecera(T.repaso ? 'Repaso' : indicador(cap, T.i))}`, titulo: esc(x.que), cuerpo: cuerpoPaso(x), acciones });
+        }
+        if (T.fase === 'pausa') {
+            const p = paso.hazlo.pausa(T.antes, T.despues);
+            const filas = p.filas
+                .filter((f) => f.a !== null && f.a !== undefined)
+                .map((f) => `<p class="tour-num"><span>${esc(f.l)}</span> ${f.a === f.d ? `<strong>${dinero(f.d, { aprox: f.aprox })}</strong> <span class="tour-igual">sin cambio</span>` : `${dinero(f.a, { aprox: f.aprox })} ${icon('arrow-right', 'ico-xs')} <strong>${dinero(f.d, { aprox: f.aprox })}</strong>`}</p>`)
+                .join('');
+            const foco = paso.hazlo.foco ? resolver(paso.hazlo.foco) : null;
+            return pintarTarjeta(capa, { el: visible(foco) ? foco : null, cab: `${barra(T.i + 1, n)}${cabecera(indicador(cap, T.i))}`, titulo: esc(p.titulo), cuerpo: `${filas}<p class="txt tour-para tour-porque">${esc(p.texto)}</p>`, acciones: `<button type="button" class="btn btn--prim btn--48 btn--full" data-a="tourEntendido" data-fk="tour-entendido">Entendido</button>` });
+        }
+        if (T.fase === 'pregunta') {
+            const q = cap.pregunta;
+            const fb = T.fb;
+            const ops = q.ops.map((t, j) => `<button type="button" class="opcion-g tour-op${fb ? (j === q.bien ? ' tour-op--bien' : j === fb.elegida ? ' tour-op--casi' : '') : ''}" role="radio" aria-checked="${fb ? j === fb.elegida : false}" data-a="tourResponder" data-v="${j}" data-fk="tour-op-${j}" ${fb ? 'aria-disabled="true"' : ''}><span class="opcion-g-t">${esc(t)}</span>${fb && j === q.bien ? icon('circle-check', 'ico-ok') : ''}</button>`).join('');
+            const acciones = !fb ? pie(salir, atras) : fb.ok ? pie('', btn('Terminar', 'tourTerminar', { prim: true, fk: 'tour-terminar' })) : `<div class="pila"><button type="button" class="btn btn--48 btn--full" data-a="tourRepasar" data-fk="tour-repasar">${icon('rotate-ccw', 'ico-s')}Repasar este paso</button><button type="button" class="btn btn--prim btn--48 btn--full" data-a="tourTerminar" data-fk="tour-terminar">Seguir</button></div>`;
+            return pintarTarjeta(capa, { cab: cabecera(`${esc(cap.titulo)} · ¿Lo entendí?`), titulo: esc(q.p), cuerpo: `<div class="opciones-grandes" role="radiogroup" aria-labelledby="tour-t">${ops}</div>${fb ? `<p class="txt tour-fb${fb.ok ? ' tour-fb--bien' : ''}" role="status" tabindex="-1">${esc(fb.ok ? q.si : q.casi)}</p>` : ''}`, acciones });
+        }
+        if (T.fase === 'fin') {
+            const [titulo, texto] = finTextos(cap);
+            const usar = T.volverAUso ? btn(`${icon('smartphone', 'ico-s')}Volver a mis datos`, 'tourFin', { prim: true, v: 'uso', fk: 'tour-volver-uso', cls: 'btn--48 btn--full' }) : btn(`${icon('smartphone', 'ico-s')}Empezar con mis datos`, 'tourFin', { prim: cap.id === 'esencial', v: 'uso', fk: 'tour-usar', cls: 'btn--48 btn--full' });
+            const mas = btn(`${icon('book-open', 'ico-s')}Aprender más`, 'tourFin', { prim: cap.id !== 'esencial' && !T.volverAUso, v: 'mas', fk: 'tour-mas', cls: 'btn--48 btn--full' });
+            return pintarTarjeta(capa, { cab: `${barra(1, 1)}${cabecera(esc(cap.titulo))}`, titulo: esc(titulo), cuerpo: `<p class="txt tour-para">${esc(texto)}</p>`, acciones: `<div class="pila">${cap.id === 'esencial' || T.volverAUso ? usar + mas : mas + usar}</div>${enlace('Seguir mirando los ejemplos', 'tourFin', 'tour-mirar', 'mirar')}` });
+        }
+    }
+    function finTextos(cap) {
+        if (cap.id === 'esencial') return ['¡Listo! Ya sabes lo esencial', 'Con esto ya puedes empezar con tus datos. Lo demás, cuando quieras.'];
+        return [`¡Listo! Terminaste «${cap.titulo}»`, 'En «Aprender más» están los otros capítulos. Hazlos cuando quieras.'];
+    }
+
+    // «Hazlo tú»: una barra arriba con la instrucción; lo demás queda oscuro y solo se toca lo que señala la flecha.
+    function pintarHazlo(capa) {
+        const cap = T.cap;
+        const n = cap.pasos.length;
+        capa.innerHTML = `<div class="tour-hueco" aria-hidden="true"></div><section class="tour-hz" role="region" aria-labelledby="tour-t">${barra(T.i + 1, n)}
+            <div class="tour-hz-cab"><p class="tour-hz-n">${indicador(cap, T.i)} · Hazlo tú</p>${salir}</div>
+            <p class="tour-hz-t" id="tour-t" tabindex="-1"><span id="tour-instr" aria-live="polite"></span><span class="tour-pista" id="tour-pista" aria-live="polite"></span></p>
+            <div class="tour-hz-acc">${btn(`${icon('chevron-left', 'ico-s')}<span class="sr-only">Atrás</span>`, 'tourAtras', { fk: 'tour-atras', extra: 'aria-label="Atrás"' })}${btn(`${icon('sparkles', 'ico-s')}Hazlo por mí`, 'tourPorMi', { prim: true, fk: 'tour-por-mi' })}${btn('Saltar este paso', 'tourSaltarPaso', { fk: 'tour-saltar-paso', cls: 'tour-saltar-paso' })}</div>
+        </section>`;
+        T.senalSel = null;
+        dibujarSenal();
+        // Solo al entrar al paso: después la persona está usando la app (no se le quita el foco).
+        if (T.enfocar === false) return;
+        const t = capa.querySelector('#tour-t');
+        if (t) t.focus({ preventScroll: true });
+        T.enfocar = false;
+    }
+    /** Coloca lo oscuro, el hueco, el anillo y la flecha sobre lo que hay que tocar, y la instrucción en la barra. */
+    function dibujarSenal() {
+        const capa = $('#capa-tour');
+        const hueco = capa.querySelector('.tour-hueco');
+        if (!enHazlo() || !hueco) return;
+        const paso = T.cap.pasos[T.i];
+        const s = T.hecho ? null : paso.hazlo.senal();
+        const instr = capa.querySelector('#tour-instr');
+        if (instr && s && instr.textContent !== s.texto) instr.textContent = s.texto;
+        const pista = capa.querySelector('#tour-pista');
+        if (pista) pista.textContent = T.pista && !T.hecho ? 'Toca donde señala la flecha.' : '';
+        const el = s && s.sel ? document.querySelector(s.sel) : null;
+        if (s && el && s.sel !== T.senalSel) {
+            T.senalSel = s.sel;
+            T.pista = false;
+            if (pista) pista.textContent = '';
+            alaVista(el);
+        }
+        const app = document.getElementById('app').getBoundingClientRect();
+        const hojaAbierta = document.querySelector('#capa-hoja .hoja');
+        // En una hoja abierta, el hueco es toda la hoja (se ve lo que la app entendió); si no, solo lo que se toca.
+        const agujero = !s || !visible(el) ? null : hojaAbierta && hojaAbierta.contains(el) ? cajaDe(hojaAbierta, 0) : cajaDe(el, 6);
+        const firma = JSON.stringify([agujero && [agujero.top, agujero.left, agujero.width, agujero.height].map(Math.round), s && s.sel, app.width, app.height]);
+        if (hueco.dataset.firma !== firma) {
+            hueco.dataset.firma = firma;
+            hueco.innerHTML = oscuro(agujero, app.width, app.height, ' tour-dim--suave');
+            if (s && visible(el)) {
+                const r = cajaDe(el, 4);
+                const barraHz = capa.querySelector('.tour-hz').getBoundingClientRect();
+                const tope = barraHz.bottom - app.top + 6;
+                const arriba = r.top - 50 >= tope;
+                const fl = { top: arriba ? r.top - 48 : r.top + r.height + 6, left: r.left + r.width / 2 - 20 };
+                hueco.insertAdjacentHTML('beforeend', `<div class="tour-senal" style="top:${r.top}px;left:${r.left}px;width:${r.width}px;height:${r.height}px" aria-hidden="true"></div><div class="tour-flecha tour-flecha--${arriba ? 'abajo' : 'arriba'}" style="top:${fl.top}px;left:${Math.max(4, Math.min(app.width - 44, fl.left))}px" aria-hidden="true">${icon(arriba ? 'arrow-down' : 'arrow-up')}</div>`);
+            }
+        }
+    }
+    let senalRaf = 0;
+    const seguirSenal = () => {
+        if (!enHazlo()) return;
+        cancelAnimationFrame(senalRaf);
+        senalRaf = requestAnimationFrame(() => {
+            // Si una hoja está subiendo, se mide cuando termine (si no, el hueco y la flecha quedan corridos).
+            const espera = quieto();
+            if (espera) espera.then(seguirSenal);
+            else dibujarSenal();
+        });
+    };
+    const capaTour = () => document.getElementById('capa-tour');
+    new MutationObserver((lista) => {
+        if (lista.some((m) => !capaTour().contains(m.target))) seguirSenal();
+    }).observe(document.getElementById('app'), { childList: true, subtree: true, attributes: true, attributeFilter: ['aria-pressed', 'class'] });
+    document.addEventListener('scroll', seguirSenal, true);
+    document.addEventListener('input', seguirSenal, true);
+    // Tocar lo oscuro durante «Hazlo tú»: no pasa nada, solo se recuerda dónde tocar.
+    document.addEventListener('click', (e) => {
+        if (!enHazlo() || !e.target.closest || !e.target.closest('.tour-hueco .tour-dim')) return;
+        T.pista = true;
+        dibujarSenal();
+        P.emitir('tour:pista');
+    });
+
+    // ------------------------------------------------------------------ moverse
+    function nuevaFase(fase, { bloqueo = true } = {}) {
+        T.fase = fase;
+        T.animar = true;
+        T.enfocar = true;
+        bloquear(bloqueo && fase !== 'hazlo');
+        repintar();
+    }
+    function limpiarToast() {
         if (P.ui.toast) {
             P.ui.toast = null;
             P.renderToast();
         }
-        T.i = Math.max(0, Math.min(R.pasos.length - 1, i));
-        T.hecho = false;
-        T.mostrando = false;
-        T.senal = false;
-        T.preguntaRetomar = 0;
-        T.enfocar = true;
-        const paso = R.pasos[T.i];
-        if (paso.quiz) {
-            T.q = 0;
-            T.res = [];
-            T.fb = null;
-            T.empezoQuiz = false;
-        }
-        if (paso.antes) paso.antes();
-        T.antes = foto();
-        bloquear(!libreModo());
-        repintar();
-        guardarPaso(T.i);
-        P.emitir('tour:paso' + (T.i + 1));
     }
-    function mostrarElegir() {
-        // Desde un paso a medias: lo que ese paso simulaba se deshace y queda guardado dónde iba.
-        T.desde = T.activo && !T.elegir ? R.id : null;
-        const previo = T.desde ? R.pasos[T.i] : null;
-        if (previo && previo.despues) previo.despues();
+    function guardarPaso() {
+        if (T.cap && !T.repaso) guardarCap(T.cap, { paso: T.fase === 'pregunta' ? T.cap.pasos.length : T.i });
+    }
+    function ir(i) {
+        const cap = T.cap;
+        // Desde ya deja de ser «Hazlo tú» (lo que pase al cambiar de pantalla no cuenta como la acción del paso).
+        T.fase = 'paso';
         quitarSemanaMala();
-        T.activo = true;
-        T.elegir = true;
-        T.repaso = null;
-        T.preguntaRetomar = 0;
-        T.senal = false;
+        T.ejemplo = false;
+        limpiarToast();
         T.hecho = false;
-        cerrarHoja();
-        bloquear(true);
-        repintar();
-        P.emitir('tour:elegir');
+        T.pista = false;
+        T.repaso = false;
+        if (i >= cap.pasos.length) return irPregunta();
+        T.i = Math.max(0, i);
+        prepararPaso(cap.pasos[T.i]);
+        nuevaFase('paso');
+        guardarPaso();
+        P.emitir(`tour:${cap.id}:paso${T.i + 1}`);
     }
-    function elegirVersion(id) {
-        R = RECORRIDOS[id] || FIJO;
+    /**
+     * Deja la pantalla del paso. Si lo que el paso explica ya no está (por ejemplo, ya te pusiste al día y la tarjeta se
+     * fue), los ejemplos del capítulo vuelven a como empezaron.
+     */
+    function prepararPaso(paso) {
+        cerrarHoja();
+        if (paso.antes) paso.antes();
+        if (paso.sel && !visible(resolver(paso.sel))) {
+            T.cap.cargar();
+            if (paso.antes) paso.antes();
+        }
+    }
+    function irPregunta() {
+        quitarSemanaMala();
+        cerrarHoja();
+        T.fb = null;
+        T.repaso = false;
+        T.fase = 'pregunta';
+        guardarPaso();
+        nuevaFase('pregunta');
+        P.emitir(`tour:${T.cap.id}:pregunta`);
+    }
+    /** Empieza un capítulo: si lo dejó a medias, primero pregunta si sigue. */
+    function empezarCap(cap, { retomar = true } = {}) {
+        if (P.ayuda) P.ayuda.cerrar({ foco: false });
+        if (P.practica) P.practica.salir();
         T.activo = true;
-        T.elegir = false;
-        T.repaso = null;
-        if (P.modos) P.modos.guardarEntrenamiento({ tourVersion: R.id });
-        const guardado = versiones().pasos[R.id] || 0;
-        // Retomar donde se quedó: primero se pregunta.
-        if (guardado > 0 && guardado < R.pasos.length) {
-            if (!(P.st && P.st.recorrido === R.id) && !(P.restaurar() && P.st.recorrido === R.id)) R.cargar();
-            quitarSemanaMala();
-            T.i = guardado;
-            T.preguntaRetomar = guardado;
-            bloquear(true);
-            repintar();
+        T.cap = cap;
+        T.i = 0;
+        T.repaso = false;
+        T.ejemplo = false;
+        T.hecho = false;
+        if (P.modos) P.modos.guardarEntrenamiento({ tourVersion: cap.version });
+        cap.cargar();
+        const e = estadoCap(cap);
+        if (retomar && e.paso > 0 && !e.hecho) {
+            T.retomarEn = Math.min(e.paso, cap.pasos.length);
+            irA('hoy')();
+            nuevaFase('retomar');
             P.emitir('tour:retomar');
             return;
         }
-        R.cargar();
+        if (cap.intro) {
+            irA('hoy')();
+            nuevaFase('intro');
+            P.emitir(`tour:${cap.version}:${cap.id}:intro`);
+            return;
+        }
         ir(0);
-        P.emitir('tour:empezar');
-        P.emitir('tour:version:' + R.id);
+        P.emitir(`tour:${cap.version}:${cap.id}:empezar`);
     }
-    /** Al entrar a «Aprender a usarla» (o «Ver el recorrido»): primero «¿Cómo te entra el dinero?». */
-    T.empezar = function ({ version = null } = {}) {
-        if (P.ayuda) P.ayuda.cerrar({ foco: false });
-        P.practica.salir();
-        T.repaso = null;
-        if (version && RECORRIDOS[version]) elegirVersion(version);
-        else mostrarElegir();
+    T.empezarCap = (version, id, opciones = {}) => {
+        const cap = capDe(version, id);
+        if (!cap) return;
+        T.volverAUso = !!opciones.desdeUso;
+        empezarCap(cap, opciones);
     };
-    /** V2-58 (#22): al terminar o saltar el recorrido, los ejemplos vuelven a como estaban al inicio. */
-    function terminar(como, { avisar = true } = {}) {
+    function mostrarElegir() {
+        quitarSemanaMala();
+        cerrarHoja();
+        if (P.ayuda) P.ayuda.cerrar({ foco: false });
+        T.activo = true;
+        T.cap = T.cap || null;
+        nuevaFase('elegir');
+        P.emitir('tour:elegir');
+    }
+    function elegirVersion(id) {
+        const v = VERSIONES[id] || VERSIONES.fijo;
+        if (P.modos) P.modos.guardarEntrenamiento({ tourVersion: v.id });
+        const esencial = v.caps[0];
+        if (estadoCap(esencial).hecho) {
+            // Ya hizo «Lo esencial» de esa versión: los capítulos de «Aprende más».
+            terminar({ avisar: false, reiniciar: false });
+            P.cargarPersona(v.persona);
+            P.ayuda.abrir('aprendeMas');
+            P.emitir('tour:version:' + v.id);
+            return;
+        }
+        empezarCap(esencial);
+        P.emitir('tour:version:' + v.id);
+    }
+    /**
+     * Al entrar a «Aprender a usarla»: la primera vez, «¿Cómo te entra el dinero?»; después, «Lo esencial» de su versión
+     * si no lo ha terminado; si ya lo hizo, «Aprende más». `cap` abre un capítulo directo.
+     */
+    T.empezar = function ({ version = null, cap = null, desdeUso = false } = {}) {
+        if (P.ayuda) P.ayuda.cerrar({ foco: false });
+        if (P.practica) P.practica.salir();
+        T.volverAUso = desdeUso;
+        const v = version || progreso().version;
+        if (!v) return mostrarElegir();
+        if (cap) return T.empezarCap(v, cap, { desdeUso });
+        if (!estadoCap(VERSIONES[v].caps[0]).hecho) return T.empezarCap(v, 'esencial', { desdeUso });
+        P.ayuda.abrir('aprendeMas');
+    };
+    T.elegir = mostrarElegir;
+    /** Al terminar o salir: los ejemplos vuelven a como estaban al inicio (V2-58 #22). */
+    function terminar({ avisar = true, reiniciar = true } = {}) {
+        quitarSemanaMala();
+        const cap = T.cap;
         T.activo = false;
-        T.elegir = false;
-        T.repaso = null;
-        T.preguntaRetomar = 0;
-        T.senal = false;
+        T.fase = null;
+        T.repaso = false;
+        T.ejemplo = false;
         cerrarHoja();
         bloquear(false);
         pintar();
-        if (P.modos) {
-            const v = versiones();
-            // Se recuerda qué versión hizo (si ya la había terminado, sigue «hecha» aunque ahora la salte).
-            P.modos.guardarEntrenamiento({ tour: como, tourVersion: R.id, tours: { ...v.hechos, [R.id]: v.hechos[R.id] === 'hecho' ? 'hecho' : como }, tourPasos: { ...v.pasos, [R.id]: como === 'hecho' ? 0 : v.pasos[R.id] || 0 } });
-        }
         P.ui.pagosModo = 'calendario';
-        P.cargarPersona(R.persona);
-        if (avisar) P.avisar('Listo, dejé los ejemplos como al inicio para que practiques');
-        P.emitir('tour:' + como);
+        if (reiniciar && cap) P.cargarPersona(VERSIONES[cap.version].persona);
+        if (avisar && reiniciar) P.avisar('Listo, dejé los ejemplos como al inicio para que practiques');
     }
-    /** «Ahora no» en la pregunta: si venía de un recorrido, cuenta como saltarlo; si no, solo se cierra. */
-    function cerrarElegir() {
-        if (T.desde) {
-            R = RECORRIDOS[T.desde];
-            terminar('saltado');
-            return;
-        }
-        T.activo = false;
-        T.elegir = false;
-        bloquear(false);
-        pintar();
+    T.terminar = terminar;
+
+    // ------------------------------------------------------------------ acciones
+    const acc = P.acciones;
+    acc.tourVersion = (d) => elegirVersion(d.v);
+    acc.tourElegir = () => {
+        if (T.activo && T.cap && T.fase !== 'elegir') guardarPaso();
+        mostrarElegir();
+    };
+    acc.tourCerrar = () => {
+        terminar({ avisar: false, reiniciar: !!T.cap });
         P.render({ foco: '#pantalla h1' });
         P.emitir('tour:elegir:no');
-    }
-    const acc = P.acciones;
-    acc.tourMover = (d) => {
-        T.repaso = null;
-        ir(T.i + Number(d.v));
     };
-    acc.tourCerrar = (d) => (T.elegir ? cerrarElegir() : terminar(d.v));
-    acc.tourVersion = (d) => elegirVersion(d.v);
-    acc.tourElegir = () => mostrarElegir();
-    acc.tourOtra = () => {
-        const otra = otraDe(R.id).id;
-        terminar('hecho', { avisar: false });
-        T.empezar({ version: otra });
+    acc.tourEmpezarCap = () => {
+        ir(0);
+        P.emitir(`tour:${T.cap.version}:${T.cap.id}:empezar`);
     };
     acc.tourRetomar = (d) => {
-        if (d.v === 'si') ir(T.preguntaRetomar);
-        else {
-            R.cargar();
-            ir(0);
-        }
-    };
-    acc.tourMuestrame = async () => {
-        const paso = R.pasos[T.i];
-        if (!paso.hazlo || T.mostrando) return;
-        // Primer toque: señala dónde tocar.
-        if (!T.senal && paso.senal) {
-            T.senal = true;
-            pintar();
-            const s = paso.senal();
-            const el = s && s.sel && document.querySelector(s.sel);
-            if (el) el.scrollIntoView({ block: 'center', behavior: 'instant' });
-            dibujarSenal();
-            P.emitir('tour:senal:' + (T.i + 1));
+        if (d.v === 'si') {
+            if (T.retomarEn >= T.cap.pasos.length) irPregunta();
+            else ir(T.retomarEn);
             return;
         }
-        // Segundo toque: «Hazlo por mí».
-        T.mostrando = true;
-        pintar();
-        P.emitir('tour:muestrame:' + (T.i + 1));
-        try {
-            await paso.muestrame();
-        } finally {
-            T.mostrando = false;
-            if (T.activo && !T.hecho) pintar();
-        }
+        guardarCap(T.cap, { paso: 0 });
+        T.cap.cargar();
+        if (T.cap.intro) nuevaFase('intro');
+        else ir(0);
     };
-    acc.tourQuiz = () => {
-        if (!T.empezoQuiz) T.empezoQuiz = true;
-        else if (T.fb) {
-            T.q++;
-            T.fb = null;
+    acc.tourSig = () => ir(T.i + 1);
+    acc.tourAtras = () => {
+        if (T.fase === 'hazlo') {
+            // Desde «Hazlo tú», vuelve a la explicación del mismo paso.
+            prepararPaso(T.cap.pasos[T.i]);
+            nuevaFase('paso');
+            return;
         }
-        pintar();
+        if (T.fase === 'pregunta') return ir(T.cap.pasos.length - 1);
+        if (T.i === 0 && T.cap.intro) {
+            nuevaFase('intro');
+            return;
+        }
+        ir(T.i - 1);
+    };
+    acc.tourHazlo = () => {
+        const paso = T.cap.pasos[T.i];
+        if (!paso.hazlo) return;
+        if (paso.antes) paso.antes();
+        T.antes = foto();
+        T.hecho = false;
+        T.pista = false;
+        nuevaFase('hazlo');
+        P.emitir(`tour:${T.cap.id}:hazlo${T.i + 1}`);
+    };
+    /** «Hazlo por mí»: un solo toque (o escribir en un campo); la flecha pasa a lo siguiente. */
+    acc.tourPorMi = () => {
+        if (!enHazlo() || T.hecho) return;
+        const s = T.cap.pasos[T.i].hazlo.senal();
+        const el = s && document.querySelector(s.sel);
+        if (!el) return;
+        P.emitir(`tour:${T.cap.id}:pormi${T.i + 1}`);
+        if (s.hacer === 'tocar') {
+            alaVista(el);
+            el.click();
+        } else if (s.hacer && s.hacer.escribir !== undefined) {
+            el.value = s.hacer.escribir;
+            el.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+        seguirSenal();
+    };
+    acc.tourSaltarPaso = () => {
+        cerrarHoja();
+        ir(T.i + 1);
+    };
+    acc.tourEntendido = () => ir(T.i + 1);
+    acc.tourEjemplo = (d) => {
+        if (d.v === 'si') {
+            simularSemanaMala();
+            T.ejemplo = true;
+            P.emitir('tour:ejemplo:ver');
+        } else {
+            quitarSemanaMala();
+            T.ejemplo = false;
+            P.emitir('tour:ejemplo:volver');
+        }
+        nuevaFase('paso');
     };
     acc.tourResponder = (d) => {
         if (T.fb) return;
-        const q = R.preguntas[T.q];
+        const q = T.cap.pregunta;
         const j = Number(d.v);
-        T.res[T.q] = j === q.bien;
         T.fb = { elegida: j, ok: j === q.bien };
         T.enfocarFb = true;
+        T.animar = false;
         pintar();
-        P.emitir('tour:respuesta:' + (T.q + 1) + ':' + (T.fb.ok ? 'bien' : 'casi'));
+        P.emitir(`tour:${T.cap.id}:respuesta:${T.fb.ok ? 'bien' : 'casi'}`);
     };
-    acc.tourRepasar = (d) => {
-        const q = R.preguntas[Number(d.v)];
-        T.repaso = T.i;
-        const destino = R.pasos[q.repaso];
+    acc.tourRepasar = () => {
+        const q = T.cap.pregunta;
         T.i = q.repaso;
-        if (destino.antes) destino.antes();
-        bloquear(true);
-        repintar();
-        P.emitir('tour:repaso:' + (q.repaso + 1));
+        T.repaso = true;
+        prepararPaso(T.cap.pasos[T.i]);
+        nuevaFase('paso');
+        P.emitir(`tour:${T.cap.id}:repaso`);
     };
-    acc.tourVolverQuiz = () => {
-        const previo = R.pasos[T.i];
-        if (previo && previo.despues) previo.despues();
-        T.i = T.repaso;
-        T.repaso = null;
-        const paso = R.pasos[T.i];
-        if (paso.antes) paso.antes();
-        T.q = R.preguntas.length;
-        T.fb = null;
-        bloquear(true);
-        repintar();
+    acc.tourVolverPregunta = () => {
+        T.repaso = false;
+        irPregunta();
     };
-    /** En Hoy (entrenamiento): si dejó el recorrido a medias, «Sigue tu recorrido» lo retoma en ese paso. */
-    const versionHoy = () => {
-        const v = versiones();
-        return RECORRIDOS[v.ultima] || FIJO;
+    acc.tourTerminar = () => {
+        cerrarHoja();
+        irA('hoy')();
+        guardarCap(T.cap, { paso: 0, hecho: true });
+        nuevaFase('fin');
+        P.emitir(`tour:${T.cap.version}:${T.cap.id}:hecho`);
     };
-    T.tarjetaHoy = () => {
-        if (T.activo || P.modo === 'uso' || !P.modos) return '';
-        const r = versionHoy();
-        const paso = versiones().pasos[r.id] || 0;
-        if (!(paso > 0 && paso < r.pasos.length)) return '';
-        return `<section class="card card--aviso" aria-labelledby="tour-seguir-t"><div class="aviso-cab">${P.caja('🎓')}<div><h2 class="card-t" id="tour-seguir-t">Sigue tu recorrido</h2><p class="txt">Vas en el paso ${paso + 1} de ${r.pasos.length} (${esc(r.corto)}).</p></div></div><div class="acciones-2"><button type="button" class="btn" data-a="tourOlvidar" data-fk="tour-hoy-no">Ya no</button><button type="button" class="btn btn--prim" data-a="tourSeguirHoy" data-fk="tour-hoy-seguir">Seguir</button></div></section>`;
+    acc.tourFin = (d) => {
+        const desdeUso = T.volverAUso;
+        const version = T.cap.version;
+        T.volverAUso = false;
+        if (d.v === 'uso') {
+            terminar({ avisar: false });
+            P.modos.cambiar('uso');
+        } else if (d.v === 'mas') {
+            terminar({ avisar: false });
+            P.ayuda.abrir('aprendeMas');
+            if (desdeUso) T.volverAUso = true;
+        } else terminar();
+        P.emitir('tour:fin:' + d.v + ':' + version);
     };
-    acc.tourSeguirHoy = () => {
-        T.empezar({ version: versionHoy().id });
-        if (T.preguntaRetomar) acc.tourRetomar({ v: 'si' });
-    };
-    acc.tourOlvidar = () => {
-        const v = versiones();
-        P.modos.guardarEntrenamiento({ tourPasos: { ...v.pasos, [versionHoy().id]: 0 } });
+    acc.tourSalir = () => {
+        guardarPaso();
+        terminar();
         P.render({ foco: '#pantalla h1' });
+        P.emitir('tour:salir');
     };
-    acc.tourPracticar = () => {
-        terminar('hecho');
-        P.ayuda.abrir('practica');
+    acc.tourCap = (d) => {
+        const [version, id] = String(d.v).split(':');
+        const desdeUso = P.modo === 'uso' || T.volverAUso;
+        if (P.modo === 'uso') P.modos.cambiar('entrenamiento');
+        T.empezarCap(version, id, { desdeUso });
     };
-    acc.tourUsar = () => {
-        terminar('hecho', { avisar: false });
-        P.modos.cambiar('uso');
-    };
-    // «Hazlo tú»: cuando la persona hace la acción, se celebra y se ve cómo cambió el número.
+    // «Hazlo tú»: cuando la persona hace la acción, se ve primero el cambio en la app y después la pausa.
     window.addEventListener('proto', (e) => {
-        if (!T.activo || T.elegir || T.preguntaRetomar || T.repaso !== null) return;
-        const paso = R.pasos[T.i];
-        if (!paso.hazlo || T.hecho) return;
-        const clave = String(e.detail.clave);
-        if (!paso.claves.some((c) => clave === c || clave.startsWith(c + ':'))) return;
+        if (!enHazlo() || T.hecho) return;
+        const paso = T.cap.pasos[T.i];
+        const c = String(e.detail.clave);
+        if (!paso.hazlo.claves.some((x) => c === x || c.startsWith(x + ':'))) return;
         T.hecho = true;
-        T.senal = false;
+        T.pista = false;
+        dibujarSenal();
         setTimeout(() => {
+            if (!enHazlo()) return;
             T.despues = foto();
+            limpiarToast();
             cerrarHoja();
-            bloquear(true);
-            repintar();
-            P.emitir('tour:hecho:' + (T.i + 1));
-        }, 450);
+            nuevaFase('pausa');
+            P.emitir(`tour:${T.cap.id}:hecho${T.i + 1}`);
+        }, T.esperaPausa);
     });
-    // Tab no sale de la tarjeta (ni de la pregunta de la versión).
+    // Tab no sale de la tarjeta.
     function atraparTab(e) {
         const lista = [...document.querySelectorAll('.tour-card button:not([disabled]):not([aria-disabled="true"])')];
         if (!lista.length) return;
@@ -836,29 +1176,82 @@
         'keydown',
         (e) => {
             if (!T.activo) return;
-            // En «Hazlo tú» la app manda: Escape cierra lo que esté abierto, no el recorrido.
-            if (libreModo()) return;
+            // En «Hazlo tú» la app manda: Escape cierra lo que esté abierto, no el entrenamiento.
+            if (enHazlo()) return;
             if (e.key === 'Escape') {
                 e.preventDefault();
                 e.stopPropagation();
-                if (T.elegir) cerrarElegir();
-                else terminar('saltado');
+                if (T.fase === 'elegir') acc.tourCerrar();
+                else acc.tourSalir();
                 return;
             }
-            if (e.key === 'Tab') return atraparTab(e);
-            if (T.elegir) return;
-            const paso = R.pasos[T.i];
-            if (e.key === 'ArrowRight' && !paso.quiz && !T.preguntaRetomar && T.repaso === null) ir(T.i + 1);
-            if (e.key === 'ArrowLeft' && T.i > 0 && !T.preguntaRetomar && T.repaso === null) ir(T.i - 1);
+            if (e.key === 'Tab') atraparTab(e);
         },
         true,
     );
-    // En «Hazlo tú» no se repinta al cambiar el tamaño (al abrir el teclado): la barra no depende de medidas.
     window.addEventListener('resize', () => {
         if (!T.activo) return;
-        if (libreModo()) seguirSenal();
-        else pintar();
+        if (enHazlo()) seguirSenal();
+        else {
+            T.enfocar = false;
+            pintar();
+        }
     });
+
+    // ------------------------------------------------------------------ en Hoy: «Sigue donde te quedaste»
+    function aMedias() {
+        const pr = progreso();
+        const k = pr.ultimo;
+        if (!k) return null;
+        const [version, id] = k.split(':');
+        const cap = capDe(version, id);
+        const e = pr.caps[k];
+        if (!cap || !e || e.hecho || !(e.paso > 0)) return null;
+        return { cap, e };
+    }
+    T.tarjetaHoy = () => {
+        if (T.activo || P.modo === 'uso' || !P.modos) return '';
+        const x = aMedias();
+        if (!x) return '';
+        const donde = x.e.paso >= x.cap.pasos.length ? 'te falta la pregunta del final' : `vas en el paso ${x.e.paso + 1} de ${x.cap.pasos.length}`;
+        return `<section class="card card--aviso" aria-labelledby="tour-seguir-t"><div class="aviso-cab">${P.caja('🎓')}<div><h2 class="card-t" id="tour-seguir-t">Sigue donde te quedaste</h2><p class="txt">«${esc(x.cap.titulo)}» (${esc(VERSIONES[x.cap.version].corto)}): ${donde}.</p></div></div><div class="acciones-2"><button type="button" class="btn" data-a="tourOlvidar" data-fk="tour-hoy-no">Ya no</button><button type="button" class="btn btn--prim" data-a="tourSeguirHoy" data-fk="tour-hoy-seguir">Seguir</button></div></section>`;
+    };
+    acc.tourSeguirHoy = () => {
+        const x = aMedias();
+        if (!x) return;
+        T.empezarCap(x.cap.version, x.cap.id);
+        if (T.fase === 'retomar') acc.tourRetomar({ v: 'si' });
+    };
+    acc.tourOlvidar = () => {
+        const x = aMedias();
+        if (x) guardarCap(x.cap, { paso: 0 });
+        P.render({ foco: '#pantalla h1' });
+    };
+
+    // ------------------------------------------------------------------ «Aprende más»: los capítulos y su marca de «hecho»
+    function vistaAprendeMas() {
+        const pr = progreso();
+        const v = VERSIONES[pr.version] || VERSIONES[P.st && !M.principal(P.st) ? 'variable' : 'fijo'];
+        const fila = (cap) => {
+            const e = pr.caps[clave(cap)] || {};
+            const estado = e.hecho ? `<span class="ay-caso-ok">${icon('circle-check', 'ico-s')}<span class="sr-only">hecho</span></span>` : '';
+            const nota = e.hecho ? 'Hecho' : e.paso > 0 ? (e.paso >= cap.pasos.length ? 'Te falta la pregunta' : `Ibas en el paso ${e.paso + 1} de ${cap.pasos.length}`) : `${cap.pasos.length} pasos y una pregunta`;
+            return `<li><button type="button" class="ay-caso ay-caso--ej" data-a="tourCap" data-v="${clave(cap)}" data-fk="cap-${cap.id}"><span class="ay-caso-t">${esc(cap.titulo)}<span class="fila-s">${esc(cap.sub)}</span><span class="fila-s cap-estado">${esc(nota)}</span></span>${estado}</button></li>`;
+        };
+        const [esencial, ...resto] = v.caps;
+        const hechos = resto.filter((c) => (pr.caps[clave(c)] || {}).hecho).length;
+        return `<p class="txt">Capítulos cortos con datos de ejemplo. Hazlos en el orden que quieras, hoy u otro día. Nada toca tus datos.</p>
+            <div class="ay-version-elegida"><p class="fila-s">Tu versión: <strong>${esc(v.corto)}</strong> (${v.id === 'fijo' ? 'con Ana' : 'con Rosa'})</p><button type="button" class="link" data-a="tourElegir" data-fk="am-cambiar">Cambiar</button></div>
+            <ul class="ay-casos" aria-label="Lo esencial">${fila(esencial)}</ul>
+            <h3 class="campo-l" id="am-mas">Aprende más <span class="opcional">· ${hechos} de ${resto.length} hechos</span></h3>
+            <ul class="ay-casos" aria-labelledby="am-mas">${resto.map(fila).join('')}</ul>
+            <div class="pila">${P.modo === 'uso' ? '' : `<button type="button" class="btn btn--48 btn--full" data-a="ayIr" data-v="practica" data-fk="am-practica">${icon('list-checks', 'ico-s')}Practicar con ejemplos</button>`}<button type="button" class="btn btn--48 btn--full" data-a="${P.modo === 'uso' ? 'ayCerrar' : T.volverAUso ? 'amVolverUso' : 'modoCambiar'}" data-v="uso" data-fk="am-usar">${icon('smartphone', 'ico-s')}${P.modo === 'uso' || T.volverAUso ? 'Volver a mis datos' : 'Empezar con mis datos'}</button></div>`;
+    }
+    acc.amVolverUso = () => {
+        T.volverAUso = false;
+        P.ayuda.cerrar({ foco: false });
+        P.modos.cambiar('uso');
+    };
 
     // ------------------------------------------------------------------ practicar con ejemplos (de fácil a difícil)
     const buscarCaso = (id) => [...window.CASOS, ...(window.CASOS_PRACTICA || [])].find((c) => c.id === id);
@@ -884,11 +1277,11 @@
         P.ayuda.pintarBarra();
         P.emitir('practica:empezar:' + id);
     };
-    PR.pintar = (barra) => {
+    PR.pintar = (barraEl) => {
         const c = PR.caso;
         document.documentElement.classList.add('con-tarea');
-        barra.hidden = false;
-        barra.innerHTML = PR.logrado
+        barraEl.hidden = false;
+        barraEl.innerHTML = PR.logrado
             ? `<div class="tarea-txt tarea-txt--ok">${icon('circle-check', 'ico-s')}<span class="tarea-t"><strong>¡Lo lograste!</strong> ${esc(c.titulo)}</span></div><div class="tarea-acc"><button type="button" class="tarea-btn tarea-btn--prim" data-a="prSiguiente" data-fk="pr-siguiente">Otro</button></div>`
             : `<button type="button" class="tarea-txt" data-a="ayIr" data-v="comoSeHace" data-fk="pr-ver" aria-label="Ejercicio: ${esc(c.tarea)}. Ver cómo se hace"><span class="tarea-n">Ejercicio · ${esc(c.titulo)}</span><span class="tarea-t">${esc(c.tarea)}</span></button><div class="tarea-acc"><button type="button" class="tarea-btn" data-a="ayIr" data-v="comoSeHace" data-fk="pr-como">¿Cómo?</button><button type="button" class="tarea-btn" data-a="prSalir" data-fk="pr-salir">Salir</button></div>`;
     };
@@ -896,8 +1289,8 @@
         if (!PR.activa() || PR.logrado) return;
         if (finDe(PR.caso).includes(String(e.detail.clave))) {
             PR.logrado = true;
-            const ent = P.modos.entrenamiento();
-            P.modos.guardarEntrenamiento({ practicas: { ...(ent.practicas || {}), [PR.caso.id]: true } });
+            const en = P.modos.entrenamiento();
+            P.modos.guardarEntrenamiento({ practicas: { ...(en.practicas || {}), [PR.caso.id]: true } });
             P.ayuda.pintarBarra();
             P.emitir('practica:lograda:' + PR.caso.id);
         }
@@ -911,22 +1304,36 @@
         P.ayuda.abrir('practica');
     };
     acc.prEmpezar = (d) => PR.empezar(d.v);
-    // v2.4.1 (D): cada ejercicio dice a qué versión aplica; primero van los de la versión que elegiste.
+    // Cada ejercicio dice a qué versión aplica y (v2.5) qué capítulo conviene hacer antes; primero van los de tu versión.
     const NOMBRE_VERSION = { fijo: 'Fecha fija', variable: 'Varía', ambos: 'Para todos' };
+    function capituloAntes(x, mia) {
+        const id = typeof x.capitulo === 'string' ? x.capitulo : x.capitulo && (x.capitulo[mia] || x.capitulo[x.version]);
+        const version = x.version === 'ambos' ? mia : x.version;
+        return id ? capDe(version, id) : null;
+    }
     function vistaPractica() {
+        const pr = progreso();
         const hechas = (P.modos ? P.modos.entrenamiento().practicas : {}) || {};
-        const mia = versiones().ultima || 'fijo';
+        const mia = pr.version || 'fijo';
         const lista = (window.PRACTICA || []).map((x) => ({ ...x, caso: buscarCaso(x.id) })).filter((x) => x.caso);
         const aplica = (x) => x.version === 'ambos' || x.version === mia;
-        const fila = ({ caso: c, nivel, version }) => `<li><button type="button" class="ay-caso ay-caso--ej" data-a="prEmpezar" data-v="${c.id}" data-fk="pr-${c.id}"><span class="ay-caso-t">${esc(c.titulo)} <span class="niveles"><span class="nivel nivel--${nivel === 'Fácil' ? 'facil' : nivel === 'Media' ? 'media' : 'dificil'}">${esc(nivel)}</span><span class="nivel nivel--version">${esc(NOMBRE_VERSION[version] || '')}</span></span><span class="fila-s">${esc(c.tarea)}</span></span>${hechas[c.id] ? `<span class="ay-caso-ok">${icon('circle-check', 'ico-s')}<span class="sr-only">hecho</span></span>` : ''}</button></li>`;
+        const fila = (x) => {
+            const { caso: c, nivel, version } = x;
+            const cap = capituloAntes(x, mia);
+            const capHecho = cap && (pr.caps[clave(cap)] || {}).hecho;
+            return `<li><button type="button" class="ay-caso ay-caso--ej" data-a="prEmpezar" data-v="${c.id}" data-fk="pr-${c.id}"><span class="ay-caso-t">${esc(c.titulo)} <span class="niveles"><span class="nivel nivel--${nivel === 'Fácil' ? 'facil' : nivel === 'Media' ? 'media' : 'dificil'}">${esc(nivel)}</span><span class="nivel nivel--version">${esc(NOMBRE_VERSION[version] || '')}</span></span><span class="fila-s">${esc(c.tarea)}</span>${cap ? `<span class="fila-s pr-antes">${capHecho ? icon('circle-check', 'ico-xs') : icon('book-open', 'ico-xs')}Antes: «${esc(cap.titulo)}»${capHecho ? ' (hecho)' : ''}</span>` : ''}</span>${hechas[c.id] ? `<span class="ay-caso-ok">${icon('circle-check', 'ico-s')}<span class="sr-only">hecho</span></span>` : ''}</button></li>`;
+        };
         const tuyos = lista.filter(aplica);
         const otros = lista.filter((x) => !aplica(x));
-        return `<p class="txt">Ejercicios cortos con datos de ejemplo, de fácil a difícil. Si te trabas, toca «¿Cómo?».</p>
-            <h3 class="campo-l" id="pr-tuyos">Para ti: ${esc(RECORRIDOS[mia].corto)}</h3>
+        const otra = mia === 'variable' ? VERSIONES.fijo : VERSIONES.variable;
+        return `<p class="txt">Ejercicios cortos con datos de ejemplo, de fácil a difícil. Cada uno dice qué capítulo conviene hacer antes. Si te trabas, toca «¿Cómo?».</p>
+            <h3 class="campo-l" id="pr-tuyos">Para ti: ${esc(VERSIONES[mia].corto)}</h3>
             <ul class="ay-casos" aria-labelledby="pr-tuyos">${tuyos.map(fila).join('')}</ul>
-            ${otros.length ? `<h3 class="campo-l" id="pr-otros">De ${esc(otraDe(mia).corto)}</h3><ul class="ay-casos" aria-labelledby="pr-otros">${otros.map(fila).join('')}</ul>` : ''}
+            ${otros.length ? `<h3 class="campo-l" id="pr-otros">De ${esc(otra.corto)}</h3><ul class="ay-casos" aria-labelledby="pr-otros">${otros.map(fila).join('')}</ul>` : ''}
+            <button type="button" class="btn btn--48 btn--full" data-a="ayIr" data-v="aprendeMas" data-fk="pr-capitulos">${icon('book-open', 'ico-s')}Ver los capítulos</button>
             <button type="button" class="btn btn--48 btn--full" data-a="modoCambiar" data-v="uso" data-fk="pr-usar">${icon('smartphone', 'ico-s')}Empezar con mis datos</button>`;
     }
+    T.capituloAntes = capituloAntes;
     function vistaComoSeHace() {
         const c = PR.caso;
         if (!c) return vistaPractica();
@@ -939,5 +1346,11 @@
     PR.iniciar = () => {
         P.ayuda.registrar('practica', 'Practicar con ejemplos', vistaPractica);
         P.ayuda.registrar('comoSeHace', 'Cómo se hace', vistaComoSeHace);
+        P.ayuda.registrar('aprendeMas', 'Aprender a usarla', vistaAprendeMas);
+        // Si la app se cerró a mitad de un capítulo, los ejemplos vuelven a como estaban (se retoma desde Hoy).
+        if (P.modo !== 'uso' && P.st && P.st.recorrido && !T.activo) {
+            const persona = String(P.st.recorrido).startsWith('variable') ? 'rosa' : 'ana';
+            if (!P.enGuia) P.cargarPersona(persona);
+        }
     };
 })();

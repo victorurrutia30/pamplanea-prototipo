@@ -373,12 +373,11 @@
     }
     P.avisoVigente = avisoVigente;
     // ---- v2.4: ayuda en el momento. Un «?» discreto abre 2–3 líneas con un ejemplo (los mismos textos de «Aprende»).
-    /** El término del glosario, en la versión de quien no tiene ingreso fijo si hace falta (sin «quincena»). */
-    P.textoTermino = (g) => (P.st && !M.principal(P.st) && g.textoVariable ? { ...g, t: g.tVariable || g.t, texto: g.textoVariable } : g);
-    const termino = (id) => {
-        const g = (window.GLOSARIO || []).find((x) => x.id === id);
-        return g ? P.textoTermino(g) : null;
-    };
+    /** ¿La persona no tiene un ingreso fijo? (ingresos que varían: nunca se le habla de «quincena»). */
+    P.variable = () => !!P.st && !M.principal(P.st);
+    /** v2.5: el término del glosario (para qué + ejemplo), en la versión de quien no tiene ingreso fijo si hace falta. */
+    P.textoTermino = (g) => window.terminoGlosario(g.id, P.variable());
+    const termino = (id) => window.terminoGlosario(id, P.variable());
     P.qBtn = (id) => {
         const g = termino(id);
         if (!g) return '';
@@ -386,7 +385,7 @@
     };
     P.qTexto = (id) => {
         const g = termino(id);
-        return g ? `<div class="q-txt" id="q-${id}" role="note" ${(P.ui.qAbiertos || {})[id] ? '' : 'hidden'}><p><strong>${esc(g.t)}:</strong> ${esc(g.texto)}</p></div>` : '';
+        return g ? `<div class="q-txt" id="q-${id}" role="note" ${(P.ui.qAbiertos || {})[id] ? '' : 'hidden'}><p><strong>${esc(g.t)}:</strong> ${esc(g.para)}</p><p class="q-ej">Ejemplo: ${esc(g.ejemplo)}</p></div>` : '';
     };
     /** La primera vez que la persona usa cada pantalla con sus datos: un consejo corto, una sola vez. */
     P.tipHtml = (pantalla) => {
@@ -464,8 +463,23 @@
     P.tituloPeriodo = tituloPeriodo;
     /** «entra ~$1,163 · pagos ~$713 · te quedarían ~$450» (V2-35): lo que entra es estimado. */
     function lineaPeriodo(x) {
+        // V2-59 (#27): sin ingreso fijo y sin nada esperado, no se dice «entra ~$0»: las ventas cuentan cuando se anotan.
+        if (P.variable() && !x.entra) return `pagas ${dinero(x.pagos, { aprox: true })} · tus ventas cuentan cuando las anotas`;
         const quedan = x.quedan >= 0 ? `te quedarían ${dinero(x.quedan, { aprox: true })}` : `te faltarían ${dinero(-x.quedan, { aprox: true })}`;
         return `entra ${dinero(x.entra, { aprox: true })} · pagos ${dinero(x.pagos, { aprox: true })} · ${quedan}`;
+    }
+    /** ¿Se marca en color de «falta»? Para quien vende, no tener nada esperado no es un faltante (V2-59 #27). */
+    P.faltaPeriodo = (x) => x.deficit > 0 && !(P.variable() && !x.entra);
+    /** V2-59 (#27): lo vendido este mes, como referencia (no se suma a lo que entra). */
+    function ventasPeriodo(x) {
+        if (!P.variable()) return '';
+        const st = P.st;
+        const mes = st.hoy.slice(0, 7);
+        const ventas = M.suma(
+            st.registros.filter((r) => r.tipo === 'ingreso' && r.categoria === 'venta' && r.fecha.slice(0, 7) === mes && r.fecha <= st.hoy),
+            (r) => r.monto,
+        );
+        return [x.entra ? 'tus ventas cuentan cuando las anotas' : '', ventas ? `este mes llevas ${dinero(ventas)} en ventas` : ''].filter(Boolean).join(' · ');
     }
     P.lineaPeriodo = lineaPeriodo;
     /** «lo de tu pareja (el 29)», «tu quincena (el 14)», «el adelanto (el 20)»: lo que llega después de un faltante. */
@@ -484,7 +498,7 @@
         // Adelanto de salario: lo que te descuentan de lo que te cae en este periodo.
         const descuento = M.suma(x.ingresos || [], (o) => o.descuento || 0);
         const texto = partes.length ? `incluye ${P.lista(partes)}` : '';
-        return descuento ? `${texto}${texto ? ' · ' : ''}te descuentan ${dinero(descuento)} del adelanto` : texto;
+        return [texto, descuento ? `te descuentan ${dinero(descuento)} del adelanto` : '', ventasPeriodo(x)].filter(Boolean).join(' · ');
     }
     P.incluyePeriodo = incluyePeriodo;
     /** V2-35: debajo del número, cómo quedas el próximo día de pago. Al tocarlo, Pagos → Próxima. */
@@ -494,7 +508,7 @@
         const inc = incluyePeriodo(x);
         return `<button type="button" class="proy" data-a="irProxima" data-fk="proyeccion" aria-label="${esc(tituloPeriodo(x, k.hz))}: ${esc(lineaPeriodo(x))}${inc ? '. ' + esc(inc) : ''}. Ver en Pagos">
             <span class="proy-t">${icon('calendar-days', 'ico-s')}${esc(tituloPeriodo(x, k.hz))}</span>
-            <span class="proy-l${x.deficit > 0 ? ' proy-l--falta' : ''}">${esc(lineaPeriodo(x))}</span>
+            <span class="proy-l${P.faltaPeriodo(x) ? ' proy-l--falta' : ''}">${esc(lineaPeriodo(x))}</span>
             ${inc ? `<span class="proy-s">${esc(inc)}</span>` : ''}
             ${x.soloFechas ? `<span class="proy-s">Ojo: ${esc(P.textoFaltaFechas(x).replace(/^El /, 'el '))}.</span>` : ''}
             ${icon('chevron-right', 'ico-xs proy-ir')}
@@ -524,7 +538,7 @@
                 const acciones = x.soloFechas
                     ? (x.primero ? btn(`Pagarlo con ${a.fuente === 'ahora' ? 'lo que tienes' : etiquetaFuente(a.fuente)}`, `data-a="hoja" data-hoja="pagarCon" data-id="${x.primero.pago.id}" data-fecha="${x.primero.fecha}" data-sugerida="${a.fuente}" data-fk="at-sug-pagar"`, true) : '') + btn(`Reservar ${dinero(x.deficit)}`, `data-a="hoja" data-hoja="reservar" data-id="${x.clave}" data-fecha="${a.fuente}" data-fk="at-sug-si"`, !x.primero) + no
                     : btn(`Sí, ${dinero(x.deficit)}`, `data-a="hoja" data-hoja="reservar" data-id="${x.clave}" data-fecha="${a.fuente}" data-fk="at-sug-si"`, true) + no;
-                items.push({ id: 'sug-' + x.clave, nivel: 'ambar', pago: true, ...textoSugerencia(a), corto: x.clave === 'despues' && !x.soloFechas ? `te faltarían ${dinero(x.deficit, { aprox: true })} ${hz.modo === 'quince' ? 'en los 15 días siguientes' : 'el próximo mes'}` : `te faltarían ${dinero(x.deficit, { aprox: true })} el ${M.partes(x.soloFechas ? x.cuando : x.clave)[2]}`, acciones });
+                items.push({ id: 'sug-' + x.clave, nivel: 'ambar', pago: true, ...textoSugerencia(a), corto: x.clave === 'despues' && !x.soloFechas ? `${P.variable() ? 'pagas ' + dinero(x.pagos, { aprox: true }) : 'te faltarían ' + dinero(x.deficit, { aprox: true })} ${hz.modo === 'quince' ? 'en los 15 días siguientes' : 'el próximo mes'}` : `te faltarían ${dinero(x.deficit, { aprox: true })} el ${M.partes(x.soloFechas ? x.cuando : x.clave)[2]}`, acciones });
             } else if (a.tipo === 'sinIngreso') {
                 // V2-52: lo ibas a pagar con un ingreso de una vez que todavía no llega. Se pregunta; nada cambia solo.
                 const x = a.parte;
@@ -617,7 +631,8 @@
             return { titulo: `${P.textoFaltaFechas(x)}.`, texto: `En total sí te alcanza, pero ${art} vence antes. ¿${M.capital(loLa)} pagas con ${a.fuente === 'ahora' ? 'lo que tienes ahora' : etiquetaFuente(a.fuente)} o reservas solo ${dinero(x.deficit)}?` };
         }
         // Sin ingreso fijo (ingreso que varía): se habla de fechas, no de «te caen».
-        if (!p) return { titulo: `Del ${M.fechaCorta(x.inicio)} al ${M.fechaCorta(x.fin)} pagas ${dinero(x.pagos, { aprox: true })}${x.entra ? ` y te caen ${dinero(x.entra, { aprox: true })}` : ''}: te faltarían ${dinero(x.deficit, { aprox: true })}.`, texto: '¿Guardas algo de lo que tienes ahora?' };
+        // V2-59 (#27): para quien vende, no «te faltarían»: lo que paga y que sus ventas cuentan cuando las anota.
+        if (!p) return { titulo: `Del ${M.fechaCorta(x.inicio)} al ${M.fechaCorta(x.fin)} pagas ${dinero(x.pagos, { aprox: true })}${x.entra ? ` y esperas ${dinero(x.entra, { aprox: true })}` : ''}.`, texto: 'Tus ventas cuentan cuando las anotas. ¿Guardas algo de lo que tienes ahora?' };
         if (a.siguiente) {
             const nombre = semanal ? 'con tu próximo pago' : p.frecuencia === 'quincenal' ? 'la próxima quincena' : `con tu próximo ${p.nombre.toLowerCase()}`;
             return { titulo: `${M.capital(nombre)} te faltarían ${dinero(x.deficit, { aprox: true })}. ¿Guardas algo ${fuente}?`, texto: `${M.capital(cual)} te caen ${caen} y ${quePagas}.` };
@@ -854,7 +869,7 @@
         const x = k.periodos.find((y) => y.clave === rango.desde) || (k.proxima && k.proxima.inicio <= rango.desde && rango.desde <= k.proxima.fin ? k.proxima : null);
         if (!x) return '';
         const inc = incluyePeriodo(x);
-        return `<div class="per-res${x.deficit > 0 ? ' per-res--falta' : ''}"><p class="per-res-l">${esc(M.capital(lineaPeriodo(x)))}</p>${inc ? `<p class="fila-s">${esc(M.capital(inc))}.</p>` : ''}${x.soloFechas ? `<p class="fila-s">Ojo: ${esc(P.textoFaltaFechas(x).replace(/^El /, 'el '))}.</p>` : ''}</div>`;
+        return `<div class="per-res${P.faltaPeriodo(x) ? ' per-res--falta' : ''}"><p class="per-res-l">${esc(M.capital(lineaPeriodo(x)))}</p>${inc ? `<p class="fila-s">${esc(M.capital(inc))}.</p>` : ''}${x.soloFechas ? `<p class="fila-s">Ojo: ${esc(P.textoFaltaFechas(x).replace(/^El /, 'el '))}.</p>` : ''}</div>`;
     }
     /** Cuánto es al mes, más o menos, algo que se repite (para comparar y sumar). */
     function alMes(x, monto = x.monto) {
@@ -1472,16 +1487,17 @@
             <button type="button" class="btn btn--prim btn--48 btn--full" data-a="interesInvitar" data-fk="inv-interes" ${st.interesInvitar ? 'disabled' : ''}>${st.interesInvitar ? `${icon('check', 'ico-s')}Te avisaremos` : 'Me interesa'}</button>
         </div>`;
     };
-    /** v2.4: «Aprende» es un glosario sencillo: los mismos textos que salen al tocar «?». */
+    /** v2.5: «Aprende» = el entrenamiento («Lo esencial» y «Aprende más») y el glosario: los mismos textos que los «?». */
     S.aprende = function () {
-        const g = (window.GLOSARIO || []).map((x) => P.textoTermino(x));
+        const variable = P.variable();
+        const g = (window.GLOSARIO || []).filter((x) => !x.solo || x.solo === (variable ? 'variable' : 'fijo')).map((x) => P.textoTermino(x));
         const uso = P.modo === 'uso';
         return `<div class="pg">
-            ${encabezado('Aprende', 'Las palabras de la app, en sencillo', { atras: 'Hoy' })}
-            <div class="acciones-2"><button type="button" class="btn btn--48" data-a="menuIr" data-ir="tour" data-fk="apr-tour">${icon('play', 'ico-s')}Ver el recorrido</button>${uso ? '' : `<button type="button" class="btn btn--48" data-a="menuIr" data-ir="practica" data-fk="apr-practica">${icon('list-checks', 'ico-s')}Practicar</button>`}</div>
-            ${uso ? '<p class="fila-s">El recorrido usa datos de ejemplo: no toca tus datos.</p>' : ''}
-            ${tarjetaSeccion('Glosario', `<dl class="glosario">${g.map((x) => `<div class="glosario-i" id="glo-${x.id}"><dt>${esc(x.t)}</dt><dd>${esc(x.texto)}</dd></div>`).join('')}</dl>`, { id: 'apr-glosario' })}
-            <p class="fila-s">Estos mismos textos salen al tocar «?» junto a cada cosa.</p>
+            ${encabezado('Aprende', 'La app, en sencillo', { atras: 'Hoy' })}
+            <div class="acciones-2"><button type="button" class="btn btn--48" data-a="menuIr" data-ir="aprendeMas" data-fk="apr-tour">${icon('book-open', 'ico-s')}Aprender a usarla</button>${uso ? '' : `<button type="button" class="btn btn--48" data-a="menuIr" data-ir="practica" data-fk="apr-practica">${icon('list-checks', 'ico-s')}Practicar</button>`}</div>
+            ${uso ? '<p class="fila-s">Se aprende con datos de ejemplo: no toca tus datos.</p>' : ''}
+            ${tarjetaSeccion('Glosario', `<dl class="glosario">${g.map((x) => `<div class="glosario-i" id="glo-${x.id}"><dt>${esc(x.t)}</dt><dd>${esc(x.para)}<span class="glosario-ej">Ejemplo: ${esc(x.ejemplo)}</span></dd></div>`).join('')}</dl>`, { id: 'apr-glosario' })}
+            <p class="fila-s">Estos mismos textos salen al tocar «?» y en el entrenamiento.</p>
         </div>`;
     };
     S.avisos = function () {

@@ -582,7 +582,7 @@
         if (d.tipo === 'cuadre' && d.lugar && d.monto !== null) {
             const esperado = M.saldoLugar(st, d.lugar);
             const dif = d.monto - esperado;
-            out.push(`<div class="nota nota--info" role="note">${icon('scale')}<p>Según lo anotado tienes ${dinero(esperado)} en ${esc(M.lugar(st, d.lugar).nombre)}. ${dif === 0 ? 'Cuadra exacto.' : `Los ${dinero(Math.abs(dif))} de diferencia quedan «sin detalle».`} Desde ahora tu saldo parte de este número.</p></div>`);
+            out.push(`<div class="nota nota--info" role="note">${icon('scale')}<p>Según lo anotado tienes ${dinero(esperado)} en ${esc(M.lugar(st, d.lugar).nombre)}. ${dif === 0 ? 'Cuadra exacto.' : `Los ${dinero(Math.abs(dif))} de diferencia quedan «sin detalle».`} Desde ahora la cuenta parte de este número.</p></div>`);
         }
         if (d.tipo === 'pagado' && d.medio) {
             const m = M.medio(st, d.medio);
@@ -1010,7 +1010,7 @@
                 cuerpo: `<div class="menu-yo"><span class="avatar" aria-hidden="true">${esc((st.nombre || 'T').charAt(0))}</span><div><p class="fila-t">${esc(st.nombre || 'Tú')}</p><p class="fila-s">${esc(st.espacio)}</p></div></div>
                     <ul class="lista card">
                         ${fila('users', 'Tu espacio', esc(st.espacio), 'menuIr', 'data-ir="espacio"')}
-                        ${fila('calendar-clock', 'Cómo te pagan', p ? esc(p.nombre) : 'Varía', 'menuIr', p ? `data-ir="ingreso" data-id="${p.id}"` : 'data-ir="pagos"')}
+                        ${fila('calendar-clock', 'Cómo te entra el dinero', p ? esc(p.nombre) : `Varía · ves tu libre ${M.horizonte(st).modo === 'quince' ? 'de 15 días' : 'hasta fin de mes'}`, 'menuIr', p ? `data-ir="ingreso" data-id="${p.id}"` : 'data-ir="comoTeEntra"')}
                         ${fila('wallet', 'Cuentas y medios de pago', esc(st.medios.filter((m) => !m.oculto).map((m) => m.nombre).join(' · ')), 'menuIr', 'data-ir="lugares"')}
                         ${fila('bell', 'Avisos', P.modo === 'uso' ? 'Se muestran al abrir la app' : 'Notificación de la app y correo', 'menuIr', 'data-ir="avisos"')}
                         ${fila('book-open', 'Aprende', 'Consejos cortos', 'menuIr', 'data-ir="aprende"')}
@@ -1021,15 +1021,43 @@
         },
     };
     P.acciones.menuIr = (d) => {
-        if (d.ir === 'apariencia') {
+        if (d.ir === 'apariencia' || d.ir === 'comoTeEntra') {
             P.ui.hoja = null;
-            P.abrirHoja('apariencia');
+            P.abrirHoja(d.ir);
             return;
         }
         P.cerrarHoja({ sinFoco: true });
         if (d.ir === 'midinero' || d.ir === 'pagos') P.irTab(d.ir);
         else if (P.modos && P.modos.irMenu(d.ir)) return;
         else P.abrir(d.ir, d.id);
+    };
+    /**
+     * V2-59 (#28): sin ingreso fijo, «Cómo te entra el dinero» (Tu cuenta) también elige hasta cuándo ves tu libre
+     * (lo mismo que en «¿De dónde sale?»).
+     */
+    H.comoTeEntra = {
+        html() {
+            const hz = M.horizonte(P.st);
+            const g = window.terminoGlosario('hastaCuando', true);
+            const chips = [['finDeMes', 'Hasta fin de mes'], ['quince', 'Los próximos 15 días']].map(([v, t]) => `<button type="button" class="chip" aria-pressed="${hz.modo === v}" data-a="horizonte" data-v="${v}" data-fk="hz-${v}">${hz.modo === v ? icon('check', 'ico-xs') : ''}${t}</button>`).join('');
+            return {
+                titulo: 'Cómo te entra el dinero',
+                cuerpo: `<p class="txt">Te entra cuando vendes o trabajas: varía. Tus ventas cuentan cuando las anotas.</p>
+                    <div class="campo-g" role="group" aria-labelledby="l-hz2"><p class="campo-l" id="l-hz2">¿Hasta cuándo ves tu libre?</p><div class="chips">${chips}</div><p class="fila-s">${esc(g.para)}</p></div>
+                    <button type="button" class="link link--start" data-a="menuIr" data-ir="pagos" data-fk="cte-pagos">${icon('calendar-clock', 'ico-s')}Ver lo que esperas que te llegue</button>`,
+                pie: pie1('cerrarHoja', 'Listo', 'cte-listo'),
+            };
+        },
+    };
+    /** v2.5: la primera vez que agregas una tarjeta con tus datos, un capítulo corto con datos de ejemplo. */
+    H.ofertaTarjetas = {
+        html() {
+            return {
+                titulo: '¿Quieres ver cómo funcionan las tarjetas? (1 min)',
+                cuerpo: '<p class="txt">Un capítulo corto con datos de ejemplo. No toca tus datos.</p><p class="fila-s">También está después en tu letra → «Aprende».</p>',
+                pie: '<button type="button" class="btn btn--48" data-a="ofertaTarjetas" data-v="no" data-fk="oferta-no">Ahora no</button><button type="button" class="btn btn--prim btn--48" data-a="ofertaTarjetas" data-v="si" data-fk="oferta-si">Ver ahora</button>',
+            };
+        },
     };
     H.apariencia = {
         html() {
@@ -1428,9 +1456,13 @@
             const lista = fuentes.map((f) => ({ v: f, t: f === 'ahora' ? 'De lo que tienes ahora' : M.capital('de ' + P.etiquetaFuente(f)), s: f === 'ahora' ? `hoy: ${dinero(k.libre)} libres` : `te quedarían ${dinero(k.periodos.find((x) => x.clave === f).quedan, { aprox: true })}` }));
             const monto = M.leerMonto(h.monto);
             const pagos = [...new Set(per.partes.map((x) => x.pago.nombre))];
+            const nombres = pagos.slice(0, 3).map((n) => P.conArticulo(n));
+            const cuales = pagos.length > 3 ? `${nombres.join(', ')} y más` : P.lista(nombres);
+            // V2-59 (#27): para quien vende, no «te faltarían»: lo que paga, y que sus ventas cuentan cuando las anota.
+            const intro = P.variable() && !per.entra ? `${k.hz.modo === 'quince' ? 'En los 15 días siguientes' : 'El próximo mes'} pagas ${dinero(per.pagos, { aprox: true })}: ${cuales}. Tus ventas cuentan cuando las anotas.` : `Con ${P.etiquetaFuente(per.clave)} te faltarían ${dinero(per.deficit, { aprox: true })} para ${cuales}.`;
             return {
                 titulo: '¿Cuánto reservas?',
-                cuerpo: `<p class="txt">Con ${esc(P.etiquetaFuente(per.clave))} te faltarían ${dinero(per.deficit, { aprox: true })} para ${esc(P.lista(pagos.slice(0, 3).map((n) => P.conArticulo(n))))}${pagos.length > 3 ? ' y más' : ''}.</p>
+                cuerpo: `<p class="txt">${esc(intro)}</p>
                     ${campoMonto(h, { label: '¿Cuánto?', valor: h.monto, errorTexto: 'Escribe cuánto reservas' })}
                     ${opciones(h, { campo: 'fuente', label: '¿De cuál dinero?', lista, valor: h.fuente, columnas: true })}
                     ${h.fuente === 'ahora' && monto > k.libre ? `<div class="nota nota--ambar" role="note">${icon('info')}<p>Hoy te quedan ${dinero(k.libre)} libres: si reservas más, te faltaría para lo de estos días.</p></div>` : ''}
@@ -1561,7 +1593,7 @@
             const st = P.st;
             return {
                 titulo: 'Cuadrar',
-                cuerpo: `<p class="txt txt--q">Dinos cuánto tienes de verdad. Desde ahora tu saldo parte de este número. ${P.qBtn('cuadrar')}</p>${P.qTexto('cuadrar')}
+                cuerpo: `<p class="txt txt--q">Dinos cuánto tienes de verdad. Desde ahora la cuenta parte de este número. ${P.qBtn('cuadrar')}</p>${P.qTexto('cuadrar')}
                     ${st.lugares.length > 1 ? opciones(h, { campo: 'lugar', label: '¿Dónde?', lista: lugares(st), valor: h.lugar, errorTexto: 'Elige dónde' }) : ''}
                     ${campoMonto(h, { label: '¿Cuánto tienes ahora?', valor: h.monto, errorTexto: 'Escribe cuánto tienes, aunque sea $0' })}
                     <div id="cuadrar-vivo" aria-live="polite">${vivoCuadre(st, h)}</div>`,

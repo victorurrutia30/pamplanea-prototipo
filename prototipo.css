@@ -2974,18 +2974,19 @@ label.btn {
     inset: 0;
     z-index: 400;
 }
-.tour-velo {
+/* v2.5: lo oscuro son cuatro piezas alrededor de lo que se explica (o se toca); lo de en medio queda claro. */
+.tour-dim {
     position: absolute;
+    background: rgb(0 0 0 / 0.58);
+}
+.tour-dim--todo {
     inset: 0;
-    background: rgb(0 0 0 / 0.55);
 }
 .tour-foco {
     position: absolute;
     border: 2px solid var(--color-surface-2);
     border-radius: 18px;
-    box-shadow:
-        0 0 0 3px var(--color-primary),
-        0 0 0 9999px rgb(0 0 0 / 0.55);
+    box-shadow: 0 0 0 3px var(--color-primary);
     pointer-events: none;
 }
 .tour-card {
@@ -3037,16 +3038,79 @@ label.btn {
     justify-self: start;
     margin-left: -8px;
 }
+/* v2.5: calma. El resaltado entra despacio (450 ms), late suave dos veces y se queda; la tarjeta aparece después.
+   Nada se mueve solo después de eso. Con «reducir movimiento», nada se mueve (regla de abajo). */
 @media (prefers-reduced-motion: no-preference) {
-    .tour-foco {
-        transition:
-            top 200ms var(--app-motion-ease),
-            left 200ms var(--app-motion-ease),
-            width 200ms var(--app-motion-ease),
-            height 200ms var(--app-motion-ease);
+    .tour-entra .tour-dim,
+    .tour-entra .tour-foco,
+    .tour-entra .tour-hz {
+        animation: tour-aparece 450ms var(--app-motion-ease) both;
     }
-    .tour-card {
-        animation: p-toast 200ms var(--app-motion-ease) both;
+    .tour-entra .tour-card {
+        animation: tour-tarjeta 320ms var(--app-motion-ease) 450ms both;
+    }
+    .tour-entra .tour-foco::after,
+    .tour-senal::after {
+        position: absolute;
+        inset: -3px;
+        border-radius: inherit;
+        animation: tour-pulso 1000ms ease-out 450ms 2;
+        content: '';
+        pointer-events: none;
+    }
+    .tour-flecha {
+        animation:
+            tour-aparece 450ms var(--app-motion-ease) both,
+            tour-bota 900ms ease-in-out 450ms 2;
+    }
+    .tour-flecha--arriba {
+        animation:
+            tour-aparece 450ms var(--app-motion-ease) both,
+            tour-bota-arriba 900ms ease-in-out 450ms 2;
+    }
+}
+@keyframes tour-aparece {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+@keyframes tour-tarjeta {
+    from {
+        opacity: 0;
+        translate: 0 10px;
+    }
+    to {
+        opacity: 1;
+        translate: 0 0;
+    }
+}
+@keyframes tour-pulso {
+    from {
+        box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-primary) 50%, transparent);
+    }
+    to {
+        box-shadow: 0 0 0 14px color-mix(in srgb, var(--color-primary) 0%, transparent);
+    }
+}
+@keyframes tour-bota {
+    0%,
+    100% {
+        translate: 0 0;
+    }
+    50% {
+        translate: 0 7px;
+    }
+}
+@keyframes tour-bota-arriba {
+    0%,
+    100% {
+        translate: 0 0;
+    }
+    50% {
+        translate: 0 -7px;
     }
 }
 
@@ -3149,11 +3213,7 @@ html.con-hazlo .mask {
     min-height: 44px;
     padding: 0 8px;
 }
-/* La celebración: breve y sin movimiento si la persona lo pidió así. */
-.tour-cel {
-    font-size: 32px;
-    line-height: 40px;
-}
+/* v2.5: la pausa después de «Hazlo tú»: antes → después, quieta (sin celebración que salte). */
 .tour-num {
     display: flex;
     flex-wrap: wrap;
@@ -3166,25 +3226,6 @@ html.con-hazlo .mask {
 .tour-num > span {
     color: var(--color-text-muted);
     font-size: 14px;
-}
-@media (prefers-reduced-motion: no-preference) {
-    .tour-cel {
-        animation: tour-pop 420ms var(--app-motion-ease) both;
-        transform-origin: left bottom;
-    }
-}
-@keyframes tour-pop {
-    0% {
-        opacity: 0;
-        transform: scale(0.4);
-    }
-    70% {
-        opacity: 1;
-        transform: scale(1.15);
-    }
-    100% {
-        transform: scale(1);
-    }
 }
 /* «¿Lo entendí?»: la respuesta buena se marca en verde; la otra, sin rojo («Casi»). */
 .tour-op--bien {
@@ -3338,6 +3379,11 @@ html.con-hazlo .mask {
     font-size: 14px;
     line-height: 20px;
 }
+.glosario-ej {
+    display: block;
+    margin-top: 2px;
+    color: var(--color-text);
+}
 /* «Practicar»: nivel de cada ejercicio. */
 .nivel {
     display: inline-block;
@@ -3370,7 +3416,19 @@ html.con-hazlo .mask {
     background: var(--home-fg);
     color: var(--color-primary);
 }
-/* v2.4.1 (V2-58 #23): «Muéstrame» señala dónde tocar; no tapa ni bloquea lo que señala. */
+/* v2.5: «Hazlo tú». Lo demás queda oscuro y no se toca (solo lo que señala la flecha); el anillo late dos veces y se
+   queda; la flecha baja dos veces hacia lo que hay que tocar y se queda quieta. */
+.tour-hueco {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+.tour-hueco .tour-dim {
+    pointer-events: auto;
+}
+.tour-dim--suave {
+    background: rgb(0 0 0 / 0.42);
+}
 .tour-senal {
     position: absolute;
     z-index: 2;
@@ -3379,19 +3437,88 @@ html.con-hazlo .mask {
     box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-primary) 25%, transparent);
     pointer-events: none;
 }
-@media (prefers-reduced-motion: no-preference) {
-    .tour-senal {
-        animation: tour-latido 1.2s var(--app-motion-ease) infinite;
-    }
+.tour-flecha {
+    position: absolute;
+    z-index: 3;
+    display: grid;
+    width: 40px;
+    height: 40px;
+    place-items: center;
+    border: 2px solid var(--color-surface-2);
+    border-radius: 999px;
+    background: var(--color-primary);
+    box-shadow: var(--app-shadow-card);
+    color: var(--color-primary-fg);
+    pointer-events: none;
 }
-@keyframes tour-latido {
-    0%,
-    100% {
-        box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-primary) 25%, transparent);
-    }
-    50% {
-        box-shadow: 0 0 0 10px color-mix(in srgb, var(--color-primary) 10%, transparent);
-    }
+.tour-flecha .ico {
+    width: 22px;
+    height: 22px;
+    stroke-width: 2.5;
+}
+.tour-pista {
+    display: block;
+    color: var(--color-text-muted);
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 18px;
+}
+.tour-pista:empty {
+    display: none;
+}
+.tour-hz-acc .tour-saltar-paso {
+    font-size: 14px;
+}
+/* v2.5: cada paso dice qué estás viendo (el título), para qué te sirve y un ejemplo con números redondos. */
+.tour-para {
+    margin: 0;
+}
+.tour-ej {
+    margin: 2px 0 0;
+    padding: 8px 10px;
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--color-primary) 7%, var(--color-surface-2));
+    font-size: 15px;
+    line-height: 21px;
+}
+.tour-ej-l {
+    display: block;
+    color: var(--color-primary);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    line-height: 16px;
+    text-transform: uppercase;
+}
+.tour-igual {
+    color: var(--color-text-muted);
+    font-size: 13px;
+}
+.tour-porque {
+    font-weight: 500;
+}
+.tour-ver {
+    margin-top: 2px;
+}
+/* «Aprende más»: la versión elegida, el estado de cada capítulo y, en «Practicar», el capítulo de antes. */
+.ay-version-elegida {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 4px 8px;
+}
+.cap-estado {
+    font-weight: 600;
+}
+.pr-antes {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-weight: 600;
+}
+.q-txt .q-ej {
+    margin-top: 4px;
 }
 /* v2.4.1: el recorrido en dos versiones. «¿Cómo te entra el dinero?», «Cambiar de versión» y, en «Practicar»,
    a qué versión aplica cada ejercicio. */

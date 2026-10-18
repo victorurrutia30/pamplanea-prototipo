@@ -267,7 +267,7 @@ window.CASOS_PRACTICA = [
         para: 'Con entradas que varían, la app sugiere guardar para lo que viene; la persona decide cuánto.',
         tarea: 'Tus ventas varían y el alquiler de $120 vence el 5. Guarda $40 de lo que tienes para el alquiler.',
         pasos: [
-            { t: 'En Hoy, en el aviso «te faltarían ~$191», toca «Sí, $191.00».', clave: 'hoja:reservar' },
+            { t: 'En Hoy, en el aviso del próximo mes, toca «Sí, $191.00».', clave: 'hoja:reservar' },
             { t: 'En «¿Cuánto?» escribe 40 y toca «Reservar».', clave: 'guardado:reservar' },
             { t: 'Mira el alquiler en «Próximos pagos»: «Reservando $40.00 de lo que tienes ahora».' },
         ],
@@ -289,28 +289,29 @@ window.CASOS_PRACTICA = [
     },
 ];
 /**
- * v2.4.1: «Practicar» = 18 ejercicios, de fácil a difícil. `version`: a qué recorrido aplica (fijo, variable o
- * ambos); la lista muestra primero los de la versión que la persona eligió.
+ * v2.4.1: «Practicar» = 18 ejercicios, de fácil a difícil. `version`: a qué versión aplica (fijo, variable o
+ * ambos); la lista muestra primero los de la versión que la persona eligió. v2.5: `capitulo`, el capítulo del
+ * entrenamiento que conviene hacer antes («Lo esencial», «Ahorros»…; el mismo id en las dos versiones).
  */
 window.PRACTICA = [
-    { id: 'C05', nivel: 'Fácil', version: 'ambos' },
-    { id: 'P-VENTA', nivel: 'Fácil', version: 'variable' },
-    { id: 'C11', nivel: 'Fácil', version: 'ambos' },
-    { id: 'P-HORIZONTE', nivel: 'Fácil', version: 'variable' },
-    { id: 'C23', nivel: 'Fácil', version: 'ambos' },
-    { id: 'P-REMESA', nivel: 'Fácil', version: 'variable' },
-    { id: 'C19', nivel: 'Fácil', version: 'fijo' },
-    { id: 'C26', nivel: 'Media', version: 'fijo' },
-    { id: 'C01', nivel: 'Media', version: 'fijo' },
-    { id: 'C33', nivel: 'Media', version: 'fijo' },
-    { id: 'C20', nivel: 'Media', version: 'fijo' },
-    { id: 'P-RESERVAR', nivel: 'Media', version: 'variable' },
-    { id: 'P-AGUINALDO', nivel: 'Media', version: 'fijo' },
-    { id: 'P-ADELANTO', nivel: 'Difícil', version: 'fijo' },
-    { id: 'P-SEMANA', nivel: 'Difícil', version: 'variable' },
-    { id: 'C16', nivel: 'Difícil', version: 'ambos' },
-    { id: 'C31', nivel: 'Difícil', version: 'ambos' },
-    { id: 'C30', nivel: 'Difícil', version: 'ambos' },
+    { id: 'C05', nivel: 'Fácil', version: 'ambos', capitulo: 'esencial' },
+    { id: 'P-VENTA', nivel: 'Fácil', version: 'variable', capitulo: 'esencial' },
+    { id: 'C11', nivel: 'Fácil', version: 'ambos', capitulo: 'esencial' },
+    { id: 'P-HORIZONTE', nivel: 'Fácil', version: 'variable', capitulo: 'horizonte' },
+    { id: 'C23', nivel: 'Fácil', version: 'ambos', capitulo: 'ahorros' },
+    { id: 'P-REMESA', nivel: 'Fácil', version: 'variable', capitulo: 'proximoMes' },
+    { id: 'C19', nivel: 'Fácil', version: 'fijo', capitulo: 'proxima' },
+    { id: 'C26', nivel: 'Media', version: 'fijo', capitulo: 'volver' },
+    { id: 'C01', nivel: 'Media', version: 'fijo', capitulo: 'esencial' },
+    { id: 'C33', nivel: 'Media', version: 'fijo', capitulo: 'proxima' },
+    { id: 'C20', nivel: 'Media', version: 'fijo', capitulo: 'proxima' },
+    { id: 'P-RESERVAR', nivel: 'Media', version: 'variable', capitulo: 'esencial' },
+    { id: 'P-AGUINALDO', nivel: 'Media', version: 'fijo', capitulo: 'extras' },
+    { id: 'P-ADELANTO', nivel: 'Difícil', version: 'fijo', capitulo: 'extras' },
+    { id: 'P-SEMANA', nivel: 'Difícil', version: 'variable', capitulo: 'ahorros' },
+    { id: 'C16', nivel: 'Difícil', version: 'ambos', capitulo: 'tarjetas' },
+    { id: 'C31', nivel: 'Difícil', version: 'ambos', capitulo: 'tarjetas' },
+    { id: 'C30', nivel: 'Difícil', version: 'ambos', capitulo: 'ahorros' },
 ];
 
 /**
