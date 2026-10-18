@@ -91,9 +91,21 @@
     P.borrarGuardado = () => P.almacen.borrar(CLAVE_APP);
 
     // ------------------------------------------------------------------ casos
+    /** v2.4.1: los ejercicios de ingresos que varían parten de Rosa. */
+    function rosaDeCaso(caso) {
+        const st = D.crearRosa();
+        if (caso.variante === 'semanaMala') {
+            // P-SEMANA: vendió poco; al final del día contó $20 en efectivo.
+            const r = { id: 'r' + st.seq, seq: st.seq++, tipo: 'cuadre', fecha: st.hoy, lugar: 'efectivo', monto: c('20'), esperado: c('110') };
+            st.registros.push(r);
+            st.lugares.find((l) => l.id === 'efectivo').cuadre = { fecha: r.fecha, seq: r.seq, monto: r.monto };
+        }
+        return st;
+    }
     function estadoDeCaso(caso) {
         if (caso.persona === 'nueva') return D.crearNueva();
         if (caso.persona === 'carlos') return D.crearCarlos(caso.variante);
+        if (caso.persona === 'rosa') return rosaDeCaso(caso);
         if (caso.variante === 'planea') return D.crearAna('planea');
         const st = D.crearAna();
         if (caso.variante === 'sinColegio') {
@@ -151,12 +163,12 @@
         P.caso = null;
         clearTimeout(bannerTimer);
         P.guardando = true;
-        P.cargar(persona === 'carlos' ? D.crearCarlos() : D.crearAna(), { tab: 'hoy' });
+        P.cargar(persona === 'carlos' ? D.crearCarlos() : persona === 'rosa' ? D.crearRosa() : D.crearAna(), { tab: 'hoy' });
         P.emitir('persona:' + persona);
     }
     function reiniciar() {
         if (P.caso) cargarCaso(P.caso.id);
-        else cargarPersona(P.st && P.st.persona === 'carlos' ? 'carlos' : 'ana');
+        else cargarPersona(P.st && ['carlos', 'rosa'].includes(P.st.persona) ? P.st.persona : 'ana');
     }
 
     /** Lo que la guía (o «Casos y ayuda») puede simular: el paso del tiempo y los avisos. */

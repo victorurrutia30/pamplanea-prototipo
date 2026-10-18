@@ -1,4 +1,4 @@
-// Producto v2 · prototipo. Datos simulados: catálogo, Ana, Carlos y la persona nueva.
+// Producto v2 · prototipo. Datos simulados: catálogo, Ana, Carlos, Rosa y la persona nueva.
 // Montos en centavos enteros (nunca float). Fechas ISO (AAAA-MM-DD). Todo vive en memoria.
 'use strict';
 
@@ -244,9 +244,71 @@ function crearCarlos(variante) {
     return st;
 }
 
+/**
+ * v2.4.1: Rosa, para el recorrido de ingresos que varían. Vende pupusas en su casa (lo que entra cambia cada
+ * día) y su hijo Josué le manda una remesa sin fecha fija. Sin ingreso principal: ve su libre hasta fin de mes.
+ */
+function crearRosa() {
+    const st = estadoBase({ persona: 'rosa', nombre: 'Rosa', espacio: 'Casa de Rosa', horizonteVariable: 'finDeMes' });
+    st.lugares = [
+        { id: 'efectivo', tipo: 'efectivo', nombre: 'Efectivo', emoji: '💵' },
+        { id: 'agricola', tipo: 'banco', nombre: 'Banco Agrícola', emoji: '🏦' },
+    ];
+    st.medios = [
+        { id: 'efectivo', nombre: 'Efectivo', emoji: '💵', lugar: 'efectivo' },
+        { id: 'debito', nombre: 'Débito Agrícola', emoji: '🏦', lugar: 'agricola', tarjetaDebito: true },
+    ];
+    st.apartados = [
+        { id: 'emergencias', nombre: 'Emergencias', emoji: '🛟', portada: 'emergencia-paraguas', monto: c('50'), meta: c('300'), metaFecha: null, historial: [{ fecha: '2026-10-13', tipo: 'apartar', monto: c('20') }, { fecha: '2026-09-28', tipo: 'apartar', monto: c('30') }] },
+        { id: 'plancha', nombre: 'Plancha nueva', emoji: '🍳', portada: 'general-alcancia', monto: c('30'), meta: c('120'), metaFecha: null, historial: [{ fecha: '2026-10-06', tipo: 'apartar', monto: c('30') }] },
+    ];
+    // La remesa no tiene fecha fija: se espera más o menos el 28 y no cuenta hasta que llega.
+    st.ingresos = [
+        { id: 'remesa', nombre: 'Remesa de Josué', emoji: '🌎', categoria: 'remesa', tipoIngreso: 'remesa', monto: c('150'), aprox: true, frecuencia: 'unico', fecha: '2026-10-28', lugar: 'agricola', principal: false, extra: true, desde: '2026-10-01', llegadas: {} },
+    ];
+    st.pagos = [
+        { id: 'alquiler', nombre: 'Alquiler', emoji: '🏠', categoria: 'casa', monto: c('120'), estimado: false, frecuencia: 'mensual', dia: 5, medio: 'efectivo', avisos: [{ tipo: 'antes', dias: 1, on: true }, { tipo: 'vence', on: true }], desde: '2026-10-01', hechos: {}, previos: [{ fecha: '2026-09-05', monto: c('120') }] },
+        { id: 'luz', nombre: 'Luz', emoji: '💡', categoria: 'servicios', monto: c('18'), estimado: true, frecuencia: 'mensual', dia: 15, medio: 'efectivo', avisos: [{ tipo: 'vence', on: true }], desde: '2026-10-01', hechos: {}, previos: [{ fecha: '2026-09-15', monto: c('17.40') }] },
+        { id: 'agua', nombre: 'Agua', emoji: '💧', categoria: 'servicios', monto: c('8'), estimado: false, frecuencia: 'mensual', dia: 18, medio: 'efectivo', avisos: [{ tipo: 'vence', on: true }], desde: '2026-10-01', hechos: {}, previos: [{ fecha: '2026-09-18', monto: c('8') }] },
+        { id: 'cooperativa', nombre: 'Cuota de la cooperativa', emoji: '🏦', categoria: 'cuotas', monto: c('45'), estimado: false, frecuencia: 'mensual', dia: 25, medio: 'efectivo', avisos: [{ tipo: 'antes', dias: 1, on: true }, { tipo: 'vence', on: true }], tipoDeuda: 'prestamo', deuda: { debe: c('540') }, desde: '2026-10-01', hechos: {}, previos: [{ fecha: '2026-09-25', monto: c('45') }] },
+    ];
+    const venta = (fecha, monto) => ({ tipo: 'ingreso', fecha, monto: c(monto), nombre: 'Venta de pupusas', categoria: 'venta', lugar: 'efectivo', anotado: true });
+    sembrar(st, [
+        // Septiembre
+        { tipo: 'ingreso', fecha: '2026-09-26', monto: c('150'), nombre: 'Remesa de Josué', categoria: 'remesa', lugar: 'agricola' },
+        // Octubre
+        venta('2026-10-01', '42'),
+        { tipo: 'gasto', fecha: '2026-10-02', monto: c('18'), nombre: 'Mercado', categoria: 'mercado', medio: 'efectivo', anotado: true },
+        venta('2026-10-03', '55'),
+        { tipo: 'gasto', fecha: '2026-10-05', monto: c('120'), nombre: 'Alquiler', categoria: 'casa', medio: 'efectivo', pago: 'alquiler', ref: 'alquiler-oct' },
+        venta('2026-10-06', '38'),
+        { tipo: 'gasto', fecha: '2026-10-08', monto: c('15.50'), nombre: 'Gas', categoria: 'casa', medio: 'efectivo', anotado: true },
+        venta('2026-10-09', '47'),
+        { tipo: 'gasto', fecha: '2026-10-10', monto: c('14'), nombre: 'Queso', categoria: 'mercado', medio: 'efectivo', anotado: true },
+        venta('2026-10-13', '51'),
+        { tipo: 'gasto', fecha: '2026-10-15', monto: c('17.40'), nombre: 'Luz', categoria: 'servicios', medio: 'efectivo', pago: 'luz', ref: 'luz-oct' },
+        venta('2026-10-16', '44'),
+        { tipo: 'gasto', fecha: '2026-10-17', monto: c('21'), nombre: 'Mercado', categoria: 'mercado', medio: 'efectivo', anotado: true },
+        { tipo: 'gasto', fecha: '2026-10-18', monto: c('8'), nombre: 'Agua', categoria: 'servicios', medio: 'efectivo', pago: 'agua', ref: 'agua-oct' },
+        venta('2026-10-19', '39'),
+        { tipo: 'gasto', fecha: '2026-10-20', monto: c('5'), nombre: 'Recarga', categoria: 'telefono', medio: 'efectivo', anotado: true },
+        { tipo: 'cuadre', fecha: '2026-10-20', lugar: 'efectivo', monto: c('110'), esperado: c('113.50'), ref: 'cuadre-efectivo' },
+        { tipo: 'cuadre', fecha: '2026-10-20', lugar: 'agricola', monto: c('95'), esperado: c('95'), ref: 'cuadre-agricola' },
+    ]);
+    for (const lugar of st.lugares) {
+        const r = porId(st, 'cuadre-' + lugar.id);
+        lugar.cuadre = { fecha: r.fecha, seq: r.seq, monto: r.monto };
+    }
+    for (const [pago, fecha, ref] of [['alquiler', '2026-10-05', 'alquiler-oct'], ['luz', '2026-10-15', 'luz-oct'], ['agua', '2026-10-18', 'agua-oct']]) {
+        const r = porId(st, ref);
+        st.pagos.find((p) => p.id === pago).hechos[fecha] = { estado: 'pagado', monto: r.monto, registro: r.id };
+    }
+    return st;
+}
+
 /** La persona del primer día: todavía no hay nada; el recorrido lo llena. */
 function crearNueva() {
     return estadoBase({ persona: 'nueva', nombre: '', espacio: 'Tu espacio', configurado: false });
 }
 
-window.DATOS = { CATEGORIAS, INGRESO_CATEGORIAS, TIPOS_INGRESO, EMOJI_NOMBRE, PAGOS_FRECUENTES, TIPOS_DEUDA, BANCOS, SUSCRIPCIONES, crearAna, crearCarlos, crearNueva, sembrar, c };
+window.DATOS = { CATEGORIAS, INGRESO_CATEGORIAS, TIPOS_INGRESO, EMOJI_NOMBRE, PAGOS_FRECUENTES, TIPOS_DEUDA, BANCOS, SUSCRIPCIONES, crearAna, crearCarlos, crearRosa, crearNueva, sembrar, c };

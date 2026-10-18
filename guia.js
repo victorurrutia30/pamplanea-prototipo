@@ -7,7 +7,13 @@
     const CASOS = window.CASOS;
     const $ = (s) => document.querySelector(s);
     const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]);
-    const PERSONAS = { ana: 'Ana', carlos: 'Carlos', nueva: 'Persona nueva' };
+    const PERSONAS = { ana: 'Ana', carlos: 'Carlos', rosa: 'Rosa', nueva: 'Persona nueva' };
+    /** Exploración libre: quién es cada persona de ejemplo. */
+    const LIBRE = {
+        ana: ['Ana, pago quincenal', 'Cobra ~$600 el 15 y el 30 en Banco Agrícola. Tiene $40 en efectivo y $1,455.60 en el banco, tarjeta Crédito BAC (corte 15, pago 5, cupo $1,500), luz vencida sin confirmar y tres ahorros: Emergencias, Laptop (lista para usar) y Vacaciones.'],
+        carlos: ['Carlos, pago semanal', 'Cobra ~$90 cada viernes, en efectivo. Tiene $125 y paga $150 de alquiler el día 1: lo paga con su pago del viernes 30 y la app le sugiere reservar lo que falta (él decide). Aporta $10 al cuchubal cada viernes.'],
+        rosa: ['Rosa, ingresos que varían', 'Vende pupusas en su casa (lo que entra cambia cada día) y su hijo le manda una remesa sin fecha fija (~$150, más o menos el 28). Tiene $110 en efectivo y $95 en Banco Agrícola, dos ahorros (Emergencias y Plancha nueva) y paga alquiler ($120 el 5), luz, agua y la cuota de la cooperativa ($45 el 25). Ve su libre hasta fin de mes.'],
+    };
     const CLAVE_GUIA = 'pamplanea-proto-v2:guia';
     const CLAVE_NOTAS = 'pamplanea-proto-v2:notas';
     const est = { caso: null, persona: 'ana', tema: 'serena-claro', hechos: {}, completos: {}, nota: '', ajustar: false };
@@ -112,9 +118,9 @@
         const panel = $('#g-panel');
         const caso = CASOS.find((c) => c.id === est.caso);
         if (!caso) {
-            const ana = est.persona === 'ana';
-            panel.innerHTML = `<p class="g-panel-cod">Exploración libre</p><h2 class="g-panel-t">${ana ? 'Ana, pago quincenal' : 'Carlos, pago semanal'}</h2>
-                <p>${ana ? 'Cobra ~$600 el 15 y el 30 en Banco Agrícola. Tiene $40 en efectivo y $1,455.60 en el banco, tarjeta Crédito BAC (corte 15, pago 5, cupo $1,500), luz vencida sin confirmar y tres ahorros: Emergencias, Laptop (lista para usar) y Vacaciones.' : 'Cobra ~$90 cada viernes, en efectivo. Tiene $125 y paga $150 de alquiler el día 1: lo paga con su pago del viernes 30 y la app le sugiere reservar lo que falta (él decide). Aporta $10 al cuchubal cada viernes.'}</p>
+            const [t, s] = LIBRE[est.persona] || LIBRE.ana;
+            panel.innerHTML = `<p class="g-panel-cod">Exploración libre</p><h2 class="g-panel-t">${t}</h2>
+                <p>${s}</p>
                 <p class="g-tip">Elige un caso a la izquierda para ver sus pasos. Todo lo que hagas cambia los números de verdad; «Reiniciar datos» vuelve al inicio.</p>`;
             return;
         }

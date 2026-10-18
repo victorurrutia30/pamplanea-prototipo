@@ -3393,3 +3393,37 @@ html.con-hazlo .mask {
         box-shadow: 0 0 0 10px color-mix(in srgb, var(--color-primary) 10%, transparent);
     }
 }
+/* v2.4.1: el recorrido en dos versiones. «¿Cómo te entra el dinero?», «Cambiar de versión» y, en «Practicar»,
+   a qué versión aplica cada ejercicio. */
+.tour-cab {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+.tour-card .tour-cab .link {
+    min-height: 36px;
+    margin: -6px -6px -6px 0;
+    padding: 0 6px;
+    font-size: 13px;
+}
+.tour-version-e {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-weight: 600;
+}
+.niveles {
+    display: flex;
+    flex-wrap: wrap;
+    justify-self: start;
+    gap: 4px;
+    margin-top: 2px;
+}
+.niveles > .nivel {
+    margin: 0;
+}
+.nivel--version {
+    background: color-mix(in srgb, var(--color-text) 9%, var(--color-surface-2));
+    color: var(--color-text);
+}

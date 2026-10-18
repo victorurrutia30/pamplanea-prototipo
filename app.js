@@ -524,7 +524,7 @@
                 const acciones = x.soloFechas
                     ? (x.primero ? btn(`Pagarlo con ${a.fuente === 'ahora' ? 'lo que tienes' : etiquetaFuente(a.fuente)}`, `data-a="hoja" data-hoja="pagarCon" data-id="${x.primero.pago.id}" data-fecha="${x.primero.fecha}" data-sugerida="${a.fuente}" data-fk="at-sug-pagar"`, true) : '') + btn(`Reservar ${dinero(x.deficit)}`, `data-a="hoja" data-hoja="reservar" data-id="${x.clave}" data-fecha="${a.fuente}" data-fk="at-sug-si"`, !x.primero) + no
                     : btn(`Sí, ${dinero(x.deficit)}`, `data-a="hoja" data-hoja="reservar" data-id="${x.clave}" data-fecha="${a.fuente}" data-fk="at-sug-si"`, true) + no;
-                items.push({ id: 'sug-' + x.clave, nivel: 'ambar', pago: true, ...textoSugerencia(a), corto: `te faltarían ${dinero(x.deficit, { aprox: true })} el ${M.partes(x.soloFechas ? x.cuando : x.clave)[2]}`, acciones });
+                items.push({ id: 'sug-' + x.clave, nivel: 'ambar', pago: true, ...textoSugerencia(a), corto: x.clave === 'despues' && !x.soloFechas ? `te faltarían ${dinero(x.deficit, { aprox: true })} ${hz.modo === 'quince' ? 'en los 15 días siguientes' : 'el próximo mes'}` : `te faltarían ${dinero(x.deficit, { aprox: true })} el ${M.partes(x.soloFechas ? x.cuando : x.clave)[2]}`, acciones });
             } else if (a.tipo === 'sinIngreso') {
                 // V2-52: lo ibas a pagar con un ingreso de una vez que todavía no llega. Se pregunta; nada cambia solo.
                 const x = a.parte;
@@ -710,14 +710,18 @@
         </div>`;
     };
 
-    /** Las filas de Próximos pagos; lo que vence desde el próximo ingreso va tras un separador. */
+    /**
+     * Las filas de Próximos pagos; lo que vence desde el próximo ingreso va tras un separador. v2.4.1: la tarjeta
+     * va antes (siempre se paga con lo que ya tienes, V2-07) y, sin ingreso fijo, lo de después de tu fin de mes
+     * (o de tus 15 días) va tras «Con lo que tengas cuando venza».
+     */
     function filasProximos(lista, hz) {
         const fila = (o) => filaPago(o, null);
-        if (!hz.ingreso || hz.esHoy || hz.atrasada) return lista.map(fila).join('');
-        const antes = lista.filter((o) => o.estado === 'vencido' || o.fecha < hz.fecha);
+        if (hz.esHoy || hz.atrasada) return lista.map(fila).join('');
+        const antes = lista.filter((o) => o.estado === 'vencido' || o.fecha < hz.fecha || o.tarjeta);
         const despues = lista.filter((o) => !antes.includes(o));
         const dia = M.partes(hz.fecha)[2];
-        const cual = hz.ingreso.frecuencia === 'semanal' ? `tu pago del ${M.DIAS[M.diaSemana(hz.fecha)]} ${dia}` : `tu ${nombreIngreso(hz)} del ${dia}`;
+        const cual = !hz.ingreso ? etiquetaFuente('despues') : hz.ingreso.frecuencia === 'semanal' ? `tu pago del ${M.DIAS[M.diaSemana(hz.fecha)]} ${dia}` : `tu ${nombreIngreso(hz)} del ${dia}`;
         return antes.map(fila).join('') + (despues.length ? `<li class="separador" role="presentation"><span>Con ${esc(cual)}</span></li>${despues.map(fila).join('')}` : '');
     }
     function proximosPagos(n) {

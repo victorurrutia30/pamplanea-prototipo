@@ -194,6 +194,7 @@ window.CASOS = [
 /**
  * v2.4: ejercicios que solo están en «Practicar» (no son recorridos de la guía): pagar con el aguinaldo
  * (V2-52) y el adelanto de salario con descuento. La tarjeta del primer día (V2-54) está en C01.
+ * v2.4.1: cinco más con Rosa, para quien tiene ingresos que varían.
  */
 window.CASOS_PRACTICA = [
     {
@@ -222,22 +223,94 @@ window.CASOS_PRACTICA = [
         esperado: 'Hoy: «Próxima quincena (30) · entra ~$400 … te descuentan $200.00 del adelanto». Al confirmar esa quincena, el monto sugerido ya viene con $200 menos.',
         observar: '¿Entiende que no se cuenta dos veces? ¿Le queda claro de dónde sale el descuento?',
     },
+    // v2.4.1: ingresos que varían (Rosa vende pupusas y recibe una remesa sin fecha fija).
+    {
+        id: 'P-VENTA', titulo: 'Anotar una venta', persona: 'rosa', inicio: 'hoy',
+        para: 'Anotar lo que entra al vender, tan fácil como un gasto.',
+        tarea: 'Hoy vendiste $45 de pupusas. Anótalo.',
+        pasos: [
+            { t: 'Toca el botón (+) Anotar, abajo al centro.', clave: 'hoja:anotar' },
+            { t: 'Escribe «vendí 45».' },
+            { t: 'Revisa lo que entendió (Ingreso · $45.00 · Venta · Efectivo · Hoy) y toca «Guardar».', clave: 'guardado:ingreso' },
+            { t: 'Mira Hoy: tu libre subió $45.00.' },
+        ],
+        esperado: 'Libre $80.00 → $125.00. La venta aparece en «Últimos anotados» (+$45.00).',
+        observar: '¿Anota la venta sin buscar un botón especial?',
+    },
+    {
+        id: 'P-REMESA', titulo: 'Llegó la remesa', persona: 'rosa', inicio: 'pagos',
+        para: 'Una remesa esperada suma a tu libre solo cuando llega.',
+        tarea: 'Hoy te llegó la remesa de Josué al banco: $150. Dile a la app que llegó.',
+        pasos: [
+            { t: 'En Pagos, toca «Remesa de Josué» (dice «Esperado · suma cuando llegue»).', clave: 'pantalla:ingreso:remesa' },
+            { t: 'Toca «Ya llegó».', clave: 'hoja:ingresoLlego' },
+            { t: 'Deja $150.00 en Banco Agrícola y toca «Siguiente».', clave: 'ingreso:llego:remesa' },
+            { t: 'Toca «Listo» y mira Hoy: tu libre subió $150.00.' },
+        ],
+        esperado: 'Libre $80.00 → $230.00. La remesa ya no dice «Esperado».',
+        observar: '¿Entiende que antes de llegar no contaba?',
+    },
+    {
+        id: 'P-HORIZONTE', titulo: 'Ver tu libre de 15 días', persona: 'rosa', inicio: 'hoy',
+        para: 'Elegir hasta cuándo ves tu libre: hasta fin de mes o los próximos 15 días.',
+        tarea: 'Prefieres planear de 15 en 15 días. Cambia tu libre para ver los próximos 15 días.',
+        pasos: [
+            { t: 'En Hoy, toca «¿De dónde sale?».', clave: 'hoja:desglose' },
+            { t: 'En «¿Hasta cuándo ves tu libre?», toca «Los próximos 15 días».', clave: 'guardado:horizonte' },
+            { t: 'Toca «Entendido» y mira tu número: ahora dice «Próximos 15 días».' },
+        ],
+        esperado: 'Arriba del número: «Próximos 15 días · hasta el 5 nov». Debajo: «Los 15 días siguientes (hasta el 19 nov)».',
+        observar: '¿Encuentra dónde se cambia? ¿Entiende qué cambió?',
+    },
+    {
+        id: 'P-RESERVAR', titulo: 'Guardar para el alquiler', persona: 'rosa', inicio: 'hoy',
+        para: 'Con entradas que varían, la app sugiere guardar para lo que viene; la persona decide cuánto.',
+        tarea: 'Tus ventas varían y el alquiler de $120 vence el 5. Guarda $40 de lo que tienes para el alquiler.',
+        pasos: [
+            { t: 'En Hoy, en el aviso «te faltarían ~$191», toca «Sí, $191.00».', clave: 'hoja:reservar' },
+            { t: 'En «¿Cuánto?» escribe 40 y toca «Reservar».', clave: 'guardado:reservar' },
+            { t: 'Mira el alquiler en «Próximos pagos»: «Reservando $40.00 de lo que tienes ahora».' },
+        ],
+        esperado: 'Libre $80.00 → $40.00 («Ya reservas $40.00 para lo que viene»). El alquiler dice «Reservando $40.00 de lo que tienes ahora».',
+        observar: '¿Entiende que es una sugerencia y que decide cuánto?',
+    },
+    {
+        id: 'P-SEMANA', titulo: 'Una semana mala', persona: 'rosa', variante: 'semanaMala', inicio: 'hoy',
+        para: 'Libre en $0 y lo que falta explicado, sin culpa; un ahorro puede ayudar.',
+        tarea: 'Vendiste poco esta semana: tu libre está en $0 y faltan $10 para tus ahorros. Saca $10 de «Plancha nueva».',
+        pasos: [
+            { t: 'Mira Hoy: «Faltan $10.00 para cubrir tus ahorros». Toca el número para ver el detalle.' },
+            { t: 'Ve a Mi dinero, toca «Ahorros» y luego «Plancha nueva».', clave: 'pantalla:apartado:plancha' },
+            { t: 'Toca «Liberar», escribe 10 y toca «Sacar».', clave: 'guardado:liberar' },
+            { t: 'Mira Hoy: ya no dice que falta para tus ahorros.' },
+        ],
+        esperado: 'Antes: libre $0.00 y «Faltan $10.00 para cubrir tus ahorros». Después: libre $0.00, sin faltante; «Plancha nueva» queda con $20.00.',
+        observar: '¿Lo toma como información, sin culpa? ¿Encuentra «Liberar»?',
+    },
 ];
-/** v2.4: «Practicar» = 13 ejercicios, de fácil a difícil. */
+/**
+ * v2.4.1: «Practicar» = 18 ejercicios, de fácil a difícil. `version`: a qué recorrido aplica (fijo, variable o
+ * ambos); la lista muestra primero los de la versión que la persona eligió.
+ */
 window.PRACTICA = [
-    { id: 'C05', nivel: 'Fácil' },
-    { id: 'C11', nivel: 'Fácil' },
-    { id: 'C23', nivel: 'Fácil' },
-    { id: 'C19', nivel: 'Fácil' },
-    { id: 'C26', nivel: 'Media' },
-    { id: 'C01', nivel: 'Media' },
-    { id: 'C33', nivel: 'Media' },
-    { id: 'C20', nivel: 'Media' },
-    { id: 'P-AGUINALDO', nivel: 'Media' },
-    { id: 'P-ADELANTO', nivel: 'Difícil' },
-    { id: 'C16', nivel: 'Difícil' },
-    { id: 'C31', nivel: 'Difícil' },
-    { id: 'C30', nivel: 'Difícil' },
+    { id: 'C05', nivel: 'Fácil', version: 'ambos' },
+    { id: 'P-VENTA', nivel: 'Fácil', version: 'variable' },
+    { id: 'C11', nivel: 'Fácil', version: 'ambos' },
+    { id: 'P-HORIZONTE', nivel: 'Fácil', version: 'variable' },
+    { id: 'C23', nivel: 'Fácil', version: 'ambos' },
+    { id: 'P-REMESA', nivel: 'Fácil', version: 'variable' },
+    { id: 'C19', nivel: 'Fácil', version: 'fijo' },
+    { id: 'C26', nivel: 'Media', version: 'fijo' },
+    { id: 'C01', nivel: 'Media', version: 'fijo' },
+    { id: 'C33', nivel: 'Media', version: 'fijo' },
+    { id: 'C20', nivel: 'Media', version: 'fijo' },
+    { id: 'P-RESERVAR', nivel: 'Media', version: 'variable' },
+    { id: 'P-AGUINALDO', nivel: 'Media', version: 'fijo' },
+    { id: 'P-ADELANTO', nivel: 'Difícil', version: 'fijo' },
+    { id: 'P-SEMANA', nivel: 'Difícil', version: 'variable' },
+    { id: 'C16', nivel: 'Difícil', version: 'ambos' },
+    { id: 'C31', nivel: 'Difícil', version: 'ambos' },
+    { id: 'C30', nivel: 'Difícil', version: 'ambos' },
 ];
 
 /**

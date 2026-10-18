@@ -327,7 +327,7 @@
             `PamPlanea · ${VERSION} · cómo me va`,
             `Nombre: ${(u.nombre || (u.st && u.st.nombre) || '').trim() || '(sin nombre)'}`,
             dias.length ? `Fechas: del ${fechaCorta(dias[0])} al ${fechaCorta(dias.at(-1))} · abrí la app ${dias.length} ${dias.length === 1 ? 'día' : 'días'}` : 'Fechas: todavía no la uso',
-            `Instalada: ${m.instalada || instalada() ? 'sí' : 'no'} · Entrenamiento: ${e.tour === 'hecho' ? 'hice el recorrido' : e.tour === 'saltado' ? 'salté el recorrido' : 'no lo hice'}${practicas ? `, ${practicas} ${practicas === 1 ? 'ejemplo practicado' : 'ejemplos practicados'}` : ''}`,
+            `Instalada: ${m.instalada || instalada() ? 'sí' : 'no'} · Entrenamiento: ${P.tour && P.tour.resumen ? P.tour.resumen() : e.tour === 'hecho' ? 'hice el recorrido' : e.tour === 'saltado' ? 'salté el recorrido' : 'no lo hice'}${practicas ? `, ${practicas} ${practicas === 1 ? 'ejemplo practicado' : 'ejemplos practicados'}` : ''}`,
             `Lo que hice: ${m.anotaciones} ${m.anotaciones === 1 ? "anotación" : "anotaciones"} · ${m.pagados} ${m.pagados === 1 ? "pago marcado" : "pagos marcados"} como Pagado · ${m.cuadres} ${m.cuadres === 1 ? "cuadre" : "cuadres"} · Reparte ${m.reparte} ${m.reparte === 1 ? 'vez' : 'veces'} · Pongámonos al día ${m.alDia} ${m.alDia === 1 ? 'vez' : 'veces'}`,
             `Pantallas que más usé: ${top.length ? top.join(' · ') : '—'}`,
             `Veces que la app no me entendió al anotar: ${m.noEntendio}`,
@@ -549,7 +549,7 @@
         if (P.enGuia) return '';
         const filas = P.modo === 'uso'
             ? [fila('receipt-text', 'Contarle a Victor cómo me va', 'Sin montos: solo cómo usas la app', 'menuIr', 'data-ir="contar"'), fila('rotate-ccw', 'Tus datos', 'Guardar copia, restaurar o borrar', 'menuIr', 'data-ir="datos"'), fila('play', 'Aprender a usarla', 'Modo entrenamiento con datos de ejemplo', 'menuIr', 'data-ir="modoEntrenamiento"')]
-            : [fila('smartphone', 'Usarla con mis datos', 'Tu dinero real, solo en este teléfono', 'menuIr', 'data-ir="modoUso"'), fila('play', 'Ver el recorrido otra vez', '4 minutos', 'menuIr', 'data-ir="tour"'), fila('list-checks', 'Practicar con ejemplos', '13 ejercicios, de fácil a difícil', 'menuIr', 'data-ir="practica"')];
+            : [fila('smartphone', 'Usarla con mis datos', 'Tu dinero real, solo en este teléfono', 'menuIr', 'data-ir="modoUso"'), fila('play', 'Ver el recorrido otra vez', '4 minutos', 'menuIr', 'data-ir="tour"'), fila('list-checks', 'Practicar con ejemplos', `${(window.PRACTICA || []).length} ejercicios, de fácil a difícil`, 'menuIr', 'data-ir="practica"')];
         return `<p class="campo-l campo-l--sec menu-sec">${P.modo === 'uso' ? 'Estás usando tus datos' : 'Estás en modo entrenamiento'}</p><ul class="lista card">${filas.join('')}</ul>`;
     }
     function irMenu(ir) {

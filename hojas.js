@@ -560,7 +560,7 @@
         const refIngreso = d.ingresoRef || d.refGuardada;
         if (d.tipo === 'ingreso' && refIngreso && d.preguntarIngreso) {
             const ing = M.ingreso(st, refIngreso.id);
-            const cual = ing.frecuencia === 'quincenal' ? 'quincena' : ing.frecuencia === 'semanal' ? 'pago de la semana' : ing.nombre.toLowerCase();
+            const cual = ing.frecuencia === 'quincenal' ? 'quincena' : ing.frecuencia === 'semanal' ? 'pago de la semana' : ing.nombre.charAt(0).toLowerCase() + ing.nombre.slice(1);
             const dia = M.partes(refIngreso.fecha)[2];
             const adelantada = refIngreso.fecha > st.hoy;
             const ch = (v, t) => `<button type="button" class="chip" aria-pressed="${d.cualIngreso === v}" data-a="anotarValor" data-campo="cualIngreso" data-v="${v}" data-fk="cual-${v}">${d.cualIngreso === v ? icon('check', 'ico-xs') : ''}${t}</button>`;
@@ -914,7 +914,7 @@
             const st = P.st;
             const k = P.calc();
             const hz = k.hz;
-            const antes = hz.ingreso ? (hz.esHoy ? 'antes de hoy' : hz.atrasada ? 'ya vencido' : `antes del ${M.partes(hz.fecha)[2]}`) : 'en este periodo';
+            const antes = hz.ingreso ? (hz.esHoy ? 'antes de hoy' : hz.atrasada ? 'ya vencido' : `antes del ${M.partes(hz.fecha)[2]}`) : hz.modo === 'quince' ? 'en estos 15 días' : 'antes de fin de mes';
             const linea = (o, sub) => `<li><span>${emo(o.pago.emoji, 16)} ${esc(o.pago.nombre)} <span class="d-sub">${sub}</span></span><span>${dinero(o.parte, { aprox: o.estimado })}</span></li>`;
             const parteDe = (o) => (o.parte < o.monto ? ` · ${dinero(o.parte)} de ${dinero(o.monto, { aprox: o.estimado })}` : '');
             const items = k.items.map((o) => linea(o, `${o.estado === 'vencido' ? 'venció el ' : 'el '}${M.partes(o.fecha)[2]}${parteDe(o)}`));
@@ -946,6 +946,8 @@
             }
             for (const t of k.tarjetas.filter((x) => x.cupoLibre !== null)) noCuenta.push(`El cupo de ${esc(t.t.nombre)} (${dinero(t.cupoLibre)} disponibles): no es tu dinero, nunca suma.`);
             const fila = (signo, titulo, monto, ir, sub = '', extra = '', fk = ir) => `<li class="d-fila"><button type="button" class="d-b" data-a="desgloseIr" data-ir="${ir}" data-fk="d-${fk}"><span class="d-signo" aria-hidden="true">${signo}</span><span class="d-t">${titulo}${sub ? `<span class="d-sub">${sub}</span>` : ''}</span><span class="d-m">${monto}</span>${icon('chevron-right', 'ico-xs')}</button>${extra}</li>`;
+            // v2.4.1: sin ingreso fijo, la persona elige hasta cuándo ve su libre (antes solo se podía el primer día).
+            const elegirHz = hz.ingreso ? '' : `<div class="campo-g" role="group" aria-labelledby="l-hz"><p class="campo-l" id="l-hz">¿Hasta cuándo ves tu libre?</p><div class="chips">${[['finDeMes', 'Hasta fin de mes'], ['quince', 'Los próximos 15 días']].map(([v, t]) => `<button type="button" class="chip" aria-pressed="${hz.modo === v}" data-a="horizonte" data-v="${v}" data-fk="hz-${v}">${hz.modo === v ? icon('check', 'ico-xs') : ''}${t}</button>`).join('')}</div></div>`;
             const x = k.proxima;
             const proxima = x && (x.entra || x.pagos) ? `<div class="d-prox"><p class="campo-l">${esc(P.tituloPeriodo(x, hz))}</p><p class="txt">${esc(M.capital(P.lineaPeriodo(x)))}.${P.incluyePeriodo(x) ? ` ${esc(M.capital(P.incluyePeriodo(x)))}.` : ''}</p>${k.libre > 0 && hz.ingreso ? `<button type="button" class="link link--start" data-a="hoja" data-hoja="pasarProxima" data-fk="d-pasar">${icon('calendar-days', 'ico-s')}¿Pasas algo de lo que te sobra a la próxima?</button>` : ''}</div>` : '';
             return {
@@ -959,11 +961,19 @@
                 </ol>
                 ${k.faltaPagos > 0 || k.sinCubrir > 0 ? `<div class="nota nota--atencion" role="note">${icon('triangle-alert')}<p><strong>${esc(P.textoCero(k))}.</strong> Tu libre queda en $0.00, nunca en negativo.</p></div>` : ''}
                 ${k.porDia !== null ? `<p class="txt">Son unos ${dinero(k.porDia, { aprox: true })} por día durante ${plural(k.hz.dias, 'día', 'días')}.</p>` : ''}
+                ${elegirHz}
                 ${proxima}
                 ${noCuenta.length ? `<div class="nota nota--info" role="note">${icon('info')}<div><p><strong>Todavía no cuenta</strong></p><ul class="mini-lista">${noCuenta.map((y) => `<li>${y}</li>`).join('')}</ul></div></div>` : ''}`,
                 pie: pie1('cerrarHoja', 'Entendido', 'desglose-ok'),
             };
         },
+    };
+    P.acciones.horizonte = (d) => {
+        if (M.horizonte(P.st).modo === d.v) return;
+        P.cambiar((s) => {
+            s.horizonteVariable = d.v;
+        }, { aviso: d.v === 'quince' ? 'Listo: ves tu libre de los próximos 15 días' : 'Listo: ves tu libre hasta fin de mes', claves: ['guardado:horizonte'] });
+        document.querySelector(`[data-fk="hz-${d.v}"]`)?.focus();
     };
     P.acciones.desgloseIr = (d) => {
         P.cerrarHoja({ sinFoco: true });
