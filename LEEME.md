@@ -1,4 +1,4 @@
-# Producto v2 · prototipo de teléfono — versión 2.4
+# Producto v2 · prototipo de teléfono — versión 2.4.1
 
 **Qué es:** un prototipo clicable de la app completa propuesta en Producto v2. Desde la v2.2 tiene **dos modos**: **entrenamiento** (datos inventados de Ana, Carlos y Rosa; recorrido guiado en dos versiones —fecha fija o ingresos que varían—, 18 ejercicios y la prueba A/B para testers) y **uso normal** (la familia cercana de Victor la usa 1–2 semanas con su dinero real, guardado solo en su teléfono). Es una maqueta de flujo y comprensión, no producción.
 
@@ -13,7 +13,7 @@ Sin servidor propio, sin dependencias, sin CDN, sin analítica ni rastreadores. 
 
 **Estado:** brief y acuerdos V2-01…V2-22 APROBADOS por Victor (2026-10-16); **V2-23 a V2-30** y **V2-31 (respuestas v2.1)** APROBADOS por Victor (2026-10-16); **V2-34 a V2-49** APROBADOS por Victor (2026-10-17) — V2-15 y V2-31 #7 quedan REEMPLAZADAS por V2-34. **V2-50 a V2-55** y la corrección adicional (adelanto de salario) APROBADOS por Victor (2026-10-17). **v2.4 «Entrenamiento a prueba de todo»** y sus tres ajustes previos APROBADOS por Victor (2026-10-17). **V2-56 a V2-58** y el **entrenamiento en dos versiones** (v2.4.1) APROBADOS por Victor (2026-10-18). Nada de esto está documentado todavía en el repo de la app: se documentará después de las pruebas con personas. Este prototipo no cambia nada del repo de la app.
 
-Versión visible en la app y en la guía: **«Prototipo v2.4 · 2026-10-17»**.
+Versión visible en la app y en la guía: **«Prototipo v2.4.1 · 2026-10-18»**.
 
 ---
 
@@ -453,7 +453,7 @@ Cómo se revisó: el dinero de Victor seguido por la interfaz del 17 de octubre 
 ## App instalable (PWA)
 
 - `manifest.webmanifest`: «PamPlanea (prototipo)» / «PamPlanea», `start_url` y `scope` «./» (funciona en la subruta `/pamplanea-prototipo/`), `display: standalone`, colores de Serena, íconos 192 y 512, uno maskable y `apple-touch-icon` 180, generados localmente desde el ícono (`herramientas/generar-iconos.mjs`).
-- `sw.js`: caché **versionada** (hoy `pamplanea-proto-v2.4-2026-10-17`) que precarga los 141 archivos publicados; abre sin internet. Una versión nueva se instala en segundo plano y la app muestra «Hay una versión nueva · Actualizar»; al tocarlo guarda y recarga **sin perder datos** (lo guardado tiene su propio formato, independiente de la versión visible). La primera instalación no recarga la página.
+- `sw.js`: caché **versionada** (hoy `pamplanea-proto-v2.4.1-2026-10-18`) que precarga los 141 archivos publicados; abre sin internet. Una versión nueva se instala en segundo plano y la app muestra «Hay una versión nueva · Actualizar»; al tocarlo guarda y recarga **sin perder datos** (lo guardado tiene su propio formato, independiente de la versión visible). La primera instalación no recarga la página.
 - El service worker y el manifest solo se usan servidos por http(s); por `file://` no se registran y todo funciona igual, sin errores de consola.
 - **Para publicar una versión nueva:** cambiar `VERSION_PROTOTIPO` en `casos.js` y correr `node herramientas/generar-sw.mjs v2.2-AAAA-MM-DD` (regenera la lista y el nombre de la caché). Si `sw.js` no cambia, los teléfonos instalados no se enteran.
 - En modo instalado: safe areas reales, sin barra de estado simulada; la barra de estado de Android toma el color del aviso de prototipo en cada tema.
@@ -589,7 +589,7 @@ La fecha simulada es el **miércoles 21 de octubre de 2026** (ver §4).
 - **Prueba guiada:** cada tarea tiene una condición que la app revisa tras cada acción (por ejemplo, «hay un gasto nuevo de $6.00»); los toques se cuentan en la app, no en la barra de la tarea ni en «Casos y ayuda».
 - **Guardado (entrenamiento):** `pamplanea-proto-v2:app` (estado, caso, pestaña, tema; con `formato: 2`), `pamplanea-proto-v2:notas` (nombre, notas, prueba), `pamplanea-proto-v2:dispositivo` (personas en este teléfono y set siguiente) y `pamplanea-proto-v2:guia`. La versión visible no invalida lo guardado.
 - **Guardado (uso normal, v2.2):** ver «Modos v2.2 → Datos seguros».
-- **Service worker:** primero la caché (sin importar `?set=…`), luego la red. Solo por http(s). Caché `pamplanea-proto-v2.4-2026-10-17`.
+- **Service worker:** primero la caché (sin importar `?set=…`), luego la red. Solo por http(s). Caché `pamplanea-proto-v2.4.1-2026-10-18`.
 
 ## 6. PREGUNTAS PARA VICTOR (no las decidí; el prototipo usa lo de §5)
 

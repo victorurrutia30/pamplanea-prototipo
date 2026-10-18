@@ -1,4 +1,4 @@
-# PamPlanea · prototipo v2.4
+# PamPlanea · prototipo v2.4.1
 
 Una versión de prueba de **PamPlanea**: saber cuánto te queda libre hasta tu próximo ingreso y que no se te olvide ningún pago.
 
@@ -6,10 +6,18 @@ Una versión de prueba de **PamPlanea**: saber cuánto te queda libre hasta tu p
 
 Al abrirla eliges uno de dos caminos (y puedes cambiar cuando quieras desde tu letra, arriba a la izquierda):
 
-- **Aprender a usarla** (recomendado): un recorrido de 4 minutos con los datos de ejemplo de Ana —en cuatro momentos lo haces tú y ves el número cambiar— y, si quieres, 13 ejercicios cortos, de fácil a difícil. Nada de lo que hagas ahí toca tus datos.
+- **Aprender a usarla** (recomendado): primero te pregunta cómo te entra el dinero —en fecha fija (quincena, mes o semana) o cuando vendes o trabajas— y te enseña en 4 minutos con un ejemplo como tú (Ana o Rosa); en cuatro momentos lo haces tú y ves el número cambiar. Después, si quieres, 18 ejercicios cortos, primero los de tu versión. Nada de lo que hagas ahí toca tus datos.
 - **Usarla con mis datos:** tu dinero real, con la fecha real de tu teléfono. Empiezas desde cero: cómo te pagan, cuánto tienes y dónde, y tus pagos fijos.
 
 Los dos modos guardan sus datos por separado. Reiniciar los ejemplos no borra tus datos.
+
+## Lo nuevo en la v2.4.1
+
+- **El recorrido en dos versiones:** «¿Cómo te entra el dinero?». Si te pagan en fecha fija, aprendes con Ana; si vendes o trabajas por día, con Rosa, que vende pupusas y recibe una remesa: anotar una venta, la remesa que no cuenta hasta que llega, guardar para el alquiler, una semana mala sin culpa y cuadrar al final del día. Puedes cambiar de versión cuando quieras y hacer la otra después.
+- **«+ Ingreso esperado» empieza con «¿Qué es?»:** Salario, Adelanto, Remesa, Aguinaldo, Quincena 25, Bono o comisión, Venta u Otro. Un adelanto pregunta ahí mismo de qué quincena te lo descuentan. Anotar entiende «me dieron adelanto 314» y «adelanto 314 el 29».
+- Si cambias el día de corte o de pago de una tarjeta, sus avisos y su pago en Pagos se ponen al día.
+- «Muéstrame» primero te señala dónde tocar; si quieres, «Hazlo por mí». Al terminar o saltar el recorrido, los ejemplos vuelven a como estaban. «¿Lo entendí?» tiene cuatro preguntas.
+- Si lo que te entra varía, en «¿De dónde sale?» eliges si ves tu libre hasta fin de mes o los próximos 15 días.
 
 ## Lo nuevo en la v2.4
 
@@ -67,7 +75,7 @@ La prueba guiada de la v2.1 sigue en el modo entrenamiento: «Casos y ayuda» �
 ## Para el equipo
 
 - Abre `index.html` con doble clic (Chrome o Edge): funciona sin servidor ni internet, con la guía de los 13 casos y los dos sets.
-- Detalle, decisiones y preguntas abiertas: [`LEEME.md`](LEEME.md) (secciones «Prototipo v2.3.1», «Prototipo v2.3» y «Modos v2.2»).
+- Detalle, decisiones y preguntas abiertas: [`LEEME.md`](LEEME.md) (secciones «Prototipo v2.4.1», «Prototipo v2.4», «Prototipo v2.3.1», «Prototipo v2.3» y «Modos v2.2»).
 - Licencias de fuentes, emoji e íconos: [`recursos/licencias`](recursos/licencias).
 
-Prototipo v2.4 · 2026-10-17
+Prototipo v2.4.1 · 2026-10-18
