@@ -353,19 +353,29 @@
         guardarUso();
         P.emitir('datos:copia');
     }
+    /**
+     * Compartir copia (corrección v2.3.1): el mismo contenido, como .txt. Chrome en Android no deja compartir
+     * archivos .json (el botón no hacía nada). Si el teléfono no deja compartir, se descarga y se dice.
+     */
+    const archivoCompartible = (contenido) => new File([contenido], nombreCopia().replace(/\.json$/, '.txt'), { type: 'text/plain' });
     async function compartirCopia() {
-        const archivo = new File([contenidoCopia()], nombreCopia(), { type: 'application/json' });
+        const archivo = archivoCompartible(contenidoCopia());
         try {
-            await navigator.share({ files: [archivo], title: 'Copia de PamPlanea' });
+            if (navigator.canShare && !navigator.canShare({ files: [archivo] })) throw new Error('no se puede');
+            await navigator.share({ files: [archivo] });
             uso.ultimaCopia = new Date().toISOString();
             guardarUso();
-        } catch {
-            /* la persona canceló */
+            P.emitir('datos:compartir');
+        } catch (e) {
+            // Cerrar el menú del teléfono no es un error.
+            if (e && e.name === 'AbortError') return;
+            descargarCopia();
+            P.avisar('Tu teléfono no dejó compartirla: la guardé en Descargas', { check: false });
         }
     }
     const puedeCompartirArchivo = () => {
         try {
-            return !!(navigator.canShare && navigator.canShare({ files: [new File(['{}'], 'x.json', { type: 'application/json' })] }));
+            return !!(navigator.share && navigator.canShare && navigator.canShare({ files: [archivoCompartible('{}')] }));
         } catch {
             return false;
         }
@@ -430,7 +440,7 @@
                 <div class="ay-acc"><button type="button" class="btn btn--prim btn--48" data-a="modoCopia" data-fk="dt-copia">Guardar copia</button>${puedeCompartirArchivo() ? '<button type="button" class="btn btn--48" data-a="modoCompartirCopia" data-fk="dt-compartir">Compartir copia</button>' : ''}</div></section>
             <section class="ay-card" aria-labelledby="dt-r"><h3 class="ay-h3" id="dt-r">${icon('rotate-ccw', 'ico-s')}Restaurar una copia</h3>
                 ${r && r.error ? `<p class="campo-error">${icon('triangle-alert')}<span>${esc(r.error)}</span></p>` : ''}
-                ${r && r.datos ? `<div class="nota nota--atencion" role="alertdialog" aria-labelledby="dt-r-c">${icon('triangle-alert')}<div><p id="dt-r-c"><strong>¿Reemplazar tus datos con esta copia?</strong> Copia del ${esc(fechaCorta((r.fecha || '').slice(0, 10) || hoy()))}: ${esc(r.resumen)}. Lo que tienes ahora se reemplaza.</p><div class="ay-acc"><button type="button" class="btn" data-a="modoRestaurarNo" data-fk="dt-r-no">Cancelar</button><button type="button" class="btn btn--peligro" data-a="modoRestaurarSi" data-fk="dt-r-si">Sí, reemplazar</button></div></div></div>` : `<p class="txt">Elige el archivo «pamplanea-copia-…json». Antes de reemplazar te pido confirmar.</p><label class="btn btn--48 btn--full" for="dt-archivo" data-fk="dt-elegir">Elegir archivo</label><input id="dt-archivo" class="sr-only" type="file" accept="application/json,.json" data-copia>`}</section>
+                ${r && r.datos ? `<div class="nota nota--atencion" role="alertdialog" aria-labelledby="dt-r-c">${icon('triangle-alert')}<div><p id="dt-r-c"><strong>¿Reemplazar tus datos con esta copia?</strong> Copia del ${esc(fechaCorta((r.fecha || '').slice(0, 10) || hoy()))}: ${esc(r.resumen)}. Lo que tienes ahora se reemplaza.</p><div class="ay-acc"><button type="button" class="btn" data-a="modoRestaurarNo" data-fk="dt-r-no">Cancelar</button><button type="button" class="btn btn--peligro" data-a="modoRestaurarSi" data-fk="dt-r-si">Sí, reemplazar</button></div></div></div>` : `<p class="txt">Elige el archivo «pamplanea-copia-…» (.json o .txt). Antes de reemplazar te pido confirmar.</p><label class="btn btn--48 btn--full" for="dt-archivo" data-fk="dt-elegir">Elegir archivo</label><input id="dt-archivo" class="sr-only" type="file" accept="application/json,.json,text/plain,.txt" data-copia>`}</section>
             <section class="ay-card" aria-labelledby="dt-b"><h3 class="ay-h3" id="dt-b">${icon('trash-2', 'ico-s')}Borrar todos mis datos</h3>
                 ${borrar === 0 ? `<p class="txt">Borra todo lo de «Usarla con mis datos» en este teléfono. Los ejemplos no se tocan.</p><button type="button" class="link link--peligro" data-a="modoBorrar" data-v="1" data-fk="dt-borrar">${icon('trash-2', 'ico-s')}Borrar todos mis datos</button>` : borrar === 1 ? `<div class="nota nota--atencion" role="alertdialog" aria-labelledby="dt-b1">${icon('triangle-alert')}<div><p id="dt-b1"><strong>¿Borrar todos tus datos?</strong> Lugares, pagos, ahorros y todo lo anotado.</p><div class="ay-acc"><button type="button" class="btn" data-a="modoBorrar" data-v="0" data-fk="dt-b-no">Cancelar</button><button type="button" class="btn btn--peligro" data-a="modoBorrar" data-v="2" data-fk="dt-b-si">Sí, borrar</button></div></div></div>` : `<div class="nota nota--atencion" role="alertdialog" aria-labelledby="dt-b2">${icon('triangle-alert')}<div><p id="dt-b2"><strong>Última confirmación: esto no se puede deshacer.</strong> ${u.ultimaCopia ? 'Tienes una copia guardada.' : 'No has guardado ninguna copia.'}</p><div class="ay-acc"><button type="button" class="btn" data-a="modoBorrar" data-v="0" data-fk="dt-b2-no">Cancelar</button><button type="button" class="btn btn--peligro" data-a="modoBorrarYa" data-fk="dt-b2-si">Borrar para siempre</button></div></div></div>`}</section>
             <p class="ay-version">${esc(VERSION)} · Tus datos solo están en este teléfono</p>`;
