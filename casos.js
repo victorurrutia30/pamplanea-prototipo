@@ -62,7 +62,7 @@ window.CASOS = [
             { t: 'Elige cuánto vas a pagar (Todo, Mínimo u Otro) y lee el consejo. Guarda.', clave: 'guardado:estado' },
             { t: 'Mira el libre en Hoy y la tarjeta en Mi dinero → Deudas.', clave: 'pantalla:deudas' },
         ],
-        esperado: 'Hoy muestra un solo aviso agrupado («2 avisos para hoy · Ver», V2-42): el estado de cuenta y la luz vencida. Con «Todo», el libre baja de $560.60 a $315.60 y dice «Incluye tarjeta $245.00, vence el 5». Con «Mínimo» baja $25.00; los $220.00 se ven como deuda y la ficha explica, sin culpa, que los intereses llegarán en el próximo estado de cuenta.',
+        esperado: 'Hoy muestra un solo aviso agrupado («2 avisos para hoy · Ver», V2-42): el estado de cuenta y la luz vencida. Con «Todo», el libre baja de $560.60 a $315.60 y dice «Incluye tarjeta $245.00, vence el 5 nov». Con «Mínimo» baja $25.00; los $220.00 se ven como deuda y la ficha explica, sin culpa, que los intereses llegarán en el próximo estado de cuenta.',
         observar: '¿Sabe dónde encontrar los dos montos? ¿El consejo se siente como ayuda y no como regaño? ¿Entiende por qué bajó su libre si vence después de su quincena?',
     },
     {

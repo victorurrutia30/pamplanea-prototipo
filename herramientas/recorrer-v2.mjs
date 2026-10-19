@@ -166,7 +166,7 @@ for (const tema of temas) {
         await clic('[data-fk="hoja-ok"]');
         await clic('[data-fk="hoja-ok"]');
         check('libre con todo', await libre(), '$315.60');
-        check('incluye tarjeta', await texto('.portada-v'), 'Incluye tarjeta $245.00, vence el 5');
+        check('incluye tarjeta', await texto('.portada-v'), 'Incluye tarjeta $245.00, vence el 5 nov');
         await cargar('caso=C16', tema);
         await clic('[data-fk="aviso-ver"]');
         await clic('[data-fk="estado-bac"]');

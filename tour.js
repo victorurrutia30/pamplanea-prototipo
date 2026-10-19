@@ -172,7 +172,7 @@
         tarjeta: () => {
             const k = P.calc();
             const t = k.tarjetas.find((x) => x.porPagarEstado + x.estimado > 0);
-            return t ? `Tu libre de ${corto(k.libre)} ya tiene restados ${corto(t.porPagarEstado + t.estimado)} de tu tarjeta, que vence el ${P.diaPago(t, t.ult.vence)}.` : null;
+            return t ? `Tu libre de ${corto(k.libre)} ya tiene restados ${corto(t.porPagarEstado + t.estimado)} de tu tarjeta, que vence el ${P.diaPago(t, t.vence)}.` : null;
         },
         compraTarjeta: (cosa, frase) => () => `Escribes «${frase}»: tu libre de ${libreHoy()} baja $30 hoy.`,
         deudas: () => {

@@ -214,17 +214,19 @@
         return ingreso(st, p.conIngreso) || principal(st) || { frecuencia: 'fechas', fechas: [] };
     }
 
+    /** v2.6.6 (V2-85, V2-86): lo que la persona dijo que pagó (o que le llegó) antes de empezar: no se ve ni se cuenta. */
+    const deAntes = (h) => !!h && (h.estado === 'antes' || h.antes === true);
     function ocurrenciasPago(st, p, desde, hasta) {
         const ini = desde > p.desde ? desde : p.desde;
         const fin = p.hasta && p.hasta < hasta ? p.hasta : hasta;
-        return fechasRegla(reglaPago(st, p), ini, fin).map((fecha) => {
+        return fechasRegla(reglaPago(st, p), ini, fin).filter((fecha) => !deAntes(p.hechos[fecha])).map((fecha) => {
             const hecho = p.hechos[fecha];
             return { pago: p, fecha, monto: hecho && hecho.monto !== undefined ? hecho.monto : p.monto, estimado: !hecho && p.estimado, hecho, estado: hecho ? hecho.estado : fecha < st.hoy ? 'vencido' : 'pendiente' };
         });
     }
     function ocurrenciasIngreso(st, ing, desde, hasta) {
         const ini = desde > ing.desde ? desde : ing.desde;
-        return fechasRegla(ing, ini, hasta).map((fecha) => {
+        return fechasRegla(ing, ini, hasta).filter((fecha) => !deAntes(ing.llegadas[fecha])).map((fecha) => {
             const llegada = ing.llegadas[fecha];
             const estado = llegada ? (llegada.noLlego ? 'noLlego' : 'llego') : fecha < st.hoy ? 'porConfirmar' : fecha === st.hoy ? 'hoy' : 'esperado';
             // Adelanto de salario: lo esperado ya viene con el descuento (nunca se cuenta el mismo dinero dos veces).
@@ -244,6 +246,67 @@
     function porRecibir(st, ing) {
         if (!ing || ing.activo === false) return null;
         return ocurrenciasIngreso(st, ing, ing.desde || st.inicio || st.hoy, sumarDias(st.hoy, 400)).find((o) => o.estado !== 'llego' && o.estado !== 'noLlego') || null;
+    }
+
+    // ------------------------------------------------------------------ v2.6.6: lo de antes de empezar (V2-85, V2-86)
+    /**
+     * V2-85: la fecha de «este periodo» de una regla nueva que ya pasó (o que es hoy): la última del mes de hoy (cada
+     * semana, la de los últimos 7 días; cada 2 semanas, la de los últimos 14). Es la que se pregunta al crear un pago o
+     * un ingreso: «El de octubre (14 oct), ¿ya lo pagaste?». Lo de antes de eso no se pregunta ni se cuenta (V2-43).
+     */
+    function pasadaDelPeriodo(st, regla, hoy = st.hoy) {
+        if (!regla || !regla.frecuencia) return null;
+        const fr = regla.frecuencia;
+        const ini = fr === 'semanal' ? sumarDias(hoy, -6) : fr === 'catorcenal' ? sumarDias(hoy, -13) : hoy.slice(0, 8) + '01';
+        return fechasRegla(reglaPago(st, regla), ini, hoy).at(-1) || null;
+    }
+    /**
+     * V2-85: desde cuándo cuenta algo nuevo según la respuesta. «No, todavía lo debo» (o «No, todavía no»): desde esa
+     * fecha. «Sí» o sin respuesta (nunca se inventa una deuda): desde hoy, y si la fecha era hoy, desde mañana.
+     */
+    const desdeSegun = (hoy, pasada, debe) => (pasada && debe ? pasada : pasada && pasada >= hoy ? sumarDias(hoy, 1) : hoy);
+    /** V2-86: el primer día de uso: el que se guardó; si no, la primera anotación; si tampoco, hoy. */
+    function inicioUso(st) {
+        if (st.inicio) return st.inicio;
+        return (st.registros || []).reduce((m, r) => (r && r.fecha && (!m || r.fecha < m) ? r.fecha : m), null) || st.hoy;
+    }
+    /**
+     * V2-86: lo que la app cuenta sin pagar (o por llegar) con fecha de ANTES de que la persona empezara o de que agregara
+     * ese pago, tarjeta o ingreso. Desde cuándo: la fecha en que se agregó si se guardó (`creado`; en las tarjetas,
+     * `desde`); si no, el primer día de uso (`inicioUso`). Lo contestado no vuelve a salir: «Sí» lo quita de la cuenta
+     * y «No, lo debo» queda en `st.antesDebe` (en la tarjeta, en su estado de cuenta).
+     */
+    function antesDeEmpezar(st) {
+        const inicio = inicioUso(st);
+        const debe = st.antesDebe || {};
+        const hasta = (f) => sumarDias(f < st.hoy ? f : st.hoy, -1);
+        const out = [];
+        for (const p of st.pagos) {
+            if (p.activo === false || p.descuento) continue;
+            const desde = p.creado && p.creado > inicio ? p.creado : inicio;
+            for (const o of ocurrenciasPago(st, p, p.desde, hasta(desde))) {
+                const clave = `p:${p.id}:${o.fecha}`;
+                if (o.estado === 'vencido' && !debe[clave]) out.push({ clave, tipo: 'pago', id: p.id, nombre: p.nombre, emoji: p.emoji, fecha: o.fecha, monto: o.monto, aprox: !!o.estimado });
+            }
+        }
+        for (const t of st.tarjetas) {
+            const ult = t.estados[t.estados.length - 1];
+            const desde = t.desde && t.desde > inicio ? t.desde : inicio;
+            if (!ult || ult.inicial || ult.antes || ult.vence >= desde) continue;
+            const info = tarjetaInfo(st, t);
+            if (info.porPagarEstado > 0) out.push({ clave: `t:${t.id}:${ult.corte}`, tipo: 'tarjeta', id: t.id, nombre: t.nombre, emoji: t.emoji, fecha: ult.vence, monto: info.porPagarEstado, aprox: false });
+        }
+        for (const ing of st.ingresos) {
+            if (ing.activo === false) continue;
+            const desde = ing.creado && ing.creado > inicio ? ing.creado : inicio;
+            for (const o of ocurrenciasIngreso(st, ing, ing.desde || inicio, hasta(desde))) {
+                const clave = `i:${ing.id}:${o.fecha}`;
+                // El principal de antes de empezar ya está en tu primer cuadre (V2-43): no se cuenta por llegar.
+                if (o.estado !== 'porConfirmar' || debe[clave] || (ing.principal && fundado(st, o.fecha))) continue;
+                out.push({ clave, tipo: 'ingreso', id: ing.id, nombre: ing.nombre, emoji: ing.emoji, fecha: o.fecha, monto: o.monto, aprox: !!o.aprox });
+            }
+        }
+        return out.sort((a, b) => (a.fecha < b.fecha ? -1 : a.fecha > b.fecha ? 1 : 0));
     }
 
     /**
@@ -281,27 +344,35 @@
         // V2-43 (corrección v2.3.1): una tarjeta agregada después de empezar no muestra un pago de antes de que
         // empezaras (ni de antes de agregarla): espera su siguiente corte.
         const desdeT = inicioDe(st) > (t.desde || '') ? inicioDe(st) : t.desde;
-        const siguiente = ult.inicial && !sinCorte && ult.vence < desdeT;
+        // v2.6.6 (V2-85): si la persona dijo que el pago de ese ciclo ya lo hizo (también el de hoy), espera el siguiente;
+        // si dijo «No, todavía lo debo», se cuenta aunque sea de antes de agregarla.
+        const siguiente = ult.inicial && !sinCorte && (ult.antes === 'pagado' || (ult.vence < desdeT && ult.antes !== 'debe'));
         const pendiente = siguiente
             ? { corte: proxCorte, vence: fechaDe(vy, vm, t.pagoDia), anotado: suma(compras.filter((r) => r.fecha <= proxCorte), (r) => r.monto), siguiente: true }
             : ult.inicial
-            ? { corte: sinCorte ? null : ult.corte, vence: ult.vence, anotado: 0 }
+            ? { corte: sinCorte ? null : ult.corte, vence: sinCorte && ult.antes === 'pagado' ? fechaDe(vy, vm, t.pagoDia) : ult.vence, anotado: 0 }
             : !sinCorte && st.hoy > proxCorte
               ? { corte: proxCorte, vence: fechaDe(vy, vm, t.pagoDia), anotado: suma(compras.filter((r) => r.fecha <= proxCorte), (r) => r.monto) }
               : null;
-        const porPagarEstado = Math.max(0, ult.aPagar - pagado);
+        // v2.6.6 (V2-85): un estado de cuenta que vencía antes de agregar la tarjeta y que la persona dijo que ya pagó.
+        const cubierto = !ult.inicial && ult.antes === 'pagado' ? ult.aPagar : 0;
+        const aPagarUlt = ult.aPagar - cubierto;
+        const porPagarEstado = Math.max(0, aPagarUlt - pagado);
         // V2-54: hasta su primer estado de cuenta cuenta lo que la persona dijo que paga normalmente (estimado).
         const usual = ult.inicial && t.pagoUsual ? t.pagoUsual : 0;
         const estimado = Math.max(0, usual - pagado);
         const comprasTotal = suma(compras, (r) => r.monto);
         // Lo pagado de más primero baja lo que quedó como deuda y luego las compras nuevas.
-        const excedente = Math.max(0, pagado - ult.aPagar - usual);
+        const excedente = Math.max(0, pagado - aPagarUlt - usual);
         const restoBruto = Math.max(0, ult.total - ult.aPagar);
         const resto = Math.max(0, restoBruto - excedente);
         const comprasNetas = Math.max(0, comprasTotal - Math.max(0, excedente - restoBruto) - pagadoCompras);
         const enLibre = porPagarEstado + estimado + comprasNetas;
         // Lo que debe de verdad no se sabe hasta su primer estado de cuenta: el estimado no cuenta como deuda.
-        const debeTotal = Math.max(0, ult.total + comprasTotal - Math.max(0, pagado - usual) - pagadoCompras);
+        const debeTotal = Math.max(0, ult.total - cubierto + comprasTotal - Math.max(0, pagado - usual) - pagadoCompras);
+        // v2.6.6 (V2-85): la fecha del pago que se cuenta. Sin estado de cuenta, la del ciclo pendiente: las pantallas leían
+        // `ult.vence`, que en una tarjeta agregada después de su día de pago es la del ciclo anterior («venció el 14 oct»).
+        const vence = ult.inicial && pendiente ? pendiente.vence : ult.vence;
         // Lo apartado que se usó con esta tarjeta queda reservado para pagarla (V2-27).
         const reservas = (st.reservasTarjeta || []).filter((x) => x.tarjeta === t.id);
         const reservado = Math.min(enLibre, suma(reservas, (x) => x.monto));
@@ -309,10 +380,10 @@
         const cupoLibre = t.cupo ? Math.max(0, t.cupo - debeTotal) : null;
         // Sin estado de cuenta al agregarla, se le pide después del siguiente corte (V2-31 #8). Sin día de
         // corte (V2-54), se le pide con su estado de cuenta desde 10 días antes de que venza.
-        const pedir = !!pendiente && (sinCorte ? st.hoy >= sumarDias(ult.vence, -10) : siguiente ? st.hoy > pendiente.corte : !(ult.inicial && ult.esperarCorte && st.hoy <= proxCorte));
+        const pedir = !!pendiente && (sinCorte ? st.hoy >= sumarDias(pendiente.vence, -10) : siguiente ? st.hoy > pendiente.corte : !(ult.inicial && ult.esperarCorte && st.hoy <= proxCorte));
         // Dos pagos próximos de la misma tarjeta: el texto dice el mes (V2-31 #1).
-        const dosPagos = porPagarEstado + estimado > 0 && comprasNetas > 0 && ult.vence !== venceCompras;
-        return { t, ult, pagado, pagadoCompras, porPagarEstado, usual, estimado, sinCorte, compras, comprasTotal, comprasNetas, pendiente, pedir, proxCorte, resto, enLibre, debeTotal, reservas, reservado, venceCompras, cupoLibre, dosPagos };
+        const dosPagos = porPagarEstado + estimado > 0 && comprasNetas > 0 && vence !== venceCompras;
+        return { t, ult, pagado, pagadoCompras, porPagarEstado, usual, estimado, sinCorte, compras, comprasTotal, comprasNetas, pendiente, pedir, proxCorte, resto, enLibre, debeTotal, reservas, reservado, venceCompras, cupoLibre, dosPagos, vence };
     }
     /** Pagos de tarjeta como ocurrencias de Pagos: el estado vigente y, si llegó otro, el pendiente. */
     function ocurrenciasTarjeta(st, desde, hasta) {
@@ -320,7 +391,8 @@
         for (const t of st.tarjetas) {
             const info = tarjetaInfo(st, t);
             t.estados.forEach((e, i) => {
-                if (e.inicial || e.vence < desde || e.vence > hasta) return;
+                // v2.6.6 (V2-85): el que se pagó antes de agregar la tarjeta no se ve.
+                if (e.inicial || e.antes === 'pagado' || e.vence < desde || e.vence > hasta) return;
                 const ultimo = i === t.estados.length - 1;
                 const pagadoE = ultimo ? info.pagado : e.aPagar;
                 const estado = pagadoE >= e.aPagar ? 'pagado' : e.vence < st.hoy ? 'vencido' : 'pendiente';
@@ -355,7 +427,8 @@
     function fundado(st, fecha) {
         const p = principal(st);
         if (!p) return fecha <= st.hoy;
-        const desde = inicioDe(st) > (p.desde || '') ? inicioDe(st) : p.desde;
+        // v2.6.6 (V2-85): «No, todavía no» (la de este periodo no te ha llegado): se espera desde esa fecha.
+        const desde = p.desdeAntes && p.desde ? p.desde : inicioDe(st) > (p.desde || '') ? inicioDe(st) : p.desde;
         return fecha < desde || !!p.llegadas[fecha];
     }
     /**
@@ -1061,5 +1134,6 @@
         inicioDe, cortes, corteAntes, corteDespues, fundado, esFundado, periodoDe, fuentesPara, asignacion, reglaPago, recurrentes, descuentosDe, proyectar, claveVigente, reservasDe,
         esUnico, ingresoDeClave, llegoUnico, unicosPara,
         porPagar, porRecibir, ingresoEsperado, aplicarEsperado, pagoParecido,
+        pasadaDelPeriodo, desdeSegun, inicioUso, antesDeEmpezar,
     };
 })();

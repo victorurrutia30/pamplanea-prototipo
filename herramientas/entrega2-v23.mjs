@@ -92,6 +92,8 @@ try {
         await escribir('#ob-t-pago', pago);
         if (usual) await escribir('#ob-t-usual', usual);
         await clic('[data-fk="ob-t-guardar"]');
+        // v2.6.6 (V2-85): si su pago de este mes ya pasó (Cuscatlán: corte 20, pago 10), al guardar pregunta; «Sí» espera el siguiente.
+        if (await hay('#ob-antes-t')) await clic('[data-fk="ob-t-guardar"]');
     }
     await foto('dos-tarjetas');
     await clic('[data-fk="ob-sig"]');

@@ -161,6 +161,9 @@ try {
         await escribir('#f-corte', '21');
         await escribir('#f-pagoDia', '10');
         await clic('[data-fk="deuda-ok"]');
+        // v2.6.6 (V2-85): su pago de octubre (el 10) ya pasó: al guardar pregunta; «Sí» espera el siguiente (10 nov).
+        check('pregunta por el del 10 oct', await texto('#antes-t'), 'El de octubre (10 oct), ¿ya lo pagaste?');
+        await clic('[data-fk="deuda-ok"]');
         const tid = await ev('P.st.tarjetas.find((t) => t.nombre === "Visa Agrícola").id');
         const estadoT = () => calc(`(() => { const t = M.tarjeta(P.st, ${js(tid)}); const i = M.tarjetaInfo(P.st, t); return { corte: i.pendiente && i.pendiente.corte, vence: i.pendiente && i.pendiente.vence, pagos: M.ocurrenciasTarjeta(P.st, "2026-09-01", "2026-12-31").filter((o) => o.tarjeta.id === t.id).map((o) => o.fecha), aviso: k.avisos.some((a) => a.tipo === "estado") }; })()`);
         check('corte 21: corta el 21, paga el 10 nov', await estadoT(), { corte: '2026-10-21', vence: '2026-11-10', pagos: ['2026-11-10'], aviso: false });

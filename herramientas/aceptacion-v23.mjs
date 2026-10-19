@@ -130,6 +130,9 @@ try {
     await escribir('#f-d2', '23');
     await foto('victor-cuchubal');
     await clic('[data-fk="hoja-ok"]');
+    // v2.6.6 (V2-85): el del 8 de octubre ya pasó: al guardar pregunta «¿ya lo pagaste?» («Sí»: el primero es el 23).
+    check('cuchubal: pregunta por el del 8', await texto('#antes-t'), 'El del 8 de octubre, ¿ya lo pagaste?');
+    await clic('[data-fk="hoja-ok"]');
     check('cuchubal: próxima el 23', await ev('(() => { const M = window.MOTOR; const p = P.st.pagos.find((x) => /cuchubal/i.test(x.nombre)); return M.ocurrenciasPago(P.st, p, P.st.hoy, "2026-11-30").map((o) => o.fecha); })()'), ['2026-10-23', '2026-11-08', '2026-11-23']);
     await clic('[data-fk="nav-hoy"]');
     await foto('victor-hoy');

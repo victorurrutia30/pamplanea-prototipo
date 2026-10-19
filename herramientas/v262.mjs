@@ -262,6 +262,9 @@ try {
         await escribir('#f-debeHoy', '250');
         await foto('C-tarjeta-nueva');
         await clic('[data-fk="deuda-ok"]');
+        // v2.6.6 (V2-85): su pago de octubre (el 12) ya pasó: al guardar pregunta; «Sí» cuenta el del 12 nov (una vez).
+        check('pregunta por el del 12 oct', await texto('#antes-t'), 'El de octubre (12 oct), ¿ya lo pagaste?');
+        await clic('[data-fk="deuda-ok"]');
         await esperar(250);
         const k = await ev(`(() => { const k = P.calc(); const t = k.tarjetas.find((x) => x.t.nombre === 'Crédito Promerica'); return { libre: k.libre, usual: t.usual, estimado: t.estimado, debe: t.t.debeInicial }; })()`);
         check('cuenta lo que pagas normalmente (estimado) y guarda lo que debes', { usual: k.usual, estimado: k.estimado, debe: k.debe, baja: libre0 - k.libre }, { usual: 8000, estimado: 8000, debe: 25000, baja: 8000 });

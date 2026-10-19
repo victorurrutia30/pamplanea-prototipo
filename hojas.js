@@ -128,20 +128,91 @@
         if (d.frecuencia === 'ingreso') r.conIngreso = d.conIngreso;
         return r;
     };
-    /** Desde cuándo cuenta: hoy, o la primera fecha elegida si ya venció (un pago atrasado sí se pide). */
+    /**
+     * Desde cuándo cuenta. Una vez u otras fechas: hoy, o la primera fecha elegida si ya venció (un pago atrasado sí se
+     * pide). v2.6.6 (V2-85): uno que se repite empieza en el siguiente de su fecha de este periodo que ya pasó, salvo que
+     * la persona diga «No, todavía lo debo» (`antes: 'no'`); lo de antes de eso nunca se cuenta (V2-43).
+     */
     const desdeDe = (st, d) => {
-        const primera = d.primera || (d.frecuencia === 'unico' || d.frecuencia === 'catorcenal' || d.frecuencia === 'meses' ? d.fecha : d.frecuencia === 'fechas' ? [...(d.fechas || [])].sort()[0] : null);
+        if (d.frecuencia !== 'unico' && d.frecuencia !== 'fechas') {
+            const pasada = M.pasadaDelPeriodo(st, P.reglaDe(d));
+            // `antes: 'no'` (la respuesta del formulario) o `antesDebe` (la fecha que la persona dijo que debe, Primer día).
+            return M.desdeSegun(st.hoy, pasada, d.antes === 'no' || (!!pasada && d.antesDebe === pasada));
+        }
+        const primera = d.frecuencia === 'unico' ? d.fecha : [...(d.fechas || [])].sort()[0];
         return primera && primera < st.hoy ? primera : st.hoy;
     };
     P.crearPago = function (st, d) {
         const id = 'p' + st.seq++;
-        const p = { id, nombre: d.nombre, emoji: d.emoji || '🧾', categoria: d.categoria || 'otros', monto: d.monto, estimado: !!d.estimado, ...P.reglaDe(d), medio: d.medio, avisos: [{ tipo: 'antes', dias: 1, on: true }, { tipo: 'vence', on: true }], desde: desdeDe(st, d), hechos: {}, previos: [], nuevo: true };
+        const p = { id, nombre: d.nombre, emoji: d.emoji || '🧾', categoria: d.categoria || 'otros', monto: d.monto, estimado: !!d.estimado, ...P.reglaDe(d), medio: d.medio, avisos: [{ tipo: 'antes', dias: 1, on: true }, { tipo: 'vence', on: true }], desde: desdeDe(st, d), creado: st.hoy, hechos: {}, previos: [], nuevo: true };
         if (p.frecuencia === 'unico' && !p.fecha) p.fecha = M.proximoDia(st.hoy, d.dia || 1);
         if (d.hasta) p.hasta = d.hasta;
         if (d.tipoPago) p.tipoPago = d.tipoPago;
         st.pagos.push(p);
+        // V2-85: lo vencido que la persona eligió al crearlo («No, todavía lo debo» o una fecha que ya pasó en «Una vez»)
+        // ya está contestado: al abrir no se vuelve a preguntar (V2-86).
+        if (p.desde < st.hoy) for (const o of M.ocurrenciasPago(st, p, p.desde, M.sumarDias(st.hoy, -1))) anotarDebe(st, `p:${id}:${o.fecha}`);
         return p;
     };
+    /**
+     * v2.6.6 (V2-86): la respuesta a «¿ya lo pagaste?» de algo de antes de empezar. «Sí»: deja de contar (el pago queda
+     * «pagado antes de empezar», `{ estado: 'antes' }`, sin gasto nuevo; la tarjeta, su estado de cuenta `antes: 'pagado'`;
+     * el ingreso llegó antes de empezar y ya está en lo que tienes). «No»: queda como está y no se vuelve a preguntar.
+     */
+    P.responderAntes = function (st, caso, si) {
+        if (caso.tipo === 'pago') {
+            const p = M.pago(st, caso.id);
+            if (!p) return;
+            if (si) p.hechos[caso.fecha] = { estado: 'antes' };
+            else anotarDebe(st, caso.clave);
+        } else if (caso.tipo === 'tarjeta') {
+            const t = M.tarjeta(st, caso.id);
+            const e = t && t.estados.at(-1);
+            if (e) e.antes = si ? 'pagado' : 'debe';
+        } else if (caso.tipo === 'ingreso') {
+            const ing = M.ingreso(st, caso.id);
+            if (!ing) return;
+            if (si) ing.llegadas[caso.fecha] = { monto: caso.monto, enCuadre: true, antes: true };
+            else anotarDebe(st, caso.clave);
+        }
+    };
+    /** V2-86: «Deshacer» una respuesta: vuelve exactamente lo que cambió (nada más; lo anotado después se queda). */
+    P.deshacerAntes = function (st, caso, si) {
+        if (!si && st.antesDebe) delete st.antesDebe[caso.clave];
+        if (caso.tipo === 'pago') {
+            const p = M.pago(st, caso.id);
+            if (p && si && p.hechos[caso.fecha] && p.hechos[caso.fecha].estado === 'antes') delete p.hechos[caso.fecha];
+        } else if (caso.tipo === 'tarjeta') {
+            const t = M.tarjeta(st, caso.id);
+            const e = t && t.estados.at(-1);
+            if (e) delete e.antes;
+        } else if (caso.tipo === 'ingreso') {
+            const ing = M.ingreso(st, caso.id);
+            if (ing && si && ing.llegadas[caso.fecha] && ing.llegadas[caso.fecha].antes) delete ing.llegadas[caso.fecha];
+        }
+    };
+    /**
+     * V2-85: al editar el día (o la frecuencia) de un pago, las fechas que ya pasaron y que solo aparecen por el cambio
+     * (las de un mes que antes no tenía una sin pagar) no se cuentan: no se crean pagos vencidos. La de este periodo se
+     * pregunta en el formulario; con «No, todavía lo debo», esa sí se cuenta.
+     */
+    function nuevasPasadas(st, p, regla) {
+        const abiertas = (q) => M.ocurrenciasPago(st, q, q.desde, st.hoy).filter((o) => o.estado === 'vencido' || (o.estado === 'pendiente' && o.fecha === st.hoy)).map((o) => o.fecha);
+        const viejas = {};
+        for (const f of abiertas(p)) viejas[f.slice(0, 7)] = (viejas[f.slice(0, 7)] || 0) + 1;
+        const q = structuredClone(p);
+        for (const k of ['fecha', 'dias', 'dia', 'diaSemana', 'cadaMeses', 'fechas', 'conIngreso']) delete q[k];
+        Object.assign(q, P.reglaDe(regla));
+        P.reubicarHechos(st, q);
+        return abiertas(q).filter((f) => {
+            const m = f.slice(0, 7);
+            if (viejas[m] > 0) {
+                viejas[m]--;
+                return false;
+            }
+            return true;
+        });
+    }
     /**
      * V2-34: «¿Reservas algo de antes?». Mueve `monto` de lo que se paga con el día de pago `periodo` a
      * `fuente` (lo que tienes ahora u otro día de pago anterior), empezando por el pago más grande.
@@ -324,6 +395,54 @@
         const cuando = p.frecuencia === 'mensual' ? `el ${p.dia}` : p.frecuencia === 'semanal' ? `cada ${M.DIAS[p.diaSemana]}` : P.textoFrecuencia(p, { corto: true }).toLowerCase();
         return `<div class="pregunta pregunta--dup" role="group" aria-labelledby="dup-t"><p class="campo-l" id="dup-t" tabindex="-1">Ya tienes «${esc(p.nombre)}» ${esc(cuando)} por ${dinero(p.monto, { aprox: p.estimado })}. ¿Es otro pago?</p><div class="chips"><button type="button" class="chip" aria-pressed="false" data-a="${accion}" data-campo="dup" data-v="ver" data-fk="dup-ver">Ver el que tengo</button><button type="button" class="chip" aria-pressed="false" data-a="${accion}" data-campo="dup" data-v="otro" data-fk="dup-otro">Sí, es otro</button></div>${error(h, 'duplicado', 'Dinos si es otro pago')}</div>`;
     }
+    /**
+     * v2.6.6 (V2-85): lo de este periodo que ya pasó (o vence hoy) se pregunta una vez, en el mismo formulario: «El de
+     * octubre (14 oct), ¿ya lo pagaste?» [Sí, ya lo pagué] [No, todavía lo debo]; en un ingreso, «La del 15 de octubre,
+     * ¿ya te llegó?» [Sí, ya me llegó] [No, todavía no]. «Sí» viene elegido: sin respuesta nunca se inventa una deuda.
+     * `h.antesDebe` guarda la fecha si la respuesta es «No» (si cambia el día, vuelve a valer «Sí»); `h.antesVisto`, que
+     * la pregunta ya se vio (si no, «Guardar» la muestra primero).
+     */
+    function preguntaAntes(h, fecha, { ingreso = false, fem = false, mensual = false, siguiente = null, accion = 'valor', fk = 'antes', campo = 'antes' } = {}) {
+        if (!fecha) return '';
+        h.antesVisto = fecha;
+        const st = P.st;
+        const debe = h.antesDebe === fecha;
+        const art = fem ? 'La' : 'El';
+        const cual = fecha === st.hoy ? `${art} de hoy` : mensual ? `${art} de ${M.MESES[M.partes(fecha)[1] - 1]} (${M.fechaCorta(fecha)})` : `${art} del ${M.fechaLarga(fecha)}`;
+        const pregunta = `${cual}, ¿${ingreso ? 'ya te llegó' : 'ya lo pagaste'}?`;
+        const ops = ingreso ? [['si', 'Sí, ya me llegó'], ['no', 'No, todavía no']] : [['si', 'Sí, ya lo pagué'], ['no', 'No, todavía lo debo']];
+        const nota = ingreso
+            ? debe ? 'Lo esperamos: te preguntamos cuando llegue.' : 'Ya está en lo que tienes: no se suma otra vez.'
+            : debe ? (fecha === st.hoy ? 'Queda para hoy y se cuenta en tu libre.' : `Queda pendiente desde el ${M.fechaLarga(fecha)} y se cuenta en tu libre.`) : `No se cuenta en tu libre.${siguiente ? ` Tu próximo pago: ${M.fechaLarga(siguiente)}.` : ''}`;
+        const chip = ([v, t]) => {
+            const sel = (v === 'no') === debe;
+            return `<button type="button" class="chip" aria-pressed="${sel}" data-a="${accion}" data-campo="${campo}" data-v="${v === 'no' ? 'no:' + fecha : 'si'}" data-fk="${fk}-${v}">${sel ? icon('check', 'ico-xs') : ''}<span>${esc(t)}</span></button>`;
+        };
+        return `<div class="pregunta pregunta--antes" role="group" aria-labelledby="${fk}-t" aria-describedby="${fk}-nota"><p class="campo-l" id="${fk}-t" tabindex="-1">${esc(pregunta)}</p><div class="chips">${ops.map(chip).join('')}</div><p class="fila-s" id="${fk}-nota">${esc(nota)}</p></div>`;
+    }
+    P.preguntaAntes = preguntaAntes;
+    /** V2-85: la respuesta de un chip de «¿ya lo pagaste?»: «No» guarda la fecha que se debe; «Sí», nada. */
+    const respuestaAntes = (v) => (String(v).startsWith('no:') ? String(v).slice(3) : null);
+    /**
+     * V2-85: si al guardar todavía no se vio la pregunta (el día se escribió sin volver a dibujar el formulario), se muestra
+     * y no se guarda todavía. Devuelve true si hubo que mostrarla.
+     */
+    function mostrarAntes(h, fecha, sel = '#antes-t') {
+        if (!fecha || h.antesVisto === fecha) return false;
+        P.render({ foco: sel });
+        const q = document.querySelector(sel);
+        // En una hoja se mueve la hoja; en el Primer día, la pantalla (el marco de la app no se mueve).
+        const c = q && (q.closest('.hoja-c') || document.getElementById('vista'));
+        if (c) c.scrollTop += q.getBoundingClientRect().top - c.getBoundingClientRect().top - 16;
+        P.emitir('antes:pregunta');
+        return true;
+    }
+    /** V2-85: la fecha que sigue a la que ya pasó (para decir «Tu próximo pago: …»). */
+    const siguienteDe = (st, regla, fecha) => (fecha ? M.fechasRegla(M.reglaPago(st, regla), M.sumarDias(fecha, 1), M.sumarDias(fecha, 400))[0] || null : null);
+    /** V2-85: lo que la persona dijo que todavía debe (o espera) no se vuelve a preguntar al abrir (V2-86). */
+    function anotarDebe(st, clave) {
+        st.antesDebe = { ...(st.antesDebe || {}), [clave]: st.hoy };
+    }
     /** V2-81: cómo se nombra un ingreso esperado en una pregunta («tu quincena del 30», «tu salario del 30»). */
     function cualIngreso(ing, fecha) {
         const cual = ing.frecuencia === 'quincenal' ? 'quincena' : ing.frecuencia === 'semanal' ? 'pago de la semana' : ing.nombre.charAt(0).toLowerCase() + ing.nombre.slice(1);
@@ -427,6 +546,13 @@
     // Valor genérico de una hoja: data-campo + data-v.
     P.acciones.valor = (d) => {
         const h = P.ui.hoja;
+        // v2.6.6 (V2-85): «¿ya lo pagaste?» de lo que ya pasó de este periodo, igual en todos los formularios.
+        if (d.campo === 'antes') {
+            h.antesDebe = respuestaAntes(d.v);
+            P.render();
+            P.emitir('antes:' + (h.antesDebe ? 'no' : 'si'));
+            return;
+        }
         const v = /^\d+$/.test(d.v) && ['dia', 'diaSemana'].includes(d.campo) ? Number(d.v) : d.v;
         if (H[h.tipo].alValor) H[h.tipo].alValor(h, d.campo, v);
         else h[d.campo] = v;
@@ -608,6 +734,13 @@
         if (campo === 'pago') return `<p class="txt">Este es tu pago de ${esc(d.nombre)} en Pagos. Para cambiarlo, ábrelo desde Pagos.</p>`;
         return '';
     }
+    /** V2-85: en «Recordarme un pago», la fecha de este periodo que ya pasó (cada mes o cada semana; «Solo esta vez» no). */
+    function pasadaAnotar(st, d) {
+        if (d.tipo !== 'pago' || !d.frecuencia || d.frecuencia === 'unico') return null;
+        const regla = d.frecuencia === 'semanal' ? { frecuencia: 'semanal', diaSemana: d.diaSemana ?? 5 } : d.dia ? { frecuencia: 'mensual', dia: d.dia } : null;
+        const fecha = regla ? M.pasadaDelPeriodo(st, regla) : null;
+        return fecha ? { fecha, regla } : null;
+    }
     function preguntasAnotar(st, h) {
         const d = h.d;
         const out = [];
@@ -623,6 +756,10 @@
         // V2-82: «Recordarme un pago» parecido a uno que ya tienes: se pregunta antes de crear otro.
         const dup = d.tipo === 'pago' && !d.dupOk ? M.pagoParecido(st, d) : null;
         if (dup) out.push(preguntaDuplicado(h, dup, 'anotarValor'));
+        // V2-85: «Recordarme un pago» cuya fecha de este periodo ya pasó (o es hoy): «¿ya lo pagaste?».
+        const antes = !dup ? pasadaAnotar(st, d) : null;
+        if (antes) out.push(preguntaAntes(d, antes.fecha, { accion: 'anotarValor', mensual: d.frecuencia === 'mensual', siguiente: siguienteDe(st, antes.regla, antes.fecha) }));
+        else if (d.tipo === 'pago') d.antesVisto = null;
         if (d.tipo === 'gasto' && d.sugerirApartado && d.usarApartado === null && M.apartado(st, d.sugerirApartado)) {
             const a = M.apartado(st, d.sugerirApartado);
             const pregunta = d.apartadoPorNombre ? `¿Lo tomas de tu ahorro ${esc(a.nombre)}? <span class="opcional">(tiene ${dinero(a.monto)})</span>` : `¿Lo pagas con tu ahorro ${esc(a.nombre)} (${dinero(a.monto)})?`;
@@ -929,6 +1066,9 @@
             x.diaSemana = Number(v);
         } else if (d.campo === 'dia') {
             x.dia = Number(v);
+        } else if (d.campo === 'antes') {
+            // V2-85: «No, todavía lo debo» guarda la fecha; «Sí, ya lo pagué», nada.
+            x.antesDebe = respuestaAntes(v);
         } else if (d.campo === 'a' && String(v).startsWith('tarjeta:')) {
             h.d = { ...x, tipo: 'pagoTarjeta', tarjeta: v.split(':')[1], lugar: x.de || st.lugares.find((l) => l.tipo === 'banco')?.id, nombre: 'Pago de ' + M.tarjeta(st, v.split(':')[1]).nombre };
         } else {
@@ -963,6 +1103,9 @@
             if (el) el.focus();
             return;
         }
+        // V2-85: «Recordarme un pago» con su fecha de este periodo ya pasada: la pregunta se ve antes de guardar.
+        const antes = pasadaAnotar(st, d);
+        if (antes && mostrarAntes(d, antes.fecha)) return;
         let siguiente = null;
         const nombreClave = claveNombre(d.nombre);
         const futuro = (d.tipo === 'gasto' || d.tipo === 'ingreso') && d.fecha > st.hoy;
@@ -1002,7 +1145,7 @@
                         siguiente = { tipo: 'reparte', id: d.ingresoRef.id, fecha: d.ingresoRef.fecha, monto: d.monto };
                     } else P.registrar(s, { tipo: 'ingreso', fecha: d.fecha, monto: d.monto, nombre: d.nombre, categoria: d.categoria, emoji: d.emoji, lugar: d.lugar, anotado: true, nuevo: true });
                 } else if (d.tipo === 'pago') {
-                    P.crearPago(s, { nombre: d.nombre, emoji: d.emoji, categoria: d.categoria, monto: d.monto, frecuencia: d.frecuencia, dia: d.dia, diaSemana: d.diaSemana, medio: d.medio, fecha: d.frecuencia === 'unico' ? d.fechaPago || M.proximoDia(s.hoy, d.dia || 1) : undefined });
+                    P.crearPago(s, { nombre: d.nombre, emoji: d.emoji, categoria: d.categoria, monto: d.monto, frecuencia: d.frecuencia, dia: d.dia, diaSemana: d.diaSemana, medio: d.medio, fecha: d.frecuencia === 'unico' ? d.fechaPago || M.proximoDia(s.hoy, d.dia || 1) : undefined, antes: antes && d.antesDebe === antes.fecha ? 'no' : 'si' });
                 } else if (d.tipo === 'apartar') {
                     let id = d.apartado;
                     if (!id) {
@@ -1049,7 +1192,8 @@
             for (const t of k.tarjetas) {
                 if (t.pendiente && !t.usual) items.push(`<li><span>${emo(t.t.emoji, 16)} ${esc(t.t.nombre)} <span class="d-sub">estado de cuenta por anotar</span></span><span>Por confirmar</span></li>`);
                 // V2-54: hasta su primer estado de cuenta, lo que paga normalmente.
-                if (t.estimado) items.push(`<li><span>${emo(t.t.emoji, 16)} ${esc(t.t.nombre)} <span class="d-sub">lo que pagas normalmente, ${t.ult.vence < st.hoy ? 'venció' : 'vence'} el ${M.partes(t.ult.vence)[2]} ${M.MESES_CORTOS[M.partes(t.ult.vence)[1] - 1]}</span></span><span>${dinero(t.estimado, { aprox: true })}</span></li>`);
+                // v2.6.6 (V2-85): la fecha del ciclo que se cuenta (antes decía la del ciclo de antes de agregarla: «venció el 14 oct»).
+                if (t.estimado) items.push(`<li><span>${emo(t.t.emoji, 16)} ${esc(t.t.nombre)} <span class="d-sub">lo que pagas normalmente, ${t.vence < st.hoy ? 'venció' : 'vence'} el ${M.fechaCorta(t.vence)}</span></span><span>${dinero(t.estimado, { aprox: true })}</span></li>`);
                 // V2-29 #1: vence después del ingreso, pero ya baja el libre; se dice cuándo vence.
                 if (t.porPagarEstado) items.push(`<li><span>${emo(t.t.emoji, 16)} ${esc(t.t.nombre)} <span class="d-sub">estado de cuenta, ${t.ult.vence < st.hoy ? 'venció' : 'vence'} el ${M.partes(t.ult.vence)[2]} ${M.MESES_CORTOS[M.partes(t.ult.vence)[1] - 1]}</span></span><span>${dinero(t.porPagarEstado)}</span></li>`);
                 const compras = t.comprasNetas - t.reservado;
@@ -2213,11 +2357,15 @@
                     ${opciones(h, { campo: 'medio', label: '¿Con qué la pagas?', lista: medios(st).filter((m) => !M.medio(st, m.v).tarjeta), valor: h.medio })}
                     ${h.cuotaTarjeta ? '<p class="fila-s">Es lo que pagas cada mes a esta tarjeta. Si quieres llevar sus compras y su estado de cuenta, agrégala como tarjeta de crédito en Deudas.</p>' : ''}`;
             }
+            // V2-85: el pago de este periodo que ya pasó (o vence hoy): «¿ya lo pagaste?».
+            const antes = h.tipoDeuda ? antesDeuda(st, h) : null;
+            if (!antes) h.antesVisto = null;
+            const pregunta = antes ? preguntaAntes(h, antes.fecha, { mensual: true, siguiente: antes.siguiente }) : '';
             return {
                 titulo: h.editar ? `Editar ${esc(h.nombre)}` : 'Tarjeta o préstamo',
-                cuerpo: `${tipos}${campos}${tipo && !h.editar ? `<p class="fila-s">${h.tipoDeuda === 'tarjeta' ? 'Al guardar, su pago aparece solo en Pagos según tu estado de cuenta.' : 'Al guardar, la cuota aparece sola en Pagos.'}</p>` : ''}`,
+                cuerpo: `${tipos}${campos}${pregunta}${tipo && !h.editar ? `<p class="fila-s">${h.tipoDeuda === 'tarjeta' ? 'Al guardar, su pago aparece solo en Pagos según tu estado de cuenta.' : 'Al guardar, la cuota aparece sola en Pagos.'}</p>` : ''}`,
                 pie: pie2('nuevaDeudaOk', h.editar ? 'Guardar cambios' : h.tipoDeuda === 'tarjeta' ? 'Agregar tarjeta' : 'Agregar deuda', { fk: 'deuda-ok' }),
-                ...(h.editar && h.tarjetaId ? { cuerpo: `${tipos}${campos}${h.confirmarEliminar ? reasignarHtml(h, st, ligados(st, { medios: mediosDeTarjeta(st, h.tarjetaId) }), { fueraMedios: mediosDeTarjeta(st, h.tarjetaId) }) + confirmarHtml(`¿Eliminar ${esc(h.nombre)}?`, 'Deja de aparecer en Pagos y en tu libre. Las compras que anotaste se quedan en tu historial.', 'tarjetaEliminar', 'tarjeta-eliminar') : `<button type="button" class="link link--peligro" data-a="valor" data-campo="confirmarEliminar" data-v="si" data-fk="tarjeta-eliminar">${icon('trash-2', 'ico-s')}Eliminar tarjeta</button>`}` } : {}),
+                ...(h.editar && h.tarjetaId ? { cuerpo: `${tipos}${campos}${pregunta}${h.confirmarEliminar ? reasignarHtml(h, st, ligados(st, { medios: mediosDeTarjeta(st, h.tarjetaId) }), { fueraMedios: mediosDeTarjeta(st, h.tarjetaId) }) + confirmarHtml(`¿Eliminar ${esc(h.nombre)}?`, 'Deja de aparecer en Pagos y en tu libre. Las compras que anotaste se quedan en tu historial.', 'tarjetaEliminar', 'tarjeta-eliminar') : `<button type="button" class="link link--peligro" data-a="valor" data-campo="confirmarEliminar" data-v="si" data-fk="tarjeta-eliminar">${icon('trash-2', 'ico-s')}Eliminar tarjeta</button>`}` } : {}),
             };
         },
         alValor(h, campo, v) {
@@ -2252,6 +2400,46 @@
     };
     const diaValido = (v) => /^\d{1,2}$/.test(String(v || '').trim()) && +v >= 1 && +v <= 31;
     const mediosDeTarjeta = (st, id) => st.medios.filter((m) => m.tarjeta === id).map((m) => m.id);
+    /** El primer vencimiento de una tarjeta: el mes siguiente a su último corte; sin corte (V2-54), su próximo día de pago. */
+    function venceTarjeta(base, corte, pagoDia) {
+        if (!corte) return M.proximoDia(base, pagoDia);
+        const [y, m] = M.partes(M.ultimoDia(base, corte));
+        const [vy, vm] = M.mesMas(y, m, 1);
+        return M.fechaDe(vy, vm, pagoDia);
+    }
+    /**
+     * V2-85: en «Tarjeta o préstamo», el pago de este periodo que ya pasó (o vence hoy): el de la tarjeta (con o sin su
+     * último estado de cuenta) o la cuota del mes. Al editar, solo si el cambio de días lo trae (V2-57: un estado de
+     * cuenta ya anotado no se toca).
+     */
+    function antesDeuda(st, h) {
+        if (h.tipoDeuda === 'tarjeta' && !h.cuotaTarjeta) {
+            if (!diaValido(h.pagoDia)) return null;
+            const pagoDia = +h.pagoDia;
+            let vence;
+            if (h.editar) {
+                const t = M.tarjeta(st, h.tarjetaId);
+                const ult = t && t.estados.at(-1);
+                if (!ult || !ult.inicial) return null;
+                const corte = diaValido(h.corte) ? +h.corte : t.corte;
+                vence = venceTarjeta(corte && t.desde && t.desde <= st.hoy ? t.desde : st.hoy, corte, pagoDia);
+                if (vence === ult.vence) return null;
+            } else {
+                if (!diaValido(h.corte)) return null;
+                vence = venceTarjeta(st.hoy, +h.corte, pagoDia);
+            }
+            if (vence > st.hoy || vence < st.hoy.slice(0, 8) + '01') return null;
+            return { fecha: vence, siguiente: M.fechaDe(...M.mesMas(...M.partes(vence).slice(0, 2), 1), pagoDia) };
+        }
+        if (!h.tipoDeuda || !diaValido(h.dia)) return null;
+        const regla = { frecuencia: 'mensual', dia: +h.dia };
+        let fecha = M.pasadaDelPeriodo(st, regla);
+        if (fecha && h.editar) {
+            const p = M.pago(st, h.id);
+            fecha = p && nuevasPasadas(st, p, regla).includes(fecha) ? fecha : null;
+        }
+        return fecha ? { fecha, siguiente: siguienteDe(st, regla, fecha), regla } : null;
+    }
     P.acciones.nuevaDeudaOk = () => {
         const h = P.ui.hoja;
         const st = P.st;
@@ -2271,6 +2459,10 @@
             }
         }
         if (!validar(h, faltan)) return;
+        // V2-85: si el pago de este periodo ya pasó (o vence hoy), «¿ya lo pagaste?» se ve antes de guardar.
+        const antes = antesDeuda(st, h);
+        if (antes && mostrarAntes(h, antes.fecha)) return;
+        const loDebe = !!antes && h.antesDebe === antes.fecha;
         const tipo = D.TIPOS_DEUDA.find((x) => x.id === h.tipoDeuda);
         P.ui.hoja = null;
         if (h.tipoDeuda === 'tarjeta' && !h.cuotaTarjeta) {
@@ -2290,13 +2482,15 @@
                             if (h.usual !== null && h.usual !== undefined) t.pagoUsual = M.leerMonto(h.usual);
                             // V2-57: el ciclo pendiente se recalcula con los días nuevos (corte, vencimiento, avisos y su pago
                             // en Pagos salen de aquí). Un estado de cuenta ya anotado no se toca.
+                            const antesVence = ult.vence;
                             if (t.corte) {
                                 const base = t.desde && t.desde <= s.hoy ? t.desde : s.hoy;
-                                const corteFecha = M.ultimoDia(base, t.corte);
-                                const [y, m] = M.partes(corteFecha);
-                                const [vy, vm] = M.mesMas(y, m, 1);
-                                Object.assign(ult, { corte: corteFecha, vence: M.fechaDe(vy, vm, t.pagoDia) });
+                                Object.assign(ult, { corte: M.ultimoDia(base, t.corte), vence: venceTarjeta(base, t.corte, t.pagoDia) });
                             } else ult.vence = M.proximoDia(s.hoy, t.pagoDia);
+                            // V2-85: la respuesta de antes era para otra fecha; con los días nuevos no se crea un pago vencido
+                            // (salvo «No, todavía lo debo»).
+                            if (ult.vence !== antesVence) delete ult.antes;
+                            if (antes) ult.antes = loDebe ? 'debe' : 'pagado';
                         }
                     },
                     { aviso: 'Cambios guardados', claves: ['guardado:deuda:editar'] },
@@ -2307,10 +2501,10 @@
                 (s) => {
                     const id = 't' + s.seq++;
                     const ultimoCorte = M.ultimoDia(s.hoy, corte);
-                    const [y, m] = M.partes(ultimoCorte);
-                    const [vy, vm] = M.mesMas(y, m, 1);
-                    const vence = M.fechaDe(vy, vm, pagoDia);
+                    const vence = venceTarjeta(s.hoy, corte, pagoDia);
                     const estado = ecTotal ? { corte: ultimoCorte, total: ecTotal, minimo: ecMinimo || 0, aPagar: ecTotal, opcion: 'total', vence } : { corte: ultimoCorte, total: 0, minimo: 0, aPagar: 0, opcion: 'total', vence, inicial: true, esperarCorte: true };
+                    // V2-85: su pago de este periodo ya pasó (o vence hoy): «Sí» no lo cuenta; «No, todavía lo debo», sí.
+                    if (antes) estado.antes = loDebe ? 'debe' : 'pagado';
                     // V2-78: sin estado de cuenta, lo que pagas normalmente cuenta (estimado) y lo que debes queda por confirmar.
                     const usual = !ecTotal ? M.leerMonto(h.usualNueva) : null;
                     const debeHoy = !ecTotal ? M.leerMonto(h.debeHoy) : null;
@@ -2325,14 +2519,21 @@
         const debe = M.leerMonto(h.debe);
         if (h.editar) {
             P.cambiar((s) => {
+                const nuevas = nuevasPasadas(s, M.pago(s, h.id), { frecuencia: 'mensual', dia: +h.dia });
                 const p = Object.assign(M.pago(s, h.id), { nombre, monto: cuota, dia: +h.dia, medio: h.medio, deuda: debe !== null ? { debe } : null });
                 P.reubicarHechos(s, p);
+                // V2-85: con el día nuevo no aparece una cuota vencida que antes no estaba (salvo «No, todavía lo debo»).
+                for (const f of nuevas) {
+                    if (loDebe && antes && f === antes.fecha) {
+                        if (f < s.hoy) anotarDebe(s, `p:${p.id}:${f}`);
+                    } else p.hechos[f] = { estado: 'antes' };
+                }
             }, { aviso: 'Cambios guardados', claves: ['guardado:deuda:editar'] });
             return;
         }
         P.cambiar(
             (s) => {
-                const p = P.crearPago(s, { nombre, emoji: tipo.emoji, categoria: 'cuotas', monto: cuota, frecuencia: 'mensual', dia: +h.dia, medio: h.medio });
+                const p = P.crearPago(s, { nombre, emoji: tipo.emoji, categoria: 'cuotas', monto: cuota, frecuencia: 'mensual', dia: +h.dia, medio: h.medio, antes: loDebe ? 'no' : 'si' });
                 p.tipoDeuda = h.tipoDeuda;
                 p.deuda = debe !== null ? { debe } : null;
             },
@@ -2558,6 +2759,10 @@
             if (faltan[0] === 'adMontos') document.getElementById('f-ad-' + adVacia.fecha)?.focus();
             return;
         }
+        // V2-85: si su fecha de este periodo ya pasó (o es hoy), «¿ya te llegó?» se ve antes de guardar.
+        const pasada = pasadaForm(h, { esIngreso: true });
+        if (mostrarAntes(h, pasada)) return;
+        const espera = !!pasada && h.antesDebe === pasada;
         P.ui.hoja = null;
         const n = M.normalizar(h.nombre);
         const { primera, ...regla } = reglaForm(h);
@@ -2584,8 +2789,13 @@
                     const emoji = tipo && tipo.id !== 'otro' ? tipo.emoji : /aguinaldo|quincena 25/.test(n) ? '🎁' : /remesa/.test(n) ? '🌎' : /cuchubal/.test(n) ? '🤝' : /comision|bono/.test(n) ? '📈' : '💼';
                     const categoria = tipo && tipo.id !== 'otro' ? tipo.categoria : /remesa/.test(n) ? 'remesa' : /aguinaldo|quincena 25/.test(n) ? 'aguinaldo' : /cuchubal/.test(n) ? 'cuchubal' : 'otro';
                     id = 'i' + s.seq++;
-                    x = { id, emoji, categoria, aprox: true, desde: s.hoy, llegadas: {}, ...datos, ...(tipo ? { tipoIngreso: tipo.id } : {}) };
+                    x = { id, emoji, categoria, aprox: true, desde: s.hoy, creado: s.hoy, llegadas: {}, ...datos, ...(tipo ? { tipoIngreso: tipo.id } : {}) };
                     s.ingresos.push(x);
+                    // V2-85: «No, todavía no»: se espera desde esa fecha. «Sí» (o sin respuesta): ya está en lo que tienes.
+                    if (espera && pasada < s.hoy) {
+                        Object.assign(x, { desde: pasada, desdeAntes: true });
+                        anotarDebe(s, `i:${id}:${pasada}`);
+                    } else if (pasada === s.hoy && !espera) x.llegadas[pasada] = { monto: x.monto, enCuadre: true, antes: true };
                 }
                 if (descuentos.length) x.adelanto = { descuentos };
                 else if (!tipo || tipo.id !== 'adelanto' || f !== 'unico') delete x.adelanto;
@@ -2793,7 +3003,7 @@
         if (f === 'trimestral' || f === 'anual') return { frecuencia: 'meses', cadaMeses: f === 'trimestral' ? 3 : 12, fecha: h.fecha };
         if (f === 'quincenal' && h.qModo === 'ingreso' && p) return { frecuencia: 'ingreso', conIngreso: p.id };
         if (f === 'quincenal') return { frecuencia: 'quincenal', dias: h.qModo === '15-30' ? [15, 30] : h.qModo === '15-31' ? [15, 31] : [Number(h.d1), Number(h.d2)].sort((a, b) => a - b) };
-        if (f === 'mensual') return { frecuencia: 'mensual', dia: Number(h.dia), primera: h.atrasado ? M.ultimoDia(st.hoy, Number(h.dia)) : null };
+        if (f === 'mensual') return { frecuencia: 'mensual', dia: Number(h.dia) };
         if (f === 'semanal') return { frecuencia: 'semanal', diaSemana: Number(h.diaSemana) };
         if (f === 'fechas') return { frecuencia: 'fechas', fechas: h.fechas };
         return { frecuencia: f, fecha: h.fecha };
@@ -2821,12 +3031,30 @@
             const modos = [...(p && p.frecuencia === 'quincenal' && !esIngreso ? [{ v: 'ingreso', t: `El mismo día que me pagan (${(p.dias || [15, 30]).map((d) => (d >= 31 ? 'último' : d)).join(' y ')})` }] : []), { v: '15-30', t: 'El 15 y el 30' }, { v: '15-31', t: 'El 15 y el último día' }, { v: 'otros', t: 'Otros días' }];
             detalle = opciones(h, { campo: 'qModo', label: '¿Qué días?', lista: modos, valor: h.qModo, columnas: true }) + (h.qModo === 'otros' ? `<div class="ob-2">${campoDia(h, 'd1', 'Primer día')}${campoDia(h, 'd2', 'Segundo día', '31 = último día del mes')}</div>` : '');
         } else if (f === 'mensual') {
-            const prox = h.dia ? (h.atrasado ? M.ultimoDia(st.hoy, Number(h.dia)) : M.proximoDia(st.hoy, Number(h.dia))) : null;
-            const puedeAtrasado = !esIngreso && h.dia && M.ultimoDia(st.hoy, Number(h.dia)) < st.hoy && !h.editar;
-            detalle = selectorDia(h, 'dia', h.dia, '¿Qué día del mes? (29, 30 o 31: en meses cortos, el último día)') + (prox ? `<p class="fila-s">${h.atrasado ? 'Ya venció' : 'Próxima vez'}: <strong>${esc(M.capital(M.conDia(prox)))}</strong>${puedeAtrasado ? ` · <button type="button" class="link link--inline" data-a="valor" data-campo="atrasado" data-v="${!h.atrasado}" data-fk="np-atrasado">${h.atrasado ? 'No, ya lo pagué este mes' : '¿Ya venció y no lo has pagado?'}</button>` : ''}</p>` : '');
+            // v2.6.6 (V2-85): si la de este mes ya pasó, en vez de «¿Ya venció y no lo has pagado?» se pregunta abajo.
+            const prox = h.dia && M.proximoDia(st.hoy, Number(h.dia)) > st.hoy ? M.proximoDia(st.hoy, Number(h.dia)) : null;
+            detalle = selectorDia(h, 'dia', h.dia, '¿Qué día del mes? (29, 30 o 31: en meses cortos, el último día)') + (prox && !pasadaForm(h, { esIngreso }) ? `<p class="fila-s">Próxima vez: <strong>${esc(M.capital(M.conDia(prox)))}</strong></p>` : '');
         } else if (f === 'trimestral' || f === 'anual') detalle = calendario(h, 'fecha', h.fecha, { label: '¿Cuándo toca la próxima vez?', ayuda: f === 'anual' ? 'Se repite cada año ese día.' : 'Se repite cada 3 meses ese día.' });
         else if (f === 'fechas') detalle = calendario(h, 'fechas', null, { label: 'Toca las fechas (puedes elegir varias)', multiple: h.fechas || [] });
-        return `${opciones(h, { campo: 'frecuencia', label: '¿Cada cuánto?', lista, valor: f })}${detalle}`;
+        const pasada = pasadaForm(h, { esIngreso });
+        if (!pasada) h.antesVisto = null;
+        const regla = pasada ? reglaForm(h) : null;
+        const fem = esIngreso && (f === 'quincenal' || f === 'catorcenal' || /^(quincena|catorcena|remesa|venta)/i.test(h.nombre || '') || ['remesa', 'venta'].includes(h.tipoIng));
+        return `${opciones(h, { campo: 'frecuencia', label: '¿Cada cuánto?', lista, valor: f })}${detalle}${pasada ? preguntaAntes(h, pasada, { ingreso: esIngreso, fem, mensual: !esIngreso && (f === 'mensual' || f === 'trimestral' || f === 'anual'), siguiente: siguienteDe(st, regla, pasada) }) : ''}`;
+    }
+    /**
+     * V2-85: la fecha de este periodo que ya pasó para lo que dice el formulario (se pregunta si ya se pagó o llegó). Un
+     * pago de una vez u «Otras fechas» no se pregunta: se eligió esa fecha. Al editar un pago, solo si el cambio la trae
+     * (`nuevasPasadas`); al editar un ingreso, no se pregunta.
+     */
+    function pasadaForm(h, { esIngreso = false } = {}) {
+        const st = P.st;
+        if (faltanFrecuencia(h).length || h.frecuencia === 'fechas' || (!esIngreso && h.frecuencia === 'unico') || (esIngreso && (h.editar || h.tipoIng === 'adelanto'))) return null;
+        const regla = reglaForm(h);
+        const pasada = M.pasadaDelPeriodo(st, regla);
+        if (!pasada || !h.editar) return pasada;
+        const p = M.pago(st, h.id);
+        return p && nuevasPasadas(st, p, regla).includes(pasada) ? pasada : null;
     }
     /** Elegir fechas a medida: tocar una fecha la agrega o la quita. */
     const alternarFecha = (h, v) => {
@@ -2944,11 +3172,9 @@
                 const x = D.SUSCRIPCIONES.find((y) => y.id === v);
                 Object.assign(h, { servicio: v, nombre: v === 'otra' ? '' : x.nombre, emoji: x.emoji });
             } else if (campo === 'estimado') h.estimado = v === 'true';
-            else if (campo === 'atrasado') h.atrasado = v === 'true';
             else if (campo === 'fechas') alternarFecha(h, v);
             else if (campo === 'hasta' || campo === 'turno') h[campo] = h[campo] === v ? '' : v;
             else h[campo] = v;
-            if (campo === 'dia') h.atrasado = false;
         },
         alCampo(h, campo, el) {
             h[campo] = el.value;
@@ -3008,22 +3234,32 @@
             P.emitir('pago:duplicado');
             return;
         }
+        // V2-85: si su fecha de este periodo ya pasó, «¿ya lo pagaste?» se ve antes de guardar.
+        const pasada = pasadaForm(h);
+        if (mostrarAntes(h, pasada)) return;
+        const debe = !!pasada && h.antesDebe === pasada;
         P.ui.hoja = null;
         if (h.editar) {
             P.cambiar((s) => {
                 const p = M.pago(s, h.id);
+                const nuevas = nuevasPasadas(s, p, regla);
                 for (const k of ['fecha', 'dias', 'dia', 'diaSemana', 'cadaMeses', 'fechas', 'conIngreso']) delete p[k];
-                const { primera, ...r } = regla;
-                Object.assign(p, { nombre: h.nombre.trim(), monto, estimado: h.estimado, medio: h.medio, ...P.reglaDe(r) });
+                Object.assign(p, { nombre: h.nombre.trim(), monto, estimado: h.estimado, medio: h.medio, ...P.reglaDe(regla) });
                 if (esCuchubal(h) && h.hasta) p.hasta = h.hasta;
                 else delete p.hasta;
                 P.reubicarHechos(s, p);
+                // V2-85: lo que ya pasó y solo aparece por el cambio no se cuenta (salvo «No, todavía lo debo» en la de este periodo).
+                for (const f of nuevas) {
+                    if (debe && f === pasada) {
+                        if (f < s.hoy) anotarDebe(s, `p:${p.id}:${f}`);
+                    } else p.hechos[f] = { estado: 'antes' };
+                }
             }, { aviso: 'Cambios guardados', claves: ['guardado:pagoEditar'] });
             return;
         }
         P.cambiar(
             (s) => {
-                P.crearPago(s, { nombre: h.nombre.trim(), emoji: h.emoji, categoria: h.categoria, monto, estimado: h.estimado, medio: h.medio, hasta: esCuchubal(h) && h.hasta ? h.hasta : null, tipoPago: h.tipoPago || undefined, ...regla });
+                P.crearPago(s, { nombre: h.nombre.trim(), emoji: h.emoji, categoria: h.categoria, monto, estimado: h.estimado, medio: h.medio, hasta: esCuchubal(h) && h.hasta ? h.hasta : null, tipoPago: h.tipoPago || undefined, ...regla, antes: debe ? 'no' : 'si' });
                 // El turno del cuchubal = un ingreso esperado de una vez.
                 if (esCuchubal(h) && h.turno && turnoMonto) {
                     const idT = 'i' + s.seq++;
@@ -3532,8 +3768,10 @@
         }
         const atrasadas = P.ingresosPorConfirmar();
         const vencidos = [];
-        for (const p of st.pagos.filter((x) => x.activo !== false)) for (const o of M.ocurrenciasPago(st, p, p.desde, M.sumarDias(st.hoy, -1))) if (o.estado === 'vencido') vencidos.push(o);
-        for (const o of M.ocurrenciasTarjeta(st, '2000-01-01', M.sumarDias(st.hoy, -1))) if (o.estado === 'vencido') vencidos.push(o);
+        // v2.6.6 (V2-86): lo de antes de empezar se contesta en su tarjeta de Hoy, no aquí («Pagado» lo anotaría otra vez).
+        const enRevision = P.enRevisionAntes();
+        for (const p of st.pagos.filter((x) => x.activo !== false)) for (const o of M.ocurrenciasPago(st, p, p.desde, M.sumarDias(st.hoy, -1))) if (o.estado === 'vencido' && !enRevision.has(`pago:${p.id}:${o.fecha}`)) vencidos.push(o);
+        for (const o of M.ocurrenciasTarjeta(st, '2000-01-01', M.sumarDias(st.hoy, -1))) if (o.estado === 'vencido' && !enRevision.has(`tarjeta:${o.tarjeta.id}:${o.fecha}`)) vencidos.push(o);
         const pasos = 3;
         const cab = (n, t, s) => `<header class="pg-head"><button type="button" class="atras" data-a="${n === 1 ? 'atras' : 'aldiaAtras'}" aria-label="${n === 1 ? 'Salir de Pongámonos al día' : 'Paso anterior'}" data-fk="ad-atras">${icon('chevron-left')}<span>${n === 1 ? 'Hoy' : 'Atrás'}</span></button><p class="paso">Paso ${n} de ${pasos}</p><h1 class="h1" tabindex="-1">${t}</h1><p class="sub">${s}</p></header>`;
         if (top.paso === 1) {
@@ -3732,7 +3970,13 @@
         }
         if (ob.paso === 1) {
             const sel = d.ingresos;
-            const det = (id) => {
+            // V2-85: si su fecha de este periodo ya pasó: «La del 15 de octubre, ¿ya te llegó?».
+            const preguntaIngresoOb = (id) => {
+                const fecha = antesIngresoOb(st, id, sel[id]);
+                return fecha ? preguntaAntes(sel[id], fecha, { ingreso: true, fem: id !== 'mes' && id !== 'semana', accion: 'obValor', campo: 'antes-' + id, fk: 'ob-antes-' + id }) : '';
+            };
+            const det = (id) => (sel[id] ? detIngreso(id).replace(/<\/div>$/, `${preguntaIngresoOb(id)}</div>`) : '');
+            const detIngreso = (id) => {
                 const x = sel[id];
                 if (!x) return '';
                 if (id === 'quincena') return `<div class="ob-det">${monto('q-monto', '¿Cuánto recibes más o menos cada quincena?', x.monto)}${opcionesOb('q-dias', '¿Qué días?', [{ v: '15-30', t: 'El 15 y el 30' }, { v: '15-31', t: 'El 15 y el último día' }, { v: 'otros', t: 'Otros días' }], x.dias)}${x.dias === 'otros' ? `<div class="ob-2">${obDiaCorto('q-d1', 'Primer pago, el día', x.d1 || '')}${obDiaCorto('q-d2', 'Segundo pago, el día', x.d2 || '')}</div>` : ''}${opcionesOb('q-lugar', '¿Dónde lo recibes?', lugaresOb, x.lugar)}</div>`;
@@ -3784,6 +4028,7 @@
                         <div class="campo-g"><label class="campo-l" for="ob-d-nombre">¿Cómo se llama?</label><div class="campo"><input id="ob-d-nombre" data-campo="d-nombre" type="text" autocomplete="off" value="${esc(ed.nombre)}" placeholder="${esc(x.ejemplo)}"></div></div>
                         ${monto('d-monto', '¿Cuánto pagas de cuota?', ed.monto)}
                         ${obDias('d-dia', ed.dia, '¿Qué día la pagas?')}
+                        ${preguntaOb(st, ed)}
                         ${monto('d-debe', '¿Cuánto debes en total? <span class="opcional">(opcional)</span>', ed.debe)}
                         <p class="fila-s">Más o menos. Baja con cada cuota que marques como pagada.</p>
                         ${err('deuda', 'Escribe el nombre y la cuota, y elige el día')}
@@ -3809,7 +4054,7 @@
                     <p class="fila-s">Los dos están en tu estado de cuenta. Si no sabes el corte, déjalo vacío.</p>
                     ${monto('t-usual', '¿Cuánto pagas normalmente? <span class="opcional">(opcional)</span>', ed.usual)}
                     <p class="fila-s">Lo apartamos de tu libre hasta que anotes tu estado de cuenta.</p>
-                    ${err('tarjeta', 'Elige el banco y escribe el día de pago (del 1 al 31)')}
+                    ${preguntaOb(st, ed)}${err('tarjeta', 'Elige el banco y escribe el día de pago (del 1 al 31)')}
                     ${botonesEditor('obTarjetaGuardar', 'ob-t-guardar', 'Agregar tarjeta', !!ed.clave)}</div>`
                 : '';
             const agregar = ed ? '' : `<button type="button" class="btn btn--48 btn--full" data-a="obTarjetaNueva" data-fk="ob-tn">${icon('plus', 'ico-s')}${d.tarjetas.length ? 'Agregar otra tarjeta' : 'Agregar una tarjeta de crédito'}</button>`;
@@ -3835,14 +4080,14 @@
             const nSus = d.pagos.filter((p) => p.suscripcion).length;
             let editor = '';
             if (ed && ed.suscripcion) {
-                editor = `<div class="card ob-card ob-editor"><p class="fila-t">${emo('📺', 18)} Suscripción</p>${opcionesOb('p-servicio', '¿Cuál?', D.SUSCRIPCIONES.map((s) => ({ v: s.id, t: s.nombre, e: s.emoji })), ed.servicio)}${ed.servicio === 'otra' ? `<div class="campo-g"><label class="campo-l" for="ob-p-nombre">¿Cómo se llama?</label><div class="campo"><input id="ob-p-nombre" data-campo="p-nombre" type="text" autocomplete="off" value="${esc(ed.nombre)}" placeholder="Ej. Crunchyroll"></div></div>` : ''}${monto('p-monto', '¿Cuánto pagas?', ed.monto)}${opcionesOb('p-anual', '¿Cada cuánto?', [{ v: 'no', t: 'Cada mes' }, { v: 'si', t: 'Cada año' }], ed.anual ? 'si' : 'no')}${obDias('p-dia', ed.dia, '¿Qué día se cobra?')}${cobro(ed)}${err('pago', 'Elige cuál, escribe cuánto y elige el día')}<div class="acciones-2"><button type="button" class="btn" data-a="obPagoCancelar" data-fk="ob-p-cancelar">Cancelar</button><button type="button" class="btn btn--prim" data-a="obPagoAgregar" data-fk="ob-p-agregar">Agregar</button></div></div>`;
+                editor = `<div class="card ob-card ob-editor"><p class="fila-t">${emo('📺', 18)} Suscripción</p>${opcionesOb('p-servicio', '¿Cuál?', D.SUSCRIPCIONES.map((s) => ({ v: s.id, t: s.nombre, e: s.emoji })), ed.servicio)}${ed.servicio === 'otra' ? `<div class="campo-g"><label class="campo-l" for="ob-p-nombre">¿Cómo se llama?</label><div class="campo"><input id="ob-p-nombre" data-campo="p-nombre" type="text" autocomplete="off" value="${esc(ed.nombre)}" placeholder="Ej. Crunchyroll"></div></div>` : ''}${monto('p-monto', '¿Cuánto pagas?', ed.monto)}${opcionesOb('p-anual', '¿Cada cuánto?', [{ v: 'no', t: 'Cada mes' }, { v: 'si', t: 'Cada año' }], ed.anual ? 'si' : 'no')}${obDias('p-dia', ed.dia, '¿Qué día se cobra?')}${preguntaOb(st, ed)}${cobro(ed)}${err('pago', 'Elige cuál, escribe cuánto y elige el día')}<div class="acciones-2"><button type="button" class="btn" data-a="obPagoCancelar" data-fk="ob-p-cancelar">Cancelar</button><button type="button" class="btn btn--prim" data-a="obPagoAgregar" data-fk="ob-p-agregar">Agregar</button></div></div>`;
             } else if (ed) {
                 const f = D.PAGOS_FRECUENTES.find((x) => x.id === ed.id);
                 const cuchubal = f.id === 'cuchubal';
                 const cuando = cuchubal && ed.frecuencia === 'quincenal' ? `<div class="ob-2">${obDiaCorto('p-d1', 'Primer día', ed.d1 || '')}${obDiaCorto('p-d2', 'Segundo día', ed.d2 || '')}</div>` : (cuchubal ? ed.frecuencia === 'semanal' : f.semanal) ? opcionesOb('p-dsem', '¿Qué día?', [1, 2, 3, 4, 5, 6].map((n) => ({ v: n, t: M.capital(M.DIAS[n]) })), ed.diaSemana) : obDias('p-dia', ed.dia, '¿Qué día lo pagas?');
                 // V2-75: el turno del cuchubal es un ingreso esperado (opcional).
                 const turno = cuchubal ? `${calendario(ob, 'p-turno', ed.turno || null, { label: '¿Cuándo te toca recibir? <span class="opcional">(opcional)</span>', min: st.hoy })}${ed.turno ? monto('p-recibes', '¿Cuánto recibes ese día?', ed.recibes) : ''}` : '';
-                editor = `<div class="card ob-card ob-editor"><p class="fila-t">${emo(f.emoji, 18)} ${esc(f.nombre)}</p>${monto('p-monto', f.variable ? '¿Cuánto pagas más o menos?' : cuchubal ? '¿Cuánto aportas cada vez?' : '¿Cuánto pagas?', ed.monto)}${cuchubal ? opcionesOb('p-frec', '¿Cada cuánto aportas?', [{ v: 'semanal', t: 'Cada semana' }, { v: 'quincenal', t: 'Cada quincena' }, { v: 'mensual', t: 'Cada mes' }], ed.frecuencia) : ''}${cuando}${turno}${cobro(ed)}${err('pago', 'Escribe el monto y elige el día')}<div class="acciones-2"><button type="button" class="btn" data-a="obPagoCancelar" data-fk="ob-p-cancelar">Cancelar</button><button type="button" class="btn btn--prim" data-a="obPagoAgregar" data-fk="ob-p-agregar">Agregar</button></div></div>`;
+                editor = `<div class="card ob-card ob-editor"><p class="fila-t">${emo(f.emoji, 18)} ${esc(f.nombre)}</p>${monto('p-monto', f.variable ? '¿Cuánto pagas más o menos?' : cuchubal ? '¿Cuánto aportas cada vez?' : '¿Cuánto pagas?', ed.monto)}${cuchubal ? opcionesOb('p-frec', '¿Cada cuánto aportas?', [{ v: 'semanal', t: 'Cada semana' }, { v: 'quincenal', t: 'Cada quincena' }, { v: 'mensual', t: 'Cada mes' }], ed.frecuencia) : ''}${cuando}${preguntaOb(st, ed)}${turno}${cobro(ed)}${err('pago', 'Escribe el monto y elige el día')}<div class="acciones-2"><button type="button" class="btn" data-a="obPagoCancelar" data-fk="ob-p-cancelar">Cancelar</button><button type="button" class="btn btn--prim" data-a="obPagoAgregar" data-fk="ob-p-agregar">Agregar</button></div></div>`;
             }
             const cuandoLista = (p) => (p.frecuencia === 'semanal' ? 'cada ' + M.DIAS[p.diaSemana] : p.frecuencia === 'quincenal' ? `el ${p.dias[0]} y el ${p.dias[1]}` : p.anual ? `cada año, el ${p.dia}` : 'el ' + p.dia);
             const nombreCobro = (p) => (p.cobro && p.cobro !== 'no' ? ' · se cobra en ' + (fuentes.find((x) => x.v === p.cobro)?.t.replace(/^En /, '') || 'tu tarjeta') : '');
@@ -3862,6 +4107,65 @@
         }
         return '';
     };
+    /** V2-85: la regla de una deuda o un gasto fijo del Primer día (del editor o ya agregado), para su fecha de este periodo. */
+    function reglaOb(st, x) {
+        if (x.suscripcion) return x.dia ? (x.anual ? { frecuencia: 'meses', cadaMeses: 12, fecha: M.proximoDia(st.hoy, Number(x.dia)) } : { frecuencia: 'mensual', dia: Number(x.dia) }) : null;
+        if (x.frecuencia === 'semanal') return { frecuencia: 'semanal', diaSemana: Number(x.diaSemana ?? 5) };
+        if (x.frecuencia === 'quincenal') {
+            const dias = (x.dias || [x.d1, x.d2]).map(Number).sort((a, b) => a - b);
+            return dias.every((n) => n >= 1 && n <= 31) && dias[0] !== dias[1] ? { frecuencia: 'quincenal', dias } : null;
+        }
+        return x.dia ? { frecuencia: 'mensual', dia: Number(x.dia) } : null;
+    }
+    /** V2-85: el pago de este periodo de una tarjeta del Primer día que ya pasó (o vence hoy), si lo hay. */
+    function antesTarjetaOb(st, t) {
+        const pago = Number(t.pago);
+        const corte = String(t.corte || '').trim() ? Number(t.corte) : null;
+        const ok = (n) => Number.isInteger(n) && n >= 1 && n <= 31;
+        if (!ok(pago) || (corte !== null && !ok(corte))) return null;
+        const vence = venceTarjeta(st.hoy, corte, pago);
+        return vence <= st.hoy && vence >= st.hoy.slice(0, 8) + '01' ? vence : null;
+    }
+    /** V2-85: la fecha de este periodo que ya pasó de lo que se está editando en el Primer día (deuda, tarjeta o gasto fijo). */
+    function antesEditorOb(st, ed) {
+        if (!ed) return null;
+        if (ed.tipo === 'tarjeta') {
+            const fecha = antesTarjetaOb(st, ed);
+            return fecha ? { fecha, mensual: true, siguiente: M.fechaDe(...M.mesMas(...M.partes(fecha).slice(0, 2), 1), Number(ed.pago)) } : null;
+        }
+        const regla = reglaOb(st, ed);
+        const fecha = regla ? M.pasadaDelPeriodo(st, regla) : null;
+        return fecha ? { fecha, mensual: regla.frecuencia === 'mensual' || regla.frecuencia === 'meses', siguiente: siguienteDe(st, regla, fecha) } : null;
+    }
+    /** V2-85: «¿ya lo pagaste?» dentro del editor del Primer día. */
+    function preguntaOb(st, ed) {
+        const a = antesEditorOb(st, ed);
+        if (!a) {
+            if (ed) ed.antesVisto = null;
+            return '';
+        }
+        return preguntaAntes(ed, a.fecha, { accion: 'obValor', fk: 'ob-antes', mensual: a.mensual, siguiente: a.siguiente });
+    }
+    /** V2-85: si la pregunta no se vio (el día se escribió sin volver a dibujar), «Agregar» la muestra primero. */
+    function faltaVerAntesOb(st, ed) {
+        const a = antesEditorOb(st, ed);
+        return !!a && mostrarAntes(ed, a.fecha, '#ob-antes-t');
+    }
+    /** V2-85: los ingresos del Primer día cuya fecha de este periodo ya pasó (la de hoy se pregunta en el paso 2, V2-43). */
+    function reglaIngresoOb(st, id, x) {
+        if (id === 'quincena') return { frecuencia: 'quincenal', dias: x.dias === '15-31' ? [15, 31] : x.dias === 'otros' ? [Number(x.d1), Number(x.d2)].sort((a, b) => a - b) : [15, 30] };
+        if (id === 'mes') return { frecuencia: 'mensual', dia: Number(x.dia) || 30 };
+        if (id === 'semana') return { frecuencia: 'semanal', diaSemana: Number(x.dia) || 5 };
+        if (id === 'catorcena') return /^\d{4}-\d{2}-\d{2}$/.test(x.proximo || '') ? { frecuencia: 'catorcenal', fecha: x.proximo } : null;
+        if (id === 'remesa' && x.cada === 'mes') return { frecuencia: 'mensual', dia: Number(x.dia) || 10 };
+        return null;
+    }
+    function antesIngresoOb(st, id, x) {
+        const regla = x ? reglaIngresoOb(st, id, x) : null;
+        if (!regla || (regla.dias && !regla.dias.every((n) => n >= 1 && n <= 31))) return null;
+        const fecha = M.pasadaDelPeriodo(st, regla);
+        return fecha && fecha < st.hoy ? fecha : null;
+    }
     /** V2-68: las deudas del Primer día (las tarjetas de crédito tienen su propio paso). */
     const DEUDAS_OB = [
         { id: 'prestamo', nombre: 'Préstamo', s: 'Del banco, cooperativa o alguien', emoji: '🏦', ejemplo: 'Ej. Préstamo de la cooperativa' },
@@ -3929,7 +4233,10 @@
         const [grupo, campo] = d.campo.split('-');
         const mapa = { q: 'quincena', m: 'mes', s: 'semana', v: 'varia', r: 'remesa', c: 'catorcena' };
         let m;
-        if (d.campo === 'banco') x.bancoNombre = v;
+        // V2-85: «¿ya lo pagaste?» del editor y «¿ya te llegó?» de cada ingreso.
+        if (d.campo === 'antes') ob.editando.antesDebe = respuestaAntes(v);
+        else if (d.campo.startsWith('antes-')) x.ingresos[d.campo.slice(6)].antesDebe = respuestaAntes(v);
+        else if (d.campo === 'banco') x.bancoNombre = v;
         else if ((m = /^banco(\d+)$/.exec(d.campo))) x.bancosMas[Number(m[1]) - 1].nombre = v;
         else if (d.campo === 'hoyCayo') x.hoyCayo = v;
         else if (d.campo === 'principal') x.principal = v;
@@ -3988,7 +4295,7 @@
     P.acciones.obDeudaEditar = (d) => {
         const x = P.ui.ob.datos.deudas.find((y) => y.clave === d.v);
         if (!x) return;
-        P.ui.ob.editando = { tipo: 'deuda', clave: x.clave, tipoDeuda: x.tipoDeuda, nombre: x.nombre, monto: M.montoCampo(x.monto), dia: x.dia, debe: x.debe !== null ? M.montoCampo(x.debe) : '' };
+        P.ui.ob.editando = { tipo: 'deuda', clave: x.clave, tipoDeuda: x.tipoDeuda, nombre: x.nombre, monto: M.montoCampo(x.monto), dia: x.dia, debe: x.debe !== null ? M.montoCampo(x.debe) : '', antesDebe: x.antesDebe || null };
         P.ui.ob.errores = [];
         P.render({ foco: '#ob-d-nombre' });
     };
@@ -4010,7 +4317,8 @@
             P.render({ foco: !nombre ? '#ob-d-nombre' : !monto ? '#ob-d-monto' : '[data-fk="ob-d-dia-1"]' });
             return false;
         }
-        const x = { clave: ed.clave || 'ob' + ++claveOb, tipoDeuda: ed.tipoDeuda, nombre, monto, dia: ed.dia, debe: M.leerMonto(ed.debe) };
+        if (faltaVerAntesOb(P.st, ed)) return false;
+        const x = { clave: ed.clave || 'ob' + ++claveOb, tipoDeuda: ed.tipoDeuda, nombre, monto, dia: ed.dia, debe: M.leerMonto(ed.debe), antesDebe: ed.antesDebe || null };
         const i = ob.datos.deudas.findIndex((y) => y.clave === x.clave);
         if (i >= 0) ob.datos.deudas[i] = x;
         else ob.datos.deudas.push(x);
@@ -4030,7 +4338,7 @@
     P.acciones.obTarjetaEditar = (d) => {
         const x = P.ui.ob.datos.tarjetas.find((y) => y.clave === d.v);
         if (!x) return;
-        P.ui.ob.editando = { tipo: 'tarjeta', clave: x.clave, banco: x.banco, nombre: x.nombre, debe: x.debe !== null ? M.montoCampo(x.debe) : '', corte: x.corte ? String(x.corte) : '', pago: String(x.pago), usual: x.usual ? M.montoCampo(x.usual) : '' };
+        P.ui.ob.editando = { tipo: 'tarjeta', clave: x.clave, banco: x.banco, nombre: x.nombre, debe: x.debe !== null ? M.montoCampo(x.debe) : '', corte: x.corte ? String(x.corte) : '', pago: String(x.pago), usual: x.usual ? M.montoCampo(x.usual) : '', antesDebe: x.antesDebe || null };
         P.ui.ob.errores = [];
         P.render({ foco: '#ob-t-debe' });
     };
@@ -4055,11 +4363,12 @@
             P.render({ foco: !nombre ? (ed.banco === 'Otro' ? '#ob-t-nombre' : '[data-fk="ob-t-banco-BAC"]') : corte !== null && !okDia(corte) ? '#ob-t-corte' : '#ob-t-pago' });
             return false;
         }
+        if (faltaVerAntesOb(P.st, ed)) return false;
         // Dos tarjetas del mismo banco: «Crédito BAC» y «Crédito BAC 2» (también contra las que ya tienes).
         const otros = [...ob.datos.tarjetas.filter((y) => y.clave !== ed.clave).map((y) => y.nombre), ...(ob.completar ? P.st.tarjetas.map((t) => t.nombre) : [])];
         let final = nombre;
         for (let n = 2; otros.includes(final); n++) final = `${nombre} ${n}`;
-        const x = { clave: ed.clave || 'ob' + ++claveOb, banco: ed.banco, nombre: final, debe: M.leerMonto(ed.debe), corte, pago, usual: M.leerMonto(ed.usual) };
+        const x = { clave: ed.clave || 'ob' + ++claveOb, banco: ed.banco, nombre: final, debe: M.leerMonto(ed.debe), corte, pago, usual: M.leerMonto(ed.usual), antesDebe: ed.antesDebe || null };
         const i = ob.datos.tarjetas.findIndex((y) => y.clave === x.clave);
         if (i >= 0) ob.datos.tarjetas[i] = x;
         else ob.datos.tarjetas.push(x);
@@ -4098,7 +4407,7 @@
         const ob = P.ui.ob;
         const ya = ob.datos.pagos.find((p) => p.id === d.v);
         if (ya) {
-            ob.editando = { id: d.v, monto: M.montoCampo(ya.monto), dia: ya.dia, diaSemana: ya.diaSemana, frecuencia: ya.frecuencia, d1: ya.dias ? String(ya.dias[0]) : '', d2: ya.dias ? String(ya.dias[1]) : '', cobro: ya.cobro || 'no', turno: ya.turno || null, recibes: ya.recibes ? M.montoCampo(ya.recibes) : '' };
+            ob.editando = { id: d.v, monto: M.montoCampo(ya.monto), dia: ya.dia, diaSemana: ya.diaSemana, frecuencia: ya.frecuencia, d1: ya.dias ? String(ya.dias[0]) : '', d2: ya.dias ? String(ya.dias[1]) : '', cobro: ya.cobro || 'no', turno: ya.turno || null, recibes: ya.recibes ? M.montoCampo(ya.recibes) : '', antesDebe: ya.antesDebe || null };
             ob.datos.pagos = ob.datos.pagos.filter((p) => p.id !== d.v);
         } else ob.editando = { id: d.v, monto: '', dia: null, diaSemana: 5, frecuencia: d.v === 'cuchubal' ? 'semanal' : null, cobro: 'no', turno: null, recibes: '' };
         ob.errores = [];
@@ -4125,7 +4434,8 @@
         const clave = 'ob' + ++claveOb;
         if (ed.suscripcion) {
             if (!monto || !ed.dia || !ed.servicio || !(ed.nombre || '').trim()) return obFalta();
-            ob.datos.pagos.push({ clave, id: clave, suscripcion: true, nombre: ed.nombre.trim(), emoji: ed.emoji, categoria: 'suscripciones', monto, frecuencia: 'mensual', anual: ed.anual, dia: ed.dia, cobro: ed.cobro || 'no' });
+            if (faltaVerAntesOb(P.st, ed)) return;
+            ob.datos.pagos.push({ clave, id: clave, suscripcion: true, nombre: ed.nombre.trim(), emoji: ed.emoji, categoria: 'suscripciones', monto, frecuencia: 'mensual', anual: ed.anual, dia: ed.dia, cobro: ed.cobro || 'no', antesDebe: ed.antesDebe || null });
             P.emitir('onboarding:suscripcion');
         } else {
             const f = D.PAGOS_FRECUENTES.find((x) => x.id === ed.id);
@@ -4133,7 +4443,8 @@
             const dias = frecuencia === 'quincenal' ? [Number(ed.d1), Number(ed.d2)].sort((a, b) => a - b) : null;
             const okDia = frecuencia === 'semanal' || (frecuencia === 'quincenal' ? dias.every((n) => n >= 1 && n <= 31) && dias[0] !== dias[1] : !!ed.dia);
             if (!monto || !okDia) return obFalta();
-            ob.datos.pagos.push({ clave, id: f.id, nombre: f.nombre, emoji: f.emoji, categoria: f.categoria, monto, variable: !!f.variable, frecuencia, dia: ed.dia, diaSemana: ed.diaSemana, dias, cobro: ed.cobro || 'no', turno: f.id === 'cuchubal' && ed.turno ? ed.turno : null, recibes: f.id === 'cuchubal' && ed.turno ? M.leerMonto(ed.recibes) : null });
+            if (faltaVerAntesOb(P.st, ed)) return;
+            ob.datos.pagos.push({ clave, id: f.id, nombre: f.nombre, emoji: f.emoji, categoria: f.categoria, monto, variable: !!f.variable, frecuencia, dia: ed.dia, diaSemana: ed.diaSemana, dias, cobro: ed.cobro || 'no', turno: f.id === 'cuchubal' && ed.turno ? ed.turno : null, recibes: f.id === 'cuchubal' && ed.turno ? M.leerMonto(ed.recibes) : null, antesDebe: ed.antesDebe || null });
             P.emitir('onboarding:pago:' + f.id);
         }
         const foco = ed.suscripcion ? '[data-fk="ob-s-nueva"]' : `[data-fk="ob-p-${ed.id}"]`;
@@ -4192,20 +4503,17 @@
             let id = 'credito';
             while (st.tarjetas.some((x) => x.id === id) || st.medios.some((x) => x.id === id)) id = 'credito' + ++n;
             const pagoDia = t.pago;
-            let estado;
-            if (t.corte) {
-                const ultimoCorte = M.ultimoDia(st.hoy, t.corte);
-                const [y, m] = M.partes(ultimoCorte);
-                const [vy, vm] = M.mesMas(y, m, 1);
-                estado = { corte: ultimoCorte, total: 0, minimo: 0, aPagar: 0, opcion: 'total', vence: M.fechaDe(vy, vm, pagoDia), inicial: true };
-            } else estado = { corte: M.sumarDias(st.hoy, -1), total: 0, minimo: 0, aPagar: 0, opcion: 'total', vence: M.proximoDia(st.hoy, pagoDia), inicial: true };
+            const estado = { corte: t.corte ? M.ultimoDia(st.hoy, t.corte) : M.sumarDias(st.hoy, -1), total: 0, minimo: 0, aPagar: 0, opcion: 'total', vence: venceTarjeta(st.hoy, t.corte, pagoDia), inicial: true };
+            // V2-85: su pago de este periodo ya pasó (o vence hoy): «Sí» (o sin respuesta) espera el siguiente; «No», lo cuenta.
+            const antes = antesTarjetaOb(st, t);
+            if (antes) estado.antes = t.antesDebe === antes ? 'debe' : 'pagado';
             st.tarjetas.push({ id, nombre: t.nombre, emoji: '💳', tipo: 'tarjeta', corte: t.corte || null, pagoDia, cupo: null, pagoUsual: t.usual || null, debeInicial: t.debe, desde: st.hoy, interesesAnio: 0, estados: [estado] });
             st.medios.push({ id, nombre: t.nombre, emoji: '💳', tarjeta: id });
             idTarjeta[t.clave] = id;
         }
         for (const x of d.deudas) {
             const tipo = DEUDAS_OB.find((y) => y.id === x.tipoDeuda);
-            const p = P.crearPago(st, { nombre: x.nombre, emoji: tipo.emoji, categoria: 'cuotas', monto: x.monto, frecuencia: 'mensual', dia: x.dia, medio: medioCuota });
+            const p = P.crearPago(st, { nombre: x.nombre, emoji: tipo.emoji, categoria: 'cuotas', monto: x.monto, frecuencia: 'mensual', dia: x.dia, medio: medioCuota, antesDebe: x.antesDebe || null });
             Object.assign(p, { tipoDeuda: x.tipoDeuda === 'otra' ? 'prestamo' : x.tipoDeuda, deuda: x.debe !== null ? { debe: x.debe } : null });
         }
         const credito = st.medios.find((m) => m.tarjeta);
@@ -4221,7 +4529,7 @@
             const automatico = !!medioId;
             if (!medioId) medioId = p.suscripcion ? (credito && !ob.completar ? credito.id : bancoDebito(null) || 'efectivo') : p.categoria === 'servicios' ? bancoDebito(null) || 'efectivo' : 'efectivo';
             const fecha = p.anual ? M.proximoDia(st.hoy, p.dia) : null;
-            const x = P.crearPago(st, { nombre: p.nombre, emoji: p.emoji, categoria: p.categoria, monto: p.monto, estimado: p.variable, frecuencia: p.anual ? 'meses' : p.frecuencia, cadaMeses: p.anual ? 12 : undefined, fecha, dia: p.dia, diaSemana: p.diaSemana, dias: p.dias, medio: medioId, tipoPago: p.suscripcion ? 'suscripcion' : undefined });
+            const x = P.crearPago(st, { nombre: p.nombre, emoji: p.emoji, categoria: p.categoria, monto: p.monto, estimado: p.variable, frecuencia: p.anual ? 'meses' : p.frecuencia, cadaMeses: p.anual ? 12 : undefined, fecha, dia: p.dia, diaSemana: p.diaSemana, dias: p.dias, medio: medioId, tipoPago: p.suscripcion ? 'suscripcion' : undefined, antesDebe: p.antesDebe || null });
             if (automatico) x.automatico = true;
             // V2-75: el turno del cuchubal es un ingreso esperado de una vez («Tu turno de recibir»).
             if (p.turno && p.recibes) {
@@ -4289,6 +4597,15 @@
         const ext = d.extras || {};
         if (ext.aguinaldo) st.ingresos.push({ id: 'aguinaldo', nombre: 'Aguinaldo', emoji: '🎁', categoria: 'aguinaldo', monto: M.leerMonto(ext.aguinaldo.monto) || 0, aprox: true, frecuencia: 'unico', fecha: proximaFecha(12, 12), lugar: lugarDe('banco'), principal: false, extra: true, desde: st.hoy, llegadas: {} });
         if (ext.q25) st.ingresos.push({ id: 'q25', nombre: 'Quincena 25', emoji: '🎁', categoria: 'aguinaldo', monto: M.leerMonto(ext.q25.monto) || 0, aprox: true, frecuencia: 'unico', fecha: proximaFecha(1, 25), lugar: lugarDe('banco'), principal: false, extra: true, desde: st.hoy, llegadas: {} });
+        // V2-85: «No, todavía no» (la de este periodo no te ha llegado): se espera desde esa fecha; «Sí», ya está en lo que tienes.
+        for (const [g, id] of [['quincena', 'quincena'], ['mes', 'mensual'], ['semana', 'semanal'], ['catorcena', 'catorcena'], ['remesa', 'remesa']]) {
+            const fecha = antesIngresoOb(st, g, ing[g]);
+            const i = st.ingresos.find((y) => y.id === id);
+            if (fecha && i && ing[g].antesDebe === fecha) {
+                Object.assign(i, { desde: fecha, desdeAntes: true });
+                anotarDebe(st, `i:${id}:${fecha}`);
+            }
+        }
         // Si hoy es día de pago, la persona dijo si ya está contado en lo que tiene (nada se supone).
         if (d.hoyCayo === 'si') for (const i of st.ingresos) if (i.frecuencia !== 'unico' && M.fechasRegla(i, st.hoy, st.hoy).length) i.llegadas[st.hoy] = { monto: i.monto, enCuadre: true };
         if (ing.varia && !st.ingresos.some((i) => i.principal)) st.horizonteVariable = ing.varia.horizonte;
@@ -4296,8 +4613,8 @@
             const b = lugarId ? bancos.find((x) => x.id === lugarId) : bancos[0];
             return b ? 'debito' + b.sufijo : null;
         };
+        // V2-85: cada pago empieza en el siguiente de su fecha de este periodo que ya pasó, salvo «No, todavía lo debo».
         agregarDeudasTarjetasPagos(st, d, { bancoDebito, medioCuota: bancoId ? 'debito' : 'efectivo', ob });
-        for (const p of st.pagos) p.desde = st.hoy;
         st.configurado = true;
         P.ui.ob = null;
         P.ui.tab = 'hoy';
@@ -4322,9 +4639,7 @@
                     return m ? m.id : null;
                 };
                 const cuota = (s.medios.find((m) => m.id === 'transferencia') || s.medios.find((m) => m.tarjetaDebito) || s.medios[0]).id;
-                const antes = new Set(s.pagos.map((p) => p.id));
                 agregarDeudasTarjetasPagos(s, d, { bancoDebito: debito, medioCuota: cuota, ob });
-                for (const p of s.pagos) if (!antes.has(p.id)) p.desde = s.hoy;
             },
             { aviso: `Agregamos ${n === 1 ? '1 cosa' : n + ' cosas'} a tu cuenta`, claves: ['onboarding:completar:fin'] },
         );

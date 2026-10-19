@@ -124,6 +124,8 @@ async function victor({ conCuchubal = true } = {}) {
         await escribir('#f-d1', '8');
         await escribir('#f-d2', '23');
         await clic('[data-fk="hoja-ok"]');
+        // v2.6.6 (V2-85): el del 8 de octubre ya pasó: «¿ya lo pagaste?» («Sí»: el primero es el 23).
+        if (await hay('#antes-t')) await clic('[data-fk="hoja-ok"]');
     }
     await clic('[data-fk="nav-hoy"]');
 }
@@ -333,6 +335,9 @@ try {
     await escribir('#f-corte', '21');
     await escribir('#f-pagoDia', '10');
     await clic('[data-fk="deuda-ok"]');
+    // v2.6.6 (V2-85): su pago de octubre (el 10) ya pasó: al guardar pregunta; «Sí» espera el siguiente (10 nov).
+    check('4) pregunta por el del 10 oct', await texto('#antes-t'), 'El de octubre (10 oct), ¿ya lo pagaste?');
+    await clic('[data-fk="deuda-ok"]');
     const t1 = await calc('(() => { const t = P.st.tarjetas.find((x) => x.nombre === "Visa Agrícola"); return { ocurrencias: M.ocurrenciasTarjeta(P.st, "2026-09-01", "2026-12-31").filter((o) => o.tarjeta.id === t.id).map((o) => [o.fecha, o.estado]), avisos: k.avisos.map((a) => a.tipo) }; })()');
     check('4) ningún pago antes de empezar (17 oct): el del 10 nov', t1.ocurrencias, [['2026-11-10', 'porConfirmar']]);
     check('4) todavía no pide el estado de cuenta', t1.avisos, []);
@@ -403,7 +408,7 @@ try {
     const t2 = await ev('(() => { const t = P.st.tarjetas[0]; return { n: P.st.tarjetas.length, corte: t.corte, usual: t.pagoUsual, medio: P.st.medios.some((m) => m.tarjeta === t.id), cuota: P.st.pagos.some((p) => p.cuotaTarjeta || p.tipoDeuda === "tarjeta") }; })()');
     check('una tarjeta real, sin corte, con su medio y sin cuota', t2, { n: 1, corte: null, usual: 10000, medio: true, cuota: false });
     await clic('[data-fk="pn-listo"]');
-    check('Hoy: «Incluye tarjeta ~$100, vence el 5»', await texto('.portada-b'), contiene('Incluye tarjeta ~$100, vence el 5'));
+    check('Hoy: «Incluye tarjeta ~$100, vence el 5 nov»', await texto('.portada-b'), contiene('Incluye tarjeta ~$100, vence el 5 nov'));
     await clic('[data-fk="nav-pagos"]');
     await clic('[data-fk="tab-proxima"]');
     check('su pago está en Pagos (~$100 estimado, 5 nov)', await texto('[data-fk^="t-credito-2026-11-05"]'), contiene('Visa Cuscatlán', '~$100'));

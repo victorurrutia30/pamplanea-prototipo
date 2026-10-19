@@ -498,6 +498,9 @@ try {
         await escribir('#f-corte', '21');
         await escribir('#f-pagoDia', '10');
         await clic('[data-fk="deuda-ok"]');
+        // v2.6.6 (V2-85): su pago de octubre (el 10) ya pasó: al guardar pregunta; «Sí» espera el siguiente (10 nov).
+        check('pregunta por el del 10 oct', await texto('#antes-t'), 'El de octubre (10 oct), ¿ya lo pagaste?');
+        await clic('[data-fk="deuda-ok"]');
         await esperar(900);
         check('al guardar la primera tarjeta: la oferta, en el momento', await texto('#hoja-t'), '¿Quieres ver cómo funcionan las tarjetas? (1 min)');
         await foto('F-oferta');

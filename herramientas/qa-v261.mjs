@@ -69,7 +69,11 @@ const AYUDA = `(() => {
         P.abrirHoja(tipo, datos);
         const h = P.ui.hoja;
         Object.assign(h, campos);
-        if (accion) P.acciones[accion]({});
+        if (accion) {
+            P.acciones[accion]({});
+            // v2.6.6 (V2-85): si al guardar apareció «¿ya lo pagaste?» (su fecha de este periodo ya pasó), se guarda con «Sí».
+            if (P.ui.hoja === h && document.querySelector("#antes-t")) P.acciones[accion]({});
+        }
         return h;
     };
     QA.anotar = (frase, extra = {}) => {

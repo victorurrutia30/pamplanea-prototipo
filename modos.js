@@ -392,6 +392,96 @@
     // ------------------------------------------------------------------ «¿Cómo te ha ido?» cada 3 días de uso
     const feedbackToca = () => uso && uso.metricas.dias.length >= 3 && uso.metricas.dias.length - (uso.feedbackEnDias || 0) >= 3 && uso.feedbackPospuesto !== hoy();
     let fb = {};
+    // ------------------------------------------------------------------ v2.6.6 (V2-86): lo de antes de empezar, al abrir
+    /** La copia interna de tus datos antes de corregir lo de antes de empezar (para «Deshacer»; como el respaldo de la migración). */
+    const CLAVE_RESPALDO_ANTES = 'pamplanea-uso:respaldo-antes-de-empezar';
+    /** En esta apertura: «Ahora no» la oculta hasta la próxima; lo contestado muestra cómo cambió el libre y «Deshacer». */
+    const revision = { oculta: false, libreAntes: null, libreDespues: null, contestadas: 0, listo: false, respuestas: [] };
+    /** Lo de antes de empezar que todavía no se contestó (solo con tus datos). */
+    const casosAntes = () => (P.modo === 'uso' && uso && P.st && P.st.configurado && P.st.persona === 'uso' ? M.antesDeEmpezar(P.st) : []);
+    /**
+     * V2-86: una sola tarjeta en Hoy, «Revisemos unos pagos de antes de que empezaras», con cada caso (fecha y monto),
+     * [Sí, ya lo pagué] / [No, lo debo] (en un ingreso, [Sí, ya me llegó] / [No, todavía no]), «Ya pagué todos» y «Ahora
+     * no». Al contestar, el libre se corrige y se dice: «Tu libre pasó de $X a $Y» [Deshacer]. Nada cambia sin respuesta.
+     */
+    function revisionHoy() {
+        if (P.modo !== 'uso' || !uso || !P.st || !P.st.configurado) return '';
+        const casos = casosAntes();
+        const libreTxt = revision.libreAntes === revision.libreDespues ? `Tu libre sigue en ${M.dinero(revision.libreDespues)}.` : `Tu libre pasó de ${M.dinero(revision.libreAntes)} a ${M.dinero(revision.libreDespues)}.`;
+        const cambio = revision.contestadas ? `<div class="nota nota--ok antes-cambio" role="status">${icon('check')}<p><strong>${libreTxt}</strong> ${revision.contestadas === 1 ? 'Guardamos tu respuesta.' : `Guardamos tus ${revision.contestadas} respuestas.`}</p><button type="button" class="btn btn--sm" data-a="antesDeshacer" data-fk="antes-deshacer">Deshacer</button></div>` : '';
+        if (!casos.length) {
+            if (!revision.contestadas || revision.listo) return '';
+            return `<section class="card card--aviso aviso-antes" aria-labelledby="ra-t"><div class="aviso-cab">${P.caja('✅')}<div><h2 class="card-t" id="ra-t" tabindex="-1">Listo, revisamos tus pagos de antes</h2><p class="txt">Lo que ya pagaste dejó de contar en tu libre. Lo que debes sigue en tus pagos.</p></div></div>${cambio}<button type="button" class="btn btn--48 btn--full" data-a="antesListo" data-fk="antes-listo">Entendido</button></section>`;
+        }
+        if (revision.oculta) return '';
+        const hayPagos = casos.some((c) => c.tipo !== 'ingreso');
+        const fila = (c) => {
+            const ing = c.tipo === 'ingreso';
+            const cuando = ing ? `se esperaba el ${M.fechaCorta(c.fecha)}` : `venció el ${M.fechaCorta(c.fecha)}`;
+            const si = ing ? 'Sí, ya me llegó' : 'Sí, ya lo pagué';
+            const no = ing ? 'No, todavía no' : 'No, lo debo';
+            return `<li class="antes-caso"><div class="antes-caso-t">${P.caja(c.emoji || (ing ? '💵' : '🧾'))}<span class="fila-txt"><span class="fila-t">${esc(c.nombre)}</span><span class="fila-s">${esc(cuando)}</span></span><span class="fila-m">${M.dinero(c.monto, { aprox: c.aprox })}</span></div><div class="acciones-2" role="group" aria-label="${esc(c.nombre)}, ${esc(cuando)}"><button type="button" class="btn" data-a="antesResponder" data-v="no" data-id="${esc(c.clave)}" data-fk="antes-no-${esc(c.clave)}">${no}</button><button type="button" class="btn btn--prim" data-a="antesResponder" data-v="si" data-id="${esc(c.clave)}" data-fk="antes-si-${esc(c.clave)}">${si}</button></div></li>`;
+        };
+        const todos = hayPagos ? 'Ya pagué todos' : 'Ya me llegaron todos';
+        return `<section class="card card--aviso aviso-antes" aria-labelledby="ra-t"><div class="aviso-cab">${P.caja('🗓️')}<div><h2 class="card-t" id="ra-t" tabindex="-1">Revisemos unos pagos de antes de que empezaras</h2><p class="txt">${hayPagos ? 'Tienen fecha de antes de que empezaras a usar la app. Si ya los pagaste, dejan de contar en tu libre.' : 'Tienen fecha de antes de que empezaras a usar la app. Si ya te llegaron, ya están en lo que tienes.'}</p></div></div>
+            ${cambio}
+            <ul class="antes-lista">${casos.map(fila).join('')}</ul>
+            <div class="acciones-2"><button type="button" class="btn" data-a="antesAhoraNo" data-fk="antes-ahora-no">Ahora no</button>${casos.length > 1 ? `<button type="button" class="btn btn--prim" data-a="antesTodos" data-fk="antes-todos">${todos}</button>` : ''}</div>
+            <p class="fila-s">Nada cambia sin tu respuesta. Antes de corregir guardamos una copia de tus datos.</p></section>`;
+    }
+    /** V2-86: aplica respuestas (con la copia interna antes de la primera de esta revisión). */
+    function responderAntes(claves, si) {
+        const casos = casosAntes().filter((c) => claves.includes(c.clave));
+        if (!casos.length) return;
+        if (!revision.contestadas) {
+            P.almacen.escribir(CLAVE_RESPALDO_ANTES, { fecha: new Date().toISOString(), version: VERSION, st: structuredClone(P.st) });
+            revision.libreAntes = P.calc().libre;
+        }
+        P.cambiar((s) => {
+            for (const c of casos) P.responderAntes(s, c, si);
+        }, { aviso: null, deshacer: false, claves: ['antes:' + (si ? 'si' : 'no'), ...(casos.length > 1 ? ['antes:todos'] : [])] });
+        revision.respuestas.push(...casos.map((caso) => ({ caso, si })));
+        revision.contestadas += casos.length;
+        revision.libreDespues = P.calc().libre;
+        revision.listo = false;
+        guardarUso();
+        P.render({ foco: '#ra-t' });
+    }
+    P.acciones.antesResponder = (d) => responderAntes([d.id], d.v === 'si');
+    /** «Ya pagué todos»: todos los pagos y tarjetas (si solo hay ingresos, «Ya me llegaron todos»). */
+    P.acciones.antesTodos = () => {
+        const casos = casosAntes();
+        const hayPagos = casos.some((c) => c.tipo !== 'ingreso');
+        responderAntes(casos.filter((c) => !hayPagos || c.tipo !== 'ingreso').map((c) => c.clave), true);
+    };
+    P.acciones.antesAhoraNo = () => {
+        revision.oculta = true;
+        P.emitir('antes:ahoraNo');
+        P.render({ foco: '#pantalla h1' });
+    };
+    P.acciones.antesListo = () => {
+        revision.listo = true;
+        P.render({ foco: '#pantalla h1' });
+    };
+    /**
+     * V2-86: «Deshacer»: vuelve exactamente lo que cambiaron las respuestas de esta revisión (lo que anotaste después se
+     * queda). La copia interna de antes de contestar sigue guardada, con la marca de cuándo se deshizo.
+     */
+    P.acciones.antesDeshacer = () => {
+        if (!revision.respuestas.length) return;
+        const respuestas = revision.respuestas.slice();
+        P.cambiar((s) => {
+            for (const r of respuestas.reverse()) P.deshacerAntes(s, r.caso, r.si);
+        }, { aviso: null, deshacer: false });
+        const copia = P.almacen.leer(CLAVE_RESPALDO_ANTES, null);
+        if (copia) P.almacen.escribir(CLAVE_RESPALDO_ANTES, { ...copia, deshecho: new Date().toISOString() });
+        Object.assign(revision, { oculta: false, libreAntes: null, libreDespues: null, contestadas: 0, listo: false, respuestas: [] });
+        guardarUso();
+        P.avisar('Listo, lo deshicimos: tus datos quedaron como antes de contestar', { deshacer: false, check: false });
+        P.emitir('antes:deshacer');
+        P.render({ foco: '#ra-t' });
+    };
+
     function tarjetasHoy() {
         if (P.modo !== 'uso' || !uso || !P.st.configurado) return [];
         const out = [];
@@ -893,6 +983,9 @@
         avisosAlAbrir,
         avisoPorId,
         tarjetasHoy,
+        revisionHoy,
+        casosAntes,
+        CLAVE_RESPALDO_ANTES,
         menuExtra,
         irMenu,
         pintarAviso,
