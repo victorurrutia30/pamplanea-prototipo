@@ -95,6 +95,8 @@
         x.migracion = { de: 1, a: 2, fecha: new Date().toISOString(), inicio, llegadasInventadasQuitadas: quitadas, llegadasDelPrimerDia: delPrimerDia };
     }
     let uso = null;
+    /** v2.6.1 (QA H-01): otra pestaña (o Safari y la app instalada a la vez) guardó tus datos y aquí todavía no se cargan. */
+    let deOtra = false;
     function leerUso() {
         const crudo = P.almacen.leer(CLAVE_USO, null);
         // Antes de migrar, se guarda una copia intacta (una sola vez).
@@ -120,7 +122,8 @@
         return !!(u.st && u.st.configurado);
     };
     function guardarUso() {
-        if (!uso) return;
+        // Con datos más nuevos de otra pestaña sin cargar, esta no escribe encima (se cargan primero).
+        if (!uso || deOtra) return;
         if (P.modo === 'uso' && P.st) {
             uso.st = P.st;
             // Nombres que la persona ha usado (aunque luego los borre): solo sirven para taparlos en «Cuéntale a Victor o a Pam».
@@ -130,7 +133,13 @@
         uso.tema = P.tema;
         uso.actualizado = new Date().toISOString();
         P.almacen.escribir(CLAVE_USO, uso);
+        // V2-74: con datos reales, una vez por sesión, se pide al navegador que no los borre solo.
+        if (!pidioPersistencia && P.modo === 'uso' && P.st && P.st.configurado && P.ayuda && P.ayuda.pedirPersistencia) {
+            pidioPersistencia = true;
+            P.ayuda.pedirPersistencia();
+        }
     }
+    let pidioPersistencia = false;
     function estadoNuevo() {
         const st = D.crearNueva();
         Object.assign(st, { persona: 'uso', hoy: hoy(), avisos: [] });
@@ -193,6 +202,34 @@
         guardarUso();
     }
     document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && alVolver());
+
+    // ------------------------------------------------------------------ v2.6.1 (QA H-01): la app abierta dos veces
+    /**
+     * Lo que guarda una pestaña se carga en la otra antes de seguir, para que ninguna pise lo de la otra. Con una hoja o
+     * «Ayuda» abiertas se espera: se carga al cerrarlas o justo antes de guardar lo siguiente (P.antesDeCambiar).
+     */
+    window.addEventListener('storage', (e) => {
+        if (e.key !== CLAVE_USO) return;
+        if (P.modo !== 'uso') {
+            uso = null;
+            return;
+        }
+        deOtra = true;
+        if (!P.ui.hoja && !(P.ayuda && P.ayuda.abierto)) sincronizar();
+    });
+    function sincronizar() {
+        if (!deOtra || P.modo !== 'uso') return;
+        deOtra = false;
+        uso = leerUso();
+        const st = uso.st || estadoNuevo();
+        st.hoy = hoy();
+        P.cargar(st, { tab: P.ui ? P.ui.tab : 'hoy' });
+        P.avisar('Se actualizó con lo que guardaste en otra pestaña', { check: false, deshacer: false });
+        P.emitir('datos:deOtraPestana');
+    }
+    P.antesDeCambiar = () => {
+        if (deOtra && P.modo === 'uso') sincronizar();
+    };
 
     // ------------------------------------------------------------------ aviso fijo según el modo
     const textoAviso = () => (P.modo === 'uso' ? ['Versión de prueba ·', 'tus datos solo están en este teléfono'] : ['Modo entrenamiento ·', 'datos de ejemplo']);
@@ -259,6 +296,10 @@
     function tarjetasHoy() {
         if (P.modo !== 'uso' || !uso || !P.st.configurado) return [];
         const out = [];
+        // v2.6.1 (QA H-02): si el teléfono no deja guardar (sin espacio, modo privado o bloqueado), se dice siempre arriba.
+        if (P.almacen.fallo || !P.almacen.disponible) {
+            out.push(`<section class="card card--aviso aviso-guardar" role="alert" aria-labelledby="ag-t"><div class="aviso-cab">${P.caja('⚠️')}<div><h2 class="card-t" id="ag-t">No se están guardando tus datos</h2><p class="txt">Este teléfono no deja guardar: puede estar sin espacio o en modo privado. Lo que anotes se pierde al cerrar.</p></div></div><div class="acciones-2"><button type="button" class="btn btn--prim" data-a="ayIr" data-v="datos" data-fk="ag-copia">Guardar una copia</button></div></section>`);
+        }
         if (!pref().notaAvisos && avisosAlAbrir().length) {
             out.push(`<div class="nota nota--info" role="note">${icon('bell')}<p>Por ahora los avisos aparecen <strong>al abrir la app</strong>. En la app final te llegará una notificación.</p><button type="button" class="link" data-a="modoNotaAvisos" data-fk="nota-avisos">Entendido</button></div>`);
         }
@@ -540,7 +581,7 @@
             <button type="button" class="link" data-a="modoCambiar" data-v="tour" data-fk="intro-aprender">Mejor primero aprender a usarla</button>
             <p class="ay-version">${esc(VERSION)}</p>`;
     }
-    /** «Tus datos» (v2.6: también desde el modo entrenamiento, sobre lo guardado). Instalar vive aquí: es para no perderlos. */
+    /** «Tus datos» (v2.6: también desde el modo entrenamiento, sobre lo guardado). */
     function vistaDatos() {
         const u = usoGuardado();
         const hay = !!u.st;
@@ -551,12 +592,12 @@
                 <p class="txt">Descarga un archivo con todo lo que llevas. Guárdalo o mándatelo por WhatsApp. ${copia}</p>
                 <div class="ay-acc"><button type="button" class="btn btn--prim btn--48" data-a="modoCopia" data-fk="dt-copia">Guardar copia</button>${puedeCompartirArchivo() ? '<button type="button" class="btn btn--48" data-a="modoCompartirCopia" data-fk="dt-compartir">Compartir copia</button>' : ''}</div></section>`
             : `<section class="ay-card ay-card--prim" aria-labelledby="dt-c"><h3 class="ay-h3" id="dt-c">${icon('receipt-text', 'ico-s')}Todavía no usas tus datos</h3><p class="txt">Cuando la uses con tus datos, aquí guardas una copia. Si tienes una copia de antes, puedes restaurarla.</p></section>`;
-        const instalarHtml = instalada() ? '' : `<section class="ay-card" aria-labelledby="dt-i"><h3 class="ay-h3" id="dt-i">${icon('smartphone', 'ico-s')}Instálala en tu teléfono</h3><p class="txt">Así abre como una app, sin internet, y tus datos están más seguros.</p><button type="button" class="btn btn--48 btn--full" data-a="ayIr" data-v="instalar" data-fk="dt-instalar">Ver cómo</button></section>`;
+        // V2-69 (#38): «Instalar» ya no está aquí: es su propia fila en «Ayuda» (solo si no está instalada).
         const borrarHtml = hay
             ? `<section class="ay-card" aria-labelledby="dt-b"><h3 class="ay-h3" id="dt-b">${icon('trash-2', 'ico-s')}Borrar todos mis datos</h3>
                 ${borrar === 0 ? `<p class="txt">Borra todo lo de «Usarla con mis datos» en este teléfono. Los ejemplos no se tocan.</p><button type="button" class="link link--peligro" data-a="modoBorrar" data-v="1" data-fk="dt-borrar">${icon('trash-2', 'ico-s')}Borrar todos mis datos</button>` : borrar === 1 ? `<div class="nota nota--atencion" role="alertdialog" aria-labelledby="dt-b1">${icon('triangle-alert')}<div><p id="dt-b1"><strong>¿Borrar todos tus datos?</strong> Lugares, pagos, ahorros y todo lo anotado.</p><div class="ay-acc"><button type="button" class="btn" data-a="modoBorrar" data-v="0" data-fk="dt-b-no">Cancelar</button><button type="button" class="btn btn--peligro" data-a="modoBorrar" data-v="2" data-fk="dt-b-si">Sí, borrar</button></div></div></div>` : `<div class="nota nota--atencion" role="alertdialog" aria-labelledby="dt-b2">${icon('triangle-alert')}<div><p id="dt-b2"><strong>Última confirmación: esto no se puede deshacer.</strong> ${u.ultimaCopia ? 'Tienes una copia guardada.' : 'No has guardado ninguna copia.'}</p><div class="ay-acc"><button type="button" class="btn" data-a="modoBorrar" data-v="0" data-fk="dt-b2-no">Cancelar</button><button type="button" class="btn btn--peligro" data-a="modoBorrarYa" data-fk="dt-b2-si">Borrar para siempre</button></div></div></div>`}</section>`
             : '';
-        return `${guardarHtml}${instalarHtml}
+        return `${guardarHtml}
             <section class="ay-card" aria-labelledby="dt-r"><h3 class="ay-h3" id="dt-r">${icon('rotate-ccw', 'ico-s')}Restaurar una copia</h3>
                 ${r && r.error ? `<p class="campo-error">${icon('triangle-alert')}<span>${esc(r.error)}</span></p>` : ''}
                 ${r && r.datos ? `<div class="nota nota--atencion" role="alertdialog" aria-labelledby="dt-r-c">${icon('triangle-alert')}<div><p id="dt-r-c"><strong>¿Reemplazar tus datos con esta copia?</strong> Copia del ${esc(fechaCorta((r.fecha || '').slice(0, 10) || hoy()))}: ${esc(r.resumen)}. ${hay ? 'Lo que tienes ahora se reemplaza.' : 'Después verás tus datos.'}</p><div class="ay-acc"><button type="button" class="btn" data-a="modoRestaurarNo" data-fk="dt-r-no">Cancelar</button><button type="button" class="btn btn--peligro" data-a="modoRestaurarSi" data-fk="dt-r-si">${hay ? 'Sí, reemplazar' : 'Sí, restaurar'}</button></div></div></div>` : `<p class="txt">Elige el archivo «pamplanea-copia-…» (.json o .txt). Antes de reemplazar te pido confirmar.</p><label class="btn btn--48 btn--full" for="dt-archivo" data-fk="dt-elegir">Elegir archivo</label><input id="dt-archivo" class="sr-only" type="file" accept="application/json,.json,text/plain,.txt" data-copia>`}</section>
@@ -661,6 +702,8 @@
             fila('smartphone', 'Usarla con mis datos', enUso ? 'Estás aquí' : 'Tu dinero real, solo en este teléfono', 'menuIr', enUso ? 'data-ir="cerrar" aria-current="true"' : 'data-ir="modoUso"'),
             fila('play', 'Aprender a usarla', 'Lo esencial y capítulos cortos, con datos de ejemplo', 'menuIr', 'data-ir="aprendeMas"'),
             fila('list-checks', 'Prueba guiada', 'Tareas cortas para ver si la app se entiende', 'menuIr', 'data-ir="prueba"'),
+            // V2-69 (#38): igual que en «Ayuda», «Instalar la app» solo mientras no esté instalada.
+            ...(P.ayuda.instalada() ? [] : [fila('circle-plus', 'Instalar la app', 'Para que tus datos no se borren', 'menuIr', 'data-ir="instalar"')]),
             fila('receipt-text', 'Cuéntale a Victor o a Pam cómo vas', 'Qué se manda y qué no', 'menuIr', 'data-ir="contar"'),
             fila('rotate-ccw', 'Tus datos', 'Guardar copia, restaurar o borrar', 'menuIr', 'data-ir="datos"'),
         ];
@@ -672,7 +715,7 @@
             P.ayuda.abrirPrueba();
             return true;
         }
-        if (ir === 'contar' || ir === 'datos' || ir === 'practica' || ir === 'aprendeMas') {
+        if (ir === 'contar' || ir === 'datos' || ir === 'practica' || ir === 'aprendeMas' || ir === 'instalar') {
             P.ayuda.abrir(ir);
             return true;
         }
@@ -715,6 +758,7 @@
             P.render = (...args) => {
                 pintarApp(...args);
                 recordarNombres();
+                if (deOtra && P.modo === 'uso' && !P.ui.hoja && !(P.ayuda && P.ayuda.abierto)) setTimeout(sincronizar, 0);
             };
             P.ayuda.registrar('elegir', 'PamPlanea', vistaElegir);
             P.ayuda.registrar('introUso', 'Usarla con mis datos', vistaIntroUso);

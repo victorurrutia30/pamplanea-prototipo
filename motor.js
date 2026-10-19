@@ -89,17 +89,22 @@
         // Un estimado se escribe «~$597», nunca «+~$597».
         return (signo && c > 0 && !aprox ? '+' : '') + s;
     }
-    function leerMonto(texto) {
+    function leerMonto(texto, sinTope = false) {
         if (texto === null || texto === undefined) return null;
         let t = String(texto).trim().replace(/[$\s]/g, '');
         if (!t) return null;
+        // v2.6.1 (QA D-01): «1.000,50» (miles con punto y centavos con coma) y «.5» (sin el cero) también se leen bien.
+        if (/^\d{1,3}(\.\d{3})+,\d{1,2}$/.test(t)) t = t.replace(/\./g, '').replace(',', '.');
+        if (/^[.,]\d{1,2}$/.test(t)) t = '0.' + t.slice(1);
         if (/^\d+,\d{1,2}$/.test(t)) t = t.replace(',', '.');
         t = t.replace(/,/g, '');
         if (!/^\d+(\.\d{1,2})?$/.test(t)) return null;
         const [w, f = ''] = t.split('.');
         const cents = Number(w) * 100 + Number((f + '00').slice(0, 2));
-        return cents > MONTO_MAX ? null : cents;
+        return cents > MONTO_MAX && !sinTope ? null : cents;
     }
+    /** v2.6.1 (QA F-02): el monto se entiende pero pasa del tope: el campo lo dice con el tope, no «Escribe el monto». */
+    const montoExcede = (texto) => (leerMonto(texto, true) ?? 0) > MONTO_MAX;
     /** Tope razonable para cualquier monto que se escribe: $1,000,000.00. */
     const MONTO_MAX = 100000000;
     /** «Hoy» en la zona horaria del teléfono (modo uso normal). */
@@ -401,7 +406,10 @@
      * de lo reservado se pierde.
      */
     function claveVigente(st, k, hz = null) {
-        if (!k || k === 'ahora' || k === 'despues' || esUnico(k) || !principal(st)) return k;
+        if (!k || k === 'ahora' || k === 'despues' || esUnico(k)) return k;
+        // v2.6.1 (QA B-I1, bug contra V2-34 y la revisión v2.3): sin ingreso principal (se eliminó), un día de pago elegido
+        // ya no existe: pasa a lo que le toca (lo que tienes o lo que tengas cuando venza), no desaparece del libre.
+        if (!principal(st)) return periodoDe(st, k, hz);
         if (cortes(st, k, k).length) return k;
         // El día de pago nuevo más cercano (si empatan, el más tarde).
         const cerca = cortes(st, sumarDias(k, -16), sumarDias(k, 16)).sort((a, b) => Math.abs(diasEntre(k, a)) - Math.abs(diasEntre(k, b)) || (a < b ? 1 : -1))[0];
@@ -830,7 +838,8 @@
             d.nombre = p.nombre;
             d.emoji = p.emoji;
             d.categoria = p.categoria;
-            const abiertas = ocurrenciasPago(st, p, sumarDias(st.hoy, -62), sumarDias(st.hoy, 12)).filter((o) => o.estado !== 'pagado' && o.estado !== 'saltado');
+            const ventana = ocurrenciasPago(st, p, sumarDias(st.hoy, -62), sumarDias(st.hoy, 12));
+            const abiertas = ventana.filter((o) => o.estado !== 'pagado' && o.estado !== 'saltado');
             const o = (d.dia !== null && abiertas.find((x) => partes(x.fecha)[2] === d.dia)) || abiertas[0];
             d.ocurrencia = o ? o.fecha : null;
             if (d.monto === null && o) d.monto = o.monto;
@@ -839,7 +848,12 @@
                 d.medio = p.medio;
                 d.medioSeguro = true;
             }
-            if (!o) d.tipo = 'gasto';
+            if (!o) {
+                // v2.6.1 (QA C-07b): ya estaba pagado: queda como gasto aparte, pero Anotar lo dice.
+                d.tipo = 'gasto';
+                const ultimo = ventana.filter((x) => x.estado === 'pagado').at(-1);
+                if (ultimo) d.yaPagado = { pago: p.id, nombre: p.nombre, fecha: ultimo.fecha };
+            }
         }
         if (d.tipo === 'pago') {
             const frecuente = D.PAGOS_FRECUENTES.find((f) => coincide(resto, f.nombre));
@@ -883,7 +897,7 @@
             if (d.monto !== null && !(d.adelanto && d.fecha > st.hoy)) {
                 const candidatos = [];
                 // Un adelanto solo se reconoce como un adelanto que se esperaba (nunca como la quincena).
-                const esAdelantoIng = (ing) => ing.adelanto || ing.tipoIngreso === 'adelanto' || /(adelanto|anticipo|vale)/.test(normalizar(ing.nombre));
+                const esAdelantoIng = (ing) => ing.adelanto || ing.tipoIngreso === 'adelanto' || /\b(adelanto|anticipo|vale)\b/.test(normalizar(ing.nombre));
                 for (const ing of st.ingresos.filter((x) => !d.adelanto || esAdelantoIng(x))) {
                     for (const o of ocurrenciasIngreso(st, ing, sumarDias(st.hoy, -12), sumarDias(st.hoy, 12))) {
                         if (o.estado !== 'llego' && Math.abs(o.monto - d.monto) <= o.monto * 0.3) candidatos.push(o);
@@ -974,7 +988,7 @@
     window.MOTOR = {
         MONTO_MAX, hoyLocal,
         MESES, MESES_CORTOS, DIAS, DIAS_CORTOS, pad, sumarDias, diasEntre, diaSemana, partes, diasDelMes, fechaDe, mesMas, fechaCorta, fechaLarga, conDia, diaCorto, relativa, haceDias, ultimoDia, proximoDia,
-        dinero, leerMonto, montoCampo, suma, lugar, medio, tarjeta, pago, ingreso, apartado, categoria, principal, sinVS,
+        dinero, leerMonto, montoExcede, montoCampo, suma, lugar, medio, tarjeta, pago, ingreso, apartado, categoria, principal, sinVS,
         despues, saldoLugar, anteriorAlCuadre, lugaresDe, tienes, apartadoTotal, ultimaActividad, fechasRegla, ocurrenciasPago, ocurrenciasIngreso, tarjetaInfo, ocurrenciasTarjeta,
         horizonte, calcular, resumenMes, pagosDelMes, medioUsual, normalizar, entender, faltan, capital, porDiaDe, apartadosVencidos, esDiaDeIngreso, coincide,
         inicioDe, cortes, corteAntes, corteDespues, fundado, esFundado, periodoDe, fuentesPara, asignacion, reglaPago, recurrentes, descuentosDe, proyectar, claveVigente, reservasDe,

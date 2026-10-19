@@ -11,8 +11,12 @@
             // App instalable (PWA) solo servida por http(s): por file:// el navegador bloquea el manifest.
             if (/^https?:$/.test(location.protocol)) document.head.appendChild(Object.assign(document.createElement('link'), { rel: 'manifest', href: 'manifest.webmanifest' }));
         </script>
-        <meta name="theme-color" content="#f7e9e4" />
-        <link rel="apple-touch-icon" href="recursos/iconos/apple-touch-icon-180.png" />
+        <!-- v2.6.1 (V2-74): la barra de estado toma el color de arriba en claro y en oscuro desde el primer cuadro (después,
+             P.colorBarra la iguala al tema elegido). Ícono de 180×180 para iPhone; sin pantallas de inicio por modelo: iOS
+             muestra la última vista de la app mientras abre. -->
+        <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f7e9e4" />
+        <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#372a1c" />
+        <link rel="apple-touch-icon" sizes="180x180" href="recursos/iconos/apple-touch-icon-180.png" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-title" content="PamPlanea" />
@@ -41,6 +45,7 @@
             <div id="capa-toast" class="capa-toast" role="status" aria-live="polite"></div>
             <div id="capa-ayuda" class="capa-ayuda"></div>
             <div id="capa-tour" class="capa-tour"></div>
+            <div id="capa-dlg" class="capa-dlg"></div>
             <div class="home-ind" aria-hidden="true"></div>
         </div>
         <script src="recursos/arte.js"></script>
@@ -54,5 +59,6 @@
         <script src="ayuda.js"></script>
         <script src="modos.js"></script>
         <script src="tour.js"></script>
+        <script src="atras.js"></script>
     </body>
 </html>

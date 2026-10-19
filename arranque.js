@@ -36,8 +36,11 @@
             memoria[clave] = valor;
             try {
                 localStorage.setItem(clave, JSON.stringify(valor));
+                P.almacen.fallo = false;
                 return true;
             } catch {
+                // v2.6.1 (QA H-02): sin espacio o bloqueado: se recuerda para avisarlo (no se pierde en silencio).
+                P.almacen.fallo = true;
                 return false;
             }
         },

@@ -1,0 +1,153 @@
+# Matriz de QA · v2.6.1 (V2-64, V2-70)
+
+Plan de pruebas de la revisión total pedida por Victor (V2-64: «me gustaria que hicieramos una revision total, completa y profunda a la experiencia de la app, no solo visual pero de acciones en general, como editar cosas, como eliminar cosas y que se puede o no eliminar o como afecta»). Cada fila dice qué se hace, qué debe pasar (con el acuerdo de origen), su prioridad y en qué quedó.
+
+**Prioridad:** P1 = se pierde o se mezcla dinero o datos, un número sale mal, algo se cuenta dos veces o la app se rompe. P2 = editar o eliminar queda mal, cascadas inconsistentes, datos huérfanos. P3 = falta claridad o aviso, sin daño. P4 = cosmético.
+
+**Estado:** ✅ pasa · 🔧 fallaba en la v2.6 y se corrigió en la v2.6.1 · ⏳ para la fase 2 o 3 · 📝 decisión pendiente para Victor.
+
+**Pruebas:** `qa-v261.mjs` (los casos A–F, H y L con el código real de la app y sus invariantes después de cada acción), `atras.mjs` (G), `v261.mjs` (I, J), `numeros-entrenamiento.mjs` (I), `actualizar.mjs` (H), `contraste*.mjs`, `teclado.mjs`, `v25.mjs`, `v26.mjs` (K) y todas las demás (M: cero errores de consola). Las invariantes que `qa-v261.mjs` revisa después de CADA acción: ningún pago activo sin un medio que exista y lleve a un lugar o tarjeta que exista; cada «Pagado» con su gasto y cada gasto nuevo de un pago con su «Pagado»; ningún ingreso activo que caiga en un lugar borrado; cada tarjeta con su medio y ninguna reserva para una tarjeta que no existe; «lo que debes» siempre un entero válido; libre, tienes, por pagar y en tarjetas enteros, y el libre nunca negativo.
+
+## A. Crear, editar, eliminar y deshacer
+
+| ID | Caso | Pasos | Esperado (acuerdo) | Prio. | Estado | Prueba |
+|---|---|---|---|---|---|---|
+| A-L1 | Crear un lugar (banco con débito) | Mi dinero → Cuentas → Agregar lugar: banco, con débito y cuánto hay | Queda con su primer cuadre y su débito; Tienes sube lo que hay (Regla del cuadre) | P2 | ✅ | qa-v261 |
+| A-D1 | Tres deudas seguidas | Agregar préstamo, casa comercial y otro préstamo sin salir | Las tres en Deudas y su cuota en Pagos, una vez cada una (V2-08) | P2 | ✅ | qa-v261 |
+| A-D2 | Deuda sin «¿cuánto debes?» | Deuda sin monto → «Anotar cuánto debo» → guardar | Abre y guarda (en la v2.6 se rompía: leía `.debe` de una deuda vacía) | P2 | 🔧 | qa-v261 |
+| A-D3 | «Pagado» de una cuota y desmarcar | Pagado de una cuota mayor que lo que se debe; Desmarcar | Lo que debes baja lo que de verdad bajó y vuelve exacto (V2-08, V2-48) | P2 | 🔧 | qa-v261 |
+| A-D4 | Editar una cuota ya pagada | Cambiar el monto del pagado | Lo que debes queda coherente con el monto nuevo (V2-48) | P2 | ✅ | qa-v261 |
+| A-P1 | Pago mensual completo | Crear, editar monto, Pagado, corregir el pagado, desmarcar, «Ya no aplica» | Cada paso cuenta una vez y sin restos (V2-29 #8, V2-48) | P2 | ✅ | qa-v261 |
+| A-I1 | Ingreso esperado | Crear, editar monto, eliminar (con y sin llegadas) | Sin llegadas se borra; con llegadas queda en el historial (V2-43) | P2 | ✅ | qa-v261 |
+| A-AP1 | Ahorro | Apartar, liberar, usar y eliminar uno con dinero | Lo eliminado con dinero vuelve a tu libre (ahorros = etiquetas) | P2 | ✅ | qa-v261 |
+| A-R1 | Anotación | Gasto → cambiar monto → cambiar a tarjeta → eliminar → deshacer | Sin restos en Mes, en el libre ni en la tarjeta (V2-07) | P2 | ✅ | qa-v261 |
+| A-C1 | Cuadrar en $0 | Cuadrar el efectivo en 0 | Se acepta (te quedaste sin efectivo) | P2 | ✅ | qa-v261 |
+| A-MV1 | Mover entre lugares | Del banco al efectivo; editar; eliminar | Tienes igual; ni ingreso ni gasto en Mes | P2 | ✅ | qa-v261 |
+
+## B. Dependencias y cascadas
+
+| ID | Caso | Pasos | Esperado (acuerdo) | Prio. | Estado | Prueba |
+|---|---|---|---|---|---|---|
+| B-L1 | Eliminar un lugar con pagos e ingresos | Eliminar Banco Agrícola de Ana | Antes de eliminar, la app dice qué pagos e ingresos dependen de él y en qué medio o lugar quedan; nada huérfano (V2-18) | P1 | 🔧 | qa-v261 |
+| B-L2 | Pagado después de eliminar el lugar | Marcar Pagado un pago que salía de ahí | Resta el dinero del lugar nuevo (en la v2.6 el dinero desaparecía) | P1 | 🔧 | qa-v261 |
+| B-L3 | «¿Ya te cayó?» después de eliminar el lugar | Confirmar un ingreso que caía ahí | Suma a un lugar que existe (en la v2.6 se rompía «Reparte») | P1 | 🔧 | qa-v261 |
+| B-M1 | Eliminar un medio que usan pagos | Eliminar Transferencia (Colegio, Casa comercial) | Elige con qué se pagan ahora; nada huérfano (V2-18, V2-34) | P2 | 🔧 | qa-v261 |
+| B-T1 | Eliminar una tarjeta con una suscripción | Eliminar la tarjeta con Netflix cobrándose en ella | Elige con qué se paga ahora (otra tarjeta primero, si hay); nada huérfano | P1 | 🔧 | qa-v261 |
+| B-T2 | Eliminar una tarjeta con compras | Eliminar la tarjeta | Las compras quedan en el historial y en Mes | P2 | ✅ | qa-v261 |
+| B-I1 | Eliminar el ingreso principal | Eliminar la quincena | Lo que pagabas con «la del 30» sigue contando (V2-34, revisión v2.3) | P1 | 🔧 | qa-v261 |
+| B-I2 | Cambiar los días de la quincena ya llegada | Cambiar 15/30 por 14/29 | No pide confirmar otra vez la de este mes | P1 | ✅ | qa-v261 |
+| B-P2 | Cambiar el día de un pago ya pagado | Luz pagada el 12 → día 20 | No se vuelve a pedir ni se cuenta dos veces (V2-48, V2-57) | P1 | 🔧 | qa-v261 |
+| B-P3 | Saltar esta vez y cambiar el día | Saltar → cambiar día | El salto se respeta | P2 | 🔧 | qa-v261 |
+| B-AP1 | Eliminar un gasto que salió de un ahorro | Mes → el gasto → Eliminar | El dinero vuelve al ahorro (si existe) y se anota «Volvió de un gasto que eliminaste» | P2 | 🔧 | qa-v261 |
+| B-AP2 | Eliminar un gasto con crédito que salió de un ahorro | Igual, con tarjeta | Se suelta lo reservado para la tarjeta (V2-27) | P2 | 🔧 | qa-v261 |
+| B-AP3 | Editar el monto de un gasto que usó un ahorro | Cambiar el monto | Hoy no ajusta el ahorro | P3 | 📝 | — |
+| B-AP4 | Eliminar el gasto de un ahorro ya cerrado (logro) | Eliminar | El logro no se reabre | P3 | 📝 | — |
+
+## C. Sin duplicados ni tipos equivocados (V2-70)
+
+| ID | Caso | Pasos | Esperado (acuerdo) | Prio. | Estado | Prueba |
+|---|---|---|---|---|---|---|
+| C-01 | Compra con tarjeta | «zapatos 30 tarjeta» | No toca efectivo ni banco, sube lo que debes, un solo gasto, baja el libre ese día (V2-07) | P1 | ✅ | qa-v261 |
+| C-02 | Pagar la tarjeta desde el banco | Pagar la tarjeta | Baja el banco y la deuda; no es un gasto nuevo; el libre no cambia (pagar la tarjeta = mover dinero) | P1 | ✅ | qa-v261 |
+| C-03 | Suscripción que se cobra en la tarjeta | Marcar Pagado | Cuenta una vez, como compra en esa tarjeta, no del banco (V2-13, V2-34) | P1 | ✅ | qa-v261 |
+| C-04 | Pago fijo con la débito de una cuenta | Marcar Pagado | Sale de esa cuenta y de ninguna otra (V2-18) | P1 | ✅ | qa-v261 |
+| C-05 | Cuota de préstamo | Marcar Pagado | Sale del medio elegido, baja lo que debes, una sola vez (V2-08) | P1 | ✅ | qa-v261 |
+| C-06 | Cuotas de tarjeta (compras a cuotas) | — | No están modeladas: cada estado de cuenta trae su total | P2 | 📝 | — |
+| C-07 | Anotar algo que ya es un pago | «luz 35» | Se marca ese pago, no se duplica (Conexión 4) | P1 | ✅ | qa-v261 |
+| C-07b | Anotar otra vez un pago ya pagado | «luz 35» con la de octubre pagada | Avisa «Ya marcaste el pago «Luz» del …: esto se guarda como un gasto aparte» | P3 | 🔧 | qa-v261 |
+| C-08 | Ingresos con su tipo | «vendí 45», remesa que llegó, «me dieron adelanto 100»; mover entre lugares | Cada uno con su tipo (V2-56); mover no es ingreso ni gasto | P2 | ✅ | qa-v261 |
+| C-09 | «me pagaron 600» | Anotarlo cerca de la quincena | Pregunta si es la quincena o un extra y cuenta una vez (V2-29 #10) | P2 | ✅ | qa-v261 |
+| C-10 | Adelanto reconocido por su nombre | «me dieron adelanto 100» con «Vale de la empresa» esperado | Lo reconoce (la expresión de la v2.4.1 tenía caracteres de retroceso en vez de `\b`) | P2 | 🔧 | qa-v261 |
+| C-11 | Gasto fijo que se cobra solo en una tarjeta (cargo automático) | — | No existe como tal: cuenta una vez al marcar Pagado con esa tarjeta | P2 | 📝 / ⏳ fase 2 (V2-68) | — |
+
+## D. Números
+
+| ID | Caso | Pasos | Esperado (acuerdo) | Prio. | Estado | Prueba |
+|---|---|---|---|---|---|---|
+| D-01 | Leer montos | «1,000.50», «1000,50», «1.000,50», «.5», espacios, letras, negativos, 9 dígitos | Se entienden los válidos; el resto se rechaza (en la v2.6 «.5» y «1.000,50» no se leían) | P2 | 🔧 | qa-v261 |
+| D-02 | ~$ por día | Libre que no divide exacto | Hacia abajo (V2-29 #12) | P2 | ✅ | qa-v261 |
+| D-03 | Libre nunca negativo | Ana con efectivo y banco en $0 | Libre $0 y el faltante exacto (V2-31 #6) | P1 | ✅ | qa-v261 |
+| D-04 | Números del entrenamiento = pantalla | Cada paso, pausa y pregunta de las dos versiones y «Practicar» | Cada monto del texto se ve en la pantalla (V2-76; en la v2.6, 88 textos no coincidían) | P1 | 🔧 | numeros-entrenamiento |
+
+## E. Fechas
+
+| ID | Caso | Pasos | Esperado (acuerdo) | Prio. | Estado | Prueba |
+|---|---|---|---|---|---|---|
+| E-01 | Día 31, febrero, cambio de año | Pagos el 31 en meses cortos | Caen el último día del mes; enero sigue a diciembre | P2 | ✅ | qa-v261, probar-motor |
+| E-02 | Tarjeta que cruza el mes | Corte 31, pago 15 | El ciclo no pierde días (V2-57) | P2 | ✅ | qa-v261 |
+| E-03 | Fecha real y simulada | Uso: el día del teléfono; entrenamiento: la fecha de los ejemplos | Nunca se mezclan | P2 | ✅ | recorrer-modos |
+
+## F. Validaciones
+
+| ID | Caso | Pasos | Esperado | Prio. | Estado | Prueba |
+|---|---|---|---|---|---|---|
+| F-01 | Nombres | Vacío, solo espacios, 80+ caracteres, emoji | Vacíos con su mensaje; largos y con emoji se guardan | P2 | ✅ | qa-v261 |
+| F-02 | Montos fuera de rango | 1234567 | «Puede ser de hasta $1,000,000.00» (antes: «Escribe el monto») | P3 | 🔧 | qa-v261 |
+| F-03 | Doble toque en Guardar | Dos toques reales | Guarda una vez y no se rompe | P2 | 🔧 | qa-v261 |
+
+## G. Navegación (V2-72)
+
+| ID | Caso | Pasos | Esperado | Prio. | Estado | Prueba |
+|---|---|---|---|---|---|---|
+| G-01 | Atrás en Hoy sin nada abierto | Atrás del teléfono | Sale de la app (no atrapa) | P1 | 🔧 (no había botón atrás) | atras |
+| G-02 | Atrás en otra pestaña o pantalla | Pagos → atrás; Mi dinero → Cuentas → atrás → atrás | Vuelve a la anterior y luego a Hoy | P1 | 🔧 | atras |
+| G-03 | Atrás con una hoja abierta | Anotar → atrás | Se cierra y el foco vuelve a lo que la abrió | P1 | 🔧 | atras |
+| G-04 | Atrás con algo escrito | Anotar «pupusas 6» → atrás | «¿Descartar los cambios?» («Seguir editando» / «Descartar»); igual al tocar fuera o con Escape | P1 | 🔧 | atras |
+| G-05 | Atrás en Ayuda | Ayuda → Tus datos → atrás → atrás | Vuelve a Ayuda y la cierra | P2 | 🔧 | atras |
+| G-06 | Atrás en el entrenamiento | Paso 3 → atrás… | Retrocede un paso; en el primero pregunta «¿Salir del entrenamiento?» | P2 | 🔧 | atras |
+| G-07 | Atrás en la prueba guiada | Tarea en curso → atrás | «¿Pausar la prueba?» | P2 | 🔧 | atras |
+| G-08 | Atrás en el Primer día | Paso 3 → atrás | Paso 2 | P2 | 🔧 | atras |
+| G-09 | Recargar | Con Pagos abierto o en Hoy | Sin estados raros: guarda solo si hay a qué volver | P2 | 🔧 | atras |
+| G-10 | Escape y foco | Escape con y sin cambios | Igual que antes; foco de vuelta | P2 | ✅ | atras, teclado |
+| G-11 | Teclado, rotación y safe areas | Teléfono real | Botón principal sobre el teclado; notch y Dynamic Island | P2 | ⏳ fase 3 (no se puede en headless) | — |
+
+## H. Persistencia
+
+| ID | Caso | Pasos | Esperado | Prio. | Estado | Prueba |
+|---|---|---|---|---|---|---|
+| H-01 | Dos pestañas | Guardar en una y en otra | Nada se pierde: la segunda se pone al día antes de escribir | P1 | 🔧 | qa-v261 |
+| H-02 | El teléfono no deja guardar | Almacenamiento lleno o bloqueado | Tarjeta en Hoy «No se están guardando tus datos» con «Guardar una copia» | P2 | 🔧 | qa-v261 |
+| H-03 | Actualizar desde la v2.5 | v2.5 con datos, progreso y prueba a medias → v2.6.1 | Todo igual, también sin internet | P1 | ✅ | actualizar --ref=7c0d06e |
+| H-04 | Actualizar desde la v2.6 | Igual desde la v2.6 | Todo igual | P1 | ✅ | actualizar --ref=ca97256 |
+| H-05 | Copia → borrar → restaurar | Tus datos | Vuelve todo | P1 | ✅ | recorrer-modos, v231 |
+| H-06 | Pedir que no se borren | Con datos reales | `navigator.storage.persist()` una vez (V2-74) | P2 | 🔧 (no existía) | v261 |
+
+## I. Modos y entrenamiento
+
+| ID | Caso | Pasos | Esperado | Prio. | Estado | Prueba |
+|---|---|---|---|---|---|---|
+| I-01 | El entrenamiento no toca tus datos | Ir y volver entre modos | Datos reales idénticos | P1 | ✅ | recorrer-modos, v26 |
+| I-02 | Retomar y «Empezar de nuevo» en el entrenamiento | Salir a medias | «Sigue donde te quedaste» | P2 | ✅ | v25 |
+| I-03 | `?victor=1` | Con y sin | Sin él, nada de investigador (V2-60) | P2 | ✅ | v26 |
+| I-04 | Ejemplos = pantalla | Ver D-04 | (V2-76) | P1 | 🔧 | numeros-entrenamiento |
+
+## J. Prueba guiada y «Cuéntale…»
+
+| ID | Caso | Pasos | Esperado | Prio. | Estado | Prueba |
+|---|---|---|---|---|---|---|
+| J-01 | Set automático y sin letras | Empezar la prueba | La app elige el set y nunca dice A o B (V2-61) | P2 | ✅ | v26, v261 |
+| J-02 | Empezar de nuevo (V2-67) | Ayuda → Prueba guiada → «Empezar de nuevo» | Confirma «Se borra tu avance de la prueba. Tus datos no se tocan.»; set nuevo, sin letras; datos reales idénticos | P2 | 🔧 (no existía) | v261 |
+| J-03 | Privacidad de «Cuéntale…» | Texto con montos y nombres | Sin montos ni nombres (V2-62; V2-69 #39) | P1 | ✅ | v26 |
+
+## K. Responsive y accesibilidad
+
+| ID | Caso | Pasos | Esperado | Prio. | Estado | Prueba |
+|---|---|---|---|---|---|---|
+| K-01 | Contraste en los 4 temas | Medir | ≥ 4.5:1 | P2 | ✅ | contraste, v25, v26 |
+| K-02 | 44 px | Medir lo que se toca | ≥ 44 × 44 | P2 | ✅ | v26, teclado |
+| K-03 | Reducir movimiento | Activarlo | Nada se mueve | P3 | ✅ | v25, v26 |
+| K-04 | Teclado en la computadora | Tab, Escape | Foco visible y atrapado en hojas y diálogos | P2 | ✅ | teclado, atras |
+| K-05 | 320, 360 y 430 de ancho; zoom 200 % | Capturas | Sin cortes | P2 | ⏳ fase 3 | — |
+
+## L. Rendimiento
+
+| ID | Caso | Pasos | Esperado | Prio. | Estado | Prueba |
+|---|---|---|---|---|---|---|
+| L-01 | Mucho dato | 150 anotaciones, 20 pagos, 5 deudas, 3 tarjetas | Cálculo ≈ 2–3 ms; pestañas 4–15 ms; Anotar ≈ 40 ms | P2 | ✅ | qa-v261 |
+
+## M. Consola
+
+| ID | Caso | Pasos | Esperado | Prio. | Estado | Prueba |
+|---|---|---|---|---|---|---|
+| M-01 | Por file:// | Todas las pruebas | Cero errores | P1 | ✅ | todas |
+| M-02 | En la subruta de Pages | Las pruebas servidas | Cero errores | P1 | ✅ | todas (servidas) |

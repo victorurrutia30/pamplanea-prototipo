@@ -63,7 +63,11 @@
     // ------------------------------------------------------------------ guardar con deshacer
     /** `aviso` y `cambiar` pueden depender de lo que devolvió el cambio. */
     P.cambiar = function (fn, { aviso = 'Guardado', deshacer = true, claves = [], cambiar = null } = {}) {
+        // v2.6.1 (QA H-01): si otra pestaña guardó tus datos, primero se cargan; el cambio se hace sobre lo más nuevo.
+        if (P.antesDeCambiar) P.antesDeCambiar();
         const antes = structuredClone(P.st);
+        // Deshacer guarda los últimos 30 pasos (con cientos de anotaciones, más memoria no ayuda).
+        if (P.deshacer.length >= 30) P.deshacer.shift();
         const resultado = fn(P.st);
         P.deshacer.push(antes);
         const texto = typeof aviso === 'function' ? aviso(resultado) : aviso;
@@ -1419,7 +1423,7 @@
             </section>
             <div class="nota nota--info" role="note">${icon('info')}<p>Tus ahorros siguen en tu banco o efectivo (${esc(st.lugares.map((l) => l.nombre).join(' y '))}); solo les pones nombre.</p></div>
             ${tarjetaSeccion('Meta', `<div class="dato"><p class="dato-n">${a.meta ? dinero(a.meta) : 'Sin meta'}</p><p class="fila-s">${a.metaFecha ? 'Para el ' + esc(M.fechaLarga(a.metaFecha)) : 'Sin fecha'}</p></div><div class="card-pie"><button type="button" class="link" data-a="hoja" data-hoja="meta" data-id="${a.id}" data-fk="ap-meta">${a.meta ? 'Editar nombre y meta' : 'Editar nombre o ponerle meta'}</button></div>`, { id: 'ap-meta-t' })}
-            ${tarjetaSeccion('Historial', a.historial.length ? `<ul class="lista">${a.historial.map((h) => `<li class="fila"><div class="fila-main fila-main--quieta">${caja(h.tipo === 'usar' ? '🎉' : h.tipo === 'liberar' ? '🔓' : '🐷')}<span class="fila-txt"><span class="fila-t">${h.tipo === 'apartar' ? 'Ahorraste' : h.tipo === 'liberar' ? 'Sacaste' : h.tipo === 'usar' ? 'Lo usaste' : h.tipo === 'entra' ? 'Llegó de ' + esc(h.de) : 'Pasaste a ' + esc(h.a)}</span><span class="fila-s">${esc(M.capital(M.fechaLarga(h.fecha)))}</span></span><span class="fila-m">${montoHtml(h.monto, 'neutro')}</span></div></li>`).join('')}</ul>` : '<p class="vacio">Todavía nada.</p>', { id: 'ap-hist' })}
+            ${tarjetaSeccion('Historial', a.historial.length ? `<ul class="lista">${a.historial.map((h) => `<li class="fila"><div class="fila-main fila-main--quieta">${caja(h.tipo === 'usar' ? '🎉' : h.tipo === 'liberar' ? '🔓' : '🐷')}<span class="fila-txt"><span class="fila-t">${h.tipo === 'apartar' ? 'Ahorraste' : h.tipo === 'liberar' ? 'Sacaste' : h.tipo === 'usar' ? 'Lo usaste' : h.tipo === 'devuelto' ? 'Volvió de un gasto que eliminaste' : h.tipo === 'entra' ? 'Llegó de ' + esc(h.de) : 'Pasaste a ' + esc(h.a)}</span><span class="fila-s">${esc(M.capital(M.fechaLarga(h.fecha)))}</span></span><span class="fila-m">${montoHtml(h.monto, 'neutro')}</span></div></li>`).join('')}</ul>` : '<p class="vacio">Todavía nada.</p>', { id: 'ap-hist' })}
         </div>`;
     };
 

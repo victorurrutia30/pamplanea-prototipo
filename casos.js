@@ -291,26 +291,27 @@ window.CASOS_PRACTICA = [
 /**
  * v2.4.1: «Practicar» = 18 ejercicios, de fácil a difícil. `version`: a qué versión aplica (fijo, variable o
  * ambos); la lista muestra primero los de la versión que la persona eligió. v2.5: `capitulo`, el capítulo del
- * entrenamiento que conviene hacer antes («Lo esencial», «Ahorros»…; el mismo id en las dos versiones).
+ * entrenamiento que conviene hacer antes («Lo esencial», «Ahorros»…; el mismo id en las dos versiones). v2.6.1 (V2-76):
+ * `montos`, lo que el ejercicio cuenta que pasó o pide escribir (no está en la pantalla antes de hacerlo).
  */
 window.PRACTICA = [
     { id: 'C05', nivel: 'Fácil', version: 'ambos', capitulo: 'esencial' },
     { id: 'P-VENTA', nivel: 'Fácil', version: 'variable', capitulo: 'esencial' },
-    { id: 'C11', nivel: 'Fácil', version: 'ambos', capitulo: 'esencial' },
+    { id: 'C11', nivel: 'Fácil', version: 'ambos', capitulo: 'esencial', montos: [20] },
     { id: 'P-HORIZONTE', nivel: 'Fácil', version: 'variable', capitulo: 'horizonte' },
     { id: 'C23', nivel: 'Fácil', version: 'ambos', capitulo: 'ahorros' },
     { id: 'P-REMESA', nivel: 'Fácil', version: 'variable', capitulo: 'proximoMes' },
     { id: 'C19', nivel: 'Fácil', version: 'fijo', capitulo: 'proxima' },
     { id: 'C26', nivel: 'Media', version: 'fijo', capitulo: 'volver' },
-    { id: 'C01', nivel: 'Media', version: 'fijo', capitulo: 'esencial' },
+    { id: 'C01', nivel: 'Media', version: 'fijo', capitulo: 'esencial', montos: [600] },
     { id: 'C33', nivel: 'Media', version: 'fijo', capitulo: 'proxima' },
     { id: 'C20', nivel: 'Media', version: 'fijo', capitulo: 'proxima' },
-    { id: 'P-RESERVAR', nivel: 'Media', version: 'variable', capitulo: 'esencial' },
+    { id: 'P-RESERVAR', nivel: 'Media', version: 'variable', capitulo: 'esencial', montos: [40] },
     { id: 'P-AGUINALDO', nivel: 'Media', version: 'fijo', capitulo: 'extras' },
     { id: 'P-ADELANTO', nivel: 'Difícil', version: 'fijo', capitulo: 'extras' },
     { id: 'P-SEMANA', nivel: 'Difícil', version: 'variable', capitulo: 'ahorros' },
-    { id: 'C16', nivel: 'Difícil', version: 'ambos', capitulo: 'tarjetas' },
-    { id: 'C31', nivel: 'Difícil', version: 'ambos', capitulo: 'tarjetas' },
+    { id: 'C16', nivel: 'Difícil', version: 'ambos', capitulo: 'tarjetas', montos: [245, 25] },
+    { id: 'C31', nivel: 'Difícil', version: 'ambos', capitulo: 'tarjetas', montos: [500, 25, 300] },
     { id: 'C30', nivel: 'Difícil', version: 'ambos', capitulo: 'ahorros' },
 ];
 

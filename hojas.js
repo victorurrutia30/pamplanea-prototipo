@@ -12,11 +12,20 @@
     const S = P.pantallas;
 
     // ------------------------------------------------------------------ mutaciones del estado
+    /** v2.6.1 (QA A-D3): lo que debes solo baja si se sabe cuánto debes, y se recuerda cuánto bajó para devolverlo exacto. */
+    const debeConocido = (p) => !!(p && p.deuda && p.deuda.debe !== null && p.deuda.debe !== undefined);
+    function bajarDeuda(p, monto) {
+        if (!debeConocido(p)) return 0;
+        const baja = Math.min(p.deuda.debe, Math.max(0, monto));
+        p.deuda.debe -= baja;
+        return baja;
+    }
     P.marcarPagado = function (st, pagoId, ocurrencia, { monto, medio, fecha }) {
         const p = M.pago(st, pagoId);
         const r = P.registrar(st, { tipo: 'gasto', fecha, monto, nombre: p.nombre, categoria: p.categoria, emoji: p.emoji, medio, pago: p.id, nuevo: true });
         p.hechos[ocurrencia] = { estado: 'pagado', monto, registro: r.id };
-        if (p.deuda) p.deuda.debe = Math.max(0, p.deuda.debe - monto);
+        const baja = bajarDeuda(p, monto);
+        if (baja) p.hechos[ocurrencia].bajaDeuda = baja;
         return r;
     };
     /**
@@ -56,10 +65,12 @@
         const cierra = cerrar !== null ? cerrar : !!a.metaFecha || cumplida;
         registro.apartado = a.id;
         registro.apartadoNombre = a.nombre;
+        // v2.6.1 (QA B-AP1, B-AP2): se recuerda cuánto salió del ahorro y para qué compra se reservó, para deshacerlo exacto si se elimina.
+        registro.usadoApartado = usado;
         const m = M.medio(st, registro.medio);
         let reserva = null;
         if (m && m.tarjeta && usado > 0) {
-            reserva = { id: 'rs' + st.seq++, tarjeta: m.tarjeta, monto: usado, de: a.nombre, apartado: a.id, fecha: st.hoy };
+            reserva = { id: 'rs' + st.seq++, tarjeta: m.tarjeta, monto: usado, de: a.nombre, apartado: a.id, registro: registro.id, fecha: st.hoy };
             st.reservasTarjeta = [...(st.reservasTarjeta || []), reserva];
         }
         a.historial.unshift({ fecha: st.hoy, tipo: 'usar', monto: usado, medio: registro.medio });
@@ -96,7 +107,8 @@
         for (const p of M.descuentosDe(st, ing.id)) {
             if (p.hechos[fechaEsperada]) continue;
             p.hechos[fechaEsperada] = { estado: 'pagado', monto: p.monto, descuento: true };
-            if (p.deuda && p.deuda.debe !== null && p.deuda.debe !== undefined) p.deuda.debe = Math.max(0, p.deuda.debe - p.monto);
+            const baja = bajarDeuda(p, p.monto);
+            if (baja) p.hechos[fechaEsperada].bajaDeuda = baja;
         }
         return P.registrar(st, { tipo: 'ingreso', fecha, monto, nombre: ing.nombre, categoria: ing.categoria, emoji: ing.emoji, lugar, ingreso: ing.id, ocurrencia: fechaEsperada, nuevo: true });
     };
@@ -164,11 +176,38 @@
         if (!r || !r.pago) return null;
         const p = M.pago(st, r.pago);
         if (p) {
-            for (const [f, h] of Object.entries(p.hechos)) if (h.registro === r.id) delete p.hechos[f];
-            if (p.deuda && p.deuda.debe !== null && p.deuda.debe !== undefined) p.deuda.debe += r.monto;
+            for (const [f, h] of Object.entries(p.hechos)) {
+                if (h.registro !== r.id) continue;
+                // v2.6.1 (QA A-D3): vuelve exactamente lo que bajó (lo marcado antes de la v2.6.1 no lo guardaba: su monto).
+                if (debeConocido(p)) p.deuda.debe += h.bajaDeuda !== undefined ? h.bajaDeuda : r.monto;
+                delete p.hechos[f];
+            }
         }
         st.registros = st.registros.filter((x) => x.id !== r.id);
         return r;
+    };
+    /**
+     * v2.6.1 (QA B-P2, B-P3): al cambiar el día (o la frecuencia) de un pago, lo ya pagado o saltado no se pierde: cada
+     * «hecho» (y cada «Lo pagas con» elegido) que ya no cae en una fecha de la regla nueva pasa a la fecha más cercana de
+     * la regla nueva (dentro de un mes) que no tenga uno. Así el mes ya pagado no se vuelve a pedir ni se cuenta dos veces.
+     */
+    P.reubicarHechos = function (st, p) {
+        const regla = M.reglaPago(st, p);
+        for (const campo of ['hechos', 'asignaciones']) {
+            const viejo = p[campo] || {};
+            const nuevo = {};
+            const sueltos = [];
+            for (const [f, h] of Object.entries(viejo)) (M.fechasRegla(regla, f, f).length ? (nuevo[f] = h) : sueltos.push([f, h]));
+            for (const [f, h] of sueltos.sort((a, b) => (a[0] < b[0] ? -1 : 1))) {
+                // Primero el mismo mes (el pago de octubre sigue siendo el de octubre); dentro de él, la más cercana.
+                const mismoMes = (x) => Number(x.slice(0, 7) === f.slice(0, 7));
+                const cerca = M.fechasRegla(regla, M.sumarDias(f, -31), M.sumarDias(f, 31))
+                    .filter((x) => !(x in nuevo))
+                    .sort((a, b) => mismoMes(b) - mismoMes(a) || Math.abs(M.diasEntre(f, a)) - Math.abs(M.diasEntre(f, b)))[0];
+                if (cerca) nuevo[cerca] = h;
+            }
+            if (p[campo]) p[campo] = nuevo;
+        }
     };
 
     // ------------------------------------------------------------------ hojas: abrir, cerrar, dibujar
@@ -248,7 +287,7 @@
     const inv = (h, campo) => (h.intento && h.errores.includes(campo) ? `aria-invalid="true" aria-describedby="err-${campo}"` : '');
     function campoMonto(h, { campo = 'monto', label = '¿Cuánto?', valor = '', ayuda = '', errorTexto = 'Escribe el monto', id = null } = {}) {
         const fid = id || 'f-' + campo;
-        return `<div class="campo-g"><label class="campo-l" for="${fid}">${label}</label><div class="campo campo--monto"><span aria-hidden="true">$</span><input id="${fid}" data-campo="${campo}" type="text" inputmode="decimal" autocomplete="off" placeholder="Ej. 25.00" value="${esc(valor)}" ${inv(h, campo)}></div>${ayuda ? `<p class="campo-ayuda">${ayuda}</p>` : ''}${error(h, campo, errorTexto)}</div>`;
+        return `<div class="campo-g"><label class="campo-l" for="${fid}">${label}</label><div class="campo campo--monto"><span aria-hidden="true">$</span><input id="${fid}" data-campo="${campo}" type="text" inputmode="decimal" autocomplete="off" placeholder="Ej. 25.00" value="${esc(valor)}" ${inv(h, campo)}></div>${ayuda ? `<p class="campo-ayuda">${ayuda}</p>` : ''}${error(h, campo, M.montoExcede(valor) ? 'Puede ser de hasta $1,000,000.00' : errorTexto)}</div>`;
     }
     function campoTexto(h, { campo, label, valor = '', placeholder = '', errorTexto = '' }) {
         return `<div class="campo-g"><label class="campo-l" for="f-${campo}">${label}</label><div class="campo"><input id="f-${campo}" data-campo="${campo}" type="text" autocomplete="off" placeholder="${esc(placeholder)}" value="${esc(valor)}" ${inv(h, campo)}></div>${error(h, campo, errorTexto)}</div>`;
@@ -535,6 +574,7 @@
         const d = h.d;
         const out = [];
         if (d.tipo === 'pago' && !d.frecuencia) out.push(`<div class="pregunta">${opciones(h, { campo: 'frecuencia', label: '¿Se repite?', accion: 'anotarValor', valor: d.frecuencia, lista: [{ v: 'mensual', t: 'Cada mes' }, { v: 'semanal', t: 'Cada semana' }, { v: 'unico', t: 'Solo esta vez' }], errorTexto: 'Dinos si se repite' })}</div>`);
+        if (d.tipo === 'gasto' && d.yaPagado) out.push(`<div class="nota nota--info" role="note">${icon('info')}<p>Ya marcaste el pago «${esc(d.yaPagado.nombre)}» del ${esc(M.fechaCorta(d.yaPagado.fecha))}. Esto se guarda como un gasto aparte.</p></div>`);
         if (d.tipo === 'pago' && d.duplicado) out.push(`<div class="nota nota--info" role="note">${icon('info')}<p>Ya tienes «${esc(M.pago(st, d.duplicado).nombre)}» en Pagos. Si es otro, guárdalo igual.</p></div>`);
         if (d.tipo === 'gasto' && d.sugerirApartado && d.usarApartado === null && M.apartado(st, d.sugerirApartado)) {
             const a = M.apartado(st, d.sugerirApartado);
@@ -815,6 +855,8 @@
     };
     P.acciones.anotarGuardar = () => {
         const h = P.ui.hoja;
+        // v2.6.1 (QA F-03): un segundo toque cuando la hoja ya se cerró no hace nada.
+        if (!h || h.tipo !== 'anotar') return;
         const st = P.st;
         if (!h.d || !h.d.tipo) {
             if (h.d && h.texto && h.texto.trim()) P.emitir('anotar:noEntendio');
@@ -1562,7 +1604,9 @@
     };
     H.deuda = {
         iniciar(h) {
-            h.monto = M.montoCampo(M.pago(P.st, h.id).deuda.debe);
+            // v2.6.1 (QA A-D2): una deuda guardada sin «¿cuánto debes?» también se puede anotar aquí.
+            const p = M.pago(P.st, h.id);
+            h.monto = debeConocido(p) ? M.montoCampo(p.deuda.debe) : '';
         },
         html(h) {
             return { titulo: 'Lo que debes', cuerpo: `${campoMonto(h, { label: '¿Cuánto debes más o menos?', valor: h.monto, ayuda: 'Es opcional. Lo ves en tu recibo o en la app de la tienda.' })}`, pie: pie2('deudaOk', 'Guardar') };
@@ -1577,8 +1621,9 @@
         if (!validar(h, monto !== null ? [] : ['monto'])) return;
         P.ui.hoja = null;
         P.cambiar((s) => {
-            M.pago(s, h.id).deuda.debe = monto;
-        }, { aviso: 'Guardado' });
+            const p = M.pago(s, h.id);
+            p.deuda = { ...(p.deuda || {}), debe: monto };
+        }, { aviso: 'Guardado', claves: ['guardado:deuda:debe'] });
     };
 
     // ================================================================== CUADRAR Y MOVER
@@ -1992,12 +2037,13 @@
                 titulo: h.editar ? `Editar ${esc(h.nombre)}` : 'Tarjeta o préstamo',
                 cuerpo: `${tipos}${campos}${tipo && !h.editar ? `<p class="fila-s">${h.tipoDeuda === 'tarjeta' ? 'Al guardar, su pago aparece solo en Pagos según tu estado de cuenta.' : 'Al guardar, la cuota aparece sola en Pagos.'}</p>` : ''}`,
                 pie: pie2('nuevaDeudaOk', h.editar ? 'Guardar cambios' : 'Guardar', { fk: 'deuda-ok' }),
-                ...(h.editar && h.tarjetaId ? { cuerpo: `${tipos}${campos}${h.confirmarEliminar ? confirmarHtml(`¿Eliminar ${esc(h.nombre)}?`, 'Deja de aparecer en Pagos y en tu libre. Las compras que anotaste se quedan en tu historial.', 'tarjetaEliminar', 'tarjeta-eliminar') : `<button type="button" class="link link--peligro" data-a="valor" data-campo="confirmarEliminar" data-v="si" data-fk="tarjeta-eliminar">${icon('trash-2', 'ico-s')}Eliminar tarjeta</button>`}` } : {}),
+                ...(h.editar && h.tarjetaId ? { cuerpo: `${tipos}${campos}${h.confirmarEliminar ? reasignarHtml(h, st, ligados(st, { medios: mediosDeTarjeta(st, h.tarjetaId) }), { fueraMedios: mediosDeTarjeta(st, h.tarjetaId) }) + confirmarHtml(`¿Eliminar ${esc(h.nombre)}?`, 'Deja de aparecer en Pagos y en tu libre. Las compras que anotaste se quedan en tu historial.', 'tarjetaEliminar', 'tarjeta-eliminar') : `<button type="button" class="link link--peligro" data-a="valor" data-campo="confirmarEliminar" data-v="si" data-fk="tarjeta-eliminar">${icon('trash-2', 'ico-s')}Eliminar tarjeta</button>`}` } : {}),
             };
         },
         alValor(h, campo, v) {
             if (campo === 'confirmarEliminar') {
                 h.confirmarEliminar = v === 'si';
+                if (h.confirmarEliminar && h.tarjetaId) prepararReasignar(h, P.st, ligados(P.st, { medios: mediosDeTarjeta(P.st, h.tarjetaId) }), { fueraMedios: mediosDeTarjeta(P.st, h.tarjetaId), credito: true });
                 return;
             }
             h[campo] = v;
@@ -2013,8 +2059,11 @@
     P.acciones.tarjetaEliminar = () => {
         const h = P.ui.hoja;
         const t = M.tarjeta(P.st, h.tarjetaId);
+        const lig = ligados(P.st, { medios: mediosDeTarjeta(P.st, h.tarjetaId) });
+        prepararReasignar(h, P.st, lig, { fueraMedios: mediosDeTarjeta(P.st, h.tarjetaId), credito: true });
         P.ui.hoja = null;
         P.cambiar((s) => {
+            aplicarReasignar(s, h, lig);
             s.tarjetas = s.tarjetas.filter((x) => x.id !== h.tarjetaId);
             for (const m of s.medios) if (m.tarjeta === h.tarjetaId) Object.assign(m, { oculto: true, tarjeta: null, eraTarjeta: h.tarjetaId });
             s.reservasTarjeta = (s.reservasTarjeta || []).filter((x) => x.tarjeta !== h.tarjetaId);
@@ -2022,6 +2071,7 @@
         if (P.ui.stack.at(-1)?.tipo === 'tarjeta') P.atras();
     };
     const diaValido = (v) => /^\d{1,2}$/.test(String(v || '').trim()) && +v >= 1 && +v <= 31;
+    const mediosDeTarjeta = (st, id) => st.medios.filter((m) => m.tarjeta === id).map((m) => m.id);
     P.acciones.nuevaDeudaOk = () => {
         const h = P.ui.hoja;
         const st = P.st;
@@ -2091,7 +2141,10 @@
         const cuota = M.leerMonto(h.cuota);
         const debe = M.leerMonto(h.debe);
         if (h.editar) {
-            P.cambiar((s) => Object.assign(M.pago(s, h.id), { nombre, monto: cuota, dia: +h.dia, medio: h.medio, deuda: debe !== null ? { debe } : null }), { aviso: 'Cambios guardados', claves: ['guardado:deuda:editar'] });
+            P.cambiar((s) => {
+                const p = Object.assign(M.pago(s, h.id), { nombre, monto: cuota, dia: +h.dia, medio: h.medio, deuda: debe !== null ? { debe } : null });
+                P.reubicarHechos(s, p);
+            }, { aviso: 'Cambios guardados', claves: ['guardado:deuda:editar'] });
             return;
         }
         P.cambiar(
@@ -2373,8 +2426,41 @@
         if (P.ui.stack.at(-1)?.tipo === 'ingreso') P.atras();
     };
 
+    // ================================================================== ELIMINAR SIN DEJAR NADA HUÉRFANO (v2.6.1, QA B-L1, B-M1, B-T1)
+    /** Pagos activos que se pagan con alguno de estos medios e ingresos activos que se reciben en este lugar. */
+    function ligados(st, { medios: ids = [], lugar = null }) {
+        const set = new Set(ids);
+        return {
+            pagos: st.pagos.filter((p) => p.activo !== false && !p.descuento && set.has(p.medio)),
+            ingresos: lugar ? st.ingresos.filter((i) => i.activo !== false && i.lugar === lugar) : [],
+        };
+    }
+    /** El medio que toma su lugar: uno del mismo tipo si hay (otra tarjeta de crédito, otra débito); si no, el efectivo. */
+    function medioSustituto(st, fuera, { credito = false } = {}) {
+        const vivos = st.medios.filter((m) => !m.oculto && !fuera.includes(m.id) && (m.tarjeta ? M.tarjeta(st, m.tarjeta) : M.lugar(st, m.lugar)));
+        return (credito && vivos.find((m) => m.tarjeta)) || vivos.find((m) => m.tarjetaDebito) || vivos.find((m) => m.lugar && M.lugar(st, m.lugar)?.tipo === 'efectivo') || vivos[0] || null;
+    }
+    const lugarSustituto = (st, fuera) => st.lugares.find((l) => l.id !== fuera && l.tipo === 'banco') || st.lugares.find((l) => l.id !== fuera) || null;
+    /** Dentro de la confirmación: con qué se pagan ahora esos pagos y dónde se reciben esos ingresos (ya viene una opción elegida). */
+    function reasignarHtml(h, st, lig, { fueraMedios = [], fueraLugar = null }) {
+        const nombres = (xs) => P.lista(xs.map((x) => `«${x.nombre}»`));
+        const ms = medios(st).filter((m) => !fueraMedios.includes(m.v));
+        const ls = lugares(st).filter((l) => l.v !== fueraLugar);
+        return `${lig.pagos.length ? opciones(h, { campo: 'nuevoMedio', label: `${nombres(lig.pagos)} ${lig.pagos.length === 1 ? 'se paga' : 'se pagan'} ahora con:`, lista: ms, valor: h.nuevoMedio, columnas: true }) : ''}${lig.ingresos.length ? opciones(h, { campo: 'nuevoLugar', label: `${nombres(lig.ingresos)} ${lig.ingresos.length === 1 ? 'se recibe' : 'se reciben'} ahora en:`, lista: ls, valor: h.nuevoLugar, columnas: true }) : ''}`;
+    }
+    function prepararReasignar(h, st, lig, { fueraMedios = [], fueraLugar = null, credito = false }) {
+        if (lig.pagos.length && !h.nuevoMedio) h.nuevoMedio = medioSustituto(st, fueraMedios, { credito })?.id || null;
+        if (lig.ingresos.length && !h.nuevoLugar) h.nuevoLugar = lugarSustituto(st, fueraLugar)?.id || null;
+    }
+    function aplicarReasignar(s, h, lig) {
+        for (const p of lig.pagos) if (h.nuevoMedio && M.pago(s, p.id)) M.pago(s, p.id).medio = h.nuevoMedio;
+        for (const i of lig.ingresos) if (h.nuevoLugar && M.ingreso(s, i.id)) M.ingreso(s, i.id).lugar = h.nuevoLugar;
+    }
+
     // ================================================================== LUGARES Y MEDIOS (crear, editar, eliminar)
     const TIPOS_LUGAR = [{ v: 'efectivo', t: 'Efectivo', e: '💵' }, { v: 'banco', t: 'Banco o cooperativa', e: '🏦' }, { v: 'billetera', t: 'Billetera en el celular', e: '📱' }];
+    const mediosDeLugar = (st, id) => st.medios.filter((m) => m.lugar === id).map((m) => m.id);
+    const ligLugar = (st, id) => ligados(st, { medios: mediosDeLugar(st, id), lugar: id });
     H.lugar = {
         iniciar(h) {
             const l = h.id ? M.lugar(P.st, h.id) : null;
@@ -2390,14 +2476,16 @@
                     ${campoTexto(h, { campo: 'nombre', label: 'Nombre', valor: h.nombre, placeholder: h.clase === 'banco' ? 'Ej. Banco Cuscatlán' : h.clase === 'billetera' ? 'Ej. Billetera del celular' : 'Ej. Alcancía', errorTexto: 'Ponle un nombre' })}
                     ${h.editar ? '' : campoMonto(h, { label: '¿Cuánto tienes ahí hoy?', valor: h.monto, ayuda: 'Más o menos. Es su primer cuadre.', errorTexto: 'Escribe cuánto tienes, aunque sea $0' })}
                     ${!h.editar && h.clase === 'banco' ? `<div class="chips"><button type="button" class="chip" aria-pressed="${h.debito}" data-a="valor" data-campo="debito" data-v="${!h.debito}" data-fk="lugar-debito">${h.debito ? icon('check', 'ico-xs') : ''}Tengo tarjeta de débito de este banco</button></div>` : ''}
-                    ${h.editar ? (st.lugares.length < 2 ? '<p class="fila-s">Es tu único lugar: no se puede eliminar.</p>' : h.confirmarEliminar ? confirmarHtml(`¿Eliminar ${esc(l.nombre)}?`, `Sus ${dinero(M.saldoLugar(st, l.id))} dejan de contar en «Tienes». Lo que anotaste se queda en tu historial.`, 'lugarEliminar', 'lugar-eliminar') : `<button type="button" class="link link--peligro" data-a="valor" data-campo="confirmarEliminar" data-v="si" data-fk="lugar-eliminar">${icon('trash-2', 'ico-s')}Eliminar lugar</button>`) : ''}`,
+                    ${h.editar ? (st.lugares.length < 2 ? '<p class="fila-s">Es tu único lugar: no se puede eliminar.</p>' : h.confirmarEliminar ? reasignarHtml(h, st, ligLugar(st, l.id), { fueraMedios: mediosDeLugar(st, l.id), fueraLugar: l.id }) + confirmarHtml(`¿Eliminar ${esc(l.nombre)}?`, `Sus ${dinero(M.saldoLugar(st, l.id))} dejan de contar en «Tienes». Lo que anotaste se queda en tu historial.`, 'lugarEliminar', 'lugar-eliminar') : `<button type="button" class="link link--peligro" data-a="valor" data-campo="confirmarEliminar" data-v="si" data-fk="lugar-eliminar">${icon('trash-2', 'ico-s')}Eliminar lugar</button>`) : ''}`,
                 pie: pie2('lugarOk', h.editar ? 'Guardar cambios' : 'Guardar', { fk: 'lugar-ok' }),
             };
         },
         alValor(h, campo, v) {
             if (campo === 'debito') h.debito = v === 'true';
-            else if (campo === 'confirmarEliminar') h.confirmarEliminar = v === 'si';
-            else h[campo] = v;
+            else if (campo === 'confirmarEliminar') {
+                h.confirmarEliminar = v === 'si';
+                if (h.confirmarEliminar) prepararReasignar(h, P.st, ligLugar(P.st, h.id), { fueraMedios: mediosDeLugar(P.st, h.id), fueraLugar: h.id });
+            } else h[campo] = v;
         },
         alCampo(h, campo, el) {
             h[campo] = el.value;
@@ -2431,7 +2519,10 @@
         const h = P.ui.hoja;
         const l = M.lugar(P.st, h.id);
         P.ui.hoja = null;
+        const lig = ligLugar(P.st, h.id);
+        prepararReasignar(h, P.st, lig, { fueraMedios: mediosDeLugar(P.st, h.id), fueraLugar: h.id });
         P.cambiar((s) => {
+            aplicarReasignar(s, h, lig);
             s.lugares = s.lugares.filter((x) => x.id !== h.id);
             for (const m of s.medios) if (m.lugar === h.id) m.oculto = true;
         }, { aviso: `Eliminaste ${l.nombre}`, claves: ['guardado:lugarEliminar'] });
@@ -2454,13 +2545,15 @@
                 cuerpo: `${h.editar ? '' : opciones(h, { campo: 'clase', label: '¿Qué es?', lista: TIPOS_MEDIO, valor: h.clase })}
                     ${credito && !h.editar ? '<p class="txt">Las tarjetas de crédito se agregan con su corte y su día de pago.</p>' : `${campoTexto(h, { campo: 'nombre', label: 'Nombre', valor: h.nombre, placeholder: 'Ej. Débito Cuscatlán', errorTexto: 'Ponle un nombre' })}
                     ${m && m.tarjeta ? '<p class="fila-s">Es una tarjeta de crédito: su corte y pago se editan en su ficha.</p>' : opciones(h, { campo: 'lugar', label: '¿De dónde sale el dinero?', lista: lugares(st), valor: h.lugar, errorTexto: 'Elige de dónde sale' })}`}
-                    ${h.editar && !(m.id === 'efectivo') ? (h.confirmarEliminar ? confirmarHtml(`¿Eliminar ${esc(m.nombre)}?`, 'Ya no aparece para elegir. Lo que pagaste con él se queda en tu historial.', 'medioEliminar', 'medio-eliminar') : `<button type="button" class="link link--peligro" data-a="valor" data-campo="confirmarEliminar" data-v="si" data-fk="medio-eliminar">${icon('trash-2', 'ico-s')}Eliminar medio</button>`) : ''}`,
+                    ${h.editar && !(m.id === 'efectivo') ? (h.confirmarEliminar ? reasignarHtml(h, st, ligados(st, { medios: [m.id] }), { fueraMedios: [m.id] }) + confirmarHtml(`¿Eliminar ${esc(m.nombre)}?`, 'Ya no aparece para elegir. Lo que pagaste con él se queda en tu historial.', 'medioEliminar', 'medio-eliminar') : `<button type="button" class="link link--peligro" data-a="valor" data-campo="confirmarEliminar" data-v="si" data-fk="medio-eliminar">${icon('trash-2', 'ico-s')}Eliminar medio</button>`) : ''}`,
                 pie: credito && !h.editar ? pie2('medioCredito', 'Seguir', { fk: 'medio-ok' }) : pie2('medioOk', h.editar ? 'Guardar cambios' : 'Guardar', { fk: 'medio-ok' }),
             };
         },
         alValor(h, campo, v) {
-            if (campo === 'confirmarEliminar') h.confirmarEliminar = v === 'si';
-            else h[campo] = v;
+            if (campo === 'confirmarEliminar') {
+                h.confirmarEliminar = v === 'si';
+                if (h.confirmarEliminar) prepararReasignar(h, P.st, ligados(P.st, { medios: [h.id] }), { fueraMedios: [h.id] });
+            } else h[campo] = v;
         },
         alCampo(h, campo, el) {
             h[campo] = el.value;
@@ -2492,7 +2585,10 @@
         const h = P.ui.hoja;
         const m = M.medio(P.st, h.id);
         P.ui.hoja = null;
+        const lig = ligados(P.st, { medios: [h.id] });
+        prepararReasignar(h, P.st, lig, { fueraMedios: [h.id] });
         P.cambiar((s) => {
+            aplicarReasignar(s, h, lig);
             M.medio(s, h.id).oculto = true;
         }, { aviso: `Eliminaste ${m.nombre}`, claves: ['guardado:medioEliminar'] });
     };
@@ -2638,6 +2734,7 @@
                 Object.assign(p, { nombre: h.nombre.trim(), monto, estimado: h.estimado, medio: h.medio, ...P.reglaDe(r) });
                 if (esCuchubal(h) && h.hasta) p.hasta = h.hasta;
                 else delete p.hasta;
+                P.reubicarHechos(s, p);
             }, { aviso: 'Cambios guardados', claves: ['guardado:pagoEditar'] });
             return;
         }
@@ -2872,7 +2969,13 @@
                     const p = M.pago(s, r.pago);
                     const hecho = p && Object.values(p.hechos).find((x) => x.registro === r.id);
                     if (hecho) {
-                        if (p.deuda && p.deuda.debe !== null && p.deuda.debe !== undefined) p.deuda.debe = Math.max(0, p.deuda.debe + (hecho.monto || 0) - monto);
+                        // v2.6.1 (QA A-D4): primero vuelve lo que había bajado; después baja lo nuevo (sin pasar de lo que debes).
+                        if (debeConocido(p)) {
+                            p.deuda.debe += hecho.bajaDeuda !== undefined ? hecho.bajaDeuda : hecho.monto || 0;
+                            const baja = bajarDeuda(p, monto);
+                            if (baja) hecho.bajaDeuda = baja;
+                            else delete hecho.bajaDeuda;
+                        }
                         hecho.monto = monto;
                     }
                 }
@@ -2909,9 +3012,20 @@
                     for (const p of M.descuentosDe(s, r.ingreso)) {
                         const hecho = p.hechos[r.ocurrencia];
                         if (!hecho || !hecho.descuento) continue;
-                        if (p.deuda && p.deuda.debe !== null && p.deuda.debe !== undefined) p.deuda.debe += hecho.monto || 0;
+                        if (debeConocido(p)) p.deuda.debe += hecho.bajaDeuda !== undefined ? hecho.bajaDeuda : hecho.monto || 0;
                         delete p.hechos[r.ocurrencia];
                     }
+                }
+                // v2.6.1 (QA B-AP1, B-AP2): un gasto que salió de un ahorro devuelve lo usado a ese ahorro (si sigue abierto) y,
+                // si fue con tarjeta, suelta lo que quedó reservado para pagarla.
+                if (r.apartado) {
+                    const a = M.apartado(s, r.apartado);
+                    const usado = r.usadoApartado !== undefined ? r.usadoApartado : r.monto;
+                    if (a && usado > 0) {
+                        a.monto += usado;
+                        a.historial.unshift({ fecha: s.hoy, tipo: 'devuelto', monto: usado });
+                    }
+                    s.reservasTarjeta = (s.reservasTarjeta || []).filter((x) => !(x.registro === r.id || (!x.registro && x.apartado === r.apartado && x.monto === usado)));
                 }
             },
             { aviso: 'Eliminado', claves: ['guardado:eliminar'] },

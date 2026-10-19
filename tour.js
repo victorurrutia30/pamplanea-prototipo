@@ -109,6 +109,107 @@
     const filaLibre = (a, d) => ({ l: 'Libre', a: a.libre, d: d.libre });
     const pausaLibre = (titulo, porque) => (a, d) => ({ titulo, filas: [filaLibre(a, d)], texto: cambioLibre(a, d, porque(a, d)) });
 
+    // ------------------------------------------------------------------ v2.6.1 (V2-76): ejemplos con los números de la pantalla
+    // «que lo que vaya mostrando de ejemplo en entrenamiento haga sentido»: cada ejemplo sale de los datos que se ven en
+    // ese momento (el mismo cálculo de la app). Si no aplica a lo que hay, queda el del glosario, que no lleva montos.
+    // `montos` de un paso: lo que ese paso pide escribir o hacer (lo revisa herramientas/numeros-entrenamiento.mjs).
+    const hasta = (k) => (k.hz.ingreso ? `hasta tu quincena del ${M.partes(k.hz.fecha)[2]}` : k.hz.modo === 'quince' ? 'en los próximos 15 días' : 'hasta fin de mes');
+    const antesDe = (k) => (k.hz.ingreso ? `antes del ${M.partes(k.hz.fecha)[2]}` : 'antes de fin de mes');
+    const libreHoy = () => corto(P.calc().libre);
+    /** El primer pago que vence antes de que termine tu libre (el primero de «Próximos pagos»). */
+    function primerPago() {
+        const st = P.st;
+        const k = P.calc();
+        const hastaF = M.sumarDias(k.hz.fecha, -1);
+        const os = st.pagos.filter((p) => p.activo !== false).flatMap((p) => M.ocurrenciasPago(st, p, st.hoy, hastaF)).filter((o) => o.estado === 'pendiente');
+        return os.sort((a, b) => (a.fecha < b.fecha ? -1 : a.fecha > b.fecha ? 1 : 0))[0] || null;
+    }
+    const ej = {
+        libre: () => {
+            const k = P.calc();
+            return k.porDia !== null ? `Tu libre es ${corto(k.libre)} ${hasta(k)}: son ~${corto(k.porDia)} por día.` : null;
+        },
+        deDondeSale: () => {
+            const k = P.calc();
+            if (k.tienes - k.apartado - k.porPagar !== k.libre) return null;
+            return `Tienes ${corto(k.tienes)}, ${corto(k.apartado)} están en ahorros y pagas ${corto(k.porPagar)} ${antesDe(k)}: te quedan ${corto(k.libre)}.`;
+        },
+        anotar: (cosa, frase, monto, vende = false) => () => `${vende ? 'Vendiste' : 'Compraste'} ${cosa} por $${monto}: escribes «${frase}» y tu libre de ${libreHoy()} ${vende ? 'sube' : 'baja'} $${monto}.`,
+        pagado: () => {
+            const p = M.pago(P.st, 'telefono');
+            return p ? `Pagas el teléfono de ${corto(p.monto)}: tu libre sigue en ${libreHoy()} y lo que tienes baja ${corto(p.monto)}.` : null;
+        },
+        loQueViene: () => {
+            const o = primerPago();
+            return o ? `El ${M.partes(o.fecha)[2]} vence «${o.pago.nombre}», de ${corto(o.monto)}: ya está restado de tu libre.` : null;
+        },
+        cuadrar: () => (T.cuadre ? `La app cree que tienes ${corto(T.cuadre.cree)} en efectivo. Si cuentas ${corto(T.cuadre.di)}, ${corto(T.cuadre.cree - T.cuadre.di)} quedan «sin detalle».` : null),
+        proxima: () => {
+            const p = P.calc().proxima;
+            if (!p) return null;
+            if (!p.principal) return `El próximo mes pagas ~${corto(p.pagos)}: lo vas juntando con lo que vendes.`;
+            return `En tu quincena del ${M.partes(p.principal.fecha)[2]} recibes ~${corto(p.entra)} y pagas ~${corto(p.pagos)}: te quedarían ~${corto(p.quedan)}.`;
+        },
+        aproxQue: () => {
+            const p = P.calc().proxima;
+            return p && p.principal ? `Mira el signo ~ en «~${corto(p.entra)}»` : 'Mira el signo ~';
+        },
+        aprox: () => {
+            const p = P.calc().proxima;
+            return p && p.principal ? `Esperas ~${corto(p.entra)}. Si el ${M.partes(p.principal.fecha)[2]} llega otra cantidad, la app usa la que llegó.` : null;
+        },
+        pasar: (monto) => () => `Si pasas $${monto}, tu libre de ${libreHoy()} baja $${monto} y tu próxima quincena tiene $${monto} más.`,
+        ahorros: () => {
+            const a = M.apartado(P.st, 'emergencias');
+            return a ? `Tienes ${corto(a.monto)} en «${a.nombre}»: siguen en tu banco o efectivo, pero no cuentan en tu libre.` : null;
+        },
+        ahorrar: (monto) => () => `Ahorras $${monto} en «Emergencias»: tu libre baja $${monto}.`,
+        usar: () => {
+            const a = M.apartado(P.st, 'laptop');
+            return a ? `Juntaste ${corto(a.monto)} para la laptop. Si la compras y tocas «Usar», tu libre no cambia.` : null;
+        },
+        tarjeta: () => {
+            const k = P.calc();
+            const t = k.tarjetas.find((x) => x.porPagarEstado + x.estimado > 0);
+            return t ? `Tu libre de ${corto(k.libre)} ya tiene restados ${corto(t.porPagarEstado + t.estimado)} de tu tarjeta, que vence el ${P.diaPago(t, t.ult.vence)}.` : null;
+        },
+        compraTarjeta: (cosa, frase) => () => `Escribes «${frase}»: tu libre de ${libreHoy()} baja $30 hoy.`,
+        deudas: () => {
+            const p = P.st.pagos.find((x) => x.activo !== false && x.deuda && x.frecuencia === 'mensual');
+            return p ? `«${p.nombre}»: ${corto(p.monto)} al mes. La ves aquí y en Pagos cada mes.` : null;
+        },
+        estadoCuenta: () => {
+            const t = P.st.tarjetas[0];
+            const e = t && t.estados && t.estados.at(-1);
+            return e ? `Tu estado de cuenta dice pago de contado ${corto(e.total)} y mínimo ${corto(e.minimo)}: tú eliges cuánto pagas.` : null;
+        },
+        aguinaldo: () => {
+            const i = P.st.ingresos.find((x) => x.categoria === 'aguinaldo' && x.activo !== false);
+            return i ? `Tu aguinaldo de ~${corto(i.monto)} llega el ${M.fechaLarga(i.fecha)}: ese día suma a tu libre.` : null;
+        },
+        matricula: () => {
+            const p = M.pago(P.st, 'matricula');
+            return p ? `La matrícula de enero, ${corto(p.monto)}, sale de tu aguinaldo de diciembre.` : null;
+        },
+        guardar: (monto) => () => {
+            const p = M.pago(P.st, 'alquiler');
+            return p ? `Guardas $${monto} para el alquiler de ${corto(p.monto)}: tu libre de ${libreHoy()} baja $${monto} y el alquiler ya los tiene.` : null;
+        },
+        quince: () => `Hoy es ${M.partes(P.st.hoy)[2]}: con 15 días ves hasta el ${M.fechaCorta(M.sumarDias(P.st.hoy, 15))}.`,
+        remesa: () => {
+            const i = P.st.ingresos.find((x) => x.categoria === 'remesa' && x.activo !== false);
+            return i ? `Esperas ${corto(i.monto)} de remesa: el día que llega tocas «Ya llegó» y suma.` : null;
+        },
+        remesaLlega: () => {
+            const i = P.st.ingresos.find((x) => x.categoria === 'remesa' && x.activo !== false);
+            return i ? `Si llegan ${corto(i.monto)}, ese día tu libre sube ${corto(i.monto)}.` : null;
+        },
+        semanaMala: () => {
+            const k = P.calc();
+            return `Tu libre está en ${corto(k.libre)}. ${P.textoCero(k)}. Puedes sacar de un ahorro. Sin culpa.`;
+        },
+    };
+
     // ------------------------------------------------------------------ los ejemplos de cada capítulo
     /** Deja el libre en un número redondo moviendo el último cuadre de un lugar (solo en los ejemplos del entrenamiento). */
     function redondear(st, meta, lugarId) {
@@ -174,10 +275,12 @@
     }
 
     // ------------------------------------------------------------------ versión 1 · fecha fija (Ana)
-    const pasoLibre = { que: 'Este número es tu libre', g: 'libre', antes: irA('hoy'), sel: '.portada' };
-    const pasoAnotar = (frase, porque) => ({
+    const pasoLibre = { que: 'Este número es tu libre', g: 'libre', ejemplo: ej.libre, antes: irA('hoy'), sel: '.portada' };
+    const pasoAnotar = (frase, porque, ejemplo, montos) => ({
         que: 'Este botón + es para anotar',
         g: 'anotar',
+        ejemplo,
+        montos,
         antes: irA('hoy'),
         sel: '[data-fk="nav-anotar"]',
         hazlo: { claves: ['guardado:gasto', 'guardado:ingreso'], senal: senalAnotar(frase), foco: '.portada', pausa: pausaLibre('Mira tu libre', () => porque) },
@@ -185,6 +288,8 @@
     const pasoCuadrar = {
         que: 'Aquí cuadras tu efectivo',
         g: 'cuadrar',
+        ejemplo: ej.cuadrar,
+        montos: () => (T.cuadre ? [T.cuadre.di, T.cuadre.cree - T.cuadre.di].map((c) => c / 100) : []),
         antes: abrirCuentas,
         sel: '#pantalla section.total',
         hazlo: { claves: ['guardado:cuadre'], senal: senalCuadrar, foco: '#pantalla section.total', pausa: pausaLibre('Cuadraste tu efectivo', (a, d) => (d.efectivo < a.efectivo ? `tenías ${corto(a.efectivo - d.efectivo)} menos de lo que creía la app` : 'ahora la app tiene lo que tienes de verdad')) },
@@ -199,11 +304,12 @@
         cargar: preparar(() => ana(), 'fijo:esencial'),
         pasos: [
             pasoLibre,
-            { que: 'Aquí ves de dónde sale', g: 'deDondeSale', antes: abrirDesglose, sel: '.hoja .desglose' },
-            pasoAnotar('pupusas 6', 'anotaste $6 de pupusas'),
+            { que: 'Aquí ves de dónde sale', g: 'deDondeSale', ejemplo: ej.deDondeSale, antes: abrirDesglose, sel: '.hoja .desglose' },
+            pasoAnotar('pupusas 6', 'anotaste $6 de pupusas', ej.anotar('pupusas', 'pupusas 6', 6), [6]),
             {
                 que: 'Estos son tus próximos pagos',
                 g: 'pagado',
+                ejemplo: ej.pagado,
                 antes: irA('hoy'),
                 sel: 'section[aria-labelledby="h-pagos"]',
                 hazlo: {
@@ -213,10 +319,11 @@
                     pausa: (a, d) => ({ titulo: 'Mira tu libre', filas: [filaLibre(a, d), { l: 'Tienes', a: a.tienes, d: d.tienes }], texto: d.libre === a.libre ? `Tu libre no cambió: el teléfono ya estaba restado. Lo que tienes bajó ${corto(a.tienes - d.tienes)}.` : cambioLibre(a, d, 'marcaste el teléfono') }),
                 },
             },
-            { que: 'Aquí ves con qué pagas el colegio', g: 'pagasCon', antes: abrirEn('pagos', 'pago', 'colegio'), sel: seccion('Lo pagas con') },
+            { que: 'Aquí ves con qué pagas el colegio', g: 'pagasCon', ejemplo: 'El colegio vence el 5: sale de tu quincena del 30, no de tu libre de hoy.', antes: abrirEn('pagos', 'pago', 'colegio'), sel: seccion('Lo pagas con') },
             pasoCuadrar,
         ],
-        pregunta: { p: 'Tienes $100 y antes de tu quincena pagas $40. ¿Cuánto tienes libre?', ops: ['$100', '$60', '$140'], bien: 1, si: '¡Exacto! $100 menos $40: te quedan $60 para gastar.', casi: 'Casi: a los $100 réstale los $40 que pagas antes. Te quedan $60.', repaso: 0 },
+        // V2-76: la pregunta no inventa montos: no están en la pantalla.
+        pregunta: { p: '¿Qué es tu libre?', ops: ['Todo lo que tienes', 'Lo que tienes, menos ahorros y lo que pagas antes de tu quincena', 'Lo que te pagan en tu quincena'], bien: 1, si: '¡Exacto! Es lo que puedes gastar sin tocar lo que debes pagar.', casi: 'Casi: es lo que tienes, menos tus ahorros y lo que pagas antes de tu quincena.', repaso: 0 },
     };
     const PROXIMA = {
         id: 'proxima',
@@ -225,11 +332,13 @@
         persona: 'ana',
         cargar: preparar(() => ana(), 'fijo:proxima'),
         pasos: [
-            { que: 'Esta es tu próxima quincena', g: 'proxima', antes: irA('hoy'), sel: '.proy-w' },
-            { que: 'Mira el signo ~ en «~$600»', g: 'aprox', antes: irA('hoy'), sel: '.proy-w' },
+            { que: 'Esta es tu próxima quincena', g: 'proxima', ejemplo: ej.proxima, antes: irA('hoy'), sel: '.proy-w' },
+            { que: ej.aproxQue, g: 'aprox', ejemplo: ej.aprox, antes: irA('hoy'), sel: '.proy-w' },
             {
                 que: 'Aquí pasas lo que te sobra',
                 g: 'pasar',
+                ejemplo: ej.pasar(50),
+                montos: [50],
                 antes: abrirDesglose,
                 sel: '[data-fk="d-pasar"]',
                 hazlo: {
@@ -243,14 +352,16 @@
                     pausa: (a, d) => ({ titulo: 'Mira tu próxima quincena', filas: [filaLibre(a, d), ...(a.quedan !== null ? [{ l: 'Te quedarían', a: a.quedan, d: d.quedan, aprox: true }] : [])], texto: cambioLibre(a, d, `pasaste ${corto(a.libre - d.libre)} a tu próxima quincena`) }),
                 },
             },
-            { que: 'Aquí cambias o repartes un pago', g: 'repartir', antes: abrirEn('pagos', 'pago', 'colegio'), sel: seccion('Lo pagas con') },
+            { que: 'Aquí cambias o repartes un pago', g: 'repartir', ejemplo: 'El colegio puede salir una parte de esta quincena y otra de la próxima.', antes: abrirEn('pagos', 'pago', 'colegio'), sel: seccion('Lo pagas con') },
         ],
-        pregunta: { p: 'Ves «entra ~$600». ¿Qué quiere decir el signo ~?', ops: ['Exactamente $600', 'Más o menos $600', 'Que ya te cayó'], bien: 1, si: '¡Así es! ~ es «más o menos». Cuenta de verdad cuando te cae.', casi: 'Casi: ~ quiere decir «más o menos». Cuenta de verdad cuando te cae.', repaso: 1 },
+        pregunta: { p: 'Ves «~» antes de un monto. ¿Qué quiere decir?', ops: ['Que es exacto', 'Que es más o menos', 'Que ya llegó'], bien: 1, si: '¡Así es! ~ es «más o menos». Cuenta de verdad cuando llega.', casi: 'Casi: ~ quiere decir «más o menos». Cuenta de verdad cuando llega.', repaso: 1 },
     };
-    const pasoAhorros = { que: 'Aquí están tus ahorros', g: 'ahorros', antes: abrirEn('midinero', 'ahorros'), sel: seccion('Tus ahorros') };
+    const pasoAhorros = { que: 'Aquí están tus ahorros', g: 'ahorros', ejemplo: ej.ahorros, antes: abrirEn('midinero', 'ahorros'), sel: seccion('Tus ahorros') };
     const pasoAhorrar = (monto) => ({
         que: 'Así guardas en un ahorro',
         g: 'ahorrar',
+        ejemplo: ej.ahorrar(monto),
+        montos: [monto],
         antes: abrirEn('midinero', 'ahorros'),
         sel: '[data-fk="md-apartar"]',
         hazlo: {
@@ -276,23 +387,24 @@
         sub: 'Ponle nombre a una parte de tu dinero',
         persona: 'ana',
         cargar: preparar(() => ana(), 'fijo:ahorros'),
-        pasos: [pasoAhorros, pasoAhorrar(50), { que: 'Este es tu ahorro para la laptop', g: 'usar', antes: abrirEn('midinero', 'apartado', 'laptop'), sel: '[data-fk="ap-usar"]' }],
-        pregunta: { p: 'Pones $50 en tu ahorro «Emergencias». ¿Dónde queda ese dinero?', ops: ['En una cuenta nueva', 'Se gasta', 'En tu banco o efectivo, con nombre'], bien: 2, si: '¡Eso! No se mueve: solo le pones nombre y deja de contar en tu libre.', casi: 'Casi: sigue en tu banco o efectivo. Solo le pones nombre.', repaso: 0 },
+        pasos: [pasoAhorros, pasoAhorrar(50), { que: 'Este es tu ahorro para la laptop', g: 'usar', ejemplo: ej.usar, antes: abrirEn('midinero', 'apartado', 'laptop'), sel: '[data-fk="ap-usar"]' }],
+        pregunta: { p: 'Pones dinero en tu ahorro «Emergencias». ¿Dónde queda ese dinero?', ops: ['En una cuenta nueva', 'Se gasta', 'En tu banco o efectivo, con nombre'], bien: 2, si: '¡Eso! No se mueve: solo le pones nombre y deja de contar en tu libre.', casi: 'Casi: sigue en tu banco o efectivo. Solo le pones nombre.', repaso: 0 },
     };
     const pasosTarjeta = (frase, cosa) => [
-        { que: 'Tu número incluye la tarjeta', g: 'tarjeta', antes: irA('hoy'), sel: '.portada' },
+        { que: 'Tu número incluye la tarjeta', g: 'tarjeta', ejemplo: ej.tarjeta, antes: irA('hoy'), sel: '.portada' },
         {
             que: 'Anota una compra con tarjeta',
             para: `Escribe «tarjeta» al final: así la app sabe que no salió de tu efectivo.`,
-            ejemplo: `Compraste ${cosa} de $30 con tarjeta: escribes «${frase}».`,
+            ejemplo: ej.compraTarjeta(cosa, frase),
+            montos: [30],
             antes: irA('hoy'),
             sel: '[data-fk="nav-anotar"]',
             hazlo: { claves: ['guardado:gasto'], senal: senalAnotar(frase), foco: '.portada', pausa: pausaLibre('Mira tu libre', (a, d) => `compraste ${corto(a.libre - d.libre)} con tarjeta, aunque la pagues después`) },
         },
-        { que: 'Esto es «Deudas»', g: 'deudas', antes: abrirEn('midinero', 'deudas'), sel: seccion('Tus deudas') },
-        { que: 'Este es tu estado de cuenta', g: 'estadoCuenta', antes: () => abrirEn('midinero', 'tarjeta', P.st.tarjetas[0].id)(), sel: () => document.querySelector('#pantalla .dato-grid')?.closest('section') || null },
+        { que: 'Esto es «Deudas»', g: 'deudas', ejemplo: ej.deudas, antes: abrirEn('midinero', 'deudas'), sel: seccion('Tus deudas') },
+        { que: 'Este es tu estado de cuenta', g: 'estadoCuenta', ejemplo: ej.estadoCuenta, antes: () => abrirEn('midinero', 'tarjeta', P.st.tarjetas[0].id)(), sel: () => document.querySelector('#pantalla .dato-grid')?.closest('section') || null },
     ];
-    const PREGUNTA_TARJETA = { p: 'Compras $30 con tu tarjeta de crédito. ¿Cuándo baja tu libre?', ops: ['Hoy, el día que compras', 'Cuando pagas la tarjeta', 'Nunca'], bien: 0, si: '¡Así es! Baja hoy, aunque la pagues después. Así no te llevas sorpresas.', casi: 'Casi: baja hoy, el día que compras. Así no te llevas sorpresas.', repaso: 0 };
+    const PREGUNTA_TARJETA = { p: 'Compras algo con tu tarjeta de crédito. ¿Cuándo baja tu libre?', ops: ['Hoy, el día que compras', 'Cuando pagas la tarjeta', 'Nunca'], bien: 0, si: '¡Así es! Baja hoy, aunque la pagues después. Así no te llevas sorpresas.', casi: 'Casi: baja hoy, el día que compras. Así no te llevas sorpresas.', repaso: 0 };
     const TARJETAS_FIJO = {
         id: 'tarjetas',
         titulo: 'Tarjetas y estado de cuenta',
@@ -318,8 +430,8 @@
             'fijo:extras',
         ),
         pasos: [
-            { que: 'Aquí ves tu aguinaldo', g: 'aguinaldo', antes: abrirPagos, sel: () => grupo('Más adelante') },
-            { que: 'Aquí ves la matrícula de enero', g: 'pagarConExtra', antes: abrirEn('pagos', 'pago', 'matricula'), sel: seccion('Lo pagas con') },
+            { que: 'Aquí ves tu aguinaldo', g: 'aguinaldo', ejemplo: ej.aguinaldo, antes: abrirPagos, sel: () => grupo('Más adelante') },
+            { que: 'Aquí ves la matrícula de enero', g: 'pagarConExtra', ejemplo: ej.matricula, antes: abrirEn('pagos', 'pago', 'matricula'), sel: seccion('Lo pagas con') },
             { que: 'Aquí anotas un adelanto de salario', g: 'adelanto', antes: abrirPagos, sel: '[data-fk="nuevo-ingreso"]' },
         ],
         pregunta: { p: 'Tu aguinaldo llega el 12 de diciembre. ¿Cuándo suma a tu libre?', ops: ['Desde hoy', 'El día que llega', 'En enero'], bien: 1, si: '¡Así es! Suma el día que llega, no antes.', casi: 'Casi: suma el día que llega. Antes no cuenta.', repaso: 0 },
@@ -365,19 +477,22 @@
         cargar: preparar(() => rosa(), 'variable:esencial'),
         pasos: [
             pasoLibre,
-            pasoAnotar('vendí 45', 'anotaste $45 de ventas'),
+            pasoAnotar('vendí 45', 'anotaste $45 de ventas', ej.anotar('pupusas', 'vendí 45', 45, true), [45]),
             {
                 que: 'Con el mismo botón anotas un gasto',
                 para: 'Lo del negocio y lo de la casa se anotan igual.',
-                ejemplo: 'Compraste queso por $12: escribes «queso 12».',
+                ejemplo: ej.anotar('queso', 'queso 12', 12),
+                montos: [12],
                 antes: irA('hoy'),
                 sel: '[data-fk="nav-anotar"]',
                 hazlo: { claves: ['guardado:gasto'], senal: senalAnotar('queso 12'), foco: '.portada', pausa: pausaLibre('Mira tu libre', () => 'anotaste $12 de queso') },
             },
-            { que: 'Estos son tus próximos pagos', g: 'loQueViene', antes: irA('hoy'), sel: 'section[aria-labelledby="h-pagos"]' },
+            { que: 'Estos son tus próximos pagos', g: 'loQueViene', ejemplo: ej.loQueViene, antes: irA('hoy'), sel: 'section[aria-labelledby="h-pagos"]' },
             {
                 que: 'Este aviso te ayuda con el alquiler',
                 g: 'guardar',
+                ejemplo: ej.guardar(40),
+                montos: [40],
                 antes: irA('hoy'),
                 sel: '.aviso-hoy',
                 hazlo: {
@@ -394,7 +509,7 @@
             },
             { ...pasoCuadrar, que: 'Aquí cuadras al final del día' },
         ],
-        pregunta: { p: 'Tienes $100 y antes de fin de mes pagas $40. ¿Cuánto tienes libre?', ops: ['$100', '$60', '$140'], bien: 1, si: '¡Exacto! $100 menos $40: te quedan $60 para gastar.', casi: 'Casi: a los $100 réstale los $40 que pagas antes. Te quedan $60.', repaso: 0 },
+        pregunta: { p: '¿Qué es tu libre?', ops: ['Todo lo que tienes', 'Lo que tienes, menos ahorros y lo que pagas antes de fin de mes', 'Lo que vas a vender este mes'], bien: 1, si: '¡Exacto! Es lo que puedes gastar sin tocar lo que debes pagar.', casi: 'Casi: es lo que tienes, menos tus ahorros y lo que pagas antes de fin de mes.', repaso: 0 },
     };
     const HORIZONTE = {
         id: 'horizonte',
@@ -407,7 +522,7 @@
             {
                 que: 'Cámbialo a 15 días',
                 para: 'Toca tu número y, abajo, elige «Los próximos 15 días».',
-                ejemplo: 'Hoy es 21: con 15 días ves hasta el 5 del otro mes.',
+                ejemplo: ej.quince,
                 antes: irA('hoy'),
                 sel: '.portada',
                 hazlo: {
@@ -428,12 +543,12 @@
         persona: 'rosa',
         cargar: preparar(() => rosa(), 'variable:proximoMes'),
         pasos: [
-            { que: 'Así quedas el próximo mes', g: 'proxima', antes: irA('hoy'), sel: '.proy-w' },
-            { que: 'Esta es la remesa que esperas', g: 'remesa', antes: abrirPagos, sel: '[data-fk^="i-remesa-"]' },
+            { que: 'Así quedas el próximo mes', g: 'proxima', ejemplo: ej.proxima, antes: irA('hoy'), sel: '.proy-w' },
+            { que: 'Esta es la remesa que esperas', g: 'remesa', ejemplo: ej.remesa, antes: abrirPagos, sel: '[data-fk^="i-remesa-"]' },
             {
                 que: 'Cuando llegue, dilo aquí',
                 para: 'El día que te llega, abre la remesa y toca «Ya llegó».',
-                ejemplo: 'Llegan $150: ese día tu libre sube $150.',
+                ejemplo: ej.remesaLlega,
                 antes: abrirPagos,
                 sel: '[data-fk^="i-remesa-"]',
                 hazlo: {
@@ -450,7 +565,7 @@
                 },
             },
         ],
-        pregunta: { p: 'Esperas una remesa de $150 que no ha llegado. ¿Cuenta en tu libre?', ops: ['Sí, ya cuenta', 'No, cuenta cuando llega', 'Solo la mitad'], bien: 1, si: '¡Así es! Suma el día que llega y tocas «Ya llegó».', casi: 'Casi: la remesa suma cuando llega, no antes.', repaso: 1 },
+        pregunta: { p: 'Esperas una remesa que no ha llegado. ¿Cuenta en tu libre?', ops: ['Sí, ya cuenta', 'No, cuenta cuando llega', 'Solo la mitad'], bien: 1, si: '¡Así es! Suma el día que llega y tocas «Ya llegó».', casi: 'Casi: la remesa suma cuando llega, no antes.', repaso: 1 },
     };
     const AHORROS_VAR = {
         id: 'ahorros',
@@ -462,9 +577,9 @@
             pasoAhorros,
             pasoAhorrar(20),
             // V2-59 (#29): la semana mala ya no aparece sola: la persona la abre y la cierra.
-            { que: 'Si vendes poco, tu libre puede llegar a $0', g: 'libreCero', antes: irA('hoy'), sel: '.portada', ejemploVer: { boton: 'Ver un ejemplo', que: 'Así se vería una semana mala', texto: 'Libre en $0 y te digo cuánto falta. Puedes sacar de un ahorro. Sin culpa.', volver: 'Volver a mis números' } },
+            { que: 'Si vendes poco, tu libre puede llegar a cero', g: 'libreCero', antes: irA('hoy'), sel: '.portada', ejemploVer: { boton: 'Ver un ejemplo', que: 'Así se vería una semana mala', texto: ej.semanaMala, volver: 'Volver a mis números' } },
         ],
-        pregunta: { p: 'Tuviste una semana mala y tu libre está en $0. ¿Qué significa?', ops: ['Que hiciste algo mal', 'Que no te sobra', 'Que la app falló'], bien: 1, si: '¡Así es! No te sobra, y te digo cuánto falta. Sin culpa.', casi: 'Casi: $0 es que no te sobra. Te digo cuánto falta, sin culpa.', repaso: 2 },
+        pregunta: { p: 'Tuviste una semana mala y tu libre quedó en cero. ¿Qué significa?', ops: ['Que hiciste algo mal', 'Que no te sobra', 'Que la app falló'], bien: 1, si: '¡Así es! No te sobra, y te digo cuánto falta. Sin culpa.', casi: 'Casi: cero quiere decir que no te sobra. Te digo cuánto falta, sin culpa.', repaso: 2 },
     };
     const TARJETAS_VAR = {
         id: 'tarjetas',
@@ -514,9 +629,10 @@
     const clave = (cap) => `${cap.version}:${cap.id}`;
     const esVariable = (cap) => cap.version === 'variable';
     /** Los textos de un paso: el título dice qué estás viendo; el glosario, para qué te sirve y un ejemplo. */
+    const valor = (x) => (typeof x === 'function' ? x() : x);
     const textosPaso = (cap, paso) => {
         const g = paso.g ? glosario(paso.g, esVariable(cap)) : null;
-        return { que: paso.que, para: paso.para || (g ? g.para : ''), ejemplo: paso.ejemplo || (g ? g.ejemplo : '') };
+        return { que: valor(paso.que), para: paso.para || (g ? g.para : ''), ejemplo: valor(paso.ejemplo) || (g ? g.ejemplo : '') };
     };
     const TEXTO_ELEGIR = 'Hay dos versiones. Elige la que se parece a ti; después puedes hacer la otra.';
     const TEXTO_OSCURO = 'Te muestro una cosa a la vez. Lo que queda oscuro lo verás después.';
@@ -534,6 +650,11 @@
         return { caps, version: VERSIONES[e.tourVersion] ? e.tourVersion : null, ultimo: e.tourUltimo || null };
     }
     T.progreso = progreso;
+    /** V2-76 (para las pruebas): los montos que el paso actual pide escribir o hacer. */
+    T.montosPaso = () => {
+        const p = T.cap && T.cap.pasos[T.i];
+        return (p && valor(p.montos)) || [];
+    };
     const estadoCap = (cap) => progreso().caps[clave(cap)] || { paso: 0, hecho: false };
     function guardarCap(cap, cambios) {
         if (!P.modos) return;
@@ -561,13 +682,17 @@
         const d = { libre: 39400, tienes: 130000, efectivo: 1500, quedan: 59500, apartado: 95000, porDia: 4300, hasta: '2026-11-05' };
         T.cuadre = T.cuadre || { cree: 1900, di: 1500 };
         const out = [v.etiqueta, v.sub, TEXTO_ELEGIR, TEXTO_OSCURO, '¿Cómo te entra el dinero?', '¿Sigues donde te quedaste?'];
+        // V2-76: los ejemplos se calculan con los datos de cada capítulo, como en la pantalla (solo con los ejemplos;
+        // al terminar, lo que estaba cargado vuelve como estaba).
+        const antes = P.modo !== 'uso' && P.st ? structuredClone(P.st) : null;
         for (const cap of v.caps) {
+            if (antes) cap.cargar();
             out.push(cap.titulo, cap.sub);
             if (cap.intro) out.push(cap.intro);
             for (const paso of cap.pasos) {
                 const x = textosPaso(cap, paso);
                 out.push(x.que, x.para, x.ejemplo);
-                if (paso.ejemploVer) out.push(paso.ejemploVer.boton, paso.ejemploVer.que, paso.ejemploVer.texto, paso.ejemploVer.volver);
+                if (paso.ejemploVer) out.push(paso.ejemploVer.boton, paso.ejemploVer.que, valor(paso.ejemploVer.texto), paso.ejemploVer.volver);
                 if (paso.hazlo) {
                     const p = paso.hazlo.pausa(a, d);
                     out.push(p.titulo, p.texto);
@@ -576,6 +701,10 @@
             const q = cap.pregunta;
             out.push(q.p, ...q.ops, q.si, q.casi);
             out.push(...finTextos(cap));
+        }
+        if (antes) {
+            P.st = antes;
+            P.render();
         }
         return out.filter(Boolean);
     };
@@ -741,7 +870,7 @@
             const x = textosPaso(cap, paso);
             const ver = paso.ejemploVer;
             if (ver && T.ejemplo) {
-                return pintarTarjeta(capa, { el: resolver(paso.sel), cab: cabecera(indicador(cap, T.i)), titulo: esc(ver.que), cuerpo: `<p class="txt tour-para">${esc(ver.texto)}</p>`, acciones: pie('', btn(esc(ver.volver), 'tourEjemplo', { prim: true, v: 'no', fk: 'tour-ejemplo-volver' })) });
+                return pintarTarjeta(capa, { el: resolver(paso.sel), cab: cabecera(indicador(cap, T.i)), titulo: esc(ver.que), cuerpo: `<p class="txt tour-para">${esc(valor(ver.texto))}</p>`, acciones: pie('', btn(esc(ver.volver), 'tourEjemplo', { prim: true, v: 'no', fk: 'tour-ejemplo-volver' })) });
             }
             let acciones;
             if (T.repaso) acciones = pie('', btn('Volver a la pregunta', 'tourVolverPregunta', { prim: true, fk: 'tour-volver-pregunta' }));

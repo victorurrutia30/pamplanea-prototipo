@@ -57,6 +57,22 @@
         if (A.abierto && A.panel === 'instalar') pintar();
     });
     window.addEventListener('appinstalled', () => marcarInstalada('sí'));
+    /**
+     * v2.6.1 (V2-74): `navigator.storage.persist()`. Chrome lo decide solo (uso del sitio, instalada); Safari, sobre
+     * todo si está instalada en la pantalla de inicio. No muestra nada si no se concede. Firefox sí pregunta.
+     */
+    A.persistente = null;
+    A.pedirPersistencia = async () => {
+        try {
+            if (!navigator.storage || !navigator.storage.persist) return (A.persistente = null);
+            A.persistente = (await navigator.storage.persisted()) || (await navigator.storage.persist());
+        } catch {
+            A.persistente = null;
+        }
+        P.emitir('datos:persistente:' + A.persistente);
+        return A.persistente;
+    };
+    A.instalada = () => instalada();
     function marcarInstalada(valor) {
         const d = datos();
         d.prueba.instalada = valor;
@@ -98,9 +114,15 @@
     }
     /** La barra de estado (Android) toma el color del aviso de arriba, en claro y oscuro. */
     P.colorBarra = function () {
-        const meta = document.querySelector('meta[name="theme-color"]');
         const aviso = $('#aviso-proto');
-        if (meta && aviso) meta.content = getComputedStyle(aviso).backgroundColor;
+        if (!aviso) return;
+        // v2.6.1 (V2-74): en hexadecimal (color-mix da «color(srgb …)», que la barra del teléfono puede no entender) y
+        // las dos etiquetas (claro y oscuro del teléfono) siguen el tema elegido en la app.
+        const c = getComputedStyle(aviso).backgroundColor;
+        const m = /color\(srgb ([\d.]+) ([\d.]+) ([\d.]+)/.exec(c);
+        const v = m ? m.slice(1, 4).map((x) => Number(x) * 255) : (c.match(/[\d.]+/g) || []).slice(0, 3).map(Number);
+        const hex = v.length === 3 ? '#' + v.map((x) => Math.max(0, Math.min(255, Math.round(x))).toString(16).padStart(2, '0')).join('') : c;
+        for (const meta of document.querySelectorAll('meta[name="theme-color"]')) meta.content = hex;
     };
 
     // ------------------------------------------------------------------ prueba guiada: estado
@@ -391,13 +413,28 @@
         compartir: `<svg class="ay-dib" viewBox="0 0 48 48" aria-hidden="true"><rect x="12" y="18" width="24" height="24" rx="4" fill="none" stroke="currentColor" stroke-width="3"/><path d="M24 30V6m-8 8 8-8 8 8" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
         agregar: `<svg class="ay-dib" viewBox="0 0 48 48" aria-hidden="true"><rect x="8" y="8" width="32" height="32" rx="7" fill="none" stroke="currentColor" stroke-width="3"/><path d="M24 16v16M16 24h16" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>`,
         menu: `<svg class="ay-dib" viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="12" r="4" fill="currentColor"/><circle cx="24" cy="24" r="4" fill="currentColor"/><circle cx="24" cy="36" r="4" fill="currentColor"/></svg>`,
+        interruptor: `<svg class="ay-dib" viewBox="0 0 48 48" aria-hidden="true"><rect x="6" y="14" width="36" height="20" rx="10" fill="currentColor"/><circle cx="32" cy="24" r="7" fill="#fff"/></svg>`,
+        safari: `<svg class="ay-dib" viewBox="0 0 48 48" aria-hidden="true"><circle cx="24" cy="24" r="17" fill="none" stroke="currentColor" stroke-width="3"/><path d="m31 17-4.5 9.5L17 31l4.5-9.5Z" fill="currentColor"/></svg>`,
         listo: `<svg class="ay-dib" viewBox="0 0 48 48" aria-hidden="true"><rect x="6" y="6" width="36" height="36" rx="9" fill="#ba1679"/><path d="M18 34V14h7.5c4.2 0 7 2.6 7 6.4S29.7 27 25.5 27H22v7h-4Zm4-10.6h3c1.9 0 3-1 3-2.6s-1.1-2.5-3-2.5h-3v5.1Z" fill="#fff"/></svg>`,
     };
+    /**
+     * v2.6.1 (V2-74): cómo instalarla, según el teléfono. En iPhone se instala desde Safari: Compartir → «Agregar a
+     * pantalla de inicio» (en iOS 26 hay un interruptor «Abrir como app web»: encendido). Desde WhatsApp u otra app,
+     * primero se abre en Safari. En iPhone, instalarla es lo que protege los datos: Safari puede borrar los de una página
+     * que no se abre en varios días y la app instalada guarda los suyos aparte (no ve lo que se anotó en Safari).
+     */
     function pasosInstalar() {
+        const conDatos = !!(P.modos && P.modos.tieneDatos && P.modos.tieneDatos());
         let pasos;
         if (instalada()) pasos = `<p class="txt">${icon('circle-check', 'ico-s')} Ya la tienes instalada.</p>`;
-        else if (esIOS && !esSafariIOS) pasos = `<div class="nota nota--info" role="note">${icon('info')}<p><strong>En iPhone se instala desde Safari.</strong> Copia el enlace y ábrelo en Safari; ahí sigue los pasos.</p></div>${navigator.clipboard && window.isSecureContext ? `<button type="button" class="btn btn--48 btn--full" data-a="ayCopiarEnlace" data-fk="ay-copiar-enlace">Copiar el enlace</button><p class="fila-s" id="ay-enlace-ok" aria-live="polite"></p>` : `<p class="txt ay-enlace">${esc(location.href.split('#')[0])}</p>`}`;
-        else if (esIOS) pasos = `<ol class="ay-pasos-dib"><li>${dibujo.compartir}<span>Toca <strong>Compartir</strong> (el cuadro con la flecha), abajo o arriba de Safari.</span></li><li>${dibujo.agregar}<span>Baja y toca <strong>«Agregar a pantalla de inicio»</strong>.</span></li><li>${dibujo.listo}<span>Toca <strong>«Agregar»</strong>. Aparece el ícono de PamPlanea.</span></li></ol><p class="fila-s">En iPhone, la app instalada empieza de nuevo: ábrela desde tu pantalla de inicio y vuelve a escribir tu nombre.</p>`;
+        else if (esIOS && !esSafariIOS)
+            pasos = `<div class="nota nota--info" role="note">${icon('info')}<p><strong>En iPhone se instala desde Safari.</strong> Ábrela ahí y sigue los pasos.</p></div>
+                <ol class="ay-pasos-dib"><li>${dibujo.safari}<span>Si la abriste desde WhatsApp u otra app, busca <strong>«Abrir en Safari»</strong> (a veces está en <strong>⋯</strong>).</span></li><li>${dibujo.compartir}<span>Si no aparece, copia el enlace y pégalo en Safari.</span></li></ol>
+                ${navigator.clipboard && window.isSecureContext ? `<button type="button" class="btn btn--48 btn--full" data-a="ayCopiarEnlace" data-fk="ay-copiar-enlace">Copiar el enlace</button><p class="fila-s" id="ay-enlace-ok" aria-live="polite"></p>` : `<p class="txt ay-enlace">${esc(location.href.split('#')[0])}</p>`}`;
+        else if (esIOS)
+            pasos = `<ol class="ay-pasos-dib"><li>${dibujo.compartir}<span>Toca <strong>Compartir</strong>: el cuadro con la flecha, en la barra de Safari. Si no lo ves, toca <strong>⋯</strong> primero.</span></li><li>${dibujo.agregar}<span>Baja en la lista y toca <strong>«Agregar a pantalla de inicio»</strong>.</span></li><li>${dibujo.interruptor}<span>Si ves <strong>«Abrir como app web»</strong>, déjalo encendido. Toca <strong>«Agregar»</strong>.</span></li><li>${dibujo.listo}<span>Abre PamPlanea desde su ícono en tu pantalla de inicio.</span></li></ol>
+                <div class="nota nota--atencion" role="note">${icon('triangle-alert')}<p><strong>Instálala para que tus datos no se borren.</strong> Safari puede borrar los datos de una página que no abres en varios días.</p></div>
+                <p class="fila-s">${conDatos ? 'La app instalada guarda tus datos aparte: lo que ya anotaste aquí no pasa solo. Guarda una copia en «Tus datos» y restáurala en la app.' : 'La app instalada guarda tus datos aparte: empieza a usarla desde el ícono, no desde Safari.'}</p>`;
         else if (promptInstalar) pasos = `<button type="button" class="btn btn--prim btn--48 btn--full" data-a="ayInstalar" data-fk="ay-instalar">${icon('smartphone', 'ico-s')}Instalar</button><p class="fila-s">Aparece en tu pantalla de inicio como cualquier app y abre sin internet.</p>`;
         else if (esAndroid) pasos = `<ol class="ay-pasos-dib"><li>${dibujo.menu}<span>Toca el menú <strong>⋮</strong> de Chrome (arriba a la derecha).</span></li><li>${dibujo.agregar}<span>Elige <strong>«Instalar app»</strong> o <strong>«Agregar a la pantalla principal»</strong>.</span></li><li>${dibujo.listo}<span>Confirma. Aparece el ícono de PamPlanea.</span></li></ol>`;
         else pasos = `<p class="txt">En la computadora no hace falta instalarla. En el teléfono, abre el mismo enlace y aquí verás cómo.</p>`;
@@ -407,7 +444,7 @@
         const enFlujo = A.enFlujo;
         const pasos = pasosInstalar();
         return `<section class="ay-card ay-card--prim" aria-labelledby="ay-inst"><h3 class="ay-h3" id="ay-inst">${icon('smartphone', 'ico-s')}Tenla en tu pantalla de inicio</h3>
-                <p class="txt">Así la abres como una app, a pantalla completa y sin internet. Es opcional.</p>
+                <p class="txt">Así la abres como una app, sin internet y con tus datos más seguros.${enFlujo ? ' Es opcional.' : ''}</p>
                 ${pasos}</section>
             ${instalada() ? (enFlujo ? `<button type="button" class="btn btn--prim btn--48 btn--full" data-a="ayInstalada" data-v="sí" data-fk="ay-inst-seguir">Seguir</button>` : '') : `<div class="ay-acc"><button type="button" class="btn btn--48" data-a="ayInstalada" data-v="sí" data-fk="ay-inst-si">Ya la instalé</button><button type="button" class="btn btn--48" data-a="ayInstalada" data-v="no" data-fk="ay-inst-no">No pude</button></div>
             <button type="button" class="link" data-a="ayInstalada" data-v="no lo intentó" data-fk="ay-inst-saltar">${enFlujo ? 'Ahora no, empezar la prueba' : 'Ahora no'}</button>`}
@@ -422,7 +459,15 @@
             <p class="ay-tarea ay-tarea--grande">${esc(t.tarea)}</p>
             <p class="fila-s">${t.comprension ? 'Solo mira. Después te hacemos tres preguntas.' : 'Hazlo como lo harías tú y di en voz alta lo que piensas. Arriba tendrás «Listo» y «No pude».'}</p>
             <button type="button" class="btn btn--prim btn--48 btn--full" data-a="ayComenzar" data-fk="ay-comenzar">${A.armada ? 'Volver a la tarea' : 'Empezar'}</button></section>
+            ${reiniciarPruebaHtml()}
             ${pieVersion()}`;
+    }
+    /** v2.6.1 (V2-67): «Empezar de nuevo» la prueba guiada, con confirmación. Solo borra el avance de la prueba. */
+    function reiniciarPruebaHtml() {
+        if (A.confirmar === 'reiniciarPrueba') {
+            return `<div class="nota nota--atencion confirmar" role="alertdialog" aria-labelledby="ay-rp-t">${icon('triangle-alert')}<div><p id="ay-rp-t"><strong>¿Empezar de nuevo?</strong> Se borra tu avance de la prueba. Tus datos no se tocan.</p><div class="ay-acc"><button type="button" class="btn" data-a="ayReiniciarPrueba" data-v="no" data-fk="ay-rp-no">Cancelar</button><button type="button" class="btn btn--peligro" data-a="ayReiniciarPrueba" data-v="si" data-fk="ay-rp-si">Sí, empezar de nuevo</button></div></div></div>`;
+        }
+        return `<button type="button" class="link" data-a="ayReiniciarPrueba" data-v="pregunta" data-fk="ay-rp">${icon('rotate-ccw', 'ico-s')}Empezar de nuevo</button>`;
     }
     function vistaRespuesta() {
         const d = datos();
@@ -453,6 +498,7 @@
                 <p class="txt">Lo que hiciste en la prueba. Tú eliges a quién se lo mandas.</p>
                 <button type="button" class="btn btn--prim btn--48 btn--full" data-a="ayIr" data-v="contar" data-fk="ay-fin-contar">Ver qué se manda</button></section>
             <button type="button" class="btn btn--48 btn--full" data-a="modoCambiar" data-v="uso" data-fk="ay-fin-usar">${icon('smartphone', 'ico-s')}${tiene ? 'Volver a mis datos' : 'Usarla con mis datos'}</button>
+            ${reiniciarPruebaHtml()}
             ${pieVersion()}`;
     }
     function vistaModerador() {
@@ -496,7 +542,8 @@
                 ${op('🎓', 'Aprender a usarla', 'Lo esencial y capítulos cortos, con datos de ejemplo', 'ayIr', 'ay-tour', 'data-v="aprendeMas"')}
                 ${op('🎯', 'Prueba guiada', subPrueba, 'ayPrueba', 'ay-prueba')}</div>`;
         const fila = (ic, t, sub, v, fk) => `<li class="fila"><button type="button" class="fila-main" data-a="ayIr" data-v="${v}" data-fk="${fk}"><span class="emo emo--ico" aria-hidden="true">${icon(ic)}</span><span class="fila-txt"><span class="fila-t">${t}</span><span class="fila-s">${sub}</span></span>${icon('chevron-right', 'ico-xs')}</button></li>`;
-        const mas = `<ul class="lista card ay-lista">${fila('receipt-text', 'Cuéntale a Victor o a Pam cómo vas', 'Qué se manda y qué no', 'contar', 'au-contar')}${fila('rotate-ccw', 'Tus datos', 'Guardar copia, restaurar o borrar', 'datos', 'au-datos')}</ul>`;
+        // V2-69 (#38): «Instalar la app» es su propia fila, solo si todavía no está instalada.
+        const mas = `<ul class="lista card ay-lista">${instalada() || P.enGuia ? '' : fila('circle-plus', 'Instalar la app', 'Para que tus datos no se borren', 'instalar', 'au-instalar')}${fila('receipt-text', 'Cuéntale a Victor o a Pam cómo vas', 'Qué se manda y qué no', 'contar', 'au-contar')}${fila('rotate-ccw', 'Tus datos', 'Guardar copia, restaurar o borrar', 'datos', 'au-datos')}</ul>`;
         const donde = `<p class="txt">${enUso ? 'Estás usando tus datos: se guardan solo en este teléfono.' : 'Estás en modo entrenamiento: datos de ejemplo.'}</p>`;
         return `${enCursoCard}${donde}${tres}${mas}${vistaApariencia()}${victor ? herramientasVictor() : ''}${pieVersion()}`;
     }
@@ -772,6 +819,29 @@
         P.cargarPersona('ana');
         pintarBarra();
         P.emitir('moderador:nueva');
+        abrirPanel('bienvenida');
+    };
+    /**
+     * v2.6.1 (V2-67): «Empezar de nuevo». Se borra el avance de la prueba (tareas, tiempos y respuestas); el nombre y el
+     * perfil quedan escritos y la app vuelve a elegir el set sola (sin letras). Los datos reales no se tocan.
+     */
+    acc.ayReiniciarPrueba = (d) => {
+        if (d.v === 'pregunta' || d.v === 'no') {
+            A.confirmar = d.v === 'pregunta' ? 'reiniciarPrueba' : null;
+            pintar({ foco: d.v === 'pregunta' ? '[data-fk="ay-rp-no"]' : '[data-fk="ay-rp"]' });
+            return;
+        }
+        const x = datos();
+        A.nombreTester = x.nombre;
+        A.perfil = { ...(x.prueba.perfil || {}) };
+        x.prueba = pruebaVacia();
+        guardar(x);
+        A.texto = '';
+        A.armada = false;
+        A.confirmar = null;
+        pintarBarra();
+        P.emitir('prueba:reiniciar');
+        A.enFlujo = false;
         abrirPanel('bienvenida');
     };
     acc.aySimular = (d) => {

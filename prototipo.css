@@ -3611,3 +3611,51 @@ html.con-hazlo .mask {
 .ct-lista--no .ay-h3 .ico {
     color: var(--color-text-muted);
 }
+
+/* ------------------------------------------------------------------ v2.6.1 (V2-72) · diálogo de confirmación */
+/* Un solo patrón para «¿Descartar los cambios?», «¿Salir del entrenamiento?» y «¿Pausar la prueba?»: encima de todo,
+   abajo (al alcance del pulgar), con el botón seguro a la izquierda y con el foco. */
+.capa-dlg:empty {
+    display: none;
+}
+.capa-dlg {
+    position: absolute;
+    inset: 0;
+    z-index: 450;
+    display: flex;
+    align-items: flex-end;
+    padding: 16px 16px calc(var(--safe-bottom, 0px) + 16px);
+}
+.dlg-fondo {
+    position: absolute;
+    inset: 0;
+    background: rgb(0 0 0 / 0.5);
+    animation: p-fundido 160ms var(--app-motion-ease) backwards;
+}
+.dlg {
+    position: relative;
+    width: 100%;
+    border: 1px solid var(--color-border);
+    border-radius: 20px;
+    background: var(--color-surface-2);
+    box-shadow: var(--app-shadow-overlay);
+    padding: 20px 16px 16px;
+    animation: p-sube 200ms var(--app-motion-ease) both;
+}
+.dlg-t {
+    margin: 0 0 6px;
+    font-size: 1.125rem;
+    line-height: 1.3;
+}
+.dlg-acc {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 16px;
+}
+@media (prefers-reduced-motion: reduce) {
+    .dlg,
+    .dlg-fondo {
+        animation: none;
+    }
+}
