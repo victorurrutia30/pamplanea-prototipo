@@ -1,4 +1,4 @@
-# Producto v2 · prototipo de teléfono — versión 2.6.2
+# Producto v2 · prototipo de teléfono — versión 2.6.3
 
 **Qué es:** un prototipo clicable de la app completa propuesta en Producto v2. Desde la v2.2 tiene **dos modos**: **entrenamiento** (datos inventados de Ana, Carlos y Rosa; entrenamiento en dos versiones —fecha fija o ingresos que varían— con «Lo esencial» y «Aprende más», 18 ejercicios y la prueba A/B para testers) y **uso normal** (la familia cercana de Victor la usa 1–2 semanas con su dinero real, guardado solo en su teléfono). Desde la v2.6, la persona solo ve tres caminos —«Usarla con mis datos», «Aprender a usarla» y «Prueba guiada»— y las herramientas de Victor (casos, sets, moderador) se abren con `?victor=1`. Es una maqueta de flujo y comprensión, no producción.
 
@@ -14,7 +14,96 @@ Sin servidor propio, sin dependencias, sin CDN, sin analítica ni rastreadores. 
 
 **Estado:** brief y acuerdos V2-01…V2-22 APROBADOS por Victor (2026-10-16); **V2-23 a V2-30** y **V2-31 (respuestas v2.1)** APROBADOS por Victor (2026-10-16); **V2-34 a V2-49** APROBADOS por Victor (2026-10-17) — V2-15 y V2-31 #7 quedan REEMPLAZADAS por V2-34. **V2-50 a V2-55** y la corrección adicional (adelanto de salario) APROBADOS por Victor (2026-10-17). **v2.4 «Entrenamiento a prueba de todo»** y sus tres ajustes previos APROBADOS por Victor (2026-10-17). **V2-56 a V2-58** y el **entrenamiento en dos versiones** (v2.4.1) APROBADOS por Victor (2026-10-18). **v2.5 «Entrenamiento sencillo y a fondo»** (estructura, ritmo y claridad) y **V2-59** (respuestas 26–29) APROBADOS por Victor (2026-10-18). **V2-60 a V2-63** (v2.6 «Simplificar para la prueba familiar») APROBADOS por Victor (2026-10-19). **V2-64 a V2-78** (QA profundo, deudas y tarjetas, Primer día, lenguaje, botón atrás, iPhone y entrenamiento; v2.6.1 a v2.6.3) APROBADOS por Victor (2026-10-19). Nada de esto está documentado todavía en el repo de la app: se documentará después de las pruebas con personas. Este prototipo no cambia nada del repo de la app.
 
-Versión visible en la app y en la guía: **«Prototipo v2.6.2 · 2026-10-19»**.
+Versión visible en la app y en la guía: **«Prototipo v2.6.3 · 2026-10-19»**.
+
+---
+
+## Prototipo v2.6.3 (2026-10-19): QA profundo, fase 3 — formularios, cuadros y consistencia
+
+**Por qué:** V2-65 («que mantenga mucha consistencia y que use los mejores y mas ideales formularios de UX y UI, para que se vea bien bien bonita la app y facil de usar»), V2-66 (los cuadros) y la revisión general del lenguaje de V2-75. Con la libertad de V2-71 y sus tres límites: la lógica del dinero no cambió, nadie pierde datos ni progreso (probado desde la v2.5, la v2.6, la v2.6.1 y la v2.6.2) y las pantallas principales siguen donde estaban.
+
+### Auditoría de diseño: lo que estaba distinto y cómo quedó (un patrón por tipo de elemento)
+
+| Inconsistencia | Dónde | Cómo quedó |
+|---|---|---|
+| El botón principal decía «Guardar» para todo | Anotar y casi todos los formularios | Dice la acción: «Guardar gasto», «Guardar ingreso», «Marcar pagado», «Guardar recordatorio», «Cuadrar», «Guardar pago», «Agregar deuda», «Agregar tarjeta», «Agregar lugar», «Agregar medio», «Pasar», «Guardar meta», «Guardar descuento», «Guardar estado de cuenta». En Anotar cambia mientras escribes («súper 25» → «Guardar gasto»; «vendí 45» → «Guardar ingreso») |
+| «Tengo $___» y «Tengo (cuadre)» no se entendían | Anotar | **«Cuadrar»** (el atajo y el tipo), el dato se llama «Tienes ahora» y la pregunta es concreta: **«¿Cuánto tienes ahora en Efectivo?»** («Más o menos. Desde aquí sigue la cuenta.») |
+| «tengo 50 efectivo» igual preguntaba «¿Dónde?» | Anotar (el intérprete) | Lo entiende: Efectivo. Una pregunta menos |
+| Etiquetas que no eran pregunta («Nombre») | Tarjeta o préstamo, ingreso esperado, lugar, medio, meta | **«¿Cómo se llama?»** |
+| Montos sin formato | Todos los campos de dinero | Al salir del campo: «1234.5» → **«1,234.50»**; al volver, el número simple para seguir escribiendo; se guarda igual |
+| «Ej. 25.00» como ejemplo de un límite de crédito | Tarjeta | «Ej. 1,000.00» |
+| «+ Pago» con dos cuadros y una lista suelta | Pagos | Cuatro cuadros iguales (V2-66, abajo) |
+| «Ej. Colegio» dentro de «Facturas de servicios» | + Pago | «Ej. Luz» |
+| El «−» de los pagos solo en el calendario | Pagos → Mis pagos e ingresos y tarjetas | También ahí (V2-73) |
+| El enlace «Completar tu Primer día…» se salía por la derecha | Mi dinero → Deudas | «Completar tu Primer día» |
+| A 320 de ancho, el botón principal se partía en dos líneas | Pie de todas las hojas | Le toca más espacio que «Cancelar» (2 : 3) a menos de 360 de ancho |
+| «Hola, Ana» con los datos de ejemplo | Hoy en el entrenamiento | «Hola» (el nombre de la persona de ejemplo solo donde el entrenamiento lo usa) |
+| «¿En qué se te fue?» | Mes | «Lo que entró y lo que gastaste» y «¿En qué gastaste?» (V2-75) |
+
+Lo que ya era un solo patrón y se revisó: errores junto al campo con ícono y texto (nunca solo color), confirmaciones de eliminar dentro de la hoja, «Deshacer» en los avisos, 44 px, foco y Escape, y el mismo diálogo para descartar o salir (v2.6.1).
+
+### Formularios de primer nivel (V2-65)
+
+- **Etiqueta visible en forma de pregunta**, nunca reemplazada por el ejemplo: «¿Qué pagas?», «¿Cuánto pagas?», «¿Cómo se llama?», «¿Cuánto tienes ahora en Efectivo?», «¿Cuánto recibes más o menos?», «¿Qué día la pagas?».
+- **Montos:** «$» dentro del campo, `inputmode="decimal"`, coma o punto («1,000.50», «1000,50», «1.000,50», «.5»), formato al salir, tope de $1,000,000.00 con su mensaje (v2.6.1).
+- **Errores en línea**, junto al campo, en español simple y sin culpa («Ponle un nombre», «Escribe el monto», «Escribe cuánto tienes, aunque sea $0»).
+- **El botón principal** siempre visible en el pie de la hoja (sobre el teclado: la hoja se ajusta al alto visible) y **con la acción**.
+- **Cuadros en vez de listas** cuando hay pocas opciones (V2-66), valores por defecto que ya estaban (hoy, el medio de siempre, la suscripción en tu primera tarjeta) y **ninguna pregunta que la app ya sabe** («tengo 50 efectivo»).
+
+### Clasificación en cuadros (V2-66)
+
+- **«+ Pago»:** cuatro cuadros del mismo estilo: **«Cuota de un préstamo»** (abre el mismo formulario de Deudas), **«Suscripción»**, **«Facturas de servicios»** (luz, agua, internet, teléfono, cable: «¿Cuál factura?») y **«Otro pago»** (alquiler, colegio, cuchubal u otro, con nombre libre). Un toque clasifica (categoría y emoji); elegir una factura marca su cuadro.
+- **Primer día:** los gastos fijos en los mismos grupos: Facturas de servicios, Casa y familia, Suscripciones (v2.6.2).
+- **La categoría «Servicios» se llama «Facturas de servicios»** (en Anotar, Mes y el desglose), igual que su cuadro. Mismo id (`servicios`): lo anotado por la familia se ve igual, con el nombre nuevo; motor y esquema sin cambios.
+
+### Mirada de project manager (una quincena real, desde el Primer día)
+
+- **La promesa en 10 segundos:** al terminar el Primer día, «Tu primer número» lo dice en una frase («Es lo que puedes gastar hasta tu quincena del 30 sin tocar tus pagos, tus deudas ni tus tarjetas»); Hoy abre con ese número, hasta cuándo y cuánto por día.
+- **Una acción principal por pantalla:** Hoy → (+) Anotar; Pagos → «+ Pago»; Mi dinero → sus tres puertas; Mes → tocar algo para corregirlo; cada formulario → su botón con la acción.
+- **Después de cada acción:** el aviso breve con «Deshacer», el número cambia a la vista y el botón dijo qué iba a pasar.
+- Lo que pediría cambios de flujo más grandes queda en las decisiones pendientes.
+
+### Guía de lenguaje (completa)
+
+| Antes | Ahora | Dónde | Por qué |
+|---|---|---|---|
+| «entra ~$600» / «Entra $X» | «ingreso ~$600» / «Ingresos $X» | Hoy, Pagos | V2-75: «te entra» suena mal |
+| «Lo que te pagan» / «te entra» | «Tus ingresos» / «ingresos» | Pagos → Mis pagos e ingresos | V2-75 |
+| «¿Ya te cayó?», «Sí, me cayó», «No me cayó», «¿Cuánto te cayó?», «¿Dónde cayó?» | «¿Ya llegó?», «Sí, ya llegó», «No llegó», «¿Cuánto te llegó?», «¿Dónde llegó?» | Hoy, avisos, confirmar un ingreso, Anotar, Reparte, Pongámonos al día | V2-75: sin «te cae» |
+| «te caen ~$90», «cuando te caiga», «cae en» | «recibes ~$90», «cuando llegue», «llega a» | Avisos, Hoy, Pagos | V2-75 |
+| «Cómo te entra el dinero» / «Me entra cuando vendo o trabajo» | «Cómo recibes tu dinero» / «Lo recibo cuando vendo o trabajo» | Tu cuenta, entrenamiento | V2-75 |
+| «Cupo» / «Te quedan $X de cupo» | «Límite de crédito» / «Disponible $X de $Y» | Tarjeta, Deudas, desglose | V2-75 |
+| «Total» / «Mínimo» (al agregar tarjeta) | «Pago de contado» / «Pago mínimo» | Tarjeta | Un término por concepto |
+| «¿Cuándo es tu turno?» / «¿Cuánto te toca?» | «¿Cuándo te toca recibir?» / «¿Cuánto recibes ese día?» | Cuchubal | V2-75 |
+| «$12.00» (un pago) | «−$12.00» con «Pago»; «+$600.00» con «Ingreso» | Pagos, Hoy | V2-73 |
+| «Tengo $___» / «Tengo (cuadre)» | «Cuadrar» | Anotar | V2-65 (el ejemplo obligatorio) |
+| «¿Cuánto?» (en un cuadre) / «Monto» | «¿Cuánto tienes ahora en Efectivo?» / «Tienes ahora» | Anotar | V2-65 |
+| «Nombre» | «¿Cómo se llama?» | Formularios | V2-65: la etiqueta es una pregunta |
+| «Guardar» | La acción («Guardar gasto», «Agregar tarjeta», «Marcar pagado»…) | Todos los formularios | V2-65 |
+| «Servicios» (categoría) | «Facturas de servicios» | Anotar, Mes, + Pago | V2-66: el mismo nombre que su cuadro |
+| «¿En qué se te fue?» | «Lo que entró y lo que gastaste» / «¿En qué gastaste?» | Mes y su consejo | V2-75 |
+| «Hola, Ana» (con los ejemplos) | «Hola» | Hoy en el entrenamiento | Nombres de ejemplo solo donde el entrenamiento los necesita |
+| «Tienes $100 y antes de tu quincena pagas $40…» | El ejemplo con los números de la pantalla (o sin números) | Entrenamiento, «?», glosario | V2-76 |
+
+Revisión con `herramientas/v262.mjs` (parte F: ninguna pantalla dice «te entra», «te cae» ni «cupo») y con una sonda de 28 pantallas y hojas que busca, además, «apartado», «periodo», «saldo inicial», «ajuste», «conciliación», «asignación», «proyección» e inglés («ok», «email», «check», «tips», «login»…): sin hallazgos. Las frases del entrenamiento, el glosario y los consejos siguen en 20 palabras o menos y sin «quincena» para quien no tiene un ingreso fijo (`v24.mjs`, `v25.mjs`).
+
+### Verificación visual
+
+- **Antes y después lado a lado:** `capturas/v263/index.html` (se abre con doble clic; ruta completa: `C:\laragon\www\pamplanea-prototipo\capturas\v263\index.html`): 66 pares con los mismos datos (Ana, 21 de octubre): 21 pantallas a 390 × 844 en Serena claro y Ancla oscuro, y las 12 con formularios también a 320 de ancho. Generado por `herramientas/capturas-v263.mjs`.
+- **Dos rondas de autocrítica** mirando las capturas: la primera encontró el ejemplo «Ej. Colegio» en las facturas, el botón partido a 320, el enlace que se salía y el «−» que faltaba en la lista de Pagos; la segunda, «¿En qué se te fue?» en Mes. Corregido todo.
+- **Contraste ≥ 4.5:1 en los 4 temas** (medido): v2.5 5.27:1, v2.6 5.69:1, las marcas de ingreso y pago de Pagos (v262 D) y `contraste.mjs`.
+- `herramientas/v263.mjs`: A) los botones con su acción (también mientras escribes), «¿Cuánto tienes ahora en Efectivo?», el atajo «Cuadrar», formato al salir y al volver, errores junto al campo; B) los cuatro cuadros, las facturas de servicios y «Otro pago», y que un toque clasifica; C) a 320 de ancho, nada se sale de las hojas de formulario y el botón principal se ve completo.
+
+### DECISIONES PENDIENTES PARA VICTOR (fase 3)
+
+1. **Hoy tiene muchas tarjetas** (el número, la próxima quincena, los avisos, los próximos pagos y lo último anotado). *Recomendación:* no reordenar antes de la prueba con la QA; después, con lo que la gente mira de verdad, decidir qué se pliega. *Tradeoff:* hoy se ve todo junto, a cambio de una pantalla larga.
+2. **El calendario de Pagos es una línea de tiempo por día**, no una cuadrícula del mes. *Recomendación:* mantenerla (cada día ya separa lo que entra y lo que sale, con marcas). *Tradeoff:* no hay vista del mes de un vistazo.
+3. Las de las fases 1 y 2 siguen abiertas (compras a cuotas, cargo automático, gastos que salieron de un ahorro).
+
+### Limitaciones conocidas (fase 3)
+
+- Las capturas son de Chrome sin ventana a 390 y 320 de ancho, no de un teléfono real: el teclado del teléfono y la rotación no se pueden ver ahí.
+- El formato al salir del campo usa el formato de Estados Unidos (1,234.50), igual que el resto de la app.
 
 ---
 

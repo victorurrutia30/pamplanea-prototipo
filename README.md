@@ -1,4 +1,4 @@
-# PamPlanea · prototipo v2.6.2
+# PamPlanea · prototipo v2.6.3
 
 Una versión de prueba de **PamPlanea**: saber cuánto te queda libre hasta tu próximo ingreso y que no se te olvide ningún pago.
 
@@ -12,6 +12,14 @@ La primera vez eliges cómo empezar: **«Aprender a usarla»** (recomendado) o *
 - **Instalar la app** (solo si todavía no la instalaste), **Completar tu Primer día** (con tus datos), **Cuéntale a Victor o a Pam cómo vas** y **Tus datos** (copia, restaurar y borrar), la apariencia y la versión.
 
 Lo de tus datos y lo de los ejemplos se guarda por separado: nada de lo que hagas con los ejemplos toca tus datos.
+
+## Lo nuevo en la v2.6.3
+
+- **Formularios más claros:** cada botón dice lo que hace («Guardar gasto», «Agregar tarjeta», «Marcar pagado»…) y cada campo es una pregunta («¿Cómo se llama?», «¿Cuánto tienes ahora en Efectivo?»). En Anotar, «Tengo $___» ahora es **«Cuadrar»**.
+- **Los montos se ven con formato** al salir del campo («1,234.50»).
+- **«+ Pago» con cuatro cuadros:** cuota de un préstamo, suscripción, **facturas de servicios** (luz, agua, internet, teléfono, cable) y otro pago.
+- Pagos: el «−» también en «Mis pagos e ingresos». Mes: «Lo que entró y lo que gastaste».
+- Con los datos de ejemplo, Hoy dice «Hola» (sin el nombre de la persona de ejemplo).
 
 ## Lo nuevo en la v2.6.2
 
@@ -120,8 +128,8 @@ Los enlaces `…/pamplanea-prototipo/?set=A` y `…/?set=B` siguen llevando dire
 ## Para el equipo
 
 - Abre `index.html` con doble clic (Chrome o Edge): funciona sin servidor ni internet, con la guía de los 13 casos y los dos sets.
-- Detalle, decisiones y preguntas abiertas: [`LEEME.md`](LEEME.md) (secciones «Prototipo v2.6.2», «Prototipo v2.6.1», «Prototipo v2.6», «Prototipo v2.5», «Prototipo v2.4.1», «Prototipo v2.4», «Prototipo v2.3.1», «Prototipo v2.3» y «Modos v2.2»). La matriz de QA: [`herramientas/MATRIZ-QA.md`](herramientas/MATRIZ-QA.md).
+- Detalle, decisiones y preguntas abiertas: [`LEEME.md`](LEEME.md) (secciones «Prototipo v2.6.3», «Prototipo v2.6.2», «Prototipo v2.6.1», «Prototipo v2.6», «Prototipo v2.5», «Prototipo v2.4.1», «Prototipo v2.4», «Prototipo v2.3.1», «Prototipo v2.3» y «Modos v2.2»). La matriz de QA: [`herramientas/MATRIZ-QA.md`](herramientas/MATRIZ-QA.md).
 - **Pruebas** (`herramientas/`, en el repo desde la v2.6.1; no se publican en la app): Node 22 o más nuevo y **Chrome** (o Edge) instalado en su ruta normal de Windows (`herramientas/cdp.mjs`); sin dependencias ni `npm install`. Por file:// basta `node herramientas/<prueba>.mjs` (por ejemplo `qa-v261.mjs`, `atras.mjs`, `numeros-entrenamiento.mjs`, `v261.mjs`, `v26.mjs`, `v25.mjs`…). Para probarla servida como en Pages: `node herramientas/servidor.mjs 8765` y la prueba con `--base=http://127.0.0.1:8765/pamplanea-prototipo/`. Que los datos sobrevivan a una actualización: `node herramientas/actualizar.mjs --ref=7c0d06e` (desde la v2.5) o `--ref=ca97256` (desde la v2.6). `generar-recursos.mjs` lee la piel del repo de la app (`C:/laragon/www/pamplanea`, solo lectura). `recorrer.mjs` es el recorrido de la v1: queda como historia (sus casos esperan cosas que acuerdos posteriores cambiaron). Para publicar una versión: `VERSION_PROTOTIPO` en `casos.js`, la de `index.html` y `node herramientas/generar-sw.mjs vX-AAAA-MM-DD`.
 - Licencias de fuentes, emoji e íconos: [`recursos/licencias`](recursos/licencias).
 
-Prototipo v2.6.2 · 2026-10-19
+Prototipo v2.6.3 · 2026-10-19
