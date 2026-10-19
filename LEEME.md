@@ -1,4 +1,4 @@
-# Producto v2 · prototipo de teléfono — versión 2.6.1
+# Producto v2 · prototipo de teléfono — versión 2.6.2
 
 **Qué es:** un prototipo clicable de la app completa propuesta en Producto v2. Desde la v2.2 tiene **dos modos**: **entrenamiento** (datos inventados de Ana, Carlos y Rosa; entrenamiento en dos versiones —fecha fija o ingresos que varían— con «Lo esencial» y «Aprende más», 18 ejercicios y la prueba A/B para testers) y **uso normal** (la familia cercana de Victor la usa 1–2 semanas con su dinero real, guardado solo en su teléfono). Desde la v2.6, la persona solo ve tres caminos —«Usarla con mis datos», «Aprender a usarla» y «Prueba guiada»— y las herramientas de Victor (casos, sets, moderador) se abren con `?victor=1`. Es una maqueta de flujo y comprensión, no producción.
 
@@ -14,7 +14,88 @@ Sin servidor propio, sin dependencias, sin CDN, sin analítica ni rastreadores. 
 
 **Estado:** brief y acuerdos V2-01…V2-22 APROBADOS por Victor (2026-10-16); **V2-23 a V2-30** y **V2-31 (respuestas v2.1)** APROBADOS por Victor (2026-10-16); **V2-34 a V2-49** APROBADOS por Victor (2026-10-17) — V2-15 y V2-31 #7 quedan REEMPLAZADAS por V2-34. **V2-50 a V2-55** y la corrección adicional (adelanto de salario) APROBADOS por Victor (2026-10-17). **v2.4 «Entrenamiento a prueba de todo»** y sus tres ajustes previos APROBADOS por Victor (2026-10-17). **V2-56 a V2-58** y el **entrenamiento en dos versiones** (v2.4.1) APROBADOS por Victor (2026-10-18). **v2.5 «Entrenamiento sencillo y a fondo»** (estructura, ritmo y claridad) y **V2-59** (respuestas 26–29) APROBADOS por Victor (2026-10-18). **V2-60 a V2-63** (v2.6 «Simplificar para la prueba familiar») APROBADOS por Victor (2026-10-19). **V2-64 a V2-78** (QA profundo, deudas y tarjetas, Primer día, lenguaje, botón atrás, iPhone y entrenamiento; v2.6.1 a v2.6.3) APROBADOS por Victor (2026-10-19). Nada de esto está documentado todavía en el repo de la app: se documentará después de las pruebas con personas. Este prototipo no cambia nada del repo de la app.
 
-Versión visible en la app y en la guía: **«Prototipo v2.6.1 · 2026-10-19»**.
+Versión visible en la app y en la guía: **«Prototipo v2.6.2 · 2026-10-19»**.
+
+---
+
+## Prototipo v2.6.2 (2026-10-19): QA profundo, fase 2 — deudas, tarjetas y Primer día
+
+**Por qué:** el feedback de Pam (V2-68: «I struggled un poco con agregar otra deuda»), la revisión de deudas, tarjetas y duplicados (V2-70), y lo que Victor vio en Pagos y en el entrenamiento (V2-73, V2-75, V2-77, V2-78). Las decisiones, con su frase literal, están en la sección v2.6.1.
+
+### El Primer día nuevo (V2-68)
+
+Cinco pasos, en el orden aprobado, con «Paso N de 5» y su barra:
+
+1. **¿Cómo te pagan?** (rápido: sin tu ingreso no hay número libre).
+2. **¿Cuánto tienes ahora y dónde?** (tu primer cuadre; es el único que no se salta).
+3. **Tus deudas:** préstamo, casa comercial, crédito de vivienda u «Otra deuda». Cada una con «¿Cómo se llama?», «¿Cuánto pagas de cuota?», «¿Qué día la pagas?» y «¿Cuánto debes en total? (opcional)». Después de agregar una, **«Agregar otra deuda»** queda a la vista; cada deuda agregada se **edita** (lápiz) o se **quita** (x) sin salir del paso. «No tengo deudas» si no hay.
+4. **Tus tarjetas de crédito:** el banco, **«¿Cuánto debes hoy?»** (opcional), el **día de corte** (si no lo sabes, vacío) y el **día de pago**, y **«¿Cuánto pagas normalmente?»** (opcional: se aparta de tu libre hasta tu estado de cuenta, V2-54). **«Agregar otra tarjeta»**, editar y quitar igual que las deudas. «El límite de crédito nunca suma a tu libre: es dinero prestado.»
+5. **Tus gastos fijos**, en cuadros: **Facturas de servicios** (luz, agua, internet, teléfono, cable), **Casa y familia** (alquiler, colegio, cuchubal) y **Suscripciones**. En cada uno: **«¿Se cobra solo en una tarjeta o cuenta?»** con «No, lo pago yo» y tus tarjetas y cuentas («En Crédito BAC», «En Banco Agrícola»…). Una suscripción, por defecto, en tu primera tarjeta (V2-47). El cuchubal pregunta «¿Cuándo te toca recibir?» (opcional) y «¿Cuánto recibes ese día?».
+
+Al final, **«Tu primer número»** con su frase: «Es lo que puedes gastar hasta tu quincena del 30 sin tocar tus pagos, tus deudas ni tus tarjetas.» Lo que queda escrito en un formulario abierto se agrega al tocar «Siguiente» (si falta algo, lo dice junto al campo y no avanza).
+
+- **Retomable:** si se cierra la app a mitad, vuelve al mismo paso con lo agregado (se guarda con tus datos).
+- **Quien ya lo pasó no lo vuelve a ver a la fuerza:** en «Ayuda» (con tus datos) y en Mi dinero → Deudas está **«Completar tu Primer día»**: solo deudas, tarjetas y gastos fijos («Paso 1 de 3»), que **se suman** a lo que ya tienes (tus lugares e ingresos no se tocan; los nombres de tarjeta no se repiten: «Crédito BAC 2») y se pueden **deshacer** («Agregamos 3 cosas a tu cuenta · Deshacer»).
+- Ya no pregunta «¿Con qué pagas?»: el débito sale de cada banco, las tarjetas de su paso y las transferencias se agregan en Mi dinero → Cuentas si hacen falta.
+- Lo que se crea, sin duplicados ni huérfanos: cada deuda es UN pago mensual con su saldo opcional (`tipoDeuda`, `deuda.debe`; V2-08); cada tarjeta, una tarjeta de crédito con su medio, su pago estimado (`pagoUsual`) y lo que debes hoy **«por confirmar»** (`debeInicial`: se ve en Deudas y en «Debes en total», nunca toca el libre); cada gasto que se cobra solo queda con ese medio y la marca «Se cobra solo en …» (`automatico`), y cuenta una sola vez al marcarlo «Pagado» (C-03, C-04); el turno del cuchubal es un ingreso esperado de una vez, ligado al cuchubal.
+
+### Deudas y tarjetas en Mi dinero (V2-78, V2-75)
+
+- **Una tarjeta agregada después** (Mi dinero → Deudas → «Agregar otra deuda o tarjeta») también pregunta, si todavía no tienes estado de cuenta, **«¿Cuánto pagas normalmente?»** y **«¿Cuánto debes hoy?»**: su pago estimado aparece en Pagos y se aparta del libre; lo que debes queda «por confirmar». **Cuando anotas el estado de cuenta, el estimado se reemplaza: no se suma** (probado). El corte y el pago siguen las reglas de V2-43 (nada de antes de empezar) y V2-57.
+- **«Límite de crédito»** (en el formulario) y **«Disponible $1,210.00 de $1,500.00»** (en Deudas y en la ficha), en vez de «cupo». En el formulario, el estado de cuenta usa los mismos nombres que su hoja: «Pago de contado» y «Pago mínimo».
+- El botón de Deudas dice «Agregar una deuda o tarjeta» / **«Agregar otra deuda o tarjeta»**.
+
+### Pagos: qué suma y qué resta (V2-73)
+
+- Cada fila del calendario dice **«Ingreso»** (flecha hacia abajo: entra) o **«Pago»** (flecha hacia arriba: sale), con texto: nunca solo color.
+- Los montos: **un ingreso que llegó «+$600.00»**, **un pago «−$12.00»**; un estimado sigue sin signo («~$600», «~$35»), por el acuerdo de la v2.3 («nunca mostrar «+~$597»; un estimado se escribe «~$597»»): lo que dice si suma o resta es la etiqueta. El mismo «−» en los pagos de Hoy.
+- **Cada día lleva su marca:** «+ Ingreso», «− Pago» o «− 2 pagos» (o las dos). En un mismo día, lo que entra va primero. Contraste de las marcas ≥ 4.5:1 en los 4 temas (medido).
+- El calendario de Pagos es una línea de tiempo por día: todo lo de cada día ya está a la vista, separado (no hace falta tocar un día).
+- «Mis pagos e ingresos»: «Al mes, más o menos: ingresos ~$X · pagos ~$Y»; la sección se llama **«Tus ingresos»**; «llega a Banco Agrícola».
+
+### El cuchubal (V2-75)
+
+La ficha del cuchubal dice **«Tu turno de recibir: 20 de noviembre · $400.00»** y «Aportas $25.00 cada viernes. Tu turno suma a tu libre el día que llega.» Si no tiene turno (lo guardado antes), dice «¿Cuándo te toca recibir?» con **«Anotar mi turno»** (fecha y cuánto recibes), sin romper nada. «+ Pago» → Cuchubal pregunta «¿Cuándo te toca recibir?» y lo liga al cuchubal.
+
+### El entrenamiento, coherente (V2-69, V2-77)
+
+- **V2-69 #36:** sin «Seguir mirando los ejemplos» al final de cada capítulo. **#37:** «Practicar» sin los dos ejercicios de Carlos (16 ejercicios).
+- **V2-77, capítulo «Tarjetas y estado de cuenta»** (4 pasos, dentro de la estructura aprobada en la v2.5: capítulos de 2 a 4): «Tu número incluye la tarjeta» («Tu libre de $300 ya tiene restados $245 de tu tarjeta, que vence el 5 de noviembre.»), anotar una compra con tarjeta (la pausa dice que baja tu libre aunque la pagues después), **«El disponible no es tu dinero»** («Disponible $1,210 de $1,500: es prestado, nunca suma a tu libre.») y **«Estado de cuenta, corte y pago»** («Estado de cuenta: cuánto pagar. Corte: cierra tus compras. Pago: tu último día.» · «Corta el 15 y se paga el 5: pago de contado $245, mínimo $25.»). El paso «Esto es Deudas» salió de este capítulo (Deudas sigue explicada en su «?»). Todos con los números de la pantalla (`numeros-entrenamiento.mjs`).
+- «Practicar» → «Primer día» y la tarea de la prueba guiada siguen el orden nuevo.
+
+### Guía de lenguaje (fase 2: Pagos, calendario, tarjetas y cuchubal)
+
+| Antes | Ahora | Dónde | Por qué |
+|---|---|---|---|
+| «entra ~$600» / «Entra $X» | «ingreso ~$600» / «Ingresos $X» | Hoy (próxima quincena), Pagos (resúmenes) | V2-75: «te entra» suena mal |
+| «te entra» / «Lo que te pagan» | «ingresos» / «Tus ingresos» | Pagos → Mis pagos e ingresos | V2-75 |
+| «¿Ya te cayó?», «Sí, me cayó», «No me cayó», «¿Cuánto te cayó?» | «¿Ya llegó?», «Sí, ya llegó», «No llegó», «¿Cuánto te llegó?» | Hoy, avisos, confirmar un ingreso, Reparte, Pongámonos al día | V2-75: sin «te cae» |
+| «te caen ~$90», «cuando te caiga» | «recibes ~$90», «cuando llegue» | Avisos de la próxima quincena, Hoy | V2-75 |
+| «cae en Banco Agrícola» | «llega a Banco Agrícola» | Pagos → ingresos | V2-75 |
+| «Cómo te entra el dinero» / «Me entra cuando vendo o trabajo» | «Cómo recibes tu dinero» / «Lo recibo cuando vendo o trabajo» | Tu cuenta, entrenamiento | V2-75 |
+| «Cupo» / «Te quedan $X de cupo» | «Límite de crédito» / «Disponible $X de $Y» | Formulario de tarjeta, Deudas, ficha, desglose | V2-75: «cupo» no se entiende |
+| «Total» / «Mínimo» (al agregar tarjeta) | «Pago de contado» / «Pago mínimo» | Formulario de tarjeta | Un término por concepto (como en el estado de cuenta) |
+| «¿Cuándo es tu turno?» / «¿Cuánto te toca?» | «¿Cuándo te toca recibir?» / «¿Cuánto recibes ese día?» | Cuchubal (+ Pago, Primer día, su ficha) | V2-75 |
+| «$12.00» (pago) | «−$12.00» con «Pago»; «+$600.00» con «Ingreso» | Pagos, Hoy | V2-73 |
+
+La revisión general del lenguaje (el resto de la app, el entrenamiento y el glosario) sigue en la fase 3.
+
+### Calidad (v2.6.2)
+
+- **Nueva:** `herramientas/v262.mjs`: A) el Primer día completo a mano (tres deudas seguidas, editar y quitar, dos tarjetas con validación del día, gastos que se cobran solos, cuchubal con turno), retomar al recargar y lo que se crea; B) «Completar tu Primer día» (suma sin tocar lugares ni ingresos, «Deshacer»); C) una tarjeta después con su pago estimado (baja el libre lo mismo) que su estado de cuenta reemplaza; D) Pagos con «Ingreso»/«Pago», signos, marcas por día y **contraste ≥ 4.5:1 en los 4 temas**; E) el turno del cuchubal; F) ninguna pantalla dice «te entra», «te cae» ni «cupo».
+- **Actualizadas** por las decisiones (no por fallos): las pruebas que recorren el Primer día (un paso más: `v24`, `v241`, `v25`, `v231`, `aceptacion-v23`, `recorrer-v2`, `recorrer-sets`, `recorrer-modos`, `entrega2-v23` —que ya no espera las transferencias del Primer día—, `capturas-ux`), las que esperaban «entra»/«te cae»/«cupo» o los ejercicios de Carlos y la de «Seguir mirando los ejemplos».
+- **Resultados:** por file://, todas las de `herramientas/` (motor, los 13 casos en los 2 temas, sets, modos, la guía en Chrome y Edge, aceptación, v2.3.1, entrega 2, viaje, humo, v2.4, v2.4.1, v2.5 con contraste mínimo 5.27:1, v2.6 con 5.69:1, qa-v261 44/44, atras, numeros-entrenamiento con 0 montos que no se ven, v261, v262, PWA, contraste y teclado) sin fallos ni errores de consola; **servidas** en la subruta de Pages (v262, qa-v261, atras, v261, numeros-entrenamiento, v26 en Serena oscuro y Ancla oscuro, v25, sets, modos, 13 casos, aceptación, v2.3.1, v2.4.1, v2.4, entrega 2, viaje y humo): sin fallos. **Actualizar** desde la v2.5 (`7c0d06e`), la v2.6 (`ca97256`) y la v2.6.1 (`ddded80`): mismas claves, tus datos idénticos, el progreso y la prueba guiada iguales, y sin internet (`actualizar.mjs`). Para eso, el Primer día a medias se guarda con tus datos solo mientras está a medias (quien ya lo pasó no recibe ningún campo nuevo).
+
+### DECISIONES PENDIENTES PARA VICTOR (fase 2)
+
+1. **Compras a cuotas en una tarjeta (V2-78).** Los acuerdos de cuotas (V2-08) hablan de préstamos, no de tarjetas. *Recomendación:* que «¿Cuánto pagas normalmente?» las incluya hasta el primer estado de cuenta (así ya cuentan) y, después, que cada estado de cuenta las traiga en su total, como hoy. *Tradeoff:* la app no sabe cuándo termina cada compra a cuotas ni avisa la última.
+2. **Gasto que se cobra solo (V2-68).** Hoy queda con su medio y la marca «Se cobra solo en …», pero la persona igual toca «Pagado» (V2-43: no se inventa lo que no pasó). *Recomendación:* para los que se cobran en una tarjeta, marcarlos solos como compra de esa tarjeta el día que vencen (se puede desmarcar); para los de una cuenta, seguir preguntando. *Tradeoff:* si el cobro falló (tarjeta rechazada), el número cuenta algo que no pasó hasta que la persona lo corrige.
+3. **Corregir el monto de un gasto que salió de un ahorro** (B-AP3) y **eliminar el gasto de un ahorro ya cumplido** (B-AP4): siguen como en la fase 1.
+
+### Limitaciones conocidas (fase 2)
+
+- «Completar tu Primer día» agrega; lo que ya tenías se edita donde siempre (Mi dinero, Pagos).
+- Lo que debes hoy de una tarjeta sin estado de cuenta es informativo: no cambia el libre (el libre cuenta lo que pagas normalmente).
 
 ---
 

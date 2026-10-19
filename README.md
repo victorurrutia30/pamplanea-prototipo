@@ -1,4 +1,4 @@
-# PamPlanea · prototipo v2.6.1
+# PamPlanea · prototipo v2.6.2
 
 Una versión de prueba de **PamPlanea**: saber cuánto te queda libre hasta tu próximo ingreso y que no se te olvide ningún pago.
 
@@ -6,12 +6,22 @@ Una versión de prueba de **PamPlanea**: saber cuánto te queda libre hasta tu p
 
 La primera vez eliges cómo empezar: **«Aprender a usarla»** (recomendado) o **«Usarla con mis datos»**. Después, en **«Ayuda»** (arriba a la derecha) y en **tu letra** (arriba a la izquierda) siempre ves lo mismo, y nada más:
 
-- **Usarla con mis datos:** tu dinero real, con la fecha real de tu teléfono. Empiezas desde cero: cómo te pagan, cuánto tienes y dónde, y tus pagos fijos.
+- **Usarla con mis datos:** tu dinero real, con la fecha real de tu teléfono. Empiezas desde cero: cómo te pagan, cuánto tienes y dónde, tus deudas, tus tarjetas y tus gastos fijos.
 - **Aprender a usarla:** primero te pregunta cómo te entra el dinero —en fecha fija (quincena, mes o semana) o cuando vendes o trabajas— y te enseña, a tu ritmo, con **datos de ejemplo**. **«Lo esencial»** son 6 pasos que bastan para empezar; en algunos lo haces tú y ves el número cambiar. Después, si quieres, **«Aprende más»**: capítulos cortos que haces cuando quieras, y ejercicios para practicar. Nada de lo que hagas ahí toca tus datos.
 - **Prueba guiada:** tareas cortas para ver si la app se entiende (unos 15 minutos, con datos de ejemplo). No es un examen para ti: es para la app.
-- **Instalar la app** (solo si todavía no la instalaste), **Cuéntale a Victor o a Pam cómo vas** y **Tus datos** (copia, restaurar y borrar), la apariencia y la versión.
+- **Instalar la app** (solo si todavía no la instalaste), **Completar tu Primer día** (con tus datos), **Cuéntale a Victor o a Pam cómo vas** y **Tus datos** (copia, restaurar y borrar), la apariencia y la versión.
 
 Lo de tus datos y lo de los ejemplos se guarda por separado: nada de lo que hagas con los ejemplos toca tus datos.
+
+## Lo nuevo en la v2.6.2
+
+- **Un Primer día que guía mejor** (pedido de Pam): 5 pasos cortos: tu ingreso, cuánto tienes, **todas tus deudas** (con «Agregar otra deuda» siempre a la vista; cada una se edita o se quita sin salir), **tus tarjetas de crédito** (cuánto debes hoy, su día de corte, su día de pago y cuánto pagas normalmente) y **tus gastos fijos**, preguntando si **se cobran solos en una tarjeta o cuenta**. Si cierras la app a mitad, sigues donde ibas. Al final, tu número libre con una frase que lo explica.
+- **¿Ya lo pasaste?** En «Ayuda» o en Mi dinero → Deudas está **«Completar tu Primer día»**: agrega deudas, tarjetas y gastos fijos a lo que ya tienes (y se puede deshacer).
+- **Pagos, más claro:** cada fila dice **«Ingreso»** o **«Pago»**, los pagos restan (**−$12.00**) y los ingresos suman (**+$600.00**), y cada día dice si trae ingresos, pagos o los dos.
+- **Tarjetas:** «Límite de crédito» y «Disponible» (lo disponible nunca suma a tu libre). Una tarjeta nueva, aunque todavía no tenga estado de cuenta, ya cuenta lo que pagas normalmente; cuando llega su estado de cuenta, lo reemplaza.
+- **Cuchubal:** «Tu turno de recibir: [fecha] · $[monto]» y cuánto aportas; si no lo tenías anotado, la app te lo pregunta.
+- **Palabras más claras:** sin «te entra» ni «te cae» («ingreso», «¿Ya llegó?», «Tus ingresos»).
+- «Aprender a usarla» explica mejor las tarjetas (el disponible no es tu dinero; corte y fecha de pago); sin «Seguir mirando los ejemplos»; «Practicar» sin los ejercicios de Carlos.
 
 ## Lo nuevo en la v2.6.1
 
@@ -110,8 +120,8 @@ Los enlaces `…/pamplanea-prototipo/?set=A` y `…/?set=B` siguen llevando dire
 ## Para el equipo
 
 - Abre `index.html` con doble clic (Chrome o Edge): funciona sin servidor ni internet, con la guía de los 13 casos y los dos sets.
-- Detalle, decisiones y preguntas abiertas: [`LEEME.md`](LEEME.md) (secciones «Prototipo v2.6.1», «Prototipo v2.6», «Prototipo v2.5», «Prototipo v2.4.1», «Prototipo v2.4», «Prototipo v2.3.1», «Prototipo v2.3» y «Modos v2.2»). La matriz de QA: [`herramientas/MATRIZ-QA.md`](herramientas/MATRIZ-QA.md).
+- Detalle, decisiones y preguntas abiertas: [`LEEME.md`](LEEME.md) (secciones «Prototipo v2.6.2», «Prototipo v2.6.1», «Prototipo v2.6», «Prototipo v2.5», «Prototipo v2.4.1», «Prototipo v2.4», «Prototipo v2.3.1», «Prototipo v2.3» y «Modos v2.2»). La matriz de QA: [`herramientas/MATRIZ-QA.md`](herramientas/MATRIZ-QA.md).
 - **Pruebas** (`herramientas/`, en el repo desde la v2.6.1; no se publican en la app): Node 22 o más nuevo y **Chrome** (o Edge) instalado en su ruta normal de Windows (`herramientas/cdp.mjs`); sin dependencias ni `npm install`. Por file:// basta `node herramientas/<prueba>.mjs` (por ejemplo `qa-v261.mjs`, `atras.mjs`, `numeros-entrenamiento.mjs`, `v261.mjs`, `v26.mjs`, `v25.mjs`…). Para probarla servida como en Pages: `node herramientas/servidor.mjs 8765` y la prueba con `--base=http://127.0.0.1:8765/pamplanea-prototipo/`. Que los datos sobrevivan a una actualización: `node herramientas/actualizar.mjs --ref=7c0d06e` (desde la v2.5) o `--ref=ca97256` (desde la v2.6). `generar-recursos.mjs` lee la piel del repo de la app (`C:/laragon/www/pamplanea`, solo lectura). `recorrer.mjs` es el recorrido de la v1: queda como historia (sus casos esperan cosas que acuerdos posteriores cambiaron). Para publicar una versión: `VERSION_PROTOTIPO` en `casos.js`, la de `index.html` y `node herramientas/generar-sw.mjs vX-AAAA-MM-DD`.
 - Licencias de fuentes, emoji e íconos: [`recursos/licencias`](recursos/licencias).
 
-Prototipo v2.6.1 · 2026-10-19
+Prototipo v2.6.2 · 2026-10-19
