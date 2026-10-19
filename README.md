@@ -1,4 +1,4 @@
-# PamPlanea · prototipo v2.6
+# PamPlanea · prototipo v2.6.1
 
 Una versión de prueba de **PamPlanea**: saber cuánto te queda libre hasta tu próximo ingreso y que no se te olvide ningún pago.
 
@@ -9,9 +9,18 @@ La primera vez eliges cómo empezar: **«Aprender a usarla»** (recomendado) o *
 - **Usarla con mis datos:** tu dinero real, con la fecha real de tu teléfono. Empiezas desde cero: cómo te pagan, cuánto tienes y dónde, y tus pagos fijos.
 - **Aprender a usarla:** primero te pregunta cómo te entra el dinero —en fecha fija (quincena, mes o semana) o cuando vendes o trabajas— y te enseña, a tu ritmo, con **datos de ejemplo**. **«Lo esencial»** son 6 pasos que bastan para empezar; en algunos lo haces tú y ves el número cambiar. Después, si quieres, **«Aprende más»**: capítulos cortos que haces cuando quieras, y ejercicios para practicar. Nada de lo que hagas ahí toca tus datos.
 - **Prueba guiada:** tareas cortas para ver si la app se entiende (unos 15 minutos, con datos de ejemplo). No es un examen para ti: es para la app.
-- **Cuéntale a Victor o a Pam cómo vas** y **Tus datos** (copia, restaurar, borrar e instalar), la apariencia y la versión.
+- **Instalar la app** (solo si todavía no la instalaste), **Cuéntale a Victor o a Pam cómo vas** y **Tus datos** (copia, restaurar y borrar), la apariencia y la versión.
 
 Lo de tus datos y lo de los ejemplos se guarda por separado: nada de lo que hagas con los ejemplos toca tus datos.
+
+## Lo nuevo en la v2.6.1
+
+- **El botón atrás del teléfono funciona** (y el gesto de volver): cierra lo que esté abierto, vuelve a la pantalla anterior y, en Hoy, sale como siempre. Si escribiste algo en un formulario, pregunta antes de descartarlo; en el entrenamiento retrocede un paso y en la prueba guiada pregunta antes de pausar.
+- **Instalar en iPhone, mejor explicado:** «Ayuda» → **«Instalar la app»**, con pasos y dibujos para Safari (también con iOS 26) y qué hacer si abriste el enlace desde WhatsApp u otro navegador. En iPhone, **instálala para que tus datos no se borren**: Safari puede borrar los datos de una página que no abres en varios días.
+- **El entrenamiento usa los números que ves:** cada ejemplo sale de los datos de la pantalla (si ves $400 libre, el ejemplo habla de $400).
+- **Prueba guiada: «Empezar de nuevo»**, con confirmación. Tus datos no se tocan.
+- **Arreglos importantes:** eliminar una cuenta, un medio de pago o una tarjeta ya no deja pagos sin medio (te pregunta con qué se pagan ahora); cambiar el día de un pago ya pagado no lo cuenta dos veces; con la app abierta en dos pestañas no se pierde nada; si el teléfono no deja guardar, la app te lo dice. Detalle en el LEEME.
+- Al actualizar, tus datos y tu progreso siguen igual (probado desde la v2.5 y la v2.6).
 
 ## Lo nuevo en la v2.6
 
@@ -77,9 +86,9 @@ Lo de tus datos y lo de los ejemplos se guarda por separado: nada de lo que haga
 Así abre a pantalla completa, funciona sin internet y tus datos están más seguros.
 
 - **Android (Chrome):** menú **⋮** → «Instalar app» o «Agregar a la pantalla principal».
-- **iPhone:** ábrela en **Safari** → **Compartir** (el cuadro con la flecha) → **«Agregar a pantalla de inicio»** → «Agregar». **Instálala antes de empezar con tus datos:** en iPhone la app instalada no ve lo que pusiste en Safari, y Safari puede borrar los datos de páginas que no abres en varios días.
+- **iPhone:** ábrela en **Safari** (si llegó por WhatsApp u otra app: «Abrir en Safari», o copia el enlace y pégalo en Safari) → **Compartir** (el cuadro con la flecha; si no lo ves, toca **⋯** primero) → **«Agregar a pantalla de inicio»** → si aparece **«Abrir como app web»**, déjalo encendido → **«Agregar»** → abre PamPlanea **desde el ícono**. **Instálala antes de empezar con tus datos:** en iPhone la app instalada no ve lo que pusiste en Safari, y Safari puede borrar los datos de páginas que no abres en varios días.
 
-En «Ayuda» → **«Tus datos»** → «Instálala en tu teléfono» están los mismos pasos.
+En «Ayuda» → **«Instalar la app»** están los mismos pasos, con dibujos (la fila desaparece cuando ya está instalada).
 
 ## Cuéntale a Victor o a Pam cómo vas
 
@@ -101,7 +110,8 @@ Los enlaces `…/pamplanea-prototipo/?set=A` y `…/?set=B` siguen llevando dire
 ## Para el equipo
 
 - Abre `index.html` con doble clic (Chrome o Edge): funciona sin servidor ni internet, con la guía de los 13 casos y los dos sets.
-- Detalle, decisiones y preguntas abiertas: [`LEEME.md`](LEEME.md) (secciones «Prototipo v2.6», «Prototipo v2.5», «Prototipo v2.4.1», «Prototipo v2.4», «Prototipo v2.3.1», «Prototipo v2.3» y «Modos v2.2»).
+- Detalle, decisiones y preguntas abiertas: [`LEEME.md`](LEEME.md) (secciones «Prototipo v2.6.1», «Prototipo v2.6», «Prototipo v2.5», «Prototipo v2.4.1», «Prototipo v2.4», «Prototipo v2.3.1», «Prototipo v2.3» y «Modos v2.2»). La matriz de QA: [`herramientas/MATRIZ-QA.md`](herramientas/MATRIZ-QA.md).
+- **Pruebas** (`herramientas/`, en el repo desde la v2.6.1; no se publican en la app): Node 22 o más nuevo y **Chrome** (o Edge) instalado en su ruta normal de Windows (`herramientas/cdp.mjs`); sin dependencias ni `npm install`. Por file:// basta `node herramientas/<prueba>.mjs` (por ejemplo `qa-v261.mjs`, `atras.mjs`, `numeros-entrenamiento.mjs`, `v261.mjs`, `v26.mjs`, `v25.mjs`…). Para probarla servida como en Pages: `node herramientas/servidor.mjs 8765` y la prueba con `--base=http://127.0.0.1:8765/pamplanea-prototipo/`. Que los datos sobrevivan a una actualización: `node herramientas/actualizar.mjs --ref=7c0d06e` (desde la v2.5) o `--ref=ca97256` (desde la v2.6). `generar-recursos.mjs` lee la piel del repo de la app (`C:/laragon/www/pamplanea`, solo lectura). `recorrer.mjs` es el recorrido de la v1: queda como historia (sus casos esperan cosas que acuerdos posteriores cambiaron). Para publicar una versión: `VERSION_PROTOTIPO` en `casos.js`, la de `index.html` y `node herramientas/generar-sw.mjs vX-AAAA-MM-DD`.
 - Licencias de fuentes, emoji e íconos: [`recursos/licencias`](recursos/licencias).
 
-Prototipo v2.6 · 2026-10-19
+Prototipo v2.6.1 · 2026-10-19

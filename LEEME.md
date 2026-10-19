@@ -1,4 +1,4 @@
-# Producto v2 · prototipo de teléfono — versión 2.6
+# Producto v2 · prototipo de teléfono — versión 2.6.1
 
 **Qué es:** un prototipo clicable de la app completa propuesta en Producto v2. Desde la v2.2 tiene **dos modos**: **entrenamiento** (datos inventados de Ana, Carlos y Rosa; entrenamiento en dos versiones —fecha fija o ingresos que varían— con «Lo esencial» y «Aprende más», 18 ejercicios y la prueba A/B para testers) y **uso normal** (la familia cercana de Victor la usa 1–2 semanas con su dinero real, guardado solo en su teléfono). Desde la v2.6, la persona solo ve tres caminos —«Usarla con mis datos», «Aprender a usarla» y «Prueba guiada»— y las herramientas de Victor (casos, sets, moderador) se abren con `?victor=1`. Es una maqueta de flujo y comprensión, no producción.
 
@@ -12,9 +12,179 @@
 
 Sin servidor propio, sin dependencias, sin CDN, sin analítica ni rastreadores. Fuentes, emoji, íconos y los íconos de la app instalable son locales, con sus licencias (`recursos/licencias`).
 
-**Estado:** brief y acuerdos V2-01…V2-22 APROBADOS por Victor (2026-10-16); **V2-23 a V2-30** y **V2-31 (respuestas v2.1)** APROBADOS por Victor (2026-10-16); **V2-34 a V2-49** APROBADOS por Victor (2026-10-17) — V2-15 y V2-31 #7 quedan REEMPLAZADAS por V2-34. **V2-50 a V2-55** y la corrección adicional (adelanto de salario) APROBADOS por Victor (2026-10-17). **v2.4 «Entrenamiento a prueba de todo»** y sus tres ajustes previos APROBADOS por Victor (2026-10-17). **V2-56 a V2-58** y el **entrenamiento en dos versiones** (v2.4.1) APROBADOS por Victor (2026-10-18). **v2.5 «Entrenamiento sencillo y a fondo»** (estructura, ritmo y claridad) y **V2-59** (respuestas 26–29) APROBADOS por Victor (2026-10-18). **V2-60 a V2-63** (v2.6 «Simplificar para la prueba familiar») APROBADOS por Victor (2026-10-19). Nada de esto está documentado todavía en el repo de la app: se documentará después de las pruebas con personas. Este prototipo no cambia nada del repo de la app.
+**Estado:** brief y acuerdos V2-01…V2-22 APROBADOS por Victor (2026-10-16); **V2-23 a V2-30** y **V2-31 (respuestas v2.1)** APROBADOS por Victor (2026-10-16); **V2-34 a V2-49** APROBADOS por Victor (2026-10-17) — V2-15 y V2-31 #7 quedan REEMPLAZADAS por V2-34. **V2-50 a V2-55** y la corrección adicional (adelanto de salario) APROBADOS por Victor (2026-10-17). **v2.4 «Entrenamiento a prueba de todo»** y sus tres ajustes previos APROBADOS por Victor (2026-10-17). **V2-56 a V2-58** y el **entrenamiento en dos versiones** (v2.4.1) APROBADOS por Victor (2026-10-18). **v2.5 «Entrenamiento sencillo y a fondo»** (estructura, ritmo y claridad) y **V2-59** (respuestas 26–29) APROBADOS por Victor (2026-10-18). **V2-60 a V2-63** (v2.6 «Simplificar para la prueba familiar») APROBADOS por Victor (2026-10-19). **V2-64 a V2-78** (QA profundo, deudas y tarjetas, Primer día, lenguaje, botón atrás, iPhone y entrenamiento; v2.6.1 a v2.6.3) APROBADOS por Victor (2026-10-19). Nada de esto está documentado todavía en el repo de la app: se documentará después de las pruebas con personas. Este prototipo no cambia nada del repo de la app.
 
-Versión visible en la app y en la guía: **«Prototipo v2.6 · 2026-10-19»**.
+Versión visible en la app y en la guía: **«Prototipo v2.6.1 · 2026-10-19»**.
+
+---
+
+## Prototipo v2.6.1 (2026-10-19): QA profundo, fase 1 — fallos graves, botón atrás, iPhone y entrenamiento
+
+**Por qué:** mañana prueba la app una project manager y QA senior con experiencia en empresas de Estados Unidos (usa iPhone), como usuaria y como QA. Victor pidió una revisión total en tres fases, cada una publicada antes de seguir: **v2.6.1** (los fallos graves, el botón atrás, la instalación en iPhone y que el entrenamiento diga los números que se ven), **v2.6.2** (deudas, tarjetas, el Primer día nuevo y el lenguaje de Pagos) y **v2.6.3** (pulido de UI/UX y formularios). La prueba familiar sigue: los datos reales y el progreso del entrenamiento sobreviven a cada actualización (probado desde la v2.5 y la v2.6).
+
+### Decisiones V2-64 a V2-78 (APROBADAS por Victor, 2026-10-19)
+
+- **V2-64 — QA profundo.** «me gustaria que hicieramos una revision total, completa y profunda a la experiencia de la app, no solo visual pero de acciones en general, como editar cosas, como eliminar cosas y que se puede o no eliminar o como afecta»
+- **V2-65 — UI/UX de primer nivel.** «que a pesar que es prototipo, que mantenga mucha consistencia y que use los mejores y mas ideales formularios de UX y UI, para que se vea bien bien bonita la app y facil de usar»
+- **V2-66 — Clasificación en cuadros.** «me encanta los cuadros que clasifican cuota de prestamo y suscripcion, facturas de servicios deberian estar en un cuadro asi y otro cuadro para otros o no se, siento que clasifica mas facil categorias y subcategorias» → cuadro «Facturas de servicios» (luz, agua, internet, teléfono, cable…) con el estilo de «Cuota de préstamo» y «Suscripción», y «Otro» como último recurso. *(Fase 3.)*
+- **V2-67 — Reiniciar la prueba guiada.** «tampoco puedo reiniciar la PRUEBA GUIADA» → «Empezar de nuevo» con la confirmación «Se borra tu avance de la prueba. Tus datos no se tocan.»; la app vuelve a elegir el set sola, sin letras. *(Hecho en esta versión.)*
+- **V2-68 — Primer día guiado por deudas y tarjetas (feedback de Pam).** «Siento que al momento de set up todo te debe guiar a primero setear todas tus deudas. De ahí, lo que debes al momento de las tarjetas de crédito, junto con sus fechas de corte y próxima fecha de pago. De ahí, gastos fijos y consultar si estos gastos fijos son automáticos en una tarjeta. Porque ahorita I struggled un poco con agregar otra deuda» → orden: 1) el ingreso, rápido; 2) TODAS las deudas, con «Agregar otra deuda» visible; 3) las tarjetas de crédito: cuánto debes hoy, corte y próxima fecha de pago; 4) los gastos fijos, preguntando si se cobran solos en una tarjeta o cuenta y cuál. Todo saltable y retomable; al final, el número libre con una frase que lo explique. *(Fase 2.)*
+- **V2-69 — Respuestas a las preguntas 36–39 de la v2.6.** 36) quitar «Seguir mirando los ejemplos» al final de cada capítulo; 37) quitar de «Practicar» los dos ejercicios de Carlos; 38) «Instalar» como fila propia en «Ayuda», visible solo si la app no está instalada, y se quita de «Tus datos»; 39) seguir tapando todo número en «Cuéntale…», por privacidad. *(La 38 se adelantó a esta versión porque es parte de instalar en iPhone; la 39 ya era así; la 36 y la 37, fase 2.)*
+- **V2-70 — Deudas, tarjetas y duplicados.** «revisa bien lo de ingresar pagos o cosas asi que afecten tarjetas que no se ingresen pagos o ingreson que dupliquen cosas o que en verdad pertenezcan a otro tipo de ingreso o pago con tarjeta no se, o pagos recurrentes que son hechos con tarjetas o cuentas especificas»
+- **V2-71 — Libertad para dejarla al 100 %.** «esta en la libertad de hacer lo cambios necesarios para que ui, ux, qa backend y todo eso, pase al 100%» → cualquier cambio de UI, UX, formularios, textos, navegación y flujos pequeños o medianos, registrado aquí, con tres límites: 1) la lógica del dinero no cambia salvo para corregir un bug contra los acuerdos; 2) nadie pierde datos ni progreso; 3) no se quitan ni se mueven las pantallas principales (Hoy, Pagos, Anotar, Mi dinero, Mes) ni se rehace el entrenamiento completo.
+- **V2-72 — Botón atrás y gestos nativos.** «se puede activar que sirva con los botones nativos del telefono? es decir los gestos o no se como se llaman, boton atras nativo del telefono» *(Hecho en esta versión.)*
+- **V2-73 — Pagos, calendario: ingreso o pago.** «en la seccion pagos, en la vista calendario, no se diferencia visualmente o cuesta, que es ingreso y que es pago, o sea, que va restar y que va sumar» → signo «+» / «−», ícono y etiqueta («Ingreso» / «Pago», por V2-75), color de los tokens pero nunca solo color, marcas en los días y lo que entra y sale separado al tocar un día. *(Fase 2.)*
+- **V2-74 — La mejor instalación en iPhone.** «que investigue muy muy bien las opciones y pasos ideales para instalacion en iphone, para mejor experiencia, que la qa senior usa iphone» *(Hecho en esta versión.)*
+- **V2-75 — Lenguaje simple pero profesional.** «"te entra" suena mal, si se trata de usar lenguaje simple, pero tampoco que la app no luzca proefsional […] me gustaria que se revise el lenguaje en general, que no sea tampoco tan basico pero tampoco tan mega profesional» → de tú, cálido, claro y profesional; sin «te entra» ni «te cae»; «Cupo» → «Límite de crédito» / «Disponible»; el turno del cuchubal visible; una tabla «Guía de lenguaje». *(Fase 2 para Pagos, calendario, tarjetas y cuchubal; fase 3 para todo lo demás. Los textos del glosario que se reescribieron en esta versión ya siguen este registro.)*
+- **V2-76 — El entrenamiento debe coincidir con lo que se ve.** «el ejemplo que usa visualmente, no hace match con el ejemplo descrito abajo, por ejemplo me muestra 400 libre, 44 por dia, y el ejemplo abajo describe, ejemplo tienes 100 y antes de tu quincena pagas 40, te quedan 60, que lo que vaya mostrando de ejemplo en entrenamiento haga sentido» *(Hecho en esta versión.)*
+- **V2-77 — Tarjetas en el entrenamiento.** «no entiendo el ejemplo de tarjeta y estado de cuenta, entonces el disponible en mi tarjeta cuenta?» *(Fase 2; esta versión ya cambia el ejemplo del primer paso del capítulo por el número de la pantalla: «Tu libre de $300 ya tiene restados $245 de tu tarjeta, que vence el 5 de noviembre».)*
+- **V2-78 — Pago de la tarjeta antes del primer estado de cuenta.** «tarjeta no me da configurar un pago potencial o algo o cuota hasta que venga el estado de cuenta, antes no lo habilita» *(Fase 2.)*
+
+### Matriz de QA (resumen)
+
+La matriz completa, con ID, caso, pasos, resultado esperado según el acuerdo, prioridad, estado y prueba, está en [`herramientas/MATRIZ-QA.md`](herramientas/MATRIZ-QA.md). `herramientas/qa-v261.mjs` hace cada caso de A a F, H y L **con el código real de la app** (las mismas hojas y acciones que toca la persona) y, después de cada acción, revisa las invariantes: nada huérfano, nada contado dos veces, el libre nunca negativo y los números enteros. Contra la v2.6 publicada fallaban **19 de 44** casos (`capturas/qa-v261/antes-v2.6.txt`); en la v2.6.1 pasan los 44.
+
+| Área | Casos | Pasaban | Corregidos | Para las fases 2–3 o decisión de Victor |
+|---|---|---|---|---|
+| A · crear, editar, eliminar y deshacer | 11 | 9 | 2 (A-D2, A-D3) | — |
+| B · dependencias y cascadas | 14 | 2 | 10 (B-L1, B-L2, B-L3, B-M1, B-T1, B-I1, B-P2, B-P3, B-AP1, B-AP2) | 2 decisiones (B-AP3, B-AP4) |
+| C · duplicados y tipos (V2-70) | 12 | 8 | 2 (C-07b, C-10) | 2 decisiones (C-06 cuotas de tarjeta, C-11 cargo automático: fase 2) |
+| D · números | 4 | 2 | 2 (D-01, D-04 = V2-76) | — |
+| E · fechas | 3 | 3 | — | — |
+| F · validaciones | 3 | 1 | 2 (F-02, F-03) | — |
+| G · navegación (V2-72) | 11 | 1 | 9 | 1 (G-11 teclado y rotación en un teléfono real) |
+| H · persistencia | 6 | 3 | 3 (H-01, H-02, H-06) | — |
+| I · modos y entrenamiento | 4 | 3 | 1 (I-04 = V2-76) | — |
+| J · prueba guiada y «Cuéntale…» | 3 | 2 | 1 (J-02 = V2-67) | — |
+| K · responsive y accesibilidad | 5 | 4 | — | 1 (K-05: 320, 360, 430 y zoom, fase 3) |
+| L · rendimiento | 1 | 1 | — | — |
+| M · consola | 2 | 2 | — | — |
+
+### Los fallos corregidos (P1 = 7, P2 = 10, P3 = 2)
+
+Cada uno tiene su caso en `herramientas/qa-v261.mjs`, que falla con la v2.6 y pasa con la v2.6.1 (salvo donde se dice otra prueba).
+
+| ID | Prio. | Qué pasaba | Qué se hizo |
+|---|---|---|---|
+| B-L1 | P1 | Al eliminar un lugar, sus pagos e ingresos quedaban apuntando a un lugar que ya no existía. | Antes de eliminar, la hoja dice qué depende de él («“Luz”, “Agua” e “Internet” se pagan ahora con:» / «… se reciben ahora en:») con la mejor opción ya elegida; al confirmar, todo pasa ahí. |
+| B-L2 | P1 | Después, «Pagado» de un pago que salía de ese lugar no restaba el dinero de ningún lado: desaparecía. | Igual que B-L1: el pago ya sale del medio nuevo. |
+| B-L3 | P1 | Después, «¿Ya te cayó?» de un ingreso que caía ahí rompía «Reparte». | Igual que B-L1: el ingreso ya cae en el lugar nuevo. |
+| B-T1 | P1 | Al eliminar una tarjeta, la suscripción que se cobraba en ella quedaba sin medio. | Pregunta con qué se paga ahora (primero otra tarjeta de crédito, si hay). |
+| B-I1 | P1 | Al eliminar el ingreso principal, lo que pagabas «con la del 30» dejaba de contar (bug del motor contra V2-34 y la revisión v2.3). | `claveVigente`: sin ingreso principal, el pago vuelve a contar con lo que tienes. |
+| B-P2 | P1 | Cambiar el día de un pago ya pagado este mes lo volvía a pedir y lo contaba dos veces. | Al editar un pago o un préstamo, lo ya marcado (pagado, saltado o asignado) se mueve a la fecha nueva más cercana del mismo mes (`P.reubicarHechos`). |
+| H-01 | P1 | Con dos pestañas abiertas, lo que guardabas en una se perdía por la otra. | La otra pestaña se entera (evento `storage`), no escribe encima, carga lo nuevo y avisa «Se actualizó con lo que guardaste en otra pestaña». |
+| B-M1 | P2 | Al eliminar un medio (Transferencia), Colegio y Casa comercial quedaban sin medio. | Pregunta con qué se pagan ahora. |
+| A-D2 | P2 | «Anotar cuánto debo» en una deuda sin monto se rompía. | Abre vacía y guarda. |
+| A-D3 | P2 | Desmarcar «Pagado» de una cuota devolvía a «lo que debes» más de lo que había bajado. | Se guarda cuánto bajó de verdad (`bajaDeuda`) y eso vuelve exacto; también al corregir el monto y con los descuentos del salario (V2-38). |
+| B-AP1 | P2 | Eliminar en Mes un gasto que salió de un ahorro no devolvía el dinero al ahorro. | Lo devuelve (si el ahorro existe) y su historial dice «Volvió de un gasto que eliminaste». |
+| B-AP2 | P2 | Eliminar un gasto con crédito que salió de un ahorro dejaba reservado el dinero para la tarjeta (V2-27). | Se suelta esa reserva. |
+| B-P3 | P2 | «Saltar esta vez» y luego cambiar el día volvía a pedir el pago. | Igual que B-P2. |
+| D-01 | P2 | «.5» y «1.000,50» no se leían como montos. | Se leen ($0.50 y $1,000.50). |
+| F-03 | P2 | Dos toques seguidos en «Guardar» de Anotar podían romper. | El segundo toque no hace nada. |
+| H-02 | P2 | Si el teléfono no dejaba guardar (lleno o modo privado), se perdía todo en silencio. | Tarjeta en Hoy: «No se están guardando tus datos» con «Guardar una copia». |
+| C-10 | P2 | Un adelanto que esperabas («Vale de la empresa») no se reconocía por su nombre al anotar «me dieron adelanto 100»: la expresión de la v2.4.1 tenía caracteres de retroceso en vez de `\b`. | Corregida. |
+| C-07b | P3 | Anotar «luz 35» con la luz del mes ya pagada lo guardaba como gasto sin decir nada. | Anotar avisa: «Ya marcaste el pago «Luz» del 12 oct. Esto se guarda como un gasto aparte.» |
+| F-02 | P3 | Un monto de más de $1,000,000 decía «Escribe el monto». | Dice «Puede ser de hasta $1,000,000.00». |
+
+Además: el historial de «Deshacer» guarda como máximo 30 pasos (antes crecía sin límite) y la barra de estado del teléfono recibía un color en formato `color(srgb …)` que puede no entender: ahora va en hexadecimal (V2-74).
+
+### Reglas de no duplicar que se verificaron (V2-70)
+
+| Regla | Acuerdo de origen | Caso |
+|---|---|---|
+| Una compra con tarjeta baja el libre el día que se hace, no toca efectivo ni banco, sube lo que debes y es un solo gasto. | V2-07 | C-01 |
+| Pagar la tarjeta desde el banco es mover dinero: baja el banco y la deuda; no es un gasto nuevo y el libre no cambia. | Conexión de tarjetas (pagar la tarjeta = mover dinero) | C-02 |
+| Una suscripción que se cobra en la tarjeta cuenta una vez y queda como compra en esa tarjeta, no del banco. | V2-13, V2-34 | C-03 |
+| Un pago con la débito de una cuenta sale de esa cuenta y de ninguna otra. | V2-18 (los medios cuelgan de los lugares) | C-04 |
+| Una cuota es un pago: sale del medio elegido, baja lo que debes y cuenta una vez. | V2-08 | C-05, A-D3 |
+| Anotar algo que ya es un pago de la lista lo marca, no lo duplica; si ya estaba pagado, lo dice. | Conexión 4 («Nada se cuenta dos veces») | C-07, C-07b |
+| Cada ingreso con su tipo (venta, remesa, adelanto); mover entre lugares no es ingreso ni gasto. | V2-56 | C-08, C-10, A-MV1 |
+| «me pagaron 600» pregunta si es la quincena o un extra y cuenta una vez. | V2-29 #10 | C-09 |
+| «Pagado» con monto fijo guarda sin preguntar; corregir o desmarcar deshace sin restos. | V2-29 #8, V2-48 | A-P1, A-D4 |
+| Eliminar o editar deshace sus efectos: el ahorro, la reserva de la tarjeta y lo que debes. | V2-27, V2-08 | A-R1, B-AP1, B-AP2 |
+
+Lo que los acuerdos no cubren queda en las decisiones pendientes de abajo.
+
+### V2-67: «Empezar de nuevo» la prueba guiada
+
+En «Ayuda» → «Prueba guiada» (en la tarea en curso, en la pausa y en el final) hay un enlace **«Empezar de nuevo»**. Pide confirmar con el texto aprobado («¿Empezar de nuevo? Se borra tu avance de la prueba. Tus datos no se tocan.», con el foco en «Cancelar»). Al confirmar, se borra **solo** el avance de la prueba (tareas, tiempos y respuestas); el nombre y el perfil quedan escritos en la bienvenida y, al tocar «Empezar», la app vuelve a elegir el set sola (sin letras). Los datos reales quedan idénticos, byte por byte (`v261.mjs`, parte A).
+
+### V2-72: el botón atrás del teléfono
+
+`atras.js` (nuevo, sin dependencias) usa el historial del navegador: mientras haya algo a qué volver, deja **una sola** entrada de guarda (`history.pushState`); al tocar atrás (`popstate`), la app retrocede un paso y, si todavía queda algo, la vuelve a poner.
+
+1. Cierra lo que esté abierto, de arriba hacia abajo: el diálogo, la hoja (o su «¿Eliminar…?»), el aviso de arriba, Ayuda (sus páginas vuelven a la anterior: «Tus datos» → «Ayuda» → cerrar).
+2. Si no hay nada abierto: la pantalla anterior, después la pestaña Hoy.
+3. **En Hoy sin nada abierto no hay guarda:** atrás hace lo de siempre en el teléfono (sale). Si se vuelve a Hoy con los botones de la app, la guarda sobrante se quita sola, para que el siguiente atrás no se quede sin hacer nada.
+4. **Con algo escrito en una hoja**, pregunta «¿Descartar los cambios?» («Seguir editando», con el foco, o «Descartar»). Lo mismo al tocar fuera de la hoja. Escape, «Cancelar» y la X cierran sin preguntar, como antes (Escape en la computadora no cambia, V2-50). Un solo patrón de diálogo para la app (abajo, al alcance del pulgar, el botón seguro a la izquierda).
+5. **Entrenamiento:** atrás retrocede un paso («Hazlo tú» → su explicación; con una hoja abierta, primero la hoja); en el primer paso, la presentación o el final pregunta «¿Salir del entrenamiento?» (el avance queda guardado). **Prueba guiada** (y «Practicar»): con la tarea en curso pregunta «¿Pausar la prueba?» («¿Salir del ejercicio?»). **Primer día:** el paso anterior.
+
+Escape, Tab y el foco siguen igual en la computadora (el diálogo atrapa el foco y Escape lo cierra). Al recargar, la app arranca en Hoy y quita la guarda que haya quedado. En la guía de escritorio (la app dentro de un marco) no se toca el historial. Prueba: `herramientas/atras.mjs`, que simula el atrás del sistema con `history.back()` (la misma navegación del historial); con la v2.6, atrás desde Pagos sacaba de la app (`capturas/atras/antes-v2.6.txt`).
+
+**Cómo funciona en cada teléfono (sin afirmar lo que no se probó):**
+- **Android, en Chrome y con la app instalada:** el botón y el gesto de atrás del sistema navegan el historial de la página, que es justo lo que usa la app. Se comprobó en Chrome de escritorio (el mismo motor) con la prueba automática; **no se probó en un Android real.**
+- **iPhone, en Safari:** el gesto de deslizar desde el borde izquierdo y la flecha de Safari usan el mismo historial; **no se probó en un iPhone real.**
+- **iPhone, instalada en la pantalla de inicio:** no hay barra del navegador. **No se pudo comprobar** si iOS ofrece ahí el gesto de volver; si no lo hace, la app se usa con sus propios botones como hasta ahora (nada se rompe).
+
+### V2-74: instalar en iPhone
+
+**Lo que se verificó en fuentes oficiales (Apple y WebKit):**
+- Se instala desde Safari: botón **Compartir** → **«Agregar a pantalla de inicio»** ([WebKit, «Web Push for Web Apps on iOS and iPadOS», 16-feb-2023](https://webkit.org/blog/13878/web-push-for-web-apps-on-ios-and-ipados/)). Desde iOS 16.4, **otros navegadores de iPhone pueden ofrecerlo**, si lo implementan (mismo artículo).
+- **iOS 26:** todo sitio agregado a la pantalla de inicio **abre como app web por defecto**, con un interruptor **«Open as Web App»** en la hoja de agregar; los íconos SVG funcionan ([WebKit, «News from WWDC25: Safari 26 beta», 9-jun-2025](https://webkit.org/blog/16993/news-from-wwdc25-web-technology-coming-this-fall-in-safari-26-beta/)).
+- **Safari sí puede borrar los datos:** borra todo lo que una página guardó (LocalStorage incluido, que es donde viven tus datos) **después de 7 días de uso de Safari sin abrir esa página**; las apps de la pantalla de inicio llevan su propia cuenta de días, que se reinicia al usarlas, y «no esperamos que se borren los datos» de la app instalada ([WebKit, «Full Third-Party Cookie Blocking and More», 24-mar-2020](https://webkit.org/blog/10218/full-third-party-cookie-blocking-and-more/)). Desde Safari 17 (iOS 17) los datos son «de mejor esfuerzo» y se pueden borrar por falta de espacio o por no usar el sitio; `navigator.storage.persist()` se concede según señales «como si el sitio está abierto como app de la pantalla de inicio» ([WebKit, «Updates to Storage Policy», 10-ago-2023](https://webkit.org/blog/14403/updates-to-storage-policy/)). **Conclusión: el riesgo es real; instalarla lo evita.**
+- La app instalada en iPhone **no comparte lo guardado con Safari** («por diseño», comentario de 2022 en el [bug 181849 de WebKit](https://bugs.webkit.org/show_bug.cgi?id=181849)): lo anotado en Safari no aparece en la app instalada.
+- En Chrome (Android) `persist()` se concede solo, sin preguntar, según el uso del sitio y si está instalada ([web.dev, «Persistent storage»](https://web.dev/articles/persistent-storage)).
+- Etiquetas para iPhone: `apple-mobile-web-app-capable`, el estilo de la barra de estado y el `apple-touch-icon` de 180 × 180 ([Apple, «Configuring Web Applications», archivo de documentación](https://developer.apple.com/library/archive/documentation/AppleApplications/Reference/SafariWebContent/ConfiguringWebApplications/ConfiguringWebApplications.html)). La misma página dice que, sin imagen de arranque, iOS muestra la última vista de la app mientras abre.
+
+**No se pudo comprobar en un iPhone real:** el nombre exacto de los botones en español en la versión de iOS que tenga ella (en iOS 26 el interruptor se llama «Open as Web App» en inglés; en español la app dice «Abrir como app web»), dónde queda Compartir en su Safari (en iOS 26 puede estar dentro de **⋯**), si WhatsApp abre el enlace en Safari o en su propio visor, si Chrome de iPhone muestra «Agregar a pantalla de inicio» en su versión, ni si iOS concede `persist()`.
+
+**Lo que cambió:**
+- **La guía de instalación** (en «Ayuda» → **«Instalar la app»**, fila propia que solo aparece si no está instalada —V2-69 #38—, y en «Antes de empezar» de «Usarla con mis datos») detecta el teléfono:
+  - **iPhone con Safari:** 1) «Toca **Compartir**: el cuadro con la flecha, en la barra de Safari. Si no lo ves, toca **⋯** primero.» 2) «Baja en la lista y toca **«Agregar a pantalla de inicio»**.» 3) «Si ves **«Abrir como app web»**, déjalo encendido. Toca **«Agregar»**.» 4) «Abre PamPlanea desde su ícono en tu pantalla de inicio.» Cada paso con su dibujo. Debajo, en ámbar: **«Instálala para que tus datos no se borren.** Safari puede borrar los datos de una página que no abres en varios días.» y, si ya hay datos, cómo pasarlos (guardar una copia en «Tus datos» y restaurarla en la app instalada).
+  - **iPhone desde WhatsApp u otro navegador:** «En iPhone se instala desde Safari», «busca «Abrir en Safari» (a veces está en ⋯)» o copiar el enlace (botón «Copiar el enlace»).
+  - **Instalada:** «Ya la tienes instalada.» y la fila de «Ayuda» desaparece. Android y computadora, como antes.
+- **Etiquetas:** `apple-touch-icon` con `sizes="180x180"` (el archivo mide 180 × 180 de verdad), `theme-color` para claro y oscuro desde el primer cuadro (después siguen el tema elegido, en hexadecimal), y lo que ya estaba: `apple-mobile-web-app-capable`, título «PamPlanea», barra de estado `default` (el contenido no queda debajo de la hora), `viewport-fit=cover` con los márgenes seguros (`env(safe-area-inset-*)`) para notch y Dynamic Island. **Sin pantallas de arranque:** iOS pide una imagen por cada tamaño de iPhone y, sin ellas, muestra la última vista de la app: no vale la pena en un prototipo.
+- **`navigator.storage.persist()`:** con datos reales, una vez por sesión, la app pide al navegador que no los borre solo. No muestra nada si no se concede (Firefox sí pregunta).
+- **«Tus datos»** ya no tiene «Instálala en tu teléfono» (V2-69 #38).
+
+Prueba: `herramientas/v261.mjs`, parte B (las etiquetas, el tamaño real del ícono, la guía con el navegador de iPhone emulado —Safari y Chrome—, instalada, la fila de «Ayuda» y `persist()` una vez).
+
+**Los pasos exactos para ella (iPhone):** abrir el enlace en **Safari** (si llega por WhatsApp y no abre en Safari: «Abrir en Safari» o copiar y pegar el enlace) → Compartir (si no está a la vista, **⋯** → Compartir) → «Agregar a pantalla de inicio» → dejar encendido «Abrir como app web» si aparece → «Agregar» → **abrir PamPlanea desde el ícono** y empezar ahí.
+
+### V2-76: los números del entrenamiento son los de la pantalla
+
+Antes, cada paso mostraba el ejemplo fijo del glosario («Tienes $100 y antes de tu quincena pagas $40: te quedan $60») mientras la pantalla decía $400. Ahora:
+- **Cada ejemplo de un paso se calcula con el motor** a partir de los datos que se ven en ese momento: «Tu libre es $400 hasta tu quincena del 30: son ~$44 por día.»; «Tienes $1,315, $900 están en ahorros y pagas $15 antes del 30: te quedan $400.»; «Compraste pupusas por $6: escribes «pupusas 6» y tu libre de $400 baja $6.»; «Pagas el teléfono de $15: tu libre sigue en $394 y lo que tienes baja $15.»; «La app cree que tienes $19 en efectivo. Si cuentas $15, $4 quedan «sin detalle».»; «En tu quincena del 30 recibes ~$600 y pagas ~$55: te quedarían ~$545.»; «Tu libre de $300 ya tiene restados $245 de tu tarjeta, que vence el 5 de noviembre.»; «Tu estado de cuenta dice pago de contado $245 y mínimo $25: tú eliges cuánto pagas.»… Lo mismo en la versión de ingresos que varían (Rosa: $80, ~$7.20 por día, la cuota de $45 el 25, el alquiler de $120…). En la semana mala, el texto dice el faltante que se ve («Faltan $30.00 para cubrir tus ahorros»).
+- **Las preguntas del final de cada capítulo ya no inventan montos:** «¿Qué es tu libre?» (Todo lo que tienes / **Lo que tienes, menos ahorros y lo que pagas antes de tu quincena** / Lo que te pagan en tu quincena), «Ves «~» antes de un monto. ¿Qué quiere decir?», «Compras algo con tu tarjeta de crédito. ¿Cuándo baja tu libre?»…
+- **Los «?» y el glosario de «Aprende» no llevan montos** (sirven para cualquier pantalla y para los datos de cada persona): «La app resta de lo que tienes lo que pagas antes de tu quincena. Lo que queda es tu libre.»
+- **«Practicar»:** los montos de cada ejercicio están en los datos del ejercicio o son lo que el ejercicio pide escribir (`montos` en `casos.js`).
+
+Prueba: `herramientas/numeros-entrenamiento.mjs` recorre **cada paso, «Hazlo tú», pausa, pregunta y final de las dos versiones**, los ejemplos de la semana mala, el glosario y los 18 ejercicios de «Practicar» (317 textos) y compara cada monto del texto con los que se ven en la pantalla en ese momento (en la pausa, también sus filas antes → después y la diferencia; en «Hazlo tú», lo que el paso pide escribir). Con la v2.6: **88 textos con montos que no se veían** (`capturas/numeros-entrenamiento/antes-v2.6.txt`); con la v2.6.1: 0.
+
+### `herramientas/` ahora está en el repo
+
+Todas las pruebas, también las de antes, se pueden revisar en GitHub. No se publican en la caché de la app (`generar-sw.mjs` deja fuera `herramientas/` y `capturas/`; `capturas/` sigue fuera de git). Nuevas en esta versión: `qa-v261.mjs` (la matriz A–F, H, L con invariantes), `MATRIZ-QA.md`, `atras.mjs` (V2-72), `numeros-entrenamiento.mjs` (V2-76), `v261.mjs` (V2-67, V2-74) y `actualizar.mjs` (antes `v26-actualizar.mjs`; ahora para cualquier versión: `--ref=7c0d06e` es la v2.5 y `--ref=ca97256` la v2.6). Cómo correrlas, en el README.
+
+### Calidad (v2.6.1)
+
+- **Nuevas:** `qa-v261.mjs` 44/44 (con la v2.6: 25/44), `atras.mjs` sin fallos (con la v2.6: atrás desde Pagos sacaba de la app), `numeros-entrenamiento.mjs` 317 textos y 0 montos que no se ven (con la v2.6: 88), `v261.mjs` sin fallos, `actualizar.mjs --ref=7c0d06e` (v2.5 → v2.6.1) y `--ref=ca97256` (v2.6 → v2.6.1): mismas claves, tus datos iguales (esquema 2), el progreso, la prueba guiada y el teléfono iguales, el mismo libre, solo la caché `pamplanea-proto-v2.6.1-2026-10-19` y **sin internet** también.
+- **Las de siempre, por file://:** motor, los 13 casos de la guía, sets A y B, la guía en Chrome y Edge, modos, aceptación, v2.3.1, entrega 2, viaje del dinero, humo (las dos), v2.4, v2.4.1, v2.5 (contraste mínimo 5.27:1), v2.6 (contraste mínimo 5.69:1), PWA, contraste (las tres) y teclado: sin fallos ni errores de consola. Se actualizaron, porque las decisiones nuevas cambian lo que esperaban: `v26.mjs` («Instalar la app» es fila propia en «Ayuda» y en la letra, ya no en «Tus datos», V2-69 #38; la versión se lee de `casos.js`), `v25.mjs` (el ejemplo de cada paso se compara con el que el paso calcula, V2-76), `recorrer-v2.mjs` (la versión de la guía = la de la app) y `contraste-v21.mjs` e `instalar-ua.mjs` (abren con `?set=A`: desde la v2.6 la bienvenida de la prueba solo se abre sola con el enlace de tester; fallaban desde entonces). `recorrer.mjs` (el recorrido de la v1) queda como historia: sus casos esperan cosas que acuerdos posteriores cambiaron.
+- **Servidas en la subruta de Pages:** qa-v261 (44/44), atras, v261, numeros-entrenamiento, v26 (Serena oscuro y Ancla oscuro), v25 (Serena oscuro), sets (Serena oscuro), modos (Ancla oscuro), 13 casos (Serena oscuro), aceptación y v2.3.1 (Ancla oscuro), v2.4.1 (Serena oscuro), v2.4 (Ancla oscuro), entrega 2, viaje y humo: sin fallos ni errores de consola.
+- La app instalable: caché `pamplanea-proto-v2.6.1-2026-10-19` con 142 archivos (uno más: `atras.js`; `herramientas/` no entra).
+
+### DECISIONES PENDIENTES PARA VICTOR (fase 1)
+
+1. **Cuotas de tarjeta (compras a cuotas, «tasa cero»).** Hoy cada estado de cuenta trae su total y nada más. *Recomendación:* tratarlas en la fase 2 junto con V2-78 como «pago estimado» de la tarjeta (sin modelar cada cuota), porque los acuerdos de cuotas (V2-08) hablan de préstamos, no de tarjetas. *Tradeoff:* sin cuota por cuota, la app no avisa cuándo termina una compra a cuotas.
+2. **Gasto fijo que se cobra solo en una tarjeta (cargo automático).** Hoy cuenta una vez cuando se marca «Pagado» con esa tarjeta (C-03). V2-68 pide preguntarlo en el Primer día. *Recomendación:* en la fase 2, preguntar «¿Se cobra solo en una tarjeta o cuenta? ¿Cuál?» y guardarlo como el medio del pago (que ya decide de dónde sale); NO marcarlo pagado solo el día que vence (V2-43: no inventar). *Tradeoff:* la persona sigue tocando «Pagado».
+3. **Corregir el monto de un gasto que salió de un ahorro** no ajusta el ahorro (B-AP3). *Recomendación:* que el ahorro devuelva o entregue la diferencia, sin pasar de lo que tiene. *Tradeoff:* un ajuste más que explicar en «Corregir».
+4. **Eliminar el gasto de un ahorro ya cumplido (logro)** no reabre el ahorro (B-AP4). *Recomendación:* reabrirlo con el dinero devuelto. *Tradeoff:* el logro desaparece de «Logros».
+
+### Limitaciones conocidas (fase 1)
+
+- El botón atrás se probó con `history.back()` en Chrome sin ventana, no en teléfonos reales (ver arriba lo de iPhone instalada).
+- La guía de iPhone se probó con el navegador de iPhone **emulado** (Chrome con su identificador), no en un iPhone.
+- `navigator.storage.persist()` se llama, pero en Chrome sin ventana no se puede comprobar si un teléfono lo concede.
+- G-11 (teclado del teléfono y rotación) y K-05 (320, 360, 430 y zoom 200 %) quedan para la verificación visual de la fase 3.
 
 ---
 
@@ -956,7 +1126,7 @@ La fecha simulada es el **miércoles 21 de octubre de 2026** (ver §4).
 | `recursos/` | Piel real (tokens, Instrument Sans, emoji Fluent, íconos Lucide, portadas e ilustraciones) con sus licencias |
 | `README.md` | Para quien llega al repo: los dos modos, instalar, copia de datos, contarle a Victor |
 
-Fuera del repo (en `.gitignore`, solo en la copia local): `capturas/` y `herramientas/` (`recorrer-v2.mjs` 13 casos, `recorrer-sets.mjs` sets A y B, `recorrer-modos.mjs` entrada, entrenamiento, tres personas y copia, `probar-pwa.mjs` (también datos reales tras actualizar), `instalar-ua.mjs`, `contraste*.mjs`, `generar-iconos.mjs`, `generar-sw.mjs` + `sw.plantilla.js`, `servidor.mjs`). Nuevo en la v2.6: `v26.mjs` (menús con solo lo permitido, `?victor=1`, la prueba guiada sin letras y C33 fuera, las listas de «Cuéntale…» contra el texto, privacidad más estricta, sin recordatorios, «Tus datos» desde el entrenamiento, 44 px, movimiento y contraste) y `v26-actualizar.mjs` (la v2.5 de git → la v2.6 en el mismo lugar, con datos, progreso y una prueba a medias; también sin internet). Nuevo en la v2.5: `v25.mjs` (el entrenamiento nuevo completo en las dos versiones, V2-59, la oferta de tarjetas, «Practicar», «?» y «Aprende», legibilidad, movimiento y contraste), `diario-antes.mjs` (las 71 capturas de la v2.4.1 para el diario de fricción) y `sonda-v25.mjs` (recorre un capítulo con capturas, para revisar). Nuevo en la v2.4.1: `v241.mjs` (V2-56 a V2-58, las dos versiones completas con la revisión automática de cada paso y los ejercicios nuevos). Nuevo en la v2.4: `v24.mjs` (el entrenamiento completo, legibilidad, «?», consejos, «Practicar» y contraste). Nuevo en la v2.3.1: `v231.mjs` (V2-50 a V2-55, la corrección adicional y «Compartir copia»). Nuevos en la v2.3: `aceptacion-v23.mjs` (la prueba de aceptación de Victor, migración, Carlos, reparto, pagado y fecha futura), `entrega2-v23.mjs`, `viaje-v23.mjs` (el viaje del dinero), `probar-motor.mjs` (motor y casos borde), `humo-v23.mjs`, `capturas-ux.mjs` y `contraste-v23.mjs`.
+Fuera del repo (en `.gitignore`, solo en la copia local): `capturas/`. **Desde la v2.6.1, `herramientas/` está en el repo** (no en la caché de la app; ver «`herramientas/` ahora está en el repo» en la sección v2.6.1). Las pruebas de antes: (`recorrer-v2.mjs` 13 casos, `recorrer-sets.mjs` sets A y B, `recorrer-modos.mjs` entrada, entrenamiento, tres personas y copia, `probar-pwa.mjs` (también datos reales tras actualizar), `instalar-ua.mjs`, `contraste*.mjs`, `generar-iconos.mjs`, `generar-sw.mjs` + `sw.plantilla.js`, `servidor.mjs`). Nuevo en la v2.6: `v26.mjs` (menús con solo lo permitido, `?victor=1`, la prueba guiada sin letras y C33 fuera, las listas de «Cuéntale…» contra el texto, privacidad más estricta, sin recordatorios, «Tus datos» desde el entrenamiento, 44 px, movimiento y contraste) y `v26-actualizar.mjs` (la v2.5 de git → la v2.6 en el mismo lugar, con datos, progreso y una prueba a medias; también sin internet). Nuevo en la v2.5: `v25.mjs` (el entrenamiento nuevo completo en las dos versiones, V2-59, la oferta de tarjetas, «Practicar», «?» y «Aprende», legibilidad, movimiento y contraste), `diario-antes.mjs` (las 71 capturas de la v2.4.1 para el diario de fricción) y `sonda-v25.mjs` (recorre un capítulo con capturas, para revisar). Nuevo en la v2.4.1: `v241.mjs` (V2-56 a V2-58, las dos versiones completas con la revisión automática de cada paso y los ejercicios nuevos). Nuevo en la v2.4: `v24.mjs` (el entrenamiento completo, legibilidad, «?», consejos, «Practicar» y contraste). Nuevo en la v2.3.1: `v231.mjs` (V2-50 a V2-55, la corrección adicional y «Compartir copia»). Nuevos en la v2.3: `aceptacion-v23.mjs` (la prueba de aceptación de Victor, migración, Carlos, reparto, pagado y fecha futura), `entrega2-v23.mjs`, `viaje-v23.mjs` (el viaje del dinero), `probar-motor.mjs` (motor y casos borde), `humo-v23.mjs`, `capturas-ux.mjs` y `contraste-v23.mjs`.
 
 ## 9. Qué falta
 
