@@ -637,6 +637,21 @@
         fijo: { id: 'fijo', emoji: '💼', etiqueta: 'Me pagan en fecha fija', sub: 'Quincena, mes o semana', corto: 'fecha fija', persona: 'ana', caps: [ESENCIAL_FIJO, PROXIMA, AHORROS_FIJO, TARJETAS_FIJO, EXTRAS, VOLVER_FIJO] },
         variable: { id: 'variable', emoji: '🏪', etiqueta: 'Lo recibo cuando vendo o trabajo', sub: 'Varía', corto: 'ingresos que varían', persona: 'rosa', caps: [ESENCIAL_VAR, HORIZONTE, PROXIMO_MES, AHORROS_VAR, TARJETAS_VAR, VOLVER_VAR] },
     };
+    // v2.6.5 (V2-80 y V2-81): si «Pagado» o «Ya llegó» preguntan si es por adelantado, la flecha señala «Sí» en cualquier «Hazlo tú».
+    for (const v of Object.values(VERSIONES)) {
+        for (const cap of v.caps) {
+            for (const paso of cap.pasos) {
+                if (!paso.hazlo) continue;
+                const senal = paso.hazlo.senal;
+                paso.hazlo.senal = () => {
+                    const dlg = P.dlg && P.dlg.abierto;
+                    if (!dlg) return senal();
+                    const pago = /pagué/.test(dlg.si || '');
+                    return tocar('[data-fk="dlg-si"]', `${pago ? 'Todavía no vence' : 'Todavía no es su día'}: toca «${dlg.si}».`);
+                };
+            }
+        }
+    }
     for (const v of Object.values(VERSIONES)) for (const c of v.caps) c.version = v.id;
     const capDe = (version, id) => (VERSIONES[version] || VERSIONES.fijo).caps.find((c) => c.id === id) || null;
     const clave = (cap) => `${cap.version}:${cap.id}`;

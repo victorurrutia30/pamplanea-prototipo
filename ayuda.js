@@ -473,7 +473,7 @@
         const d = datos();
         const t = tareaActual(d);
         const r = A.borrador || {};
-        const op = (n, txt) => `<button type="button" class="ay-nota-n" role="radio" aria-checked="${r.facil === n}" data-a="ayFacil" data-v="${n}" data-fk="ay-facil-${n}"><span class="ay-nota-num">${n}</span><span class="ay-nota-l">${txt}</span></button>`;
+        const op = (n, txt) => `<button type="button" class="ay-nota-n" role="radio" aria-checked="${r.facil === n}" data-a="ayFacil" data-v="${n}" data-fk="ay-facil-${n}"><span class="ay-nota-num">${n}</span><span class="ay-nota-l">${txt}</span>${r.facil === n ? icon('check', 'ico-dia') : ''}</button>`;
         const rr = d.prueba.tareas[t.id] || {};
         return `<section class="ay-card ay-card--prim" aria-labelledby="ay-r-t"><p class="paso">Tarea ${d.prueba.i + 1} de ${setActual(d).length} · ${rr.resultado === 'rendida' ? 'no pasa nada: eso nos ayuda' : '¡gracias!'}</p><h3 class="ay-h3" id="ay-r-t">¿Qué tan fácil fue?</h3>
             <div class="ay-notas-n" role="radiogroup" aria-labelledby="ay-r-t">${op(1, 'Muy difícil')}${op(2, 'Difícil')}${op(3, 'Más o menos')}${op(4, 'Fácil')}${op(5, 'Muy fácil')}</div>

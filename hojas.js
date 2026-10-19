@@ -316,9 +316,22 @@
             .map((o) => `<button type="button" class="chip" aria-pressed="${String(valor) === String(o.v)}" data-a="${accion}" data-campo="${campo}" data-v="${esc(o.v)}" data-fk="op-${campo}-${esc(o.v)}">${String(valor) === String(o.v) ? icon('check', 'ico-xs') : ''}${o.e ? emo(o.e, 18) : ''}<span>${esc(o.t)}</span>${o.s ? `<span class="chip-s">${esc(o.s)}</span>` : ''}</button>`)
             .join('')}</div>${error(h, campo, errorTexto)}</div>`;
     }
+    /**
+     * v2.6.5 (V2-82): antes de crear un pago parecido a uno que ya tienes: «Ya tienes «Luz» el 12 por ~$35.00. ¿Es otro
+     * pago?» [Ver el que tengo] [Sí, es otro]. La usan Anotar («Recordarme un pago»), «+ Pago» y «Editar».
+     */
+    function preguntaDuplicado(h, p, accion) {
+        const cuando = p.frecuencia === 'mensual' ? `el ${p.dia}` : p.frecuencia === 'semanal' ? `cada ${M.DIAS[p.diaSemana]}` : P.textoFrecuencia(p, { corto: true }).toLowerCase();
+        return `<div class="pregunta pregunta--dup" role="group" aria-labelledby="dup-t"><p class="campo-l" id="dup-t" tabindex="-1">Ya tienes «${esc(p.nombre)}» ${esc(cuando)} por ${dinero(p.monto, { aprox: p.estimado })}. ¿Es otro pago?</p><div class="chips"><button type="button" class="chip" aria-pressed="false" data-a="${accion}" data-campo="dup" data-v="ver" data-fk="dup-ver">Ver el que tengo</button><button type="button" class="chip" aria-pressed="false" data-a="${accion}" data-campo="dup" data-v="otro" data-fk="dup-otro">Sí, es otro</button></div>${error(h, 'duplicado', 'Dinos si es otro pago')}</div>`;
+    }
+    /** V2-81: cómo se nombra un ingreso esperado en una pregunta («tu quincena del 30», «tu salario del 30»). */
+    function cualIngreso(ing, fecha) {
+        const cual = ing.frecuencia === 'quincenal' ? 'quincena' : ing.frecuencia === 'semanal' ? 'pago de la semana' : ing.nombre.charAt(0).toLowerCase() + ing.nombre.slice(1);
+        return { cual, fem: /^(quincena|catorcena|remesa|venta)/.test(cual), dia: M.partes(fecha)[2] };
+    }
     function selectorDia(h, campo, valor, label = '¿Qué día del mes?') {
         return `<div class="campo-g" role="group" aria-labelledby="l-${campo}"><p class="campo-l" id="l-${campo}">${label}</p><div class="dias">${Array.from({ length: 31 }, (_, i) => i + 1)
-            .map((n) => `<button type="button" class="dia" aria-pressed="${Number(valor) === n}" data-a="valor" data-campo="${campo}" data-v="${n}" data-fk="dia-${campo}-${n}" aria-label="Día ${n}">${n}</button>`)
+            .map((n) => `<button type="button" class="dia" aria-pressed="${Number(valor) === n}" data-a="valor" data-campo="${campo}" data-v="${n}" data-fk="dia-${campo}-${n}" aria-label="Día ${n}">${n}${Number(valor) === n ? icon('check', 'ico-dia') : ''}</button>`)
             .join('')}</div>${error(h, campo, 'Elige el día')}</div>`;
     }
     /**
@@ -337,7 +350,7 @@
             const f = `${y}-${M.pad(m)}-${M.pad(d)}`;
             const fuera = (min && f < min) || (max && f > max);
             const sel = multiple ? multiple.includes(f) : f === valor;
-            celdas.push(`<button type="button" class="cal-d${f === st.hoy ? ' cal-d--hoy' : ''}" aria-pressed="${sel}" ${fuera ? 'disabled' : ''} data-a="calElegir" data-campo="${campo}" data-v="${f}" data-fk="cal-${campo}-${f}" aria-label="${esc(M.capital(M.conDia(f)))}${f === st.hoy ? ', hoy' : ''}">${d}</button>`);
+            celdas.push(`<button type="button" class="cal-d${f === st.hoy ? ' cal-d--hoy' : ''}" aria-pressed="${sel}" ${fuera ? 'disabled' : ''} data-a="calElegir" data-campo="${campo}" data-v="${f}" data-fk="cal-${campo}-${f}" aria-label="${esc(M.capital(M.conDia(f)))}${f === st.hoy ? ', hoy' : ''}">${d}${sel ? icon('check', 'ico-dia') : ''}</button>`);
         }
         const [py, pm] = M.mesMas(y, m, -1);
         const [ny, nm] = M.mesMas(y, m, 1);
@@ -580,15 +593,15 @@
             const label = d.tipo === 'cuadre' ? (l ? `¿Cuánto tienes ahora en ${esc(l.nombre)}?` : '¿Cuánto tienes ahora?') : d.tipo === 'ingreso' ? '¿Cuánto recibiste?' : d.tipo === 'pago' ? '¿Cuánto pagas?' : d.tipo === 'apartar' ? '¿Cuánto quieres ahorrar?' : d.tipo === 'liberar' ? '¿Cuánto sacas?' : d.tipo === 'mover' ? '¿Cuánto mueves?' : d.tipo === 'pagoTarjeta' ? '¿Cuánto pagas a la tarjeta?' : '¿Cuánto gastaste?';
             return campoMonto(h, { label, valor: d.monto !== null ? M.montoCampo(d.monto) : '', errorTexto: d.tipo === 'cuadre' ? 'Escribe cuánto tienes, aunque sea $0' : 'Escribe cuánto fue', id: 'f-monto', ayuda: d.tipo === 'cuadre' ? 'Más o menos. Desde aquí sigue la cuenta.' : '' });
         }
-        if (campo === 'medio') return opciones(h, { campo: 'medio', label: d.tipo === 'pago' ? '¿Con qué lo pagas?' : 'Pagado con', accion: 'anotarValor', valor: d.medio, lista: medios(st), errorTexto: 'Elige con qué pagaste' });
+        if (campo === 'medio') return opciones(h, { campo: 'medio', label: d.tipo === 'pago' ? '¿Con qué lo pagas?' : '¿Con qué pagaste?', accion: 'anotarValor', valor: d.medio, lista: medios(st), errorTexto: 'Elige con qué pagaste' });
         if (campo === 'fecha') return campoFecha(h, 'fecha', d.fecha, { label: '¿Cuándo?', futuro: d.tipo === 'gasto' || d.tipo === 'ingreso', extra: d.ocurrencia && d.ocurrencia <= st.hoy ? d.ocurrencia : null, ayuda: d.tipo === 'gasto' || d.tipo === 'ingreso' ? 'Si eliges una fecha que todavía no llega, lo pongo en Pagos.' : '' });
         if (campo === 'lugar') return opciones(h, { campo: 'lugar', label: d.tipo === 'ingreso' ? '¿Dónde llegó?' : d.tipo === 'pagoTarjeta' ? '¿Desde dónde?' : '¿Dónde?', accion: 'anotarValor', valor: d.lugar, lista: lugares(st), errorTexto: 'Elige dónde' });
         if (campo === 'frecuencia') return opciones(h, { campo: 'frecuencia', label: '¿Se repite?', accion: 'anotarValor', valor: d.frecuencia, lista: [{ v: 'mensual', t: 'Cada mes' }, { v: 'semanal', t: 'Cada semana' }, { v: 'unico', t: 'Solo esta vez' }], errorTexto: 'Dinos si se repite' });
         if (campo === 'dia') return d.frecuencia === 'semanal' ? opciones(h, { campo: 'diaSemana', label: '¿Qué día de la semana?', accion: 'anotarValor', valor: d.diaSemana ?? 5, lista: [1, 2, 3, 4, 5, 6, 0].map((n) => ({ v: n, t: M.capital(M.DIAS[n]) })) }) : d.frecuencia === 'unico' ? calendario(h, 'fechaPago', d.fechaPago || (d.dia ? M.proximoDia(st.hoy, d.dia) : null), { label: '¿Qué día vence?' }) : selectorDia(h, 'dia', d.dia);
-        if (campo === 'apartado') return opciones(h, { campo: 'apartado', label: '¿En cuál ahorro?', accion: 'anotarValor', valor: d.apartado, lista: st.apartados.map((a) => ({ v: a.id, t: a.nombre, e: a.emoji, s: dinero(a.monto) })), errorTexto: 'Elige un ahorro' }) + (d.tipo === 'apartar' ? campoTexto(h, { campo: 'nuevoApartado', label: 'O crea uno nuevo', valor: d.apartado ? '' : d.nombre || '', placeholder: 'Ej. Regalo de mamá' }) : '');
+        if (campo === 'apartado') return opciones(h, { campo: 'apartado', label: '¿En cuál ahorro?', accion: 'anotarValor', valor: d.apartado, lista: st.apartados.map((a) => ({ v: a.id, t: a.nombre, e: a.emoji, s: dinero(a.monto) })), errorTexto: 'Elige un ahorro' }) + (d.tipo === 'apartar' ? campoTexto(h, { campo: 'nuevoApartado', label: '¿O es un ahorro nuevo?', valor: d.apartado ? '' : d.nombre || '', placeholder: 'Ej. Regalo de mamá' }) : '');
         if (campo === 'nombre') {
             if (d.tipo === 'ingreso') return opciones(h, { campo: 'categoriaIngreso', label: '¿De qué?', accion: 'anotarValor', valor: d.ingresoRef ? 'esperado' : d.categoria, lista: [...(d.ingresoRef ? [{ v: 'esperado', t: d.nombre, e: d.emoji }] : []), ...D.INGRESO_CATEGORIAS.map((k) => ({ v: k.id, t: k.nombre, e: k.emoji }))] });
-            const cats = d.tipo === 'gasto' ? opciones(h, { campo: 'categoria', label: 'Tipo de gasto', accion: 'anotarValor', valor: d.categoria, lista: D.CATEGORIAS.filter((k) => !['servicios', 'cuotas'].includes(k.id)).map((k) => ({ v: k.id, t: k.nombre, e: k.emoji })) }) : d.tipo === 'pago' ? opciones(h, { campo: 'frecuente', label: 'Pagos frecuentes', accion: 'anotarValor', valor: '', lista: D.PAGOS_FRECUENTES.map((f) => ({ v: f.id, t: f.nombre, e: f.emoji })) }) : '';
+            const cats = d.tipo === 'gasto' ? opciones(h, { campo: 'categoria', label: '¿Qué tipo de gasto?', accion: 'anotarValor', valor: d.categoria, lista: D.CATEGORIAS.filter((k) => !['servicios', 'cuotas'].includes(k.id)).map((k) => ({ v: k.id, t: k.nombre, e: k.emoji })) }) : d.tipo === 'pago' ? opciones(h, { campo: 'frecuente', label: '¿Cuál pago?', accion: 'anotarValor', valor: d.frecuente || '', lista: D.PAGOS_FRECUENTES.map((f) => ({ v: f.id, t: f.nombre, e: f.emoji })) }) : '';
             return campoTexto(h, { campo: 'nombre', label: d.tipo === 'pago' ? '¿Qué pago?' : '¿En qué?', valor: d.nombre || '', placeholder: d.tipo === 'pago' ? 'Ej. Colegio' : 'Ej. Pupusas', errorTexto: 'Escribe en qué fue' }) + cats;
         }
         if (campo === 'mover') return opciones(h, { campo: 'de', label: '¿De dónde?', accion: 'anotarValor', valor: d.de, lista: lugares(st) }) + opciones(h, { campo: 'a', label: '¿A dónde?', accion: 'anotarValor', valor: d.a, lista: [...lugares(st), ...st.tarjetas.map((t) => ({ v: 'tarjeta:' + t.id, t: 'Pagar ' + t.nombre, e: t.emoji }))] });
@@ -599,8 +612,17 @@
         const d = h.d;
         const out = [];
         if (d.tipo === 'pago' && !d.frecuencia) out.push(`<div class="pregunta">${opciones(h, { campo: 'frecuencia', label: '¿Se repite?', accion: 'anotarValor', valor: d.frecuencia, lista: [{ v: 'mensual', t: 'Cada mes' }, { v: 'semanal', t: 'Cada semana' }, { v: 'unico', t: 'Solo esta vez' }], errorTexto: 'Dinos si se repite' })}</div>`);
-        if (d.tipo === 'gasto' && d.yaPagado) out.push(`<div class="nota nota--info" role="note">${icon('info')}<p>Ya marcaste el pago «${esc(d.yaPagado.nombre)}» del ${esc(M.fechaCorta(d.yaPagado.fecha))}. Esto se guarda como un gasto aparte.</p></div>`);
-        if (d.tipo === 'pago' && d.duplicado) out.push(`<div class="nota nota--info" role="note">${icon('info')}<p>Ya tienes «${esc(M.pago(st, d.duplicado).nombre)}» en Pagos. Si es otro, guárdalo igual.</p></div>`);
+        // V2-82: el gasto se llama como un pago ya pagado: si hay uno siguiente, se ofrece marcar ese (por adelantado).
+        if (d.tipo === 'gasto' && d.pagoSiguiente && !d.cualPago) {
+            const pg = M.pago(st, d.pagoSiguiente.pago);
+            const ch = (v, t) => `<button type="button" class="chip" aria-pressed="false" data-a="anotarValor" data-campo="cualPago" data-v="${v}" data-fk="cual-pago-${v}">${t}</button>`;
+            out.push(`<div class="pregunta" role="group" aria-labelledby="l-cualPago"><p class="campo-l" id="l-cualPago">¿Es el pago de ${esc(pg.nombre)} del ${esc(P.diaMes(d.pagoSiguiente.fecha))}?</p>${d.yaPagado ? `<p class="fila-s">Ya marcaste el del ${esc(P.diaMes(d.yaPagado.fecha))}.${d.pagoSiguiente.fecha > st.hoy ? ' Este todavía no vence: lo marcas pagado por adelantado.' : ''}</p>` : ''}<div class="chips">${ch('si', 'Sí, ya lo pagué')}${ch('no', 'No, es otro gasto')}</div>${error(h, 'cualPago', 'Elige una opción')}</div>`);
+        } else if (d.tipo === 'gasto' && d.yaPagado) out.push(`<div class="nota nota--info" role="note">${icon('info')}<p>Ya marcaste el pago «${esc(d.yaPagado.nombre)}» del ${esc(M.fechaCorta(d.yaPagado.fecha))}. Esto se guarda como un gasto aparte.</p></div>`);
+        // V2-80: marcar pagado un pago que todavía no vence: se dice que es por adelantado.
+        if (d.tipo === 'pagado' && d.ocurrencia && d.ocurrencia > st.hoy) out.push(`<div class="nota nota--info" role="note">${icon('calendar-days')}<p>Es el pago del ${esc(P.diaMes(d.ocurrencia))}: lo marcas pagado por adelantado.</p></div>`);
+        // V2-82: «Recordarme un pago» parecido a uno que ya tienes: se pregunta antes de crear otro.
+        const dup = d.tipo === 'pago' && !d.dupOk ? M.pagoParecido(st, d) : null;
+        if (dup) out.push(preguntaDuplicado(h, dup, 'anotarValor'));
         if (d.tipo === 'gasto' && d.sugerirApartado && d.usarApartado === null && M.apartado(st, d.sugerirApartado)) {
             const a = M.apartado(st, d.sugerirApartado);
             const pregunta = d.apartadoPorNombre ? `¿Lo tomas de tu ahorro ${esc(a.nombre)}? <span class="opcional">(tiene ${dinero(a.monto)})</span>` : `¿Lo pagas con tu ahorro ${esc(a.nombre)} (${dinero(a.monto)})?`;
@@ -621,16 +643,22 @@
                 out.push(`<div class="nota nota--atencion" role="note">${icon('info')}<p><strong>Esto se paga el ${esc(P.diaPago(info, info.venceCompras))} y hoy no te alcanzaría.</strong> Puedes guardarlo igual; lo verás claro en tu número.</p></div>`);
             }
         }
-        // V2-29 #10: «me pagaron 600» cerca de un ingreso esperado.
+        // V2-29 #10 y V2-81: «me pagaron 600» o «Recibí» de tipo Salario cerca de un ingreso esperado: ¿es ese? (cuenta una vez).
         const refIngreso = d.ingresoRef || d.refGuardada;
         if (d.tipo === 'ingreso' && refIngreso && d.preguntarIngreso) {
             const ing = M.ingreso(st, refIngreso.id);
-            const cual = ing.frecuencia === 'quincenal' ? 'quincena' : ing.frecuencia === 'semanal' ? 'pago de la semana' : ing.nombre.charAt(0).toLowerCase() + ing.nombre.slice(1);
-            const dia = M.partes(refIngreso.fecha)[2];
+            const { cual, fem, dia } = cualIngreso(ing, refIngreso.fecha);
             const adelantada = refIngreso.fecha > st.hoy;
             const ch = (v, t) => `<button type="button" class="chip" aria-pressed="${d.cualIngreso === v}" data-a="anotarValor" data-campo="cualIngreso" data-v="${v}" data-fk="cual-${v}">${d.cualIngreso === v ? icon('check', 'ico-xs') : ''}${t}</button>`;
-            const fem = /^(quincena|catorcena|remesa)/.test(cual);
-            out.push(`<div class="pregunta" role="group" aria-labelledby="l-cualIngreso"><p class="campo-l" id="l-cualIngreso">¿Es tu ${esc(cual)} del ${dia}${adelantada ? (fem ? ' adelantada' : ' adelantado') : ''} o un ingreso extra?</p><div class="chips">${ch('esperado', `Mi ${esc(cual)} del ${dia}`)}${ch('extra', 'Un ingreso extra')}</div>${error(h, 'cualIngreso', 'Elige una opción')}</div>`);
+            out.push(`<div class="pregunta" role="group" aria-labelledby="l-cualIngreso"><p class="campo-l" id="l-cualIngreso">¿Es tu ${esc(cual)} del ${dia}?</p>${adelantada ? `<p class="fila-s">Todavía no es el ${dia}: ${fem ? 'la' : 'lo'} marcas ${fem ? 'recibida' : 'recibido'} por adelantado.</p>` : ''}<div class="chips">${ch('esperado', `Sí, ${fem ? 'marcarla como recibida' : 'marcarlo como recibido'}`)}${ch('extra', 'No, es otro ingreso')}</div>${error(h, 'cualIngreso', 'Elige una opción')}</div>`);
+        }
+        // V2-81: ese ingreso ya estaba recibido: se avisa (lo que guardes es otro ingreso).
+        if (d.tipo === 'ingreso' && !refIngreso && d.yaRecibido) {
+            const ing = M.ingreso(st, d.yaRecibido.id);
+            if (ing) {
+                const { cual, fem, dia } = cualIngreso(ing, d.yaRecibido.fecha);
+                out.push(`<div class="nota nota--info" role="note">${icon('info')}<p>Ya marcaste tu ${esc(cual)} del ${dia} como ${fem ? 'recibida' : 'recibido'}. ¿Es otro ingreso?</p></div>`);
+            }
         }
         // V2-29 #11: «aparté 20 luz» cuando la luz ya está en Pagos.
         if (d.tipo === 'apartar' && d.pagoParecido && d.apartarIgual !== 'si') {
@@ -747,6 +775,8 @@
             if (campo === 'monto') {
                 h.d.monto = M.leerMonto(el.value);
                 h.manual.monto = true;
+                // V2-81: «Recibí» con un monto parecido al de tu quincena: ¿es esa? (mientras no haya respondido).
+                if (h.d.tipo === 'ingreso' && !h.d.cualIngreso && !h.d.adelanto) M.aplicarEsperado(st, h.d);
                 region('anotar-chips', chipsDe(st, h));
                 region('anotar-preg', preguntasAnotar(st, h));
             } else if (campo === 'comision') {
@@ -759,6 +789,12 @@
                     const k = D.CATEGORIAS.find((x) => x.palabras.includes(w));
                     if (k && !h.manual.categoria) h.d.categoria = k.id;
                     h.d.emoji = D.EMOJI_NOMBRE[w] || M.categoria(h.d.categoria).emoji;
+                }
+                // V2-83: si escribe otro nombre, el frecuente elegido deja de verse marcado; V2-82: se vuelve a revisar si ya lo tiene.
+                if (h.d.tipo === 'pago') {
+                    const f = D.PAGOS_FRECUENTES.find((y) => y.id === h.d.frecuente);
+                    if (f && M.normalizar(f.nombre) !== M.normalizar(el.value)) h.d.frecuente = null;
+                    region('anotar-preg', preguntasAnotar(st, h));
                 }
                 region('anotar-chips', chipsDe(st, h));
             } else if (campo === 'nuevoApartado') {
@@ -833,16 +869,38 @@
         } else if (d.campo === 'categoriaIngreso') {
             if (v === 'esperado') return P.render();
             x.ingresoRef = null;
+            x.refGuardada = null;
             x.categoria = v;
             const k = M.categoria(v);
             x.emoji = k.emoji;
             x.nombre = k.nombre;
+            // V2-81: de tipo Salario cerca de tu quincena: ¿es esa? (o ya estaba recibida).
+            M.aplicarEsperado(st, x);
+            if (!x.ingresoRef) Object.assign(x, { emoji: k.emoji, nombre: k.nombre });
         } else if (d.campo === 'frecuente') {
             const f = D.PAGOS_FRECUENTES.find((y) => y.id === v);
             x.nombre = f.nombre;
             x.emoji = f.emoji;
             x.categoria = f.categoria;
+            x.frecuente = v;
             if (f.semanal) x.frecuencia = 'semanal';
+        } else if (d.campo === 'dup') {
+            // V2-82: «Ver el que tengo» abre su ficha (no se crea nada); «Sí, es otro» deja guardarlo.
+            if (v === 'ver') {
+                const p = M.pagoParecido(st, x);
+                P.cerrarHoja({ sinFoco: true });
+                if (p) P.abrir('pago', p.id);
+                P.emitir('anotar:duplicado:ver');
+                return;
+            }
+            x.dupOk = true;
+        } else if (d.campo === 'cualPago') {
+            // V2-82: el gasto era el pago siguiente (por adelantado) o un gasto aparte.
+            x.cualPago = v;
+            if (v === 'si' && x.pagoSiguiente) {
+                const s = x.pagoSiguiente;
+                Object.assign(x, { tipo: 'pagado', pago: s.pago, ocurrencia: s.fecha, monto: x.monto !== null ? x.monto : s.monto, medio: x.medioExplicito ? x.medio : s.medio, fecha: st.hoy, yaPagado: null });
+            }
         } else if (d.campo === 'usarApartado') {
             x.usarApartado = v === 'no' ? 'no' : v;
         } else if (d.campo === 'cualIngreso') {
@@ -850,7 +908,8 @@
             if (v === 'extra') {
                 x.refGuardada = x.ingresoRef || x.refGuardada;
                 x.ingresoRef = null;
-                Object.assign(x, { nombre: 'Ingreso extra', emoji: '💵', categoria: 'otro' });
+                // Un adelanto que no es el esperado sigue siendo un adelanto (V2-56: después se pregunta de qué quincena).
+                Object.assign(x, x.adelanto ? { nombre: 'Adelanto de salario', emoji: '💵', categoria: 'otro' } : { nombre: 'Ingreso extra', emoji: '💵', categoria: 'otro' });
             } else if (x.ingresoRef || x.refGuardada) {
                 x.ingresoRef = x.ingresoRef || x.refGuardada;
                 const ing = M.ingreso(st, x.ingresoRef.id);
@@ -1145,19 +1204,112 @@
     };
 
     // ================================================================== PAGADO (pago fijo, variable o tarjeta)
+    /**
+     * «Pagado». v2.6.5 (V2-80): cada ocurrencia se marca UNA vez (después: «Pagado ✓» y «Deshacer»); solo la que toca
+     * (la primera sin pagar ni saltar; una vencida, primero); si todavía no vence, se pregunta «¿Ya lo pagaste por
+     * adelantado?». V2-29 #8 sigue: con monto fijo no se pregunta cuánto ni con qué.
+     */
     P.acciones.pagado = (d) => {
         const st = P.st;
         if (d.tipo === 'pago') {
             const p = M.pago(st, d.id);
             const o = M.ocurrenciasPago(st, p, d.fecha, d.fecha)[0];
-            // V2-29 #8: monto fijo y a tiempo se guarda sin preguntar: «Pagado con … · Cambiar · Deshacer».
-            if (!p.estimado && o && o.estado === 'pendiente') {
-                const m = M.medio(st, p.medio);
-                P.cambiar((s) => P.marcarPagado(s, p.id, d.fecha, { monto: p.monto, medio: p.medio, fecha: s.hoy }), { aviso: `Pagado con ${m ? m.nombre : 'tu medio'}`, cambiar: (r) => r.id, claves: ['guardado:pagado', 'guardado:pagado:' + claveNombre(p.nombre)] });
+            if (o && (o.estado === 'pagado' || o.estado === 'saltado')) {
+                P.avisar(o.estado === 'pagado' ? `Ya está pagado: ${p.nombre} del ${P.diaMes(o.fecha)}` : `Ya lo saltaste: ${p.nombre} del ${P.diaMes(o.fecha)}`, { check: false });
+                P.emitir('pagado:yaEstaba');
                 return;
             }
+            const sig = M.porPagar(st, p);
+            if (sig && sig.fecha !== d.fecha) {
+                P.avisar(`Primero el del ${P.diaMes(sig.fecha)}.`, { check: false });
+                P.emitir('pagado:primeroOtro');
+                return;
+            }
+            const seguir = () => {
+                const s0 = P.st;
+                const x = M.ocurrenciasPago(s0, p, d.fecha, d.fecha)[0];
+                // V2-29 #8: monto fijo se guarda sin preguntar: «Pagado con … · Cambiar · Deshacer».
+                if (!p.estimado && x && x.estado === 'pendiente') {
+                    const m = M.medio(s0, p.medio);
+                    P.cambiar((s) => P.marcarPagado(s, p.id, d.fecha, { monto: p.monto, medio: p.medio, fecha: s.hoy }), { aviso: `Pagado con ${m ? m.nombre : 'tu medio'}`, cambiar: (r) => r.id, claves: ['guardado:pagado', 'guardado:pagado:' + claveNombre(p.nombre)] });
+                    return;
+                }
+                P.abrirHoja('pagado', { tipoPago: d.tipo, id: d.id, fecha: d.fecha });
+            };
+            if (d.fecha > st.hoy) {
+                P.confirmarDlg({ titulo: `Este pago es del ${P.diaMes(d.fecha)}. ¿Ya lo pagaste por adelantado?`, texto: `${p.nombre} · ${dinero(o ? o.monto : p.monto, { aprox: o ? o.estimado : p.estimado })}`, si: 'Sí, ya lo pagué', no: 'Cancelar', alSi: seguir });
+                P.emitir('pagado:adelanto');
+                return;
+            }
+            seguir();
+            return;
         }
         P.abrirHoja('pagado', { tipoPago: d.tipo, id: d.id, fecha: d.fecha });
+    };
+    /** V2-80: «Deshacer» un «Pagado ✓» (vuelve a estar por pagar y sale su gasto; se puede volver a deshacer). */
+    P.acciones.pagoDeshacer = (d) => {
+        const st = P.st;
+        const p = M.pago(st, d.id);
+        const o = p && M.ocurrenciasPago(st, p, d.fecha, d.fecha)[0];
+        if (!o || o.estado !== 'pagado' || !o.hecho || !o.hecho.registro) return;
+        P.cambiar((s) => P.desmarcarPagado(s, o.hecho.registro), { aviso: `${p.nombre}: ya no está pagado`, deshacer: true, claves: ['guardado:desmarcar'] });
+    };
+    /**
+     * «Ya llegó». v2.6.5 (V2-81): cada ocurrencia de un ingreso esperado se marca UNA vez (después: «Recibido ✓» y
+     * «Deshacer»); solo la que toca; si todavía no es su día, se pregunta «¿Ya te llegó por adelantado?».
+     */
+    P.acciones.llego = (d) => {
+        const st = P.st;
+        const ing = M.ingreso(st, d.id);
+        if (!ing) return;
+        const o = M.ocurrenciasIngreso(st, ing, d.fecha, d.fecha)[0];
+        if (o && (o.estado === 'llego' || o.estado === 'noLlego')) {
+            P.avisar(`Ya está ${o.estado === 'llego' ? 'recibido' : 'marcado'}: ${ing.nombre} del ${P.diaMes(o.fecha)}`, { check: false });
+            return;
+        }
+        const sig = M.porRecibir(st, ing);
+        if (sig && sig.fecha !== d.fecha) {
+            P.avisar(`Primero el del ${P.diaMes(sig.fecha)}.`, { check: false });
+            return;
+        }
+        const seguir = () => P.abrirHoja('ingresoLlego', { id: d.id, fecha: d.fecha });
+        if (d.fecha > st.hoy) {
+            P.confirmarDlg({ titulo: `Este ingreso es del ${P.diaMes(d.fecha)}. ¿Ya te llegó por adelantado?`, texto: `${ing.nombre} · ${dinero(o ? o.monto : ing.monto, { aprox: o ? o.aprox : ing.aprox })}`, si: 'Sí, ya llegó', no: 'Cancelar', alSi: seguir });
+            P.emitir('llego:adelanto');
+            return;
+        }
+        seguir();
+    };
+    /** V2-81: «Deshacer» un «Recibido ✓»: sale lo que llegó (y lo que se descontó solo de ese pago) y vuelve a esperarse. */
+    P.deshacerLlegada = function (st, ingresoId, fecha) {
+        const ing = M.ingreso(st, ingresoId);
+        if (!ing || !ing.llegadas[fecha]) return;
+        delete ing.llegadas[fecha];
+        // «Reparte» → «Listo» confirma lo que tienes en cada lugar (ya con lo que llegó). Esas confirmaciones (sin
+        // diferencia) dejan de contarlo; un cuadre con otro monto (lo que contaste de verdad) no se toca.
+        const reg = st.registros.find((r) => r.tipo === 'ingreso' && r.ingreso === ingresoId && r.ocurrencia === fecha);
+        if (reg && reg.lugar) {
+            for (const c of st.registros) {
+                if (c.tipo !== 'cuadre' || c.lugar !== reg.lugar || !(c.seq > reg.seq) || c.esperado !== c.monto) continue;
+                c.monto -= reg.monto;
+                c.esperado -= reg.monto;
+                const l = M.lugar(st, c.lugar);
+                if (l && l.cuadre && l.cuadre.seq === c.seq) l.cuadre.monto = c.monto;
+            }
+        }
+        st.registros = st.registros.filter((r) => !(r.tipo === 'ingreso' && r.ingreso === ingresoId && r.ocurrencia === fecha));
+        for (const p of M.descuentosDe(st, ingresoId)) {
+            const hh = p.hechos[fecha];
+            if (hh && hh.descuento) {
+                if (hh.bajaDeuda && debeConocido(p)) p.deuda.debe += hh.bajaDeuda;
+                delete p.hechos[fecha];
+            }
+        }
+    };
+    P.acciones.llegadaDeshacer = (d) => {
+        const ing = M.ingreso(P.st, d.id);
+        if (!ing || !ing.llegadas[d.fecha]) return;
+        P.cambiar((s) => P.deshacerLlegada(s, d.id, d.fecha), { aviso: `${ing.nombre}: ya no está recibido`, deshacer: true, claves: ['guardado:llegadaDeshacer'] });
     };
     H.pagado = {
         iniciar(h) {
@@ -1196,7 +1348,7 @@
             return {
                 titulo: `${esc(p.nombre)} · ${h.vencido ? 'venció' : 'vence'} el ${M.partes(h.fecha)[2]} ${M.MESES_CORTOS[M.partes(h.fecha)[1] - 1]}`,
                 cuerpo: `${campoMonto(h, { label: '¿Cuánto pagaste?', valor: h.monto, ayuda: p.estimado ? `Era un estimado de ${dinero(p.monto, { aprox: true })}. Escribe lo que dice tu recibo.` : '', errorTexto: 'Escribe cuánto pagaste' })}
-                    ${opciones(h, { campo: 'medio', label: 'Pagado con', lista: medios(st).map((x) => ({ ...x, s: x.v === p.medio ? 'el de siempre' : '' })), valor: h.medio })}
+                    ${opciones(h, { campo: 'medio', label: '¿Con qué lo pagaste?', lista: medios(st).map((x) => ({ ...x, s: x.v === p.medio ? 'el de siempre' : '' })), valor: h.medio })}
                     ${campoFecha(h, 'cuando', h.cuando, { label: h.vencido ? '¿Cuándo lo pagaste?' : '¿Cuándo?', extra: h.vencido ? h.fecha : null })}
                     <div id="pagado-nota">${m && m.lugar ? notaCuadre(st, h.cuando, m.lugar, contadoDe(st, p.id, h.fecha)) : ''}</div>`,
                 pie: pie2('pagadoGuardar', 'Marcar pagado'),
@@ -1269,7 +1421,7 @@
             const p = M.pago(st, h.id);
             const repetido = p.frecuencia !== 'unico' && !!M.principal(st);
             const etiqueta = (f) => (f === 'ahora' ? 'Con lo que tienes ahora' : M.capital('con ' + P.etiquetaFuente(f)));
-            const op = (v, t, s) => `<button type="button" class="opcion-g" role="radio" aria-checked="${h.modo === v}" data-a="valor" data-campo="modo" data-v="${v}" data-fk="pc-${v}"><span class="opcion-g-txt"><span class="opcion-g-t">${esc(t)}</span>${s ? `<span class="fila-s">${esc(s)}</span>` : ''}</span></button>`;
+            const op = (v, t, s) => `<button type="button" class="opcion-g" role="radio" aria-checked="${h.modo === v}" data-a="valor" data-campo="modo" data-v="${v}" data-fk="pc-${v}"><span class="opcion-g-txt"><span class="opcion-g-t">${esc(t)}</span>${s ? `<span class="fila-s">${esc(s)}</span>` : ''}</span>${h.modo === v ? icon('circle-check', 'ico-ok') : ''}</button>`;
             const vis = fuentesVisibles(h);
             const ocultas = h.fuentes.length - vis.length;
             const opciones1 = [...vis].reverse().map((f) => op('uno:' + f, etiqueta(f) + (f === h.def ? ' (lo normal)' : ''), quedaEn(k, f))).join('');
@@ -1636,7 +1788,7 @@
             h.monto = debeConocido(p) ? M.montoCampo(p.deuda.debe) : '';
         },
         html(h) {
-            return { titulo: 'Lo que debes', cuerpo: `${campoMonto(h, { label: '¿Cuánto debes más o menos?', valor: h.monto, ayuda: 'Es opcional. Lo ves en tu recibo o en la app de la tienda.' })}`, pie: pie2('deudaOk', 'Guardar') };
+            return { titulo: 'Lo que debes', cuerpo: `${campoMonto(h, { label: '¿Cuánto debes más o menos?', valor: h.monto, ayuda: 'Es opcional. Lo ves en tu recibo o en la app de la tienda.' })}`, pie: pie2('deudaOk', 'Guardar lo que debes') };
         },
         alCampo(h, campo, el) {
             h[campo] = el.value;
@@ -1650,7 +1802,7 @@
         P.cambiar((s) => {
             const p = M.pago(s, h.id);
             p.deuda = { ...(p.deuda || {}), debe: monto };
-        }, { aviso: 'Guardado', claves: ['guardado:deuda:debe'] });
+        }, { aviso: 'Lo que debes quedó guardado', claves: ['guardado:deuda:debe'] });
     };
 
     // ================================================================== CUADRAR Y MOVER
@@ -1742,7 +1894,7 @@
             return {
                 titulo: h.id ? `Ahorrar en ${esc(M.apartado(st, h.id).nombre)}` : 'Ahorrar',
                 cuerpo: `${campoMonto(h, { label: '¿Cuánto quieres ahorrar?', valor: h.monto, ayuda: `Fuera de ahorros tienes ${dinero(Math.max(0, k.tienes - k.apartado))}.` })}
-                    ${h.id ? '' : opciones(h, { campo: 'apartado', label: '¿En cuál?', lista: st.apartados.map((a) => ({ v: a.id, t: a.nombre, e: a.emoji, s: dinero(a.monto) })), valor: h.apartado, errorTexto: 'Elige un ahorro o crea uno' }) + campoTexto(h, { campo: 'nuevo', label: 'O crea uno nuevo', valor: h.nuevo, placeholder: 'Ej. Regalo de mamá' })}
+                    ${h.id ? '' : opciones(h, { campo: 'apartado', label: '¿En cuál?', lista: st.apartados.map((a) => ({ v: a.id, t: a.nombre, e: a.emoji, s: dinero(a.monto) })), valor: h.apartado, errorTexto: 'Elige un ahorro o crea uno' }) + campoTexto(h, { campo: 'nuevo', label: '¿O es un ahorro nuevo?', valor: h.nuevo, placeholder: 'Ej. Regalo de mamá' })}
                     <p class="fila-s">Tus ahorros siguen en tu banco o efectivo; solo les pones nombre. Si es para un pago (luz, colegio), agrégalo en Pagos.</p>`,
                 pie: pie2('apartarOk', 'Ahorrar'),
             };
@@ -1971,7 +2123,7 @@
             const a = M.apartado(st, h.id);
             if (!a) return { titulo: 'Listo', cuerpo: '', pie: pie1('cerrarHoja', 'Cerrar') };
             const lista = candidatosApartado(st, a);
-            const op = (v, t, sub, monto) => `<button type="button" class="opcion-g" role="radio" aria-checked="${h.elegido === v}" data-a="valor" data-campo="elegido" data-v="${v}" data-fk="yl-${v}"><span class="opcion-g-txt"><span class="opcion-g-t">${t}</span><span class="fila-s">${sub}</span></span>${monto ? `<span class="monto">${monto}</span>` : ''}</button>`;
+            const op = (v, t, sub, monto) => `<button type="button" class="opcion-g" role="radio" aria-checked="${h.elegido === v}" data-a="valor" data-campo="elegido" data-v="${v}" data-fk="yl-${v}"><span class="opcion-g-txt"><span class="opcion-g-t">${t}</span><span class="fila-s">${sub}</span></span>${monto ? `<span class="monto">${monto}</span>` : ''}${h.elegido === v ? icon('circle-check', 'ico-ok') : ''}</button>`;
             const nuevo = h.elegido === 'nuevo';
             return {
                 titulo: lista.length ? '¿Cuál de estos gastos fue?' : `¿Cómo usaste ${esc(a.nombre)}?`,
@@ -2044,19 +2196,19 @@
             const tipo = D.TIPOS_DEUDA.find((x) => x.id === h.tipoDeuda);
             const tipos = h.editar
                 ? ''
-                : `<div class="campo-g"><p class="campo-l" id="l-tipoDeuda">¿Qué es?</p><div class="opciones-grandes opciones-grandes--2" role="radiogroup" aria-labelledby="l-tipoDeuda">${D.TIPOS_DEUDA.map((x) => `<button type="button" class="opcion-g" role="radio" aria-checked="${h.tipoDeuda === x.id}" data-a="valor" data-campo="tipoDeuda" data-v="${x.id}" data-fk="td-${x.id}">${caja(x.emoji)}<span class="opcion-g-txt"><span class="opcion-g-t">${esc(x.nombre)}</span><span class="fila-s">${esc(x.s)}</span></span></button>`).join('')}</div>${error(h, 'tipoDeuda', 'Elige qué es')}</div>`;
+                : `<div class="campo-g"><p class="campo-l" id="l-tipoDeuda">¿Qué es?</p><div class="opciones-grandes opciones-grandes--2" role="radiogroup" aria-labelledby="l-tipoDeuda">${D.TIPOS_DEUDA.map((x) => `<button type="button" class="opcion-g" role="radio" aria-checked="${h.tipoDeuda === x.id}" data-a="valor" data-campo="tipoDeuda" data-v="${x.id}" data-fk="td-${x.id}">${caja(x.emoji)}<span class="opcion-g-txt"><span class="opcion-g-t">${esc(x.nombre)}</span><span class="fila-s">${esc(x.s)}</span></span>${h.tipoDeuda === x.id ? icon('circle-check', 'ico-ok') : ''}</button>`).join('')}</div>${error(h, 'tipoDeuda', 'Elige qué es')}</div>`;
             let campos = '';
             if (h.tipoDeuda === 'tarjeta' && !h.cuotaTarjeta) {
                 campos = `${campoTexto(h, { campo: 'nombre', label: '¿Cómo se llama?', valor: h.nombre, placeholder: EJ_DEUDA.tarjeta, errorTexto: 'Ponle un nombre' })}
-                    <div class="ob-2">${campoDia(h, 'corte', h.sinCorte ? 'Día de corte <span class="opcional">(opcional)</span>' : 'Día de corte')}${campoDia(h, 'pagoDia', 'Día de pago')}</div>
+                    <div class="ob-2">${campoDia(h, 'corte', h.sinCorte ? '¿Qué día es el corte? <span class="opcional">(opcional)</span>' : '¿Qué día es el corte?')}${campoDia(h, 'pagoDia', '¿Qué día se paga?')}</div>
                     <p class="fila-s">${h.sinCorte ? 'Si no sabes el día de corte, déjalo vacío: te lo pido con tu estado de cuenta.' : 'Los dos están en tu estado de cuenta.'}</p>
                     ${h.usual !== null && h.usual !== undefined ? campoMonto(h, { campo: 'usual', label: '¿Cuánto pagas normalmente?', valor: h.usual, id: 'f-usual', ayuda: 'Lo contamos hasta que anotes tu estado de cuenta.', errorTexto: 'Escribe cuánto pagas' }) : ''}
-                    ${campoMonto(h, { campo: 'cupo', label: 'Límite de crédito <span class="opcional">(opcional)</span>', valor: h.cupo, id: 'f-cupo', placeholder: 'Ej. 1,000.00', ayuda: 'Verás cuánto tienes disponible. Nunca suma a tu libre: es dinero prestado.' })}
-                    ${h.editar ? '' : `<div class="campo-g" role="group" aria-labelledby="l-ec"><p class="campo-l" id="l-ec">¿Tienes tu último estado de cuenta? <span class="opcional">(opcional)</span></p><div class="ob-2">${campoMonto(h, { campo: 'ecTotal', label: 'Pago de contado', valor: h.ecTotal, id: 'f-ecTotal', errorTexto: 'Escribe el pago de contado' })}${campoMonto(h, { campo: 'ecMinimo', label: 'Pago mínimo', valor: h.ecMinimo, id: 'f-ecMinimo' })}</div><p class="fila-s">Si no lo tienes a mano, te lo pedimos después del próximo corte.</p></div>
-                    <div class="campo-g" role="group" aria-labelledby="l-sinec"><p class="campo-l" id="l-sinec">Si todavía no tienes estado de cuenta <span class="opcional">(opcional)</span></p>${campoMonto(h, { campo: 'usualNueva', label: '¿Cuánto pagas normalmente?', valor: h.usualNueva, id: 'f-usualNueva', ayuda: 'Lo apartamos de tu libre hasta que anotes tu estado de cuenta.' })}${campoMonto(h, { campo: 'debeHoy', label: '¿Cuánto debes hoy?', valor: h.debeHoy, id: 'f-debeHoy', ayuda: 'Más o menos. Queda «por confirmar» hasta tu estado de cuenta.' })}</div>`}`;
+                    ${campoMonto(h, { campo: 'cupo', label: '¿Cuál es tu límite de crédito? <span class="opcional">(opcional)</span>', valor: h.cupo, id: 'f-cupo', placeholder: 'Ej. 1,000.00', ayuda: 'Verás cuánto tienes disponible. Nunca suma a tu libre: es dinero prestado.' })}
+                    ${h.editar ? '' : `<div class="campo-g" role="group" aria-labelledby="l-ec"><p class="campo-l" id="l-ec">¿Tienes tu último estado de cuenta? <span class="opcional">(opcional)</span></p><div class="ob-2">${campoMonto(h, { campo: 'ecTotal', label: '¿Cuánto es el pago de contado?', valor: h.ecTotal, id: 'f-ecTotal', errorTexto: 'Escribe el pago de contado' })}${campoMonto(h, { campo: 'ecMinimo', label: '¿Cuánto es el pago mínimo?', valor: h.ecMinimo, id: 'f-ecMinimo' })}</div><p class="fila-s">Si no lo tienes a mano, te lo pedimos después del próximo corte.</p></div>
+                    <div class="campo-g" role="group" aria-labelledby="l-sinec"><p class="campo-l" id="l-sinec">¿Todavía no tienes estado de cuenta? <span class="opcional">(opcional)</span></p>${campoMonto(h, { campo: 'usualNueva', label: '¿Cuánto pagas normalmente?', valor: h.usualNueva, id: 'f-usualNueva', ayuda: 'Lo apartamos de tu libre hasta que anotes tu estado de cuenta.' })}${campoMonto(h, { campo: 'debeHoy', label: '¿Cuánto debes hoy?', valor: h.debeHoy, id: 'f-debeHoy', ayuda: 'Más o menos. Queda «por confirmar» hasta tu estado de cuenta.' })}</div>`}`;
             } else if (h.tipoDeuda) {
                 campos = `${campoTexto(h, { campo: 'nombre', label: '¿Cómo se llama?', valor: h.nombre, placeholder: EJ_DEUDA[h.tipoDeuda], errorTexto: 'Ponle un nombre' })}
-                    <div class="ob-2">${campoMonto(h, { campo: 'cuota', label: 'Cuota', valor: h.cuota, id: 'f-cuota', errorTexto: 'Escribe la cuota' })}${campoDia(h, 'dia', 'Día de pago', 'Cada mes')}</div>
+                    <div class="ob-2">${campoMonto(h, { campo: 'cuota', label: '¿De cuánto es la cuota?', valor: h.cuota, id: 'f-cuota', errorTexto: 'Escribe la cuota' })}${campoDia(h, 'dia', '¿Qué día se paga?', 'Cada mes')}</div>
                     ${campoMonto(h, { campo: 'debe', label: '¿Cuánto debes? <span class="opcional">(opcional)</span>', valor: h.debe, id: 'f-debe', ayuda: 'Más o menos. Baja con cada «Pagado».' })}
                     ${opciones(h, { campo: 'medio', label: '¿Con qué la pagas?', lista: medios(st).filter((m) => !M.medio(st, m.v).tarjeta), valor: h.medio })}
                     ${h.cuotaTarjeta ? '<p class="fila-s">Es lo que pagas cada mes a esta tarjeta. Si quieres llevar sus compras y su estado de cuenta, agrégala como tarjeta de crédito en Deudas.</p>' : ''}`;
@@ -2206,10 +2358,10 @@
             const st = P.st;
             const ing = M.ingreso(st, h.id);
             return {
-                titulo: `¿Cuánto te llegó?`,
+                titulo: 'Ya llegó',
                 cuerpo: `<p class="txt">${emo(ing.emoji, 18)} ${esc(ing.nombre)} ${h.fechaEsperada ? 'del ' + esc(M.fechaLarga(h.fechaEsperada)) : ''}</p>
-                    ${campoMonto(h, { label: 'Monto', valor: h.monto, ayuda: h.descuento ? `Ya le restamos ${dinero(h.descuento)} de tu adelanto. Escribe lo que llegó de verdad.` : 'Si te descontaron algo, escribe lo que llegó de verdad.' })}
-                    ${opciones(h, { campo: 'lugar', label: '¿Dónde cayó?', lista: lugares(st), valor: h.lugar })}
+                    ${campoMonto(h, { label: '¿Cuánto te llegó?', valor: h.monto, ayuda: h.descuento ? `Ya le restamos ${dinero(h.descuento)} de tu adelanto. Escribe lo que llegó de verdad.` : 'Si te descontaron algo, escribe lo que llegó de verdad.' })}
+                    ${opciones(h, { campo: 'lugar', label: '¿Dónde llegó?', lista: lugares(st), valor: h.lugar })}
                     ${M.descuentosDe(st, ing.id).length ? `<p class="fila-s">Al guardar, queda pagado solo: ${esc(M.descuentosDe(st, ing.id).map((p) => `${p.nombre} ${dinero(p.monto)}`).join(', '))}.</p>` : ''}
                     ${h.fechaEsperada ? (h.noCayo ? `<div class="pregunta" role="group" aria-labelledby="l-nocayo"><p class="campo-l" id="l-nocayo">¿Qué pasó?</p><div class="chips"><button type="button" class="chip" data-a="cerrarHoja" data-fk="nocayo-todavia">Todavía no (se atrasó)</button><button type="button" class="chip" data-a="ingresoNoLlega" data-fk="nocayo-no">No me va a caer</button></div><p class="fila-s">Si no te va a caer, tu número sigue con lo que tienes y lo de esa fecha se paga con eso.</p></div>` : `<button type="button" class="link link--start" data-a="valor" data-campo="noCayo" data-v="si" data-fk="ing-nocayo">No llegó</button>`) : ''}`,
                 pie: pie2('ingresoLlegoOk', 'Siguiente', { fk: 'ing-ok' }),
@@ -2746,18 +2898,21 @@
             return {
                 titulo: h.editar ? `Editar ${esc(h.nombre)}` : 'Nuevo pago',
                 cuerpo: `${h.editar ? '' : `<div class="opciones-grandes opciones-grandes--2"><button type="button" class="opcion-g" data-a="valor" data-campo="frecuente" data-v="prestamo" data-fk="np-cuota">${caja('🏦')}<span class="opcion-g-txt"><span class="opcion-g-t">Cuota de un préstamo</span><span class="fila-s">Casa comercial, préstamo o vivienda</span></span></button><button type="button" class="opcion-g" aria-pressed="${suscripcion}" data-a="valor" data-campo="tipoPago" data-v="${suscripcion ? '' : 'suscripcion'}" data-fk="np-suscripcion">${caja('📺')}<span class="opcion-g-txt"><span class="opcion-g-t">Suscripción</span><span class="fila-s">Netflix, Spotify, celular, gimnasio…</span></span>${suscripcion ? icon('circle-check', 'ico-ok') : ''}</button><button type="button" class="opcion-g" aria-pressed="${h.caja === 'servicio'}" data-a="valor" data-campo="caja" data-v="servicio" data-fk="np-servicios">${caja('💡')}<span class="opcion-g-txt"><span class="opcion-g-t">Facturas de servicios</span><span class="fila-s">Luz, agua, internet, teléfono, cable</span></span>${h.caja === 'servicio' ? icon('circle-check', 'ico-ok') : ''}</button><button type="button" class="opcion-g" aria-pressed="${h.caja === 'otro'}" data-a="valor" data-campo="caja" data-v="otro" data-fk="np-otro">${caja('🧾')}<span class="opcion-g-txt"><span class="opcion-g-t">Otro pago</span><span class="fila-s">Alquiler, colegio, cuchubal u otro</span></span>${h.caja === 'otro' ? icon('circle-check', 'ico-ok') : ''}</button></div>`}
-                    ${h.editar ? '' : suscripcion ? opciones(h, { campo: 'servicio', label: '¿Cuál?', lista: D.SUSCRIPCIONES.map((x) => ({ v: x.id, t: x.nombre, e: x.emoji })), valor: h.servicio || '' }) : opciones(h, { campo: 'frecuente', label: h.caja === 'servicio' ? '¿Cuál factura?' : h.caja === 'otro' ? 'Frecuentes' : 'Frecuentes', lista: D.PAGOS_FRECUENTES.filter((f) => !f.deuda && (h.caja === 'servicio' ? esServicio(f) : h.caja === 'otro' ? !esServicio(f) : true)).map((f) => ({ v: f.id, t: f.nombre, e: f.emoji })), valor: '' })}
+                    ${h.editar ? '' : suscripcion ? opciones(h, { campo: 'servicio', label: '¿Cuál?', lista: D.SUSCRIPCIONES.map((x) => ({ v: x.id, t: x.nombre, e: x.emoji })), valor: h.servicio || '' }) : opciones(h, { campo: 'frecuente', label: h.caja === 'servicio' ? '¿Cuál factura?' : '¿Cuál pago?', lista: D.PAGOS_FRECUENTES.filter((f) => !f.deuda && (h.caja === 'servicio' ? esServicio(f) : h.caja === 'otro' ? !esServicio(f) : true)).map((f) => ({ v: f.id, t: f.nombre, e: f.emoji })), valor: h.frecuente || '' })}
                     ${campoTexto(h, { campo: 'nombre', label: '¿Qué pagas?', valor: h.nombre, placeholder: h.caja === 'servicio' ? 'Ej. Luz' : 'Ej. Colegio', errorTexto: 'Ponle un nombre' })}
                     ${campoMonto(h, { label: cuchubal ? '¿Cuánto aportas cada vez?' : '¿Cuánto pagas?', valor: h.monto })}
                     <div class="chips"><button type="button" class="chip" aria-pressed="${h.estimado}" data-a="valor" data-campo="estimado" data-v="${!h.estimado}" data-fk="estimado">${h.estimado ? icon('check', 'ico-xs') : ''}Varía (es un estimado)</button></div>
                     ${bloqueFrecuencia(h, { solo: suscripcion ? ['mensual', 'anual'] : null })}
                     ${suscripcion && credito ? `<p class="fila-s">Con tarjeta de crédito, el cobro baja tu libre el día que se hace (V2-07).</p>` : ''}
                     ${cuchubal ? `${calendario(h, 'hasta', h.hasta || null, { label: '¿Hasta cuándo aportas? <span class="opcional">(opcional)</span>', min: st.hoy })}${h.editar ? '' : `${calendario(h, 'turno', h.turno || null, { label: '¿Cuándo te toca recibir? <span class="opcional">(opcional)</span>', min: st.hoy, ayuda: 'Tu turno aparece como ingreso esperado.' })}${h.turno ? campoMonto(h, { campo: 'turnoMonto', label: '¿Cuánto recibes ese día?', valor: h.turnoMonto, id: 'f-turnoMonto' }) : ''}`}` : ''}
-                    ${opciones(h, { campo: 'medio', label: '¿Con qué lo pagas?', lista: medios(st), valor: h.medio })}`,
+                    ${opciones(h, { campo: 'medio', label: '¿Con qué lo pagas?', lista: medios(st), valor: h.medio })}
+                    ${h.duplicado && M.pago(st, h.duplicado) ? preguntaDuplicado(h, M.pago(st, h.duplicado), 'nuevoPagoDup') : ''}`,
                 pie: pie2('nuevoPagoOk', h.editar ? 'Guardar cambios' : 'Guardar pago'),
             };
         },
         alValor(h, campo, v) {
+            // V2-82: si cambia algo, se vuelve a revisar al guardar.
+            h.duplicado = null;
             if (campo === 'caja') {
                 h.caja = h.caja === v ? null : v;
                 if (h.caja) h.tipoPago = null;
@@ -2775,8 +2930,8 @@
                     });
                     return;
                 }
-                // V2-36: el cuchubal puede ser de cualquier frecuencia; se sugiere quincenal.
-                Object.assign(h, { nombre: f.nombre, emoji: f.emoji, categoria: f.categoria, estimado: !!f.variable, frecuencia: f.id === 'cuchubal' ? 'quincenal' : f.semanal ? 'semanal' : 'mensual' });
+                // V2-36: el cuchubal puede ser de cualquier frecuencia; se sugiere quincenal. V2-83: el elegido se ve marcado.
+                Object.assign(h, { frecuente: v, nombre: f.nombre, emoji: f.emoji, categoria: f.categoria, estimado: !!f.variable, frecuencia: f.id === 'cuchubal' ? 'quincenal' : f.semanal ? 'semanal' : 'mensual' });
             } else if (campo === 'tipoPago') {
                 // V2-47: una suscripción es mensual o anual y se paga, si tienes, con tu tarjeta de crédito.
                 h.tipoPago = v || null;
@@ -2797,17 +2952,63 @@
         },
         alCampo(h, campo, el) {
             h[campo] = el.value;
+            // V2-82: lo que se escribe se revisa de nuevo al guardar; V2-83: otro nombre deja de marcar el frecuente.
+            if (h.duplicado) {
+                h.duplicado = null;
+                const q = document.querySelector('.pregunta--dup');
+                if (q) q.remove();
+            }
+            if (campo === 'nombre' && h.frecuente) {
+                const f = D.PAGOS_FRECUENTES.find((y) => y.id === h.frecuente);
+                if (f && M.normalizar(f.nombre) !== M.normalizar(el.value)) {
+                    h.frecuente = null;
+                    const b = document.querySelector(`[data-fk="op-frecuente-${f.id}"]`);
+                    if (b) {
+                        b.setAttribute('aria-pressed', 'false');
+                        b.querySelector('.ico-xs')?.remove();
+                    }
+                }
+            }
         },
     };
     H.editarPago = { ...H.nuevoPago };
+    /** V2-82: «Ver el que tengo» (su ficha, sin crear nada) o «Sí, es otro» (se guarda). */
+    P.acciones.nuevoPagoDup = (d) => {
+        const h = P.ui.hoja;
+        if (!h) return;
+        if (d.v === 'ver') {
+            const id = h.duplicado;
+            P.ui.hoja = null;
+            P.render();
+            if (id) P.abrir('pago', id);
+            P.emitir('pago:duplicado:ver');
+            return;
+        }
+        h.dupOk = true;
+        P.acciones.nuevoPagoOk();
+    };
     P.acciones.nuevoPagoOk = () => {
         const h = P.ui.hoja;
         const monto = M.leerMonto(h.monto);
         const turnoMonto = M.leerMonto(h.turnoMonto);
         const faltan = [...(h.nombre.trim() ? [] : ['nombre']), ...(monto ? [] : ['monto']), ...faltanFrecuencia(h), ...(h.turno && !turnoMonto ? ['turnoMonto'] : [])];
         if (!validar(h, faltan)) return;
-        P.ui.hoja = null;
         const regla = reglaForm(h);
+        // Una factura con nombre propio dentro de «Facturas de servicios» es de esa categoría.
+        if (h.caja === 'servicio' && (!h.categoria || h.categoria === 'otros')) h.categoria = 'servicios';
+        // V2-82: antes de crear (o de cambiar) un pago parecido a otro que ya tienes, se pregunta.
+        const parecido = h.dupOk ? null : M.pagoParecido(P.st, { nombre: h.nombre.trim(), categoria: h.categoria, dia: regla.dia, monto }, h.editar ? h.id : null);
+        if (parecido) {
+            h.duplicado = parecido.id;
+            P.render({ foco: '#dup-t' });
+            // La pregunta se lleva a la vista dentro de la hoja (el marco de la app no se mueve).
+            const q = document.querySelector('.pregunta--dup');
+            const c = q && q.closest('.hoja-c');
+            if (c) c.scrollTop += q.getBoundingClientRect().top - c.getBoundingClientRect().top - 16;
+            P.emitir('pago:duplicado');
+            return;
+        }
+        P.ui.hoja = null;
         if (h.editar) {
             P.cambiar((s) => {
                 const p = M.pago(s, h.id);
@@ -2865,8 +3066,8 @@
                     titulo: `Estado de cuenta · ${esc(t.nombre)}`,
                     cuerpo: `${h.sinCorte ? `<p class="txt">Vence el ${esc(M.fechaLarga(pend.vence))}.</p>${campoDia(h, 'corte', 'Día de corte', 'Está en tu estado de cuenta')}` : `<p class="txt">Corte del ${esc(M.fechaLarga(pend.corte))}. Vence el ${esc(M.fechaLarga(pend.vence))}.</p>`}
                         <p class="campo-l">¿Cuánto te salió?</p>
-                        ${campoMonto(h, { campo: 'total', label: 'Pago de contado (total)', valor: h.total, id: 'f-total', errorTexto: 'Escribe el pago de contado' })}
-                        ${campoMonto(h, { campo: 'minimo', label: 'Pago mínimo', valor: h.minimo, id: 'f-minimo', errorTexto: 'Escribe el pago mínimo' })}
+                        ${campoMonto(h, { campo: 'total', label: '¿Cuánto es el pago de contado (total)?', valor: h.total, id: 'f-total', errorTexto: 'Escribe el pago de contado' })}
+                        ${campoMonto(h, { campo: 'minimo', label: '¿Cuánto es el pago mínimo?', valor: h.minimo, id: 'f-minimo', errorTexto: 'Escribe el pago mínimo' })}
                         <button type="button" class="link" aria-expanded="${h.ayuda}" aria-controls="ec-ayuda" data-a="valor" data-campo="ayuda" data-v="${!h.ayuda}" data-fk="ec-ayuda-b">¿Dónde lo encuentro?</button>
                         <div id="ec-ayuda" ${h.ayuda ? '' : 'hidden'}><p class="txt">En tu estado de cuenta (te llega por correo o lo ves en la app del banco) busca «Pago de contado» o «Saldo al corte», y «Pago mínimo».</p></div>`,
                     pie: pie2('ecSiguiente', 'Siguiente'),
@@ -2886,7 +3087,7 @@
                 titulo: `¿Cuánto vas a pagar el ${M.partes(pend.vence)[2]} ${M.MESES_CORTOS[M.partes(pend.vence)[1] - 1]}?`,
                 cuerpo: `<div class="opciones-grandes" role="radiogroup" aria-label="Cuánto vas a pagar">
                         ${[['total', 'Todo', total, 'No te cobran intereses por estas compras.'], ['minimo', 'El mínimo', minimo, `Los ${dinero(resto)} que quedan siguen como deuda y generan intereses.`], ['otro', 'Otro monto', null, 'Entre el mínimo y el total.']]
-                            .map(([v, t, m, s]) => `<button type="button" class="opcion-g" role="radio" aria-checked="${h.opcion === v}" data-a="valor" data-campo="opcion" data-v="${v}" data-fk="ec-${v}"><span class="opcion-g-txt"><span class="opcion-g-t">${t}${m !== null ? ` · ${dinero(m)}` : ''}</span><span class="fila-s">${s}</span></span></button>`)
+                            .map(([v, t, m, s]) => `<button type="button" class="opcion-g" role="radio" aria-checked="${h.opcion === v}" data-a="valor" data-campo="opcion" data-v="${v}" data-fk="ec-${v}"><span class="opcion-g-txt"><span class="opcion-g-t">${t}${m !== null ? ` · ${dinero(m)}` : ''}</span><span class="fila-s">${s}</span></span>${h.opcion === v ? icon('circle-check', 'ico-ok') : ''}</button>`)
                             .join('')}
                     </div>
                     ${h.opcion === 'otro' ? campoMonto(h, { campo: 'otro', label: '¿Cuánto?', valor: h.otro, id: 'f-otro', errorTexto: 'Escribe cuánto vas a pagar' }) : ''}
@@ -3001,11 +3202,11 @@
             return {
                 titulo: 'Corregir',
                 cuerpo: `${pago ? `<p class="txt">${emo(pago.emoji, 18)} Tu pago de ${esc(pago.nombre)}, marcado como pagado.</p>` : ''}${antes.length ? `<div class="nota nota--info" role="note">${icon('info')}<p>Es anterior a tu cuadre de ${esc(antes.map((l) => `${l.nombre} (${M.fechaCorta(l.cuadre.fecha)})`).join(' y '))}: <strong>corregirlo no cambia tu saldo porque cuadraste después.</strong> Sí cambia el resumen del mes.</p></div>` : ''}
-                    ${campoMonto(h, { label: 'Monto', valor: h.monto })}
+                    ${campoMonto(h, { label: '¿Cuánto fue?', valor: h.monto })}
                     ${r.tipo === 'gasto' || r.tipo === 'ingreso' ? campoTexto(h, { campo: 'nombre', label: r.tipo === 'gasto' ? '¿En qué?' : '¿De qué?', valor: h.nombre }) : ''}
-                    ${r.tipo === 'gasto' && !r.pago ? opciones(h, { campo: 'categoria', label: 'Tipo de gasto', lista: D.CATEGORIAS.filter((k) => !['servicios', 'cuotas'].includes(k.id)).map((k) => ({ v: k.id, t: k.nombre, e: k.emoji })), valor: h.categoria }) : ''}
-                    ${r.tipo === 'gasto' ? opciones(h, { campo: 'medio', label: 'Pagado con', lista: medios(st), valor: h.medio }) : ''}
-                    ${r.tipo === 'ingreso' ? opciones(h, { campo: 'lugar', label: '¿Dónde cayó?', lista: lugares(st), valor: h.lugar }) : ''}
+                    ${r.tipo === 'gasto' && !r.pago ? opciones(h, { campo: 'categoria', label: '¿Qué tipo de gasto?', lista: D.CATEGORIAS.filter((k) => !['servicios', 'cuotas'].includes(k.id)).map((k) => ({ v: k.id, t: k.nombre, e: k.emoji })), valor: h.categoria }) : ''}
+                    ${r.tipo === 'gasto' ? opciones(h, { campo: 'medio', label: '¿Con qué pagaste?', lista: medios(st), valor: h.medio }) : ''}
+                    ${r.tipo === 'ingreso' ? opciones(h, { campo: 'lugar', label: '¿Dónde llegó?', lista: lugares(st), valor: h.lugar }) : ''}
                     ${campoFecha(h, 'fecha', h.fecha, { label: 'Fecha', extra: h.orig.fecha })}
                     ${bloqueApartado}
                     ${r.pago ? (h.confirmarEliminar ? confirmarHtml('¿Desmarcar este pago?', 'Vuelve a quedar pendiente en Pagos y se quita su gasto. Podrás deshacerlo.', 'desmarcarPagado', 'desmarcar', 'Sí, desmarcar') : `<button type="button" class="link link--peligro" data-a="valor" data-campo="confirmarEliminar" data-v="si" data-fk="desmarcar">${icon('rotate-ccw', 'ico-s')}Desmarcar pagado</button>`) : h.confirmarEliminar ? confirmarHtml('¿Eliminar este movimiento?', 'Sale de tu historial y tus números se recalculan. Podrás deshacerlo.', 'eliminarRegistro', 'eliminar') : `<button type="button" class="link link--peligro" data-a="valor" data-campo="confirmarEliminar" data-v="si" data-fk="eliminar">${icon('trash-2', 'ico-s')}Eliminar</button>`}`,
@@ -3288,7 +3489,7 @@
             if (!res) return { titulo: 'Listo', cuerpo: '', pie: pie1('cerrarHoja', 'Cerrar') };
             const t = M.tarjeta(st, res.tarjeta);
             const info = M.tarjetaInfo(st, t);
-            const op = (v, titulo, sub) => `<button type="button" class="opcion-g" role="radio" aria-checked="${h.opcion === v}" data-a="valor" data-campo="opcion" data-v="${v}" data-fk="py-${v}"><span class="opcion-g-txt"><span class="opcion-g-t">${titulo}</span><span class="fila-s">${sub}</span></span></button>`;
+            const op = (v, titulo, sub) => `<button type="button" class="opcion-g" role="radio" aria-checked="${h.opcion === v}" data-a="valor" data-campo="opcion" data-v="${v}" data-fk="py-${v}"><span class="opcion-g-txt"><span class="opcion-g-t">${titulo}</span><span class="fila-s">${sub}</span></span>${h.opcion === v ? icon('circle-check', 'ico-ok') : ''}</button>`;
             return {
                 titulo: '¿Cuánto pagas?',
                 cuerpo: `<p class="txt">Desde ${esc(M.lugar(st, h.lugar).nombre)} a tu ${esc(t.nombre)}. Pagar la tarjeta mueve tu dinero: no es un gasto nuevo y tu libre no cambia.</p>
@@ -3604,7 +3805,7 @@
                     ${opcionesOb('t-banco', '¿De qué banco?', [...D.BANCOS.slice(0, 5).map((b) => ({ v: b, t: b })), { v: 'Otro', t: 'Otro' }], ed.banco)}
                     ${ed.banco === 'Otro' ? `<div class="campo-g"><label class="campo-l" for="ob-t-nombre">¿Cómo se llama?</label><div class="campo"><input id="ob-t-nombre" data-campo="t-nombre" type="text" autocomplete="off" value="${esc(ed.nombre)}" placeholder="Ej. Tarjeta de la tienda"></div></div>` : ''}
                     ${monto('t-debe', '¿Cuánto debes hoy? <span class="opcional">(opcional)</span>', ed.debe)}
-                    <div class="ob-2">${obDiaCorto('t-corte', 'Día de corte', ed.corte)}${obDiaCorto('t-pago', 'Día de pago', ed.pago)}</div>
+                    <div class="ob-2">${obDiaCorto('t-corte', '¿Qué día es el corte?', ed.corte)}${obDiaCorto('t-pago', '¿Qué día se paga?', ed.pago)}</div>
                     <p class="fila-s">Los dos están en tu estado de cuenta. Si no sabes el corte, déjalo vacío.</p>
                     ${monto('t-usual', '¿Cuánto pagas normalmente? <span class="opcional">(opcional)</span>', ed.usual)}
                     <p class="fila-s">Lo apartamos de tu libre hasta que anotes tu estado de cuenta.</p>
@@ -3625,7 +3826,11 @@
             const cobro = (e) => (fuentes.length > 1 ? `${opcionesOb('p-cobro', '¿Se cobra solo en una tarjeta o cuenta?', fuentes, e.cobro || 'no')}<p class="fila-s">Si se cobra solo, ahí lo verás. Igual lo marcas «Pagado» cuando lo veas en tu estado de cuenta.</p>` : '');
             const pagoChip = (x) => {
                 const ya = d.pagos.find((p) => p.id === x.id);
-                return `<button type="button" class="chip" aria-pressed="${!!ya || (ed && ed.id === x.id)}" data-a="obPago" data-v="${x.id}" data-fk="ob-p-${x.id}">${ya ? icon('check', 'ico-xs') : ''}${emo(x.emoji, 18)}${esc(x.nombre)}</button>`;
+                // V2-82: en «Completar tu Primer día», lo que ya está en Pagos se ve y no se vuelve a agregar.
+                if (ob.completar && P.st.pagos.some((p) => p.activo !== false && M.normalizar(p.nombre) === M.normalizar(x.nombre))) {
+                    return `<button type="button" class="chip chip--tienes" data-a="obPagoTienes" data-v="${x.id}" data-fk="ob-p-${x.id}" aria-label="${esc(x.nombre)}: ya está en Pagos">${emo(x.emoji, 18)}${esc(x.nombre)}<span class="chip-s">Ya está en Pagos</span></button>`;
+                }
+                return `<button type="button" class="chip" aria-pressed="${!!ya || (ed && ed.id === x.id)}" data-a="obPago" data-v="${x.id}" data-fk="ob-p-${x.id}">${ya || (ed && ed.id === x.id) ? icon('check', 'ico-xs') : ''}${emo(x.emoji, 18)}${esc(x.nombre)}</button>`;
             };
             const nSus = d.pagos.filter((p) => p.suscripcion).length;
             let editor = '';
@@ -3683,7 +3888,7 @@
         return `<div class="campo-g" role="group" aria-labelledby="ob-l-${campo}"><p class="campo-l" id="ob-l-${campo}">${label}</p><div class="chips">${lista.map((o) => `<button type="button" class="chip" aria-pressed="${String(valor) === String(o.v)}" data-a="obValor" data-campo="${campo}" data-v="${esc(o.v)}" data-fk="ob-${campo}-${esc(o.v)}">${String(valor) === String(o.v) ? icon('check', 'ico-xs') : ''}${o.e ? emo(o.e, 18) : ''}${esc(o.t)}</button>`).join('')}</div></div>`;
     }
     function obDias(campo, valor, label = '¿Qué día del mes?') {
-        return `<div class="campo-g" role="group" aria-labelledby="ob-l-${campo}"><p class="campo-l" id="ob-l-${campo}">${label}</p><div class="dias">${Array.from({ length: 31 }, (_, i) => i + 1).map((n) => `<button type="button" class="dia" aria-pressed="${Number(valor) === n}" data-a="obValor" data-campo="${campo}" data-v="${n}" data-fk="ob-${campo}-${n}" aria-label="Día ${n}">${n}</button>`).join('')}</div></div>`;
+        return `<div class="campo-g" role="group" aria-labelledby="ob-l-${campo}"><p class="campo-l" id="ob-l-${campo}">${label}</p><div class="dias">${Array.from({ length: 31 }, (_, i) => i + 1).map((n) => `<button type="button" class="dia" aria-pressed="${Number(valor) === n}" data-a="obValor" data-campo="${campo}" data-v="${n}" data-fk="ob-${campo}-${n}" aria-label="Día ${n}">${n}${Number(valor) === n ? icon('check', 'ico-dia') : ''}</button>`).join('')}</div></div>`;
     }
     function obDiaCorto(campo, label, valor) {
         return `<div class="campo-g"><label class="campo-l" for="ob-${campo}">${label}</label><div class="campo campo--dia"><input id="ob-${campo}" data-campo="${campo}" type="text" inputmode="numeric" maxlength="2" value="${esc(valor)}" aria-describedby="ob-${campo}-a"></div><p class="fila-s" id="ob-${campo}-a">Del 1 al 31</p></div>`;
@@ -3884,6 +4089,11 @@
         P.render({ nueva: true });
         P.emitir('onboarding:completar:cerrar');
     };
+    /** V2-82: un gasto fijo que ya tienes en Pagos: se dice dónde está, sin agregarlo otra vez. */
+    P.acciones.obPagoTienes = (d) => {
+        const f = D.PAGOS_FRECUENTES.find((x) => x.id === d.v);
+        P.avisar(`Ya tienes «${f ? f.nombre : 'ese pago'}» en Pagos`, { check: false });
+    };
     P.acciones.obPago = (d) => {
         const ob = P.ui.ob;
         const ya = ob.datos.pagos.find((p) => p.id === d.v);
@@ -4000,6 +4210,8 @@
         }
         const credito = st.medios.find((m) => m.tarjeta);
         for (const p of d.pagos) {
+            // V2-82: «Completar tu Primer día» no repite un pago que ya tienes (mismo nombre).
+            if (st.pagos.some((x) => x.activo !== false && M.normalizar(x.nombre) === M.normalizar(p.nombre || ''))) continue;
             // «¿Se cobra solo en una tarjeta o cuenta? ¿Cuál?» decide de dónde sale (V2-68); si no, como siempre.
             const c = p.cobro || 'no';
             let medioId = null;

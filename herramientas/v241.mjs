@@ -134,7 +134,10 @@ try {
         const tienes0 = await calc('k.tienes');
         await clic('[data-fk="nav-anotar"]');
         await escribir('#anotar-q', 'me dieron adelanto 100');
-        check('entiende el adelanto de hoy', await ev('[P.ui.hoja.d.tipo, P.ui.hoja.d.adelanto, P.ui.hoja.d.nombre]'), ['ingreso', true, 'Adelanto de salario']);
+        // v2.6.5 (V2-81): ya esperas dos adelantos el 29: pregunta si es uno de ellos; este es otro (nuevo).
+        check('entiende el adelanto de hoy y pregunta si es el que esperabas', await ev('[P.ui.hoja.d.tipo, P.ui.hoja.d.adelanto, !!P.ui.hoja.d.ingresoRef, document.getElementById("l-cualIngreso")?.textContent]'), (x) => x[0] === 'ingreso' && x[1] === true && x[2] === true && /¿Es tu adelanto de salario del 29\?/i.test(String(x[3])));
+        await clic('[data-fk="cual-extra"]');
+        check('«No, es otro ingreso»: un adelanto nuevo', await ev('[P.ui.hoja.d.tipo, P.ui.hoja.d.adelanto, P.ui.hoja.d.nombre]'), ['ingreso', true, 'Adelanto de salario']);
         await foto('anotar-adelanto');
         await clic('[data-fk="anotar-guardar"]');
         await esperar(300);
@@ -338,6 +341,8 @@ try {
         await ev('P.ui.pagosModo = "calendario"; P.ui.pagosVista = "actual"; P.render(); true');
         await clic('[data-fk^="i-remesa-"]');
         await clic('[data-fk="ing-llego"]');
+        // v2.6.5 (V2-81): la esperabas para el 28: «¿Ya te llegó por adelantado?» → «Sí, ya llegó».
+        await clic('[data-fk="dlg-si"]');
         await clic('[data-fk="ing-ok"]');
         await logrado('P-REMESA');
         await clic('[data-fk="rep-listo"]');

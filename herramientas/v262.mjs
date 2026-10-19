@@ -253,7 +253,7 @@ try {
         await clic('[data-fk="md-deuda"]');
         await clic('[data-fk="td-tarjeta"]');
         const formulario = await texto('.hoja');
-        check('el formulario: límite de crédito, sin «cupo»', formulario, (t) => t.includes('Límite de crédito') && !/cupo/i.test(t) && t.includes('¿Cuánto pagas normalmente?') && t.includes('¿Cuánto debes hoy?'));
+        check('el formulario: límite de crédito, sin «cupo»', formulario, (t) => /límite de crédito/i.test(t) && !/cupo/i.test(t) && t.includes('¿Cuánto pagas normalmente?') && t.includes('¿Cuánto debes hoy?'));
         await escribir('#f-nombre', 'Crédito Promerica');
         await escribir('#f-corte', '25');
         await escribir('#f-pagoDia', '12');

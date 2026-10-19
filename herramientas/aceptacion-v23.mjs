@@ -193,6 +193,9 @@ try {
     const cuchubal = await ev('P.st.pagos.find((p) => /cuchubal/i.test(p.nombre)).id');
     await ev(`P.acciones.pagado({ tipo: "pago", id: ${js(cuchubal)}, fecha: "2026-10-23" }); true`);
     await esperar(150);
+    // v2.6.5 (V2-80): si todavía no vence, pregunta «¿Ya lo pagaste por adelantado?»: «Sí, ya lo pagué».
+    await ev(`(document.querySelector('[data-fk="dlg-si"]') || {}).click?.(); true`);
+    await esperar(150);
     check('pagado', await ev(`window.MOTOR.pago(P.st, ${js(cuchubal)}).hechos["2026-10-23"]?.estado`), 'pagado');
     await ev(`P.abrir("pago", ${js(cuchubal)}); true`);
     await clic('[data-fk="hist-2026-10-23"]');

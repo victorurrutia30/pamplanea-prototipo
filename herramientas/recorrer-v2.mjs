@@ -139,6 +139,9 @@ for (const tema of temas) {
         const antes = await libre();
         await clic('[data-fk="banner"]');
         await clic('[data-fk="ficha-pagado"]');
+        // v2.6.5 (V2-80): vence mañana (el 5): «¿Ya lo pagaste por adelantado?» → «Sí, ya lo pagué» (sin pedir el monto, V2-29 #8).
+        check('pregunta por adelantado', await texto('#capa-dlg'), contiene('Este pago es del 5 de noviembre. ¿Ya lo pagaste por adelantado?'));
+        await clic('[data-fk="dlg-si"]');
         await foto('c11-pagado-toast');
         check('toast pagado', await texto('.toast'), contiene('Pagado con Transferencia'));
         check('toast cambiar', await hay('[data-fk="toast-cambiar"]'), true);
@@ -473,7 +476,8 @@ for (const tema of temas) {
         await clic('[data-fk="nav-anotar"]');
         await escribir('#anotar-q', 'me pagaron 600');
         await foto('frase-me-pagaron');
-        check('pregunta adelantada', await texto('#anotar-preg'), contiene('¿Es tu quincena del 30 adelantada o un ingreso extra?'));
+        // v2.6.5 (V2-81): la misma pregunta (V2-29 #10), con las palabras nuevas.
+        check('pregunta adelantada', await texto('#anotar-preg'), contiene('¿Es tu quincena del 30?', 'Todavía no es el 30', 'Sí, marcarla como recibida', 'No, es otro ingreso'));
         await escribir('#anotar-q', 'aparté 20 luz');
         await foto('frase-aparte-luz');
         check('pregunta luz', await texto('#anotar-preg'), contiene('La luz ya está en tus pagos y se descuenta sola. ¿La ahorras igual?'));

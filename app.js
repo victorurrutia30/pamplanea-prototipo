@@ -263,6 +263,11 @@
         return o.fecha > hz.fecha ? `${rel} · después de tu ${nombreIngreso(hz)}` : rel;
     };
     P.fechaPagoTexto = fechaPagoTexto;
+    /** v2.6.5 (V2-80/81): «5 de noviembre» (para «Este pago es del 5 de noviembre» y «Primero el del 12 de octubre»). */
+    P.diaMes = (f) => {
+        const [, m, d] = M.partes(f);
+        return `${d} de ${M.MESES[m - 1]}`;
+    };
     function nombreIngreso(hz) {
         if (!hz.ingreso) return 'ingreso';
         return hz.ingreso.frecuencia === 'quincenal' ? 'quincena' : hz.ingreso.frecuencia === 'semanal' || hz.ingreso.frecuencia === 'catorcenal' ? 'pago' : hz.ingreso.nombre.toLowerCase();
@@ -294,7 +299,12 @@
         const abrir = esTarjeta ? `data-a="abrir" data-tipo="tarjeta" data-id="${o.tarjeta.id}"` : `data-a="abrir" data-tipo="pago" data-id="${o.pago.id}"`;
         const fk = (esTarjeta ? 't-' + o.tarjeta.id : 'p-' + o.pago.id) + '-' + o.fecha;
         const puedePagar = conBoton && (o.estado === 'pendiente' || o.estado === 'vencido');
-        const marca = o.estado === 'pagado' ? `<span class="estado estado--ok">${icon('circle-check', 'ico-xs')}Pagado</span>` : o.estado === 'saltado' ? '<span class="estado">Saltado</span>' : o.estado === 'vencido' ? `<span class="estado estado--pend">${icon('clock', 'ico-xs')}Por confirmar</span>` : '';
+        // V2-80: solo se marca la que toca (la primera sin pagar); las de después se ven apagadas y dicen cuál va primero.
+        const sig = !esTarjeta && puedePagar ? M.porPagar(st, o.pago) : null;
+        const espera = !!sig && sig.fecha !== o.fecha;
+        // Recién marcado (hoy): «Pagado ✓» con «Deshacer», sin un segundo «Pagado».
+        const pagadoHoy = !esTarjeta && conBoton && o.estado === 'pagado' && o.hecho && o.hecho.registro && (st.registros.find((r) => r.id === o.hecho.registro) || {}).fecha === st.hoy;
+        const marca = o.estado === 'pagado' ? `<span class="estado estado--ok">Pagado ✓</span>` : o.estado === 'saltado' ? '<span class="estado">Saltado</span>' : o.estado === 'vencido' ? `<span class="estado estado--pend">${icon('clock', 'ico-xs')}Por confirmar</span>` : '';
         const avisoOn = !esTarjeta && o.pago.avisos && o.pago.avisos.some((a) => a.on) && o.estado === 'pendiente' ? `<span class="campana">${icon('bell', 'ico-xs')}${sr('Con aviso. ')}</span>` : '';
         let sub;
         if (enLinea) {
@@ -318,7 +328,8 @@
                 <span class="fila-txt"><span class="fila-t">${esc(nombre)}</span><span class="fila-s">${enLinea ? marcaMov('pago') : ''}<span>${avisoOn}${esc(sub)}</span></span>${marca ? `<span class="fila-s">${marca}</span>` : ''}${partesTxt}</span>
                 <span class="fila-m">${montoHtml(o.monto, 'pago', { aprox: o.estimado })}${o.estimado ? '<span class="fila-s">estimado</span>' : ''}</span>
             </button>
-            ${puedePagar ? `<button type="button" class="btn btn--sm" data-a="pagado" data-tipo="${esTarjeta ? 'tarjeta' : 'pago'}" data-id="${esTarjeta ? o.tarjeta.id : o.pago.id}" data-fecha="${o.fecha}" data-fk="pagado-${fk}" aria-label="Marcar ${esc(nombre)} como pagado">Pagado</button>` : ''}
+            ${puedePagar ? `<button type="button" class="btn btn--sm${espera ? ' btn--espera' : ''}" data-a="pagado" data-tipo="${esTarjeta ? 'tarjeta' : 'pago'}" data-id="${esTarjeta ? o.tarjeta.id : o.pago.id}" data-fecha="${o.fecha}" data-fk="pagado-${fk}" aria-label="${espera ? `Marcar ${esc(nombre)} como pagado: primero el del ${esc(P.diaMes(sig.fecha))}` : `Marcar ${esc(nombre)} como pagado`}">Pagado</button>` : ''}
+            ${pagadoHoy ? `<button type="button" class="btn btn--sm" data-a="pagoDeshacer" data-id="${o.pago.id}" data-fecha="${o.fecha}" data-fk="deshacer-${fk}" aria-label="Deshacer: ${esc(nombre)} ya no está pagado">Deshacer</button>` : ''}
         </li>`;
     }
     P.filaPago = filaPago;
@@ -757,7 +768,8 @@
         const hasta = M.sumarDias(st.hoy, 45);
         const lista = [];
         for (const p of st.pagos.filter((x) => x.activo !== false && !x.descuento)) {
-            for (const o of M.ocurrenciasPago(st, p, p.desde, hasta)) if (o.estado === 'pendiente') lista.push(o);
+            // V2-80: uno pagado por adelantado (su fecha no ha pasado) sigue aquí como «Pagado ✓», no el del mes siguiente.
+            for (const o of M.ocurrenciasPago(st, p, p.desde, hasta)) if (o.estado === 'pendiente' || (o.estado === 'pagado' && o.fecha >= st.hoy)) lista.push(o);
         }
         for (const o of M.ocurrenciasTarjeta(st, M.sumarDias(st.hoy, -40), hasta)) if (o.estado === 'pendiente' || o.estado === 'porConfirmar') lista.push(o);
         lista.sort((a, b) => (a.fecha < b.fecha ? -1 : a.fecha > b.fecha ? 1 : 0));
@@ -1299,9 +1311,13 @@
         const p = M.pago(st, id);
         if (!p) return S.hoy();
         const hz = M.horizonte(st);
-        const abiertas = M.ocurrenciasPago(st, p, p.desde, M.sumarDias(st.hoy, 400)).filter((o) => o.estado === 'pendiente' || o.estado === 'vencido');
-        const prox = abiertas[0];
+        // V2-80: la que toca marcar (la primera sin pagar; una vencida, primero).
+        const prox = M.porPagar(st, p);
         const hechas = M.ocurrenciasPago(st, p, p.desde, M.sumarDias(st.hoy, 400)).filter((o) => o.hecho);
+        // Recién pagada (su día todavía no pasa, o se marcó hoy): «Pagado ✓» con «Deshacer», sin un segundo «Pagado».
+        const ultimaPagada = hechas.filter((o) => o.estado === 'pagado' && (!prox || o.fecha < prox.fecha)).at(-1);
+        const regUltima = ultimaPagada && ultimaPagada.hecho.registro ? st.registros.find((r) => r.id === ultimaPagada.hecho.registro) : null;
+        const recien = ultimaPagada && regUltima && (ultimaPagada.fecha >= st.hoy || regUltima.fecha === st.hoy) ? ultimaPagada : null;
         const historia = [...hechas.map((o) => ({ fecha: o.fecha, monto: o.monto, estado: o.estado, hecho: o.hecho })), ...(p.previos || []).map((x) => ({ ...x, estado: 'pagado' }))].sort((a, b) => (a.fecha < b.fecha ? 1 : -1));
         const medio = M.medio(st, p.medio);
         const ing = p.descuento ? M.ingreso(st, p.descuento) : null;
@@ -1309,10 +1325,13 @@
         const atrasTexto = P.atrasDe('Pagos');
         const estadoProx = ing
             ? `<p class="fila-s">Se descuenta solo de ${esc(ing.nombre.toLowerCase())}: al confirmar que llegó, queda pagado. No baja tu libre otra vez.</p>`
-            : prox
-              ? `<div class="ficha-prox"><p class="fila-s">${prox.estado === 'vencido' ? 'Venció' : 'Próximo'}: ${esc(M.capital(M.fechaLarga(prox.fecha)))}${prox.estado === 'vencido' ? ' · por confirmar' : ''}</p>
+            : recien
+              ? `<div class="ficha-prox"><p class="estado estado--ok ficha-pagado-ok">Pagado ✓ · ${esc(M.capital(M.fechaLarga(recien.fecha)))}</p>${prox ? `<p class="fila-s">Después: ${esc(M.capital(M.fechaLarga(prox.fecha)))}</p>` : ''}
+                <div class="acciones-2"><button type="button" class="btn btn--48" data-a="pagoDeshacer" data-id="${p.id}" data-fecha="${recien.fecha}" data-fk="ficha-deshacer">Deshacer</button></div></div>`
+              : prox
+                ? `<div class="ficha-prox"><p class="fila-s">${prox.estado === 'vencido' ? 'Venció' : 'Próximo'}: ${esc(M.capital(M.fechaLarga(prox.fecha)))}${prox.estado === 'vencido' ? ' · por confirmar' : ''}</p>
                 <div class="acciones-2"><button type="button" class="btn btn--48" data-a="saltar" data-id="${p.id}" data-fecha="${prox.fecha}" data-fk="saltar">${p.frecuencia === 'unico' ? 'Saltar' : 'Saltar esta vez'}</button><button type="button" class="btn btn--prim btn--48" data-a="pagado" data-tipo="pago" data-id="${p.id}" data-fecha="${prox.fecha}" data-fk="ficha-pagado">Pagado</button></div></div>`
-              : '<p class="fila-s">No hay pagos por delante.</p>';
+                : '<p class="fila-s">No hay pagos por delante.</p>';
         // V2-34: con qué ingreso lo pagas (cada ocurrencia).
         let pagasCon = '';
         if (prox && !ing) {
@@ -1454,8 +1473,12 @@
         const ing = M.ingreso(st, id);
         if (!ing) return S.pagos();
         const atrasTexto = P.atrasDe('Pagos');
-        const pendientes = M.ocurrenciasIngreso(st, ing, ing.desde, M.sumarDias(st.hoy, 400)).filter((o) => o.estado !== 'llego' && o.estado !== 'noLlego');
-        const prox = pendientes[0];
+        // V2-81: el que toca marcar (el primero que todavía no llegó).
+        const prox = M.porRecibir(st, ing);
+        // Recién recibido (su día todavía no pasa, o se marcó hoy): «Recibido ✓» con «Deshacer», sin otro «Ya llegó».
+        const ultimaLlegada = M.ocurrenciasIngreso(st, ing, ing.desde || st.hoy, M.sumarDias(st.hoy, 400)).filter((o) => o.estado === 'llego' && (!prox || o.fecha < prox.fecha)).at(-1);
+        const regLlegada = ultimaLlegada ? st.registros.find((r) => r.tipo === 'ingreso' && r.ingreso === ing.id && r.ocurrencia === ultimaLlegada.fecha) : null;
+        const recibido = ultimaLlegada && regLlegada && (ultimaLlegada.fecha >= st.hoy || regLlegada.fecha === st.hoy) ? ultimaLlegada : null;
         // Solo lo que la persona confirmó (V2-43): nada inventado.
         const llegadas = Object.entries(ing.llegadas).sort((a, b) => (a[0] < b[0] ? 1 : -1));
         const descuentos = M.descuentosDe(st, ing.id);
@@ -1472,7 +1495,7 @@
             <section class="card ficha-cifra" aria-label="Ingreso esperado">
                 <p class="cifra cifra--ingreso">${dinero(ing.monto, { signo: true, aprox: ing.aprox })}</p>
                 <p class="fila-s">${ing.principal ? 'Tu ingreso principal: tu libre se calcula hasta que llegue.' : ing.frecuencia === 'unico' ? 'No suma a tu libre hasta que llegue. Cuando llegue, te ayudo a repartirlo.' : 'No suma a tu libre hasta que llegue, pero sí cuenta (estimado) para tus próximos pagos.'}</p>
-                ${prox ? `<p class="fila-s">Próximo: ${esc(M.capital(M.fechaLarga(prox.fecha)))}${prox.descuento ? ` · ${esc(dinero(prox.monto, { aprox: true }))}, te descuentan ${esc(dinero(prox.descuento))} del adelanto` : ''}</p>${prox.fecha <= st.hoy || ing.frecuencia === 'unico' || !ing.principal ? `<button type="button" class="btn btn--prim btn--48 btn--full" data-a="hoja" data-hoja="ingresoLlego" data-id="${ing.id}" data-fecha="${prox.fecha}" data-fk="ing-llego">Ya llegó</button>` : ''}` : ''}
+                ${recibido ? `<p class="estado estado--ok">Recibido ✓ · ${esc(M.capital(M.fechaLarga(recibido.fecha)))}</p><div class="acciones-2"><button type="button" class="btn btn--48" data-a="llegadaDeshacer" data-id="${ing.id}" data-fecha="${recibido.fecha}" data-fk="ing-deshacer">Deshacer</button></div>${prox ? `<p class="fila-s">Después: ${esc(M.capital(M.fechaLarga(prox.fecha)))}</p>` : ''}` : prox ? `<p class="fila-s">Próximo: ${esc(M.capital(M.fechaLarga(prox.fecha)))}${prox.descuento ? ` · ${esc(dinero(prox.monto, { aprox: true }))}, te descuentan ${esc(dinero(prox.descuento))} del adelanto` : ''}</p><button type="button" class="btn btn--prim btn--48 btn--full" data-a="llego" data-id="${ing.id}" data-fecha="${prox.fecha}" data-fk="ing-llego">Ya llegó</button>` : ''}
             </section>
             ${adelanto}
             ${descuentos.length ? tarjetaSeccion('Te descuentan del salario', `<ul class="lista">${descuentos.map((p) => `<li class="fila"><button type="button" class="fila-main" data-a="abrir" data-tipo="pago" data-id="${p.id}" data-fk="desc-${p.id}">${caja(p.emoji)}<span class="fila-txt"><span class="fila-t">${esc(p.nombre)}</span><span class="fila-s">Se paga solo al confirmar que llegó${p.deuda && p.deuda.debe !== null && p.deuda.debe !== undefined ? ` · debes ${dinero(p.deuda.debe, { aprox: true })}` : ''}</span></span><span class="fila-m">${montoHtml(p.monto)}</span></button></li>`).join('')}</ul><p class="fila-s">Lo que esperas (${dinero(ing.monto, { aprox: ing.aprox })}) ya es lo que recibes, sin estos descuentos.</p>`, { id: 'i-desc' }) : ''}

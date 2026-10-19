@@ -85,6 +85,11 @@ const AYUDA = `(() => {
     QA.pago = (nombre) => P.st.pagos.find((p) => p.nombre === nombre);
     QA.ocurrencia = (p) => MOTOR.ocurrenciasPago(P.st, p, MOTOR.sumarDias(P.st.hoy, -40), MOTOR.sumarDias(P.st.hoy, 40)).find((o) => o.estado === 'pendiente' || o.estado === 'vencido');
     QA.copia = () => JSON.stringify(P.st);
+    /** v2.6.5 (V2-80): si la fecha todavía no llega, la app pregunta «¿Ya lo pagaste por adelantado?»: «Sí, ya lo pagué». */
+    QA.confirmar = () => {
+        const si = document.querySelector('[data-fk="dlg-si"]');
+        if (si) si.click();
+    };
     return true;
 })()`;
 
@@ -120,7 +125,7 @@ caso('B-L2', 'B', 'Después de eliminar un lugar, «Pagado» de un pago que sal�
     await cargar();
     await ev(`QA.hoja('lugar', { id: 'agricola' }, { confirmarEliminar: true }); P.acciones.lugarEliminar(); true`);
     const a = await ev('QA.dinero()');
-    const r = await ev(`(() => { const p = QA.pago('Internet'); const o = QA.ocurrencia(p); P.acciones.pagado({ tipo: 'pago', id: p.id, fecha: o.fecha }); if (P.ui.hoja) { P.acciones.pagadoGuardar(); } return { monto: o.monto }; })()`);
+    const r = await ev(`(() => { const p = QA.pago('Internet'); const o = QA.ocurrencia(p); P.acciones.pagado({ tipo: 'pago', id: p.id, fecha: o.fecha }); QA.confirmar(); if (P.ui.hoja) { P.acciones.pagadoGuardar(); } return { monto: o.monto }; })()`);
     const d = await ev('QA.dinero()');
     return d.tienes === a.tienes - r.monto ? [] : [`Tienes ${a.tienes} → ${d.tienes}: el pago de ${r.monto} no salió de ningún lugar`];
 });
@@ -143,7 +148,7 @@ caso('B-T1', 'B', 'Eliminar una tarjeta con una suscripción que se cobra en ell
     await ev(`QA.hoja('nuevaDeuda', { tarjetaId: 'bac' }, { confirmarEliminar: true }); P.acciones.tarjetaEliminar(); true`);
     const f = await ev('QA.revisar()');
     const a = await ev('QA.dinero()');
-    await ev(`(() => { const p = QA.pago('Netflix'); const o = QA.ocurrencia(p); P.acciones.pagado({ tipo: 'pago', id: p.id, fecha: o.fecha }); if (P.ui.hoja) P.acciones.pagadoGuardar(); return true; })()`);
+    await ev(`(() => { const p = QA.pago('Netflix'); const o = QA.ocurrencia(p); P.acciones.pagado({ tipo: 'pago', id: p.id, fecha: o.fecha }); QA.confirmar(); if (P.ui.hoja) P.acciones.pagadoGuardar(); return true; })()`);
     const d = await ev('QA.dinero()');
     const sumaTarjetas = (x) => Object.values(x.tarjetas).reduce((s, t) => s + t.enLibre, 0);
     if (d.tienes === a.tienes && sumaTarjetas(d) === sumaTarjetas(a)) f.push('al marcar Netflix como pagado, sus $10.99 no salieron de ningún lugar ni quedaron en ninguna tarjeta');
@@ -182,13 +187,13 @@ caso('A-D2', 'A', 'Una deuda sin «¿cuánto debes?»: «Anotar cuánto debo» a
 caso('A-D3', 'A', '«Pagado» de una cuota baja lo que debes; «Desmarcar» lo devuelve exacto (aunque se pase de lo que debías)', 'P2', async () => {
     await cargar();
     await ev(`QA.hoja('nuevaDeuda', {}, { tipoDeuda: 'prestamo', nombre: 'Préstamo chico', cuota: '35', dia: '25', debe: '20' }, 'nuevaDeudaOk'); true`);
-    const r = await ev(`(() => { const p = QA.pago('Préstamo chico'); const o = QA.ocurrencia(p); P.acciones.pagado({ tipo: 'pago', id: p.id, fecha: o.fecha }); if (P.ui.hoja) P.acciones.pagadoGuardar(); const reg = P.st.registros.find((x) => x.pago === p.id); const despues = QA.pago('Préstamo chico').deuda.debe; QA.hoja('editarRegistro', { id: reg.id }); P.acciones.desmarcarPagado(); return { despues, final: QA.pago('Préstamo chico').deuda.debe }; })()`);
+    const r = await ev(`(() => { const p = QA.pago('Préstamo chico'); const o = QA.ocurrencia(p); P.acciones.pagado({ tipo: 'pago', id: p.id, fecha: o.fecha }); QA.confirmar(); if (P.ui.hoja) P.acciones.pagadoGuardar(); const reg = P.st.registros.find((x) => x.pago === p.id); const despues = QA.pago('Préstamo chico').deuda.debe; QA.hoja('editarRegistro', { id: reg.id }); P.acciones.desmarcarPagado(); return { despues, final: QA.pago('Préstamo chico').deuda.debe }; })()`);
     return [...(r.despues === 0 ? [] : [`después de pagar: ${r.despues}`]), ...(r.final === 2000 ? [] : [`al desmarcar volvió a ${r.final}, no a 2000`]), ...(await ev('QA.revisar()'))];
 });
 caso('A-D4', 'A', 'Editar una cuota ya pagada (monto) mantiene lo que debes coherente', 'P2', async () => {
     await cargar();
     await ev(`QA.hoja('nuevaDeuda', {}, { tipoDeuda: 'prestamo', nombre: 'Préstamo P', cuota: '50', dia: '25', debe: '500' }, 'nuevaDeudaOk'); true`);
-    const r = await ev(`(() => { const p = QA.pago('Préstamo P'); const o = QA.ocurrencia(p); P.acciones.pagado({ tipo: 'pago', id: p.id, fecha: o.fecha }); if (P.ui.hoja) P.acciones.pagadoGuardar(); const reg = P.st.registros.find((x) => x.pago === p.id); QA.hoja('editarRegistro', { id: reg.id }, { monto: '60' }, 'editarRegistroOk'); return QA.pago('Préstamo P').deuda.debe; })()`);
+    const r = await ev(`(() => { const p = QA.pago('Préstamo P'); const o = QA.ocurrencia(p); P.acciones.pagado({ tipo: 'pago', id: p.id, fecha: o.fecha }); QA.confirmar(); if (P.ui.hoja) P.acciones.pagadoGuardar(); const reg = P.st.registros.find((x) => x.pago === p.id); QA.hoja('editarRegistro', { id: reg.id }, { monto: '60' }, 'editarRegistroOk'); return QA.pago('Préstamo P').deuda.debe; })()`);
     return r === 44000 ? [] : [`debe ${r}, no 44000`];
 });
 caso('A-P1', 'A', 'Pago mensual: crear, editar monto, Pagado, corregir el pagado, desmarcar y «Ya no aplica»', 'P2', async () => {
@@ -202,7 +207,7 @@ caso('A-P1', 'A', 'Pago mensual: crear, editar monto, Pagado, corregir el pagado
     await ev(`QA.hoja('editarPago', { id: ${js(id)} }, { monto: '25' }, 'nuevoPagoOk'); true`);
     const d2 = await ev('QA.dinero()');
     if (a.libre - d2.libre !== 2500) f.push(`editar: libre bajó ${a.libre - d2.libre}, no 2500`);
-    await ev(`(() => { const p = QA.pago('Gimnasio'); const o = QA.ocurrencia(p); P.acciones.pagado({ tipo: 'pago', id: p.id, fecha: o.fecha }); if (P.ui.hoja) P.acciones.pagadoGuardar(); return true; })()`);
+    await ev(`(() => { const p = QA.pago('Gimnasio'); const o = QA.ocurrencia(p); P.acciones.pagado({ tipo: 'pago', id: p.id, fecha: o.fecha }); QA.confirmar(); if (P.ui.hoja) P.acciones.pagadoGuardar(); return true; })()`);
     const d3 = await ev('QA.dinero()');
     if (d3.libre !== d2.libre) f.push(`Pagado: el libre cambió ${d2.libre} → ${d3.libre} (ya estaba contado)`);
     if (d3.lugares.efectivo !== a.lugares.efectivo - 2500) f.push('Pagado: el efectivo no bajó $25');
@@ -324,7 +329,7 @@ caso('A-MV1', 'A', 'Mover del banco al efectivo: Tienes igual, sin ingreso ni ga
 caso('B-P2', 'B', 'Cambiar el día de un pago ya pagado este mes no lo vuelve a pedir (no se cuenta dos veces)', 'P1', async () => {
     await cargar();
     const a = await ev('QA.dinero()');
-    const id = await ev(`(() => { const p = QA.pago('Internet'); const o = QA.ocurrencia(p); P.acciones.pagado({ tipo: 'pago', id: p.id, fecha: o.fecha }); if (P.ui.hoja) P.acciones.pagadoGuardar(); return p.id; })()`);
+    const id = await ev(`(() => { const p = QA.pago('Internet'); const o = QA.ocurrencia(p); P.acciones.pagado({ tipo: 'pago', id: p.id, fecha: o.fecha }); QA.confirmar(); if (P.ui.hoja) P.acciones.pagadoGuardar(); return p.id; })()`);
     const d1 = await ev('QA.dinero()');
     await ev(`QA.hoja('editarPago', { id: ${js(id)} }, { dia: '22' }, 'nuevoPagoOk'); true`);
     const d2 = await ev('QA.dinero()');
@@ -377,7 +382,7 @@ caso('C-03', 'C', 'Suscripción que se cobra en la tarjeta: cuenta una vez; al m
     await ev(`(() => { P.crearPago(P.st, { nombre: 'Spotify', emoji: '🎵', categoria: 'suscripciones', monto: 599, frecuencia: 'mensual', dia: 25, medio: 'bac', tipoPago: 'suscripcion' }); P.render(); return true; })()`);
     const a = await ev('QA.dinero()');
     const veces = await ev(`(() => { const k = QA.k(); return k.items.filter((x) => x.pago.nombre === 'Spotify').length + k.reservados.filter((x) => x.pago.nombre === 'Spotify').length; })()`);
-    await ev(`(() => { const p = QA.pago('Spotify'); const o = QA.ocurrencia(p); P.acciones.pagado({ tipo: 'pago', id: p.id, fecha: o.fecha }); if (P.ui.hoja) P.acciones.pagadoGuardar(); return true; })()`);
+    await ev(`(() => { const p = QA.pago('Spotify'); const o = QA.ocurrencia(p); P.acciones.pagado({ tipo: 'pago', id: p.id, fecha: o.fecha }); QA.confirmar(); if (P.ui.hoja) P.acciones.pagadoGuardar(); return true; })()`);
     const d = await ev('QA.dinero()');
     const f = [];
     if (veces !== 1) f.push(`antes de pagarla cuenta ${veces} veces`);
@@ -391,7 +396,7 @@ caso('C-03', 'C', 'Suscripción que se cobra en la tarjeta: cuenta una vez; al m
 caso('C-04', 'C', 'Pago fijo con la débito de una cuenta: sale de esa cuenta y de ninguna otra', 'P1', async () => {
     await cargar();
     const a = await ev('QA.dinero()');
-    await ev(`(() => { const p = QA.pago('Internet'); const o = QA.ocurrencia(p); P.acciones.pagado({ tipo: 'pago', id: p.id, fecha: o.fecha }); if (P.ui.hoja) P.acciones.pagadoGuardar(); return true; })()`);
+    await ev(`(() => { const p = QA.pago('Internet'); const o = QA.ocurrencia(p); P.acciones.pagado({ tipo: 'pago', id: p.id, fecha: o.fecha }); QA.confirmar(); if (P.ui.hoja) P.acciones.pagadoGuardar(); return true; })()`);
     const d = await ev('QA.dinero()');
     return a.lugares.agricola - d.lugares.agricola === 2500 && d.lugares.efectivo === a.lugares.efectivo ? [] : ['no salió solo de Banco Agrícola: ' + JSON.stringify(dif(a.lugares, d.lugares))];
 });
@@ -399,7 +404,7 @@ caso('C-05', 'C', 'Cuota de préstamo: sale del medio elegido, baja lo que debes
     await cargar();
     await ev(`QA.hoja('nuevaDeuda', {}, { tipoDeuda: 'prestamo', nombre: 'Préstamo C5', cuota: '40', dia: '26', debe: '400', medio: 'efectivo' }, 'nuevaDeudaOk'); true`);
     const a = await ev('QA.dinero()');
-    await ev(`(() => { const p = QA.pago('Préstamo C5'); const o = QA.ocurrencia(p); P.acciones.pagado({ tipo: 'pago', id: p.id, fecha: o.fecha }); if (P.ui.hoja) P.acciones.pagadoGuardar(); return true; })()`);
+    await ev(`(() => { const p = QA.pago('Préstamo C5'); const o = QA.ocurrencia(p); P.acciones.pagado({ tipo: 'pago', id: p.id, fecha: o.fecha }); QA.confirmar(); if (P.ui.hoja) P.acciones.pagadoGuardar(); return true; })()`);
     const d = await ev('QA.dinero()');
     const debe = await ev(`QA.pago('Préstamo C5').deuda.debe`);
     const f = [];
@@ -446,7 +451,8 @@ caso('C-08', 'C', 'Ingresos con su tipo: venta, remesa que llegó, adelanto; una
 caso('C-09', 'C', '«me pagaron 600» pregunta si es la quincena o un extra (V2-29 #10) y cuenta una sola vez', 'P2', async () => {
     await cargar();
     const d0 = await ev(`(() => { P.acciones.anotar(); const q = document.getElementById('anotar-q'); q.value = 'me pagaron 600'; q.dispatchEvent(new Event('input', { bubbles: true })); return { tipo: P.ui.hoja.d.tipo, pregunta: document.getElementById('anotar-preg')?.innerText || '' }; })()`);
-    return /quincena del 30 adelantada o un ingreso extra/i.test(d0.pregunta) ? [] : ['no pregunta si es la quincena o un extra: ' + d0.pregunta.slice(0, 120)];
+    // v2.6.5 (V2-81): la misma pregunta, con las palabras nuevas: «¿Es tu quincena del 30?» [Sí, marcarla como recibida] [No, es otro ingreso].
+    return /¿Es tu quincena del 30\?/.test(d0.pregunta) && /marcarla como recibida/.test(d0.pregunta) && /otro ingreso/.test(d0.pregunta) ? [] : ['no pregunta si es la quincena o un extra: ' + d0.pregunta.slice(0, 120)];
 });
 
 // ============================================================ D · números

@@ -388,7 +388,7 @@ try {
     await clic('[data-fk="ob-sig"]');
     // v2.6.2 (V2-68): la tarjeta tiene su propio paso (después de las deudas); sin corte, cuenta lo que pagas normalmente.
     await clic('[data-fk="ob-tn"]');
-    check('pregunta «¿Cuánto pagas normalmente?»', await texto('.ob-editor'), contiene('Tarjeta de crédito', '¿Cuánto pagas normalmente?', 'Día de pago', 'Si no sabes el corte, déjalo vacío'));
+    check('pregunta «¿Cuánto pagas normalmente?»', await texto('.ob-editor'), contiene('Tarjeta de crédito', '¿Cuánto pagas normalmente?', '¿Qué día se paga?', 'Si no sabes el corte, déjalo vacío'));
     await clic('[data-fk="ob-t-banco-Otro"]');
     await escribir('#ob-t-nombre', 'Visa Cuscatlán');
     await escribir('#ob-t-usual', '100');

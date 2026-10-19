@@ -232,6 +232,19 @@
             return { ingreso: ing, fecha, monto: llegada ? llegada.monto : Math.max(0, ing.monto - descuento), descuento, aprox: !llegada && ing.aprox, llegada, estado };
         });
     }
+    /**
+     * v2.6.5 (V2-80): la ocurrencia de un pago que toca marcar ahora: la primera sin pagar ni saltar (si quedó una
+     * vencida, esa). Las de después esperan su turno; por adelantado, solo esta.
+     */
+    function porPagar(st, p) {
+        if (!p || p.activo === false) return null;
+        return ocurrenciasPago(st, p, p.desde || st.inicio || st.hoy, sumarDias(st.hoy, 400)).find((o) => o.estado === 'pendiente' || o.estado === 'vencido') || null;
+    }
+    /** V2-81: la ocurrencia de un ingreso esperado que toca marcar como recibida: la primera que todavía no llegó. */
+    function porRecibir(st, ing) {
+        if (!ing || ing.activo === false) return null;
+        return ocurrenciasIngreso(st, ing, ing.desde || st.inicio || st.hoy, sumarDias(st.hoy, 400)).find((o) => o.estado !== 'llego' && o.estado !== 'noLlego') || null;
+    }
 
     /**
      * Adelanto de salario (corrección v2.3.1): un ingreso de una vez marcado como adelanto dice de qué pago(s)
@@ -853,6 +866,12 @@
                 d.tipo = 'gasto';
                 const ultimo = ventana.filter((x) => x.estado === 'pagado').at(-1);
                 if (ultimo) d.yaPagado = { pago: p.id, nombre: p.nombre, fecha: ultimo.fecha };
+                // V2-82: si hay un pago siguiente (por adelantado), se ofrece marcar ese en vez de un gasto suelto.
+                const sig = porPagar(st, p);
+                if (sig) {
+                    d.pagoSiguiente = { pago: p.id, fecha: sig.fecha, monto: sig.monto, medio: p.medio };
+                    d.cualPago = null;
+                }
             }
         }
         if (d.tipo === 'pago') {
@@ -862,8 +881,6 @@
             d.categoria = frecuente ? frecuente.categoria : 'otros';
             d.frecuencia = frecuente && frecuente.semanal ? 'semanal' : null;
             if (!d.medio) d.medio = medioUsual(st, d.categoria).id;
-            const igual = st.pagos.find((p) => p.activo !== false && d.nombre && normalizar(p.nombre) === normalizar(d.nombre));
-            d.duplicado = igual ? igual.id : null;
         }
         if (d.tipo === 'gasto') {
             const k = D.CATEGORIAS.find((x) => palabras.some((w) => x.palabras.includes(w))) || D.CATEGORIAS.find((x) => x.id === 'otros');
@@ -894,26 +911,7 @@
             // Un adelanto «el 29»: si ese día no ha llegado, es un ingreso esperado (fecha futura).
             if (d.adelanto && d.dia !== null) d.fecha = d.dia >= partes(st.hoy)[2] ? proximoDia(st.hoy, d.dia) : ultimoDia(st.hoy, d.dia);
             // ¿Es un ingreso esperado que llegó (o se adelantó)? Un adelanto con fecha futura es uno nuevo.
-            if (d.monto !== null && !(d.adelanto && d.fecha > st.hoy)) {
-                const candidatos = [];
-                // Un adelanto solo se reconoce como un adelanto que se esperaba (nunca como la quincena).
-                const esAdelantoIng = (ing) => ing.adelanto || ing.tipoIngreso === 'adelanto' || /\b(adelanto|anticipo|vale)\b/.test(normalizar(ing.nombre));
-                for (const ing of st.ingresos.filter((x) => !d.adelanto || esAdelantoIng(x))) {
-                    for (const o of ocurrenciasIngreso(st, ing, sumarDias(st.hoy, -12), sumarDias(st.hoy, 12))) {
-                        if (o.estado !== 'llego' && Math.abs(o.monto - d.monto) <= o.monto * 0.3) candidatos.push(o);
-                    }
-                }
-                const o = candidatos.sort((a, b) => Math.abs(diasEntre(st.hoy, a.fecha)) - Math.abs(diasEntre(st.hoy, b.fecha)))[0];
-                if (o && (d.categoria === 'salario' || d.categoria === 'otro' || o.ingreso.categoria === d.categoria)) {
-                    d.ingresoRef = { id: o.ingreso.id, fecha: o.fecha };
-                    d.nombre = o.ingreso.nombre;
-                    d.emoji = o.ingreso.emoji;
-                    d.lugar = o.ingreso.lugar;
-                    // V2-29 #10: si no es el de hoy, se pregunta si es ese ingreso o uno extra.
-                    d.preguntarIngreso = o.fecha !== st.hoy;
-                    d.cualIngreso = null;
-                }
-            }
+            if (!(d.adelanto && d.fecha > st.hoy)) aplicarEsperado(st, d, resto);
             if (!d.nombre && d.adelanto) d.nombre = 'Adelanto de salario';
             if (!d.nombre) d.nombre = d.categoria === 'venta' ? (resto ? 'Venta de ' + nombreDe(palabras).toLowerCase() : 'Venta') : d.categoria === 'remesa' ? 'Remesa' : d.categoria === 'salario' ? 'Pago' : nombreDe(palabras) || 'Ingreso';
             if (!d.lugar) {
@@ -966,10 +964,77 @@
         return d;
     }
 
+    /**
+     * v2.6.5 (V2-81): ¿lo que anotas como ingreso es un ingreso esperado? Del mismo tipo (Salario y tu quincena), con
+     * su nombre o con un monto parecido (±30 %), cerca de su fecha (12 días antes o después): el primero que todavía
+     * no llegó. Si el de esas fechas ya llegó, `ya` lo dice. Un adelanto solo se reconoce como un adelanto esperado.
+     */
+    function ingresoEsperado(st, d, resto = '') {
+        const desde = sumarDias(st.hoy, -12);
+        const hasta = sumarDias(st.hoy, 12);
+        const esAdelantoIng = (ing) => ing.adelanto || ing.tipoIngreso === 'adelanto' || /\b(adelanto|anticipo|vale)\b/.test(normalizar(ing.nombre));
+        let o = null;
+        let ya = null;
+        for (const ing of st.ingresos) {
+            if (ing.activo === false || (d.adelanto && !esAdelantoIng(ing))) continue;
+            const porTipo = !!d.categoria && !['otro', 'extra', 'venta'].includes(d.categoria) && ing.categoria === d.categoria;
+            const porNombre = !!resto && coincide(resto, ing.nombre);
+            for (const x of ocurrenciasIngreso(st, ing, desde, hasta)) {
+                const porMonto = d.monto !== null && d.monto !== undefined && Math.abs(x.monto - d.monto) <= x.monto * 0.3 && (!d.categoria || d.categoria === 'salario' || d.categoria === 'otro' || ing.categoria === d.categoria);
+                if (!porTipo && !porNombre && !porMonto) continue;
+                if (x.estado === 'llego') {
+                    if (!ya || x.fecha > ya.fecha) ya = x;
+                } else if (x.estado !== 'noLlego' && (!o || x.fecha < o.fecha)) o = x;
+            }
+        }
+        return { o, ya: o ? null : ya };
+    }
+    /** V2-81: aplica a un borrador de ingreso lo que se encontró (y si hay que preguntar o avisar). */
+    function aplicarEsperado(st, d, resto = '') {
+        d.ingresoRef = null;
+        d.yaRecibido = null;
+        const { o, ya } = ingresoEsperado(st, d, resto);
+        if (o) {
+            d.ingresoRef = { id: o.ingreso.id, fecha: o.fecha };
+            d.nombre = o.ingreso.nombre;
+            d.emoji = o.ingreso.emoji;
+            d.lugar = o.ingreso.lugar;
+            // V2-29 #10 y V2-81: se pregunta si no es el de hoy o si el monto no se parece (nunca se cuenta dos veces).
+            const cerca = d.monto !== null && d.monto !== undefined && Math.abs(o.monto - d.monto) <= o.monto * 0.3;
+            d.preguntarIngreso = o.fecha !== st.hoy || !cerca;
+            d.cualIngreso = null;
+        } else if (ya) d.yaRecibido = { id: ya.ingreso.id, fecha: ya.fecha };
+        return d;
+    }
+    /**
+     * v2.6.5 (V2-82): un pago que ya tienes y se parece al que vas a guardar: el mismo nombre (sin tildes ni
+     * mayúsculas); uno dentro del otro como palabra («Luz» y «Luz eléctrica») si además coincide la categoría, el día
+     * o el monto (así «Préstamo cooperativa» no se confunde con otro «Préstamo»); o la misma categoría con el mismo día
+     * y el mismo monto.
+     */
+    function pagoParecido(st, x, excluir = null) {
+        const n = normalizar(x.nombre || '');
+        const dia = x.dia === null || x.dia === undefined || x.dia === '' ? null : Number(x.dia);
+        const cat = x.categoria && x.categoria !== 'otros' ? x.categoria : null;
+        return (
+            (st.pagos || []).find((p) => {
+                if (p.activo === false || p.id === excluir) return false;
+                const q = normalizar(p.nombre || '');
+                if (n && q && n === q) return true;
+                const algoIgual = (cat && p.categoria === cat) || (dia !== null && p.dia === dia) || (!!x.monto && p.monto === x.monto);
+                if (n && q && Math.min(n.length, q.length) >= 3 && (` ${n} `.includes(` ${q} `) || ` ${q} `.includes(` ${n} `)) && algoIgual) return true;
+                return !!cat && p.categoria === cat && dia !== null && p.dia === dia && !!x.monto && p.monto === x.monto;
+            }) || null
+        );
+    }
+
     /** Lo que todavía falta para guardar un borrador. */
     function faltan(st, d) {
         const f = [];
         if (!d.tipo) return ['tipo'];
+        // V2-82: un pago parecido a uno que ya tienes: primero «¿Es otro pago?»; un gasto que puede ser el pago siguiente: «¿Es el pago de…?».
+        if (d.tipo === 'pago' && !d.dupOk && pagoParecido(st, d)) f.push('duplicado');
+        if (d.tipo === 'gasto' && d.pagoSiguiente && !d.cualPago) f.push('cualPago');
         if (d.monto === null || d.monto <= 0) f.push('monto');
         if (d.tipo === 'gasto' && !d.medio) f.push('medio');
         if (d.tipo === 'gasto' && !d.nombre) f.push('nombre');
@@ -995,5 +1060,6 @@
         horizonte, calcular, resumenMes, pagosDelMes, medioUsual, normalizar, entender, faltan, capital, porDiaDe, apartadosVencidos, esDiaDeIngreso, coincide,
         inicioDe, cortes, corteAntes, corteDespues, fundado, esFundado, periodoDe, fuentesPara, asignacion, reglaPago, recurrentes, descuentosDe, proyectar, claveVigente, reservasDe,
         esUnico, ingresoDeClave, llegoUnico, unicosPara,
+        porPagar, porRecibir, ingresoEsperado, aplicarEsperado, pagoParecido,
     };
 })();

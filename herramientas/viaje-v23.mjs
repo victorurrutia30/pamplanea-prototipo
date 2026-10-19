@@ -113,6 +113,9 @@ try {
     const libre28 = await texto('.portada-n');
     await ev('P.abrir("ingreso", "i9"); true');
     await clic('[data-fk="ing-llego"]');
+    // v2.6.5 (V2-81): es del 29 y hoy es 28: «¿Ya te llegó por adelantado?» → «Sí, ya llegó».
+    check('pregunta si llegó por adelantado', await ev(`document.getElementById('capa-dlg').innerText`), (x) => /Este ingreso es del 29 de octubre\. ¿Ya te llegó por adelantado\?/.test(x));
+    await clic('[data-fk="dlg-si"]');
     await escribir('#f-monto', '566');
     await clic('[data-fk="ing-ok"]');
     await foto('pareja-adelantada-reparte');
