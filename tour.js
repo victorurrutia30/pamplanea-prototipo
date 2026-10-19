@@ -59,7 +59,8 @@
         if (!hoja('anotar')) return tocar('[data-fk="nav-anotar"]', 'Toca el botón + de abajo.');
         const q = document.getElementById('anotar-q');
         if (q && M.normalizar(q.value.trim()) !== M.normalizar(frase)) return escribir('#anotar-q', frase, `Escribe «${frase}» en «¿Qué pasó?».`);
-        return tocar('[data-fk="anotar-guardar"]', 'Revisa lo que entendí y toca «Guardar».');
+        const boton = document.querySelector('[data-fk="anotar-guardar"]');
+        return tocar('[data-fk="anotar-guardar"]', `Revisa lo que entendí y toca «${boton ? boton.textContent.trim() : 'Guardar'}».`);
     };
     /** Cuadrar el efectivo: Cuentas → Cuadrar → Efectivo → cuánto → Cuadrar. */
     const senalCuadrar = () => {
@@ -355,7 +356,7 @@
                 hazlo: {
                     claves: ['guardado:pasarProxima'],
                     senal: () => {
-                        if (hoja('pasarProxima')) return M.leerMonto(P.ui.hoja.monto) === 5000 ? tocar('[data-fk="pasar-ok"]', 'Toca «Guardar».') : escribir('#f-monto', '50', 'Escribe 50 en «¿Cuánto pasas?».');
+                        if (hoja('pasarProxima')) return M.leerMonto(P.ui.hoja.monto) === 5000 ? tocar('[data-fk="pasar-ok"]', 'Toca «Pasar».') : escribir('#f-monto', '50', 'Escribe 50 en «¿Cuánto pasas?».');
                         if (hoja('desglose')) return tocar('[data-fk="d-pasar"]', 'Toca «¿Pasas algo de lo que te sobra a la próxima?».');
                         return enPantalla('hoy') ? tocar('[data-fk="portada"]', 'Toca tu número.') : tocar('[data-fk="nav-hoy"]', 'Toca «Hoy» abajo.');
                     },

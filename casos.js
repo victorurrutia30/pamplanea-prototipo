@@ -206,7 +206,7 @@ window.CASOS_PRACTICA = [
         pasos: [
             { t: 'En Pagos, toca «Mis pagos e ingresos» y luego «Matrícula».', clave: 'pantalla:pago:matricula' },
             { t: 'En «Lo pagas con», toca «Cambiar o repartir».', clave: 'hoja:pagarCon' },
-            { t: 'Toca «Ver más quincenas», elige «Con tu aguinaldo del 12 dic» y toca «Guardar».', clave: 'guardado:pagarCon:unico' },
+            { t: 'Toca «Ver más quincenas», elige «Con tu aguinaldo del 12 dic» y toca «Guardar cambios».', clave: 'guardado:pagarCon:unico' },
             { t: 'Mira la ficha: «Con tu aguinaldo del 12 dic». Tu libre de hoy no cambió.' },
         ],
         esperado: 'La matrícula dice «Con tu aguinaldo del 12 dic $100.00». El libre de hoy no cambia; la quincena del 30 de noviembre (la del aguinaldo) cuenta los $300 y los $100.',
@@ -219,7 +219,7 @@ window.CASOS_PRACTICA = [
         pasos: [
             { t: 'En Pagos, toca «Mis pagos e ingresos» y luego «Adelanto de salario».', clave: 'pantalla:ingreso:adelanto' },
             { t: 'Toca «Sí, anotar el descuento».', clave: 'hoja:adelanto' },
-            { t: 'Elige «Tu quincena del 30», deja $200 y toca «Guardar».', clave: 'guardado:adelanto' },
+            { t: 'Elige «Tu quincena del 30», deja $200 y toca «Guardar descuento».', clave: 'guardado:adelanto' },
             { t: 'Mira en Hoy tu próxima quincena: «te descuentan $200 del adelanto».' },
         ],
         esperado: 'Hoy: «Próxima quincena (30) · ingreso ~$400 … te descuentan $200.00 del adelanto». Al confirmar esa quincena, el monto sugerido ya viene con $200 menos.',
@@ -233,7 +233,7 @@ window.CASOS_PRACTICA = [
         pasos: [
             { t: 'Toca el botón (+) Anotar, abajo al centro.', clave: 'hoja:anotar' },
             { t: 'Escribe «vendí 45».' },
-            { t: 'Revisa lo que entendió (Ingreso · $45.00 · Venta · Efectivo · Hoy) y toca «Guardar».', clave: 'guardado:ingreso' },
+            { t: 'Revisa lo que entendió (Ingreso · $45.00 · Venta · Efectivo · Hoy) y toca «Guardar ingreso».', clave: 'guardado:ingreso' },
             { t: 'Mira Hoy: tu libre subió $45.00.' },
         ],
         esperado: 'Libre $80.00 → $125.00. La venta aparece en «Últimos anotados» (+$45.00).',

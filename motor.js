@@ -935,7 +935,9 @@
             }
         }
         if (d.tipo === 'cuadre') {
-            const l = st.lugares.find((x) => coincide(resto, x.nombre) || (x.tipo === 'banco' && /\b(banco|cuenta)\b/.test(resto)));
+            // v2.6.3: «tengo 50 efectivo»: la palabra se tomó como el medio; su lugar es el del cuadre.
+            const delMedio = d.medioExplicito && medio(st, d.medio) && medio(st, d.medio).lugar ? lugar(st, medio(st, d.medio).lugar) : null;
+            const l = st.lugares.find((x) => coincide(resto, x.nombre) || (x.tipo === 'banco' && /\b(banco|cuenta)\b/.test(resto))) || delMedio;
             d.lugar = l ? l.id : st.lugares.length === 1 ? st.lugares[0].id : null;
         }
         if (d.tipo === 'pagoTarjeta') {

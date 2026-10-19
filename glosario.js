@@ -49,7 +49,7 @@ window.TIPS = {
     cuentas: 'Si tu efectivo no coincide, toca «Cuadrar» y di cuánto tienes. Sin culpa.',
     ahorros: 'Tus ahorros siguen en tu banco o efectivo: solo les pones nombre.',
     deudas: 'Tus tarjetas, préstamos y cuotas. Su pago aparece solo en Pagos.',
-    mes: 'En qué se te fue el dinero este mes. Toca algo para corregirlo.',
+    mes: 'Lo que entró y en qué gastaste este mes. Toca algo para corregirlo.',
     // Sin ingreso fijo: Hoy y Pagos no hablan de «quincena».
     hoyVariable: 'Tu número dice cuánto puedes gastar hasta fin de mes (o en 15 días). Tócalo para ver de dónde sale.',
     pagosVariable: 'Aquí ves qué pagas y cuándo. Toca un pago para ver de qué dinero sale.',

@@ -3706,3 +3706,17 @@ html.con-hazlo .mask {
 .dia-marca--pago {
     color: var(--color-text-muted);
 }
+
+/* v2.6.3 (V2-65): a 320 de ancho, el botón principal no se parte en dos líneas: le toca más espacio que «Cancelar». */
+@media (max-width: 359px) {
+    .hoja-acc {
+        grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+        gap: 8px;
+    }
+    .hoja-f {
+        padding-inline: 16px;
+    }
+    .hoja-acc .btn {
+        padding-inline: 10px;
+    }
+}

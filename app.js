@@ -725,7 +725,7 @@
         return `<div class="pg pg--hoy">
             <header class="hoy-head">
                 <button type="button" class="avatar" data-a="hoja" data-hoja="menu" data-fk="avatar" aria-label="Menú de ${esc(st.nombre || 'tu cuenta')}: ajustes, tu espacio y aprende">${esc(inicial)}</button>
-                <div class="hoy-saludo"><h1 class="h1" tabindex="-1">${st.nombre ? 'Hola, ' + esc(st.nombre) : 'Hola'}</h1><p class="sub">${esc(fechaHoy)}</p></div>
+                <div class="hoy-saludo"><h1 class="h1" tabindex="-1">${st.nombre && P.modo === 'uso' ? 'Hola, ' + esc(st.nombre) : 'Hola'}</h1><p class="sub">${esc(fechaHoy)}</p></div>
             </header>
             ${portada}
             ${P.qTexto('libre')}
@@ -926,7 +926,7 @@
             const cambiada = prox && !p.descuento ? M.asignacion(st, p, prox.fecha, prox.monto, hz) : [];
             const conQue = p.descuento ? `Se descuenta solo de ${(M.ingreso(st, p.descuento)?.nombre || 'tu salario').toLowerCase()}` : p.automatico && medio ? `Se cobra solo en ${medio.nombre} · ${textoRegla(p)}` : `${medio ? medio.nombre : 'Sin medio'} · ${textoRegla(p)}`;
             const proxTxt = prox ? `${prox.estado === 'vencido' ? 'Venció' : 'Próximo'}: ${M.fechaCorta(prox.fecha)}${cambiada.length > 1 || (cambiada[0] && cambiada[0].de !== M.periodoDe(st, prox.fecha, hz)) ? ' · ' + P.textoPartes(prox, cambiada, hz).toLowerCase() : ''}` : 'Sin fechas por delante';
-            return `<li class="fila"><button type="button" class="fila-main" data-a="abrir" data-tipo="pago" data-id="${p.id}" data-fk="mp-${p.id}">${caja(p.emoji)}<span class="fila-txt"><span class="fila-t">${esc(p.nombre)}</span><span class="fila-s">${esc(textoFrecuencia(p, { corto: true }))}</span><span class="fila-s">${esc(conQue)}</span><span class="fila-s">${esc(proxTxt)}</span></span><span class="fila-m">${montoHtml(p.monto, null, { aprox: p.estimado })}${p.frecuencia !== 'mensual' && alMes(p) ? `<span class="fila-s">${esc(dinero(alMes(p), { aprox: true }))} al mes</span>` : ''}</span></button></li>`;
+            return `<li class="fila"><button type="button" class="fila-main" data-a="abrir" data-tipo="pago" data-id="${p.id}" data-fk="mp-${p.id}">${caja(p.emoji)}<span class="fila-txt"><span class="fila-t">${esc(p.nombre)}</span><span class="fila-s">${esc(textoFrecuencia(p, { corto: true }))}</span><span class="fila-s">${esc(conQue)}</span><span class="fila-s">${esc(proxTxt)}</span></span><span class="fila-m">${montoHtml(p.monto, 'pago', { aprox: p.estimado })}${p.frecuencia !== 'mensual' && alMes(p) ? `<span class="fila-s">${esc(dinero(alMes(p), { aprox: true }))} al mes</span>` : ''}</span></button></li>`;
         };
         const grupos = [
             ['Pagos fijos', activos.filter((p) => !p.tipoDeuda && p.tipoPago !== 'suscripcion' && !p.descuento)],
@@ -937,7 +937,7 @@
         const tarjetas = st.tarjetas.map((t) => {
             const info = M.tarjetaInfo(st, t);
             // V2-54: sin estado de cuenta todavía, lo que paga normalmente (estimado).
-            const cuanto = info.porPagarEstado ? montoHtml(info.porPagarEstado) : info.estimado ? `${montoHtml(info.estimado, null, { aprox: true })}<span class="fila-s">estimado</span>` : '<span class="monto monto--pend">Por confirmar</span>';
+            const cuanto = info.porPagarEstado ? montoHtml(info.porPagarEstado, 'pago') : info.estimado ? `${montoHtml(info.estimado, null, { aprox: true })}<span class="fila-s">estimado</span>` : '<span class="monto monto--pend">Por confirmar</span>';
             return `<li class="fila"><button type="button" class="fila-main" data-a="abrir" data-tipo="tarjeta" data-id="${t.id}" data-fk="mp-t-${t.id}">${caja(t.emoji)}<span class="fila-txt"><span class="fila-t">${esc(t.nombre)}</span><span class="fila-s">Cada mes, el ${t.pagoDia} · ${info.usual ? 'lo que pagas normalmente, hasta tu estado de cuenta' : 'según tu estado de cuenta'}</span><span class="fila-s">Sale de lo que ya tienes: tus compras con tarjeta bajan tu libre el día que las haces</span></span><span class="fila-m">${cuanto}</span></button></li>`;
         });
         const ingresos = st.ingresos.filter((i) => i.activo !== false).map((i) => {
@@ -1152,7 +1152,7 @@
             ${P.tipHtml('deudas')}
             <section class="card ficha-cifra ficha-cifra--q" aria-label="Lo que debes">${P.qBtn('deudas')}<p class="fila-s">${deuda.total > 0 || !deuda.sinSaldo ? `Debes en total${deuda.sinSaldo ? ' (lo que tienes anotado)' : ''}` : 'Pagas en cuotas'}</p><p class="cifra">${deuda.total > 0 || !deuda.sinSaldo ? dinero(deuda.total, { aprox: deuda.aprox }) : `${dinero(deuda.cuotasSinSaldo)} al mes`}</p><p class="fila-s">${deuda.sinSaldo ? `${plural(deuda.sinSaldo, 'cuota no tiene', 'cuotas no tienen')} «cuánto debes» anotado. ` : ''}Su pago aparece solo en Pagos. El disponible de una tarjeta nunca suma a tu libre: es dinero prestado.</p>${P.qTexto('deudas')}</section>
             ${tarjetaSeccion('Tus deudas', `${filas.length ? `<ul class="lista">${filas.join('')}</ul>` : '<p class="vacio">Si tienes una tarjeta, una cuota o un préstamo, agrégalo aquí y su pago aparece solo en Pagos.</p>'}<div class="card-pie"><button type="button" class="btn btn--full" data-a="hoja" data-hoja="nuevaDeuda" data-fk="md-deuda">${icon('plus', 'ico-s')}${filas.length ? 'Agregar otra deuda o tarjeta' : 'Agregar una deuda o tarjeta'}</button></div>`, { id: 'md-deudas-lista' })}
-            ${P.modo === 'uso' ? `<button type="button" class="link link--start" data-a="obCompletar" data-fk="md-completar">${icon('list-checks', 'ico-s')}Completar tu Primer día: deudas, tarjetas y gastos fijos</button>` : ''}
+            ${P.modo === 'uso' ? `<button type="button" class="link link--start" data-a="obCompletar" data-fk="md-completar">${icon('list-checks', 'ico-s')}Completar tu Primer día</button>` : ''}
         </div>`;
     };
 
@@ -1235,7 +1235,7 @@
         }
         if (r.tarjetaSinDetalle) filas.push(filaCat('tsd', '💳', 'Tarjeta sin detalle', r.tarjetaSinDetalle, 'Intereses o cargos del estado de cuenta', 'tarjeta'));
         if (r.sinDetalleSalio) filas.push(filaCat('sd', '⚖️', 'Sin detalle', r.sinDetalleSalio, 'Lo que explicaron tus cuadres', 'cuadre'));
-        const enque = tarjetaSeccion('¿En qué se te fue?', filas.length ? `<ul class="lista">${filas.join('')}</ul>` : '<p class="vacio">Nada anotado este mes.</p>', { id: 'mes-enque' });
+        const enque = tarjetaSeccion('¿En qué gastaste?', filas.length ? `<ul class="lista">${filas.join('')}</ul>` : '<p class="vacio">Nada anotado este mes.</p>', { id: 'mes-enque' });
 
         // Historial con filtros.
         const filtro = P.ui.mesFiltro;
@@ -1263,7 +1263,7 @@
             <div class="chips chips--scroll" role="group" aria-label="Filtrar historial">${chips}${catChip}</div>
             ${grupos.length ? grupos.map((g) => `<div class="grupo"><h3 class="grupo-t">${esc(M.capital(M.diaCorto(g.fecha)))}</h3><ul class="lista card">${g.filas.join('')}</ul></div>`).join('') : '<p class="vacio">Nada con este filtro.</p>'}</section>`;
         return `<div class="pg">
-            ${encabezado('Mes', '¿En qué se te fue?')}
+            ${encabezado('Mes', 'Lo que entró y lo que gastaste')}
             ${P.tipHtml('mes')}
             <div class="mes-nav"><button type="button" class="icon-btn" data-a="mesNav" data-d="-1" aria-label="Mes anterior" data-fk="mes-ant">${icon('chevron-left')}</button><p class="mes-nav-t" aria-live="polite">${esc(M.capital(M.MESES[m - 1]))} ${y}</p><button type="button" class="icon-btn" data-a="mesNav" data-d="1" aria-label="Mes siguiente" data-fk="mes-sig" ${esActual ? 'disabled' : ''}>${icon('chevron-right')}</button></div>
             <section class="card resumen" aria-label="Resumen del mes">

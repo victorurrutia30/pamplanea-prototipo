@@ -15,7 +15,7 @@ const CATEGORIAS = [
     { id: 'regalos', nombre: 'Regalos', emoji: '🎁', medio: 'efectivo', palabras: ['regalo', 'regalos', 'detalle'] },
     { id: 'educacion', nombre: 'Educación', emoji: '🎓', medio: 'transferencia', palabras: ['colegio', 'escuela', 'universidad', 'utiles', 'cuaderno', 'libros', 'matricula'] },
     { id: 'tecnologia', nombre: 'Tecnología', emoji: '💻', medio: 'debito', palabras: ['laptop', 'computadora', 'audifonos', 'cargador'] },
-    { id: 'servicios', nombre: 'Servicios', emoji: '💡', medio: 'debito', palabras: ['luz', 'agua', 'internet', 'cable'] },
+    { id: 'servicios', nombre: 'Facturas de servicios', emoji: '💡', medio: 'debito', palabras: ['luz', 'agua', 'internet', 'cable'] },
     { id: 'cuotas', nombre: 'Cuotas y deudas', emoji: '🛍️', medio: 'transferencia', palabras: ['cuota', 'prestamo'] },
     { id: 'suscripciones', nombre: 'Suscripciones', emoji: '📺', medio: 'bac', palabras: ['netflix', 'spotify', 'disney', 'youtube', 'icloud', 'suscripcion', 'gimnasio', 'gym', 'hbo', 'prime'] },
     { id: 'otros', nombre: 'Otros', emoji: '🧩', medio: 'efectivo', palabras: [] },

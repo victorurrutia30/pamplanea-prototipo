@@ -449,7 +449,8 @@ try {
         await esperar(700);
         await clic('[data-fk="tour-salir"]');
         await esperar(300);
-        check('entrenamiento con Ana', await texto('.hoy-saludo h1'), 'Hola, Ana');
+        // v2.6.3: con datos de ejemplo, Hoy no saluda a una persona de ejemplo.
+        check('entrenamiento con los datos de Ana, sin su nombre', await texto('.hoy-saludo h1'), 'Hola');
         await anotar('pupusas 6');
         await clic('[data-fk="avatar"]');
         await clic('[data-fk="menu-smartphone"]');
