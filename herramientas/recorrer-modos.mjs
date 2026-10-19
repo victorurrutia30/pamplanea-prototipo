@@ -449,6 +449,10 @@ try {
         await esperar(700);
         await clic('[data-fk="tour-salir"]');
         await esperar(300);
+        // v2.6.4 (V2-79): «Ahora no» en un capítulo abierto desde tus datos vuelve a ellos, intactos.
+        check('«Ahora no» vuelve a tus datos', [await ev('P.modo'), await ev('JSON.stringify({ libre: document.querySelector(".portada-n").textContent, n: P.st.registros.length })')], ['uso', antes]);
+        await ev('P.modos.aEntrenamiento(); true');
+        await esperar(300);
         // v2.6.3: con datos de ejemplo, Hoy no saluda a una persona de ejemplo.
         check('entrenamiento con los datos de Ana, sin su nombre', await texto('.hoy-saludo h1'), 'Hola');
         await anotar('pupusas 6');

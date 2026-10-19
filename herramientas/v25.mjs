@@ -160,7 +160,8 @@ async function revisarPausa(version, cap, i, antes) {
     const fila = filas[0] || '';
     const filaOk = antes === d ? fila === `Libre ${dinero(d)} sin cambio` : fila === `Libre ${dinero(antes)} ${dinero(d)}`;
     const porqueOk = antes === d ? /no cambió/.test(porque) || porque.startsWith('Tu libre ahora llega') : porque.startsWith(`Tu libre ${d < antes ? 'bajó' : 'subió'} de ${corto(antes)} a ${corto(d)} porque `);
-    check(`${version} «${cap.titulo}» paso ${i + 1}: la pausa (antes → después del motor, el porqué, solo «Entendido»)`, [filaOk, porqueOk, (await lineasDe('.tour-card .tour-porque')) <= 2, botones], [true, true, true, ['Entendido']]);
+    // v2.6.4 (V2-79): la pausa sigue esperando «Entendido» para avanzar; además tiene «Salir», como todas las tarjetas.
+    check(`${version} «${cap.titulo}» paso ${i + 1}: la pausa (antes → después del motor, el porqué, solo «Entendido» para seguir)`, [filaOk, porqueOk, (await lineasDe('.tour-card .tour-porque')) <= 2, botones], [true, true, true, ['Salir', 'Entendido']]);
     if (version === 'variable') check(`${version} «${cap.titulo}» paso ${i + 1}: la pausa sin «quincena»`, await sinQuincena(), true);
     (informe.revision[`${version}:${cap.titulo}`] ||= []).push({ paso: i + 1, pausa: porque, filas });
 }

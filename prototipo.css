@@ -2267,6 +2267,39 @@ html.con-tarea {
 .aviso-proto-b:hover {
     border-color: var(--color-focus);
 }
+/* v2.6.4 (V2-79): con los ejemplos, «Mis datos» (o «Usar mis datos») junto a «Ayuda»: a un toque de tus datos. */
+.aviso-proto-bs {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 6px;
+}
+.aviso-proto-b--datos {
+    border-color: var(--color-primary);
+    background: var(--color-primary);
+    color: var(--color-primary-fg);
+}
+.aviso-proto-b--datos:hover {
+    border-color: var(--color-button-primary-hover);
+    background: var(--color-button-primary-hover);
+}
+/* El nombre de un archivo de copia no se parte. */
+.ay .nw {
+    white-space: nowrap;
+}
+/* A 320 los dos botones y el texto caben sin tocarse (sin el ícono y con menos relleno). */
+@media (max-width: 359px) {
+    .aviso-proto:has(.aviso-proto-b--datos) {
+        gap: 6px;
+        padding: 0 6px 0 10px;
+    }
+    .aviso-proto:has(.aviso-proto-b--datos) .aviso-proto-t > svg {
+        display: none;
+    }
+    .aviso-proto:has(.aviso-proto-b--datos) .aviso-proto-b {
+        padding: 0 10px;
+    }
+}
 .tarea-bar {
     position: absolute;
     top: calc(var(--safe-top) + var(--aviso-h));

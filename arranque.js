@@ -70,6 +70,8 @@
             if (P.modos) P.modos.guardarUso();
             return;
         }
+        // V2-79: y al revés: tus datos nunca se guardan como los ejemplos.
+        if (P.st.persona === 'uso') return;
         P.almacen.escribir(CLAVE_APP, { formato: FORMATO, caso: P.caso ? P.caso.id : null, persona: P.st.persona, tab: P.ui.tab, tema: P.tema, st: P.st });
     }
     P.guardarYa = guardarAhora;
@@ -79,9 +81,15 @@
     };
     window.addEventListener('pagehide', guardarAhora);
     document.addEventListener('visibilitychange', () => document.visibilityState === 'hidden' && guardarAhora());
+    /** V2-79: cargar un ejemplo es SIEMPRE del modo entrenamiento: si estabas en tus datos, se guardan y se cambia antes. */
+    const aEjemplos = () => {
+        if (P.modo === 'uso' && P.modos) P.modos.dejarTusDatos();
+    };
     function restaurar(filtro = null) {
         const g = P.almacen.leer(CLAVE_APP, null);
         if (!g || g.formato !== FORMATO || !g.st || (filtro && !filtro(g))) return false;
+        if (g.st.persona === 'uso') return false;
+        aEjemplos();
         // Datos guardados por una versión anterior del prototipo: campos nuevos con su valor inicial.
         g.st.reservasTarjeta = g.st.reservasTarjeta || [];
         g.st.cerrados = g.st.cerrados || [];
@@ -155,6 +163,7 @@
     function cargarCaso(id, { tab = null } = {}) {
         const caso = P.buscarCaso(id);
         if (!caso) return;
+        aEjemplos();
         P.caso = caso;
         clearTimeout(bannerTimer);
         P.guardando = true;
@@ -163,6 +172,7 @@
         P.emitir('caso:' + id);
     }
     function cargarPersona(persona) {
+        aEjemplos();
         P.caso = null;
         clearTimeout(bannerTimer);
         P.guardando = true;
@@ -170,12 +180,15 @@
         P.emitir('persona:' + persona);
     }
     function reiniciar() {
+        // V2-79: «Reiniciar ejemplos» y simular el tiempo son solo para los ejemplos, nunca sobre tus datos.
+        if (P.modo === 'uso') return;
         if (P.caso) cargarCaso(P.caso.id);
         else cargarPersona(P.st && ['carlos', 'rosa'].includes(P.st.persona) ? P.st.persona : 'ana');
     }
 
     /** Lo que la guía (o las herramientas de Victor en «Ayuda») puede simular: el paso del tiempo y los avisos. */
     function simular(id) {
+        if (P.modo === 'uso') return;
         const st = P.st;
         if (id === 'dia4') {
             const colegio = st.pagos.find((p) => M.normalizar(p.nombre) === 'colegio' && p.activo !== false);

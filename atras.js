@@ -169,7 +169,9 @@
             P.acciones.tourAtras();
             return true;
         }
-        P.confirmarDlg({ titulo: '¿Salir del entrenamiento?', texto: 'Tu avance queda guardado: puedes seguir después donde te quedaste.', no: 'Seguir aquí', si: 'Salir', alSi: () => (T.fase === 'elegir' ? P.acciones.tourCerrar() : P.acciones.tourSalir()) });
+        // V2-79: si vienes de tus datos (o ya los usas), salir te lleva a ellos.
+        const aTusDatos = T.aTusDatos && T.aTusDatos();
+        P.confirmarDlg({ titulo: '¿Salir del entrenamiento?', texto: aTusDatos ? 'Vuelves a tus datos. Tu avance queda guardado para seguir después.' : 'Tu avance queda guardado: puedes seguir después donde te quedaste.', no: 'Seguir aquí', si: 'Salir', alSi: () => (T.fase === 'elegir' ? P.acciones.tourCerrar() : P.acciones.tourSalir()) });
         return true;
     }
     function retroceder() {

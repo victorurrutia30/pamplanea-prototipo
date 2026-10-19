@@ -19,6 +19,9 @@
     const CLAVE_ENTRENAMIENTO = 'pamplanea-entrenamiento';
     /** Respaldo intacto de lo guardado antes de migrar (por si acaso: nunca se pierde nada). */
     const CLAVE_RESPALDO = 'pamplanea-uso:respaldo-esquema-1';
+    /** v2.6.4 (V2-79): un ejemplo que quedó guardado como tus datos (el error de la v2.6.3), apartado sin borrarlo. */
+    const CLAVE_EJEMPLO = 'pamplanea-uso:ejemplo-guardado';
+    const PERSONAS_EJEMPLO = new Set(['ana', 'carlos', 'rosa']);
     const ESQUEMA = 2;
     const $ = (s) => document.querySelector(s);
     const dinero = M.dinero;
@@ -56,9 +59,26 @@
         x.feedback = Array.isArray(x.feedback) ? x.feedback : [];
         if (x.st) {
             for (const k of ['lugares', 'medios', 'tarjetas', 'apartados', 'logros', 'pagos', 'ingresos', 'registros', 'avisos', 'reservasTarjeta', 'cerrados', 'reservas']) x.st[k] = Array.isArray(x.st[k]) ? x.st[k] : [];
-            x.st.persona = 'uso';
+            // V2-79: un ejemplo guardado por error conserva su persona (así se reconoce y no se muestra como tuyo).
+            if (!PERSONAS_EJEMPLO.has(x.st.persona)) x.st.persona = 'uso';
         }
         return x;
+    }
+    /**
+     * v2.6.4 (V2-79): ¿es un estado de los ejemplos y no los datos de la persona? Hasta la v2.6.3, cambiar de versión
+     * en «Aprender a usarla» podía guardar a Rosa (o a Ana) encima de tus datos, y al reabrir se le ponía persona «uso».
+     * Se reconoce por su persona, por la marca del recorrido o porque tiene el nombre Y los movimientos de un ejemplo
+     * (una persona llamada Ana, con sus propios movimientos, no lo es).
+     */
+    function esDeEjemplo(st) {
+        if (!st || typeof st !== 'object') return false;
+        if (PERSONAS_EJEMPLO.has(st.persona) || st.recorrido) return true;
+        const crear = { Ana: D.crearAna, Carlos: D.crearCarlos, Rosa: D.crearRosa }[st.nombre];
+        if (!crear) return false;
+        const firma = (r) => [r && r.tipo, r && r.fecha, r && r.monto, (r && r.nombre) || ''].join('|');
+        const suyos = new Set((st.registros || []).map(firma));
+        const base = crear().registros.map(firma);
+        return base.length > 0 && base.filter((f) => suyos.has(f)).length >= Math.ceil(base.length * 0.6);
     }
     /**
      * Esquema 1 → 2 (Prototipo v2.3, V2-34 y V2-43). La historia empieza el día en que la persona
@@ -121,10 +141,28 @@
         const u = usoGuardado();
         return !!(u.st && u.st.configurado);
     };
+    /** V2-79: ¿ya usa sus datos? (los configuró o empezó su Primer día). Entonces salir del entrenamiento lleva a ellos. */
+    const hayDatos = () => {
+        const u = usoGuardado();
+        return !!(u.st && !esDeEjemplo(u.st) && (u.st.configurado || u.ob));
+    };
+    /** V2-79: lo que el candado detuvo (en memoria y en la consola, como error). */
+    const errores = [];
+    function candado() {
+        errores.push({ que: 'ejemplo-en-tus-datos', persona: P.st.persona, fecha: new Date().toISOString() });
+        console.error('PamPlanea: candado — se intentó guardar un estado de ejemplo (' + P.st.persona + ') como tus datos; no se guardó.');
+        // Lo que está en pantalla son ejemplos: la app lo dice (y arriba, «Mis datos» vuelve a lo tuyo).
+        P.modo = 'entrenamiento';
+        guardarPref({ modo: 'entrenamiento' });
+        pintarAviso();
+        P.emitir('error:candado');
+    }
     function guardarUso() {
         // Con datos más nuevos de otra pestaña sin cargar, esta no escribe encima (se cargan primero).
         if (!uso || deOtra) return;
         if (P.modo === 'uso' && P.st) {
+            // V2-79, candado: un estado de ejemplo NUNCA se escribe en tus datos (ni nada más de esta vez).
+            if (P.st.persona !== 'uso') return candado();
             uso.st = P.st;
             // Nombres que la persona ha usado (aunque luego los borre): solo sirven para taparlos en «Cuéntale a Victor o a Pam».
             recordarNombres();
@@ -151,14 +189,42 @@
         return st;
     }
 
+    // ------------------------------------------------------------------ v2.6.4 (V2-79): recuperar a quien ya cayó en el error
+    /** Aparta (sin borrar) el ejemplo que quedó como tus datos; tus datos quedan vacíos hasta recuperar una copia o empezar. */
+    function apartarEjemplo() {
+        P.almacen.escribir(CLAVE_EJEMPLO, { fecha: new Date().toISOString(), persona: uso.st.persona, st: uso.st, resuelto: false });
+        errores.push({ que: 'ejemplo-guardado-encontrado', persona: uso.st.persona, fecha: new Date().toISOString() });
+        uso.st = null;
+        delete uso.ob;
+    }
+    /** ¿Hay que preguntar qué hacer? Hasta que elija (o arme sus datos de nuevo). */
+    function infoRecuperar() {
+        const e = P.almacen.leer(CLAVE_EJEMPLO, null);
+        if (!e || e.resuelto) return null;
+        const u = usoGuardado();
+        if (u.st && u.st.configurado) return null;
+        const r = P.almacen.leer(CLAVE_RESPALDO, null);
+        const fechaR = r && r.st && !esDeEjemplo(r.st) ? String(r.actualizado || r.creado || '').slice(0, 10) : '';
+        return { de: (e.st && e.st.nombre) || '', respaldo: /^\d{4}-\d{2}-\d{2}$/.test(fechaR) ? fechaR : null, copia: u.ultimaCopia ? String(u.ultimaCopia).slice(0, 10) : null };
+    }
+    const resolverEjemplo = () => {
+        const e = P.almacen.leer(CLAVE_EJEMPLO, null);
+        if (e && !e.resuelto) P.almacen.escribir(CLAVE_EJEMPLO, { ...e, resuelto: true });
+    };
+    let listo = false;
+
     // ------------------------------------------------------------------ entrar a cada modo
     function entrarUso({ abrirIntro = true } = {}) {
         P.guardarYa && P.modo === 'entrenamiento' && P.guardarYa();
+        // V2-79: el entrenamiento no sigue vivo debajo de tus datos (los ejemplos vuelven a como estaban).
+        if (P.tour && P.tour.activo) P.tour.terminar({ avisar: false });
         P.modo = 'uso';
         P.caso = null;
         if (P.ayuda && P.ayuda.salirDePrueba) P.ayuda.salirDePrueba();
         if (P.practica) P.practica.salir();
         uso = leerUso();
+        // V2-79: si lo guardado como tus datos es en realidad un ejemplo, no se muestra como tuyo.
+        if (uso.st && esDeEjemplo(uso.st)) apartarEjemplo();
         const st = uso.st || estadoNuevo();
         st.hoy = hoy();
         P.guardando = true;
@@ -173,10 +239,22 @@
         pintarAviso();
         guardarPref({ modo: 'uso' });
         guardarUso();
-        if (abrirIntro && !uso.introVista) P.ayuda.abrir('introUso');
+        if (listo && infoRecuperar()) P.ayuda.abrir('recuperar');
+        else if (abrirIntro && !uso.introVista) P.ayuda.abrir('introUso');
+    }
+    /**
+     * V2-79: solo cambia al modo entrenamiento, sin cargar nada (quien llama carga el ejemplo enseguida). Tus datos se
+     * guardan antes tal como están.
+     */
+    function dejarTusDatos() {
+        if (P.modo !== 'uso') return;
+        guardarUso();
+        P.modo = 'entrenamiento';
+        guardarPref({ modo: 'entrenamiento' });
+        pintarAviso();
     }
     function entrarEntrenamiento({ tour = false } = {}) {
-        if (P.modo === 'uso') guardarUso();
+        dejarTusDatos();
         P.modo = 'entrenamiento';
         guardarPref({ modo: 'entrenamiento' });
         // El recorrido decide qué cargar (empezar de cero o retomar donde se quedó).
@@ -185,10 +263,14 @@
         if (tour && P.tour) P.tour.empezar();
         else if (tour) P.cargarPersona('ana');
     }
-    /** Al cargar la página (fuera de la guía): el modo elegido o, la primera vez, la bienvenida. */
+    /**
+     * Al cargar la página (fuera de la guía): el modo elegido o, la primera vez, la bienvenida. Abre donde la dejaste:
+     * en el entrenamiento, arriba, «Mis datos» vuelve a lo tuyo con un toque (V2-79). Si lo guardado como tus datos
+     * es un ejemplo (el error de la v2.6.3), abre en tus datos para ayudarte a recuperarlos.
+     */
     function arrancar() {
         const p = pref();
-        if (p.modo === 'uso') return entrarUso({ abrirIntro: false });
+        if (p.modo === 'uso' || (p.modo === 'entrenamiento' && (esDeEjemplo(usoGuardado().st) || infoRecuperar()))) return entrarUso({ abrirIntro: false });
         P.modo = 'entrenamiento';
         if (p.modo !== 'entrenamiento') {
             P.cargarPersona('ana');
@@ -230,6 +312,11 @@
         if (!deOtra || P.modo !== 'uso') return;
         deOtra = false;
         uso = leerUso();
+        // V2-79: otra pestaña con una versión vieja pudo guardar un ejemplo como tus datos: tampoco se muestra como tuyo.
+        if (uso.st && esDeEjemplo(uso.st)) {
+            apartarEjemplo();
+            setTimeout(() => listo && infoRecuperar() && P.ayuda.abrir('recuperar'), 0);
+        }
         const st = uso.st || estadoNuevo();
         st.hoy = hoy();
         P.cargar(st, { tab: P.ui ? P.ui.tab : 'hoy' });
@@ -247,7 +334,10 @@
         if (!aviso) return;
         const [a, b] = textoAviso();
         aviso.classList.toggle('aviso-proto--uso', P.modo === 'uso');
-        aviso.innerHTML = `<span class="aviso-proto-t">${icon(P.modo === 'uso' ? 'smartphone' : 'book-open', 'ico-xs')}<span><span class="nw">${a}</span> <span class="nw">${b}</span></span></span>${P.enGuia ? '' : `<button type="button" class="aviso-proto-b" id="btn-ayuda" data-a="abrirAyuda" data-fk="btn-ayuda" aria-haspopup="dialog">Ayuda</button>`}`;
+        // V2-79: con los ejemplos, a un toque de tus datos (o de empezar con ellos, si todavía no los usas).
+        const mios = hayDatos();
+        const misDatos = P.modo !== 'uso' && !P.enGuia ? `<button type="button" class="aviso-proto-b aviso-proto-b--datos" data-a="modoMisDatos" data-fk="aviso-mis-datos"${mios ? ' aria-label="Volver a mis datos"' : ''}>${mios ? 'Mis datos' : 'Usar mis datos'}</button>` : '';
+        aviso.innerHTML = `<span class="aviso-proto-t">${icon(P.modo === 'uso' ? 'smartphone' : 'book-open', 'ico-xs')}<span><span class="nw">${a}</span> <span class="nw">${b}</span></span></span>${P.enGuia ? '' : `<span class="aviso-proto-bs">${misDatos}<button type="button" class="aviso-proto-b" id="btn-ayuda" data-a="abrirAyuda" data-fk="btn-ayuda" aria-haspopup="dialog">Ayuda</button></span>`}`;
         if (P.colorBarra) P.colorBarra();
     }
 
@@ -545,18 +635,24 @@
         if (typeof obj.esquema !== 'number' || obj.esquema > ESQUEMA) return { error: 'Esa copia es de una versión más nueva de la app. Actualiza la app y vuelve a intentarlo.' };
         const datos = migrarUso(obj.datos);
         if (!datos || !datos.st || !Array.isArray(datos.st.lugares) || !Array.isArray(datos.st.registros)) return { error: 'La copia está incompleta o dañada.' };
+        // V2-79: una copia guardada después del error trae los datos de ejemplo, no los tuyos.
+        if (esDeEjemplo(datos.st)) return { error: 'Esa copia tiene datos de ejemplo, no los tuyos. Busca una copia de antes.' };
         return { datos, fecha: obj.fecha, resumen: `${datos.st.lugares.length} lugares · ${datos.st.pagos.length} pagos · ${datos.st.registros.length} movimientos` };
     }
     function restaurar(datos) {
+        // V2-79: nunca se escribe un ejemplo como tus datos (validarCopia ya lo rechaza).
+        if (!datos || !datos.st || esDeEjemplo(datos.st)) return;
         uso = datos;
         uso.introVista = true;
         P.almacen.escribir(CLAVE_USO, uso);
+        resolverEjemplo();
         entrarUso();
         P.emitir('datos:restaurado');
     }
     function borrarTodo() {
         P.almacen.borrar(CLAVE_USO);
         P.almacen.borrar(CLAVE_RESPALDO);
+        P.almacen.borrar(CLAVE_EJEMPLO);
         uso = null;
         // v2.6: «Tus datos» también está en el modo entrenamiento; desde ahí, se queda con los ejemplos.
         if (P.modo !== 'uso') {
@@ -614,6 +710,36 @@
             <p class="ay-version">${esc(VERSION)} · Tus datos solo están en este teléfono</p>`;
     }
     /**
+     * v2.6.4 (V2-79): para quien ya cayó en el error. Lo guardado como sus datos era un ejemplo: no se le muestra como
+     * suyo. Si hay una copia (el respaldo de la migración o la última «Guardar copia»), se ofrece recuperarla; si no,
+     * empezar su Primer día. El ejemplo queda apartado, sin borrarse.
+     */
+    function vistaRecuperar() {
+        const info = infoRecuperar();
+        if (!info) return `<p class="txt">Tus datos están bien.</p><button type="button" class="btn btn--prim btn--48 btn--full" data-a="ayCerrar" data-fk="rec-cerrar">Seguir</button>`;
+        const r = restaurando;
+        const de = info.de ? ` (los de ${esc(info.de)})` : '';
+        const intro = `<p class="txt">Lo que estaba guardado como tus datos eran <strong>datos de ejemplo</strong>${de}, no los tuyos. Pasó por un error de la app al cambiar de versión en «Aprender a usarla». Ya está corregido y no te los mostramos como tuyos.</p>`;
+        const deNuevo = (prim = false) => `<button type="button" class="btn btn--48${prim ? ' btn--prim btn--full' : ''}" data-a="modoRecuperar" data-v="nuevo" data-fk="${prim ? 'rec-primer-dia' : 'rec-de-nuevo'}">${prim ? 'Empezar mi Primer día' : 'Empezar de nuevo'}</button>`;
+        let cuerpo;
+        if (info.respaldo) {
+            cuerpo = `<section class="ay-card ay-card--prim" aria-labelledby="rec-t"><h3 class="ay-h3" id="rec-t">${icon('rotate-ccw', 'ico-s')}Encontramos una copia de tus datos del ${esc(fechaCorta(info.respaldo))}. ¿Recuperarla?</h3>
+                <p class="txt">Lo que anotaste después de ese día no está en la copia.</p>
+                <div class="ay-acc">${deNuevo()}<button type="button" class="btn btn--prim btn--48" data-a="modoRecuperar" data-v="respaldo" data-fk="rec-recuperar">Recuperar</button></div></section>`;
+        } else if (info.copia) {
+            const elegir = r && r.datos
+                ? `<div class="nota nota--atencion" role="alertdialog" aria-labelledby="dt-r-c">${icon('triangle-alert')}<div><p id="dt-r-c"><strong>¿Recuperar tus datos con esta copia?</strong> Copia del ${esc(fechaCorta((r.fecha || '').slice(0, 10) || hoy()))}: ${esc(r.resumen)}.</p><div class="ay-acc"><button type="button" class="btn" data-a="modoRestaurarNo" data-fk="dt-r-no">Cancelar</button><button type="button" class="btn btn--prim" data-a="modoRestaurarSi" data-fk="dt-r-si">Sí, recuperar</button></div></div></div>`
+                : `<div class="ay-acc">${deNuevo()}<label class="btn btn--prim btn--48" for="rec-archivo" data-fk="dt-elegir">Recuperar</label></div><input id="rec-archivo" class="sr-only" type="file" accept="application/json,.json,text/plain,.txt" data-copia>`;
+            cuerpo = `<section class="ay-card ay-card--prim" aria-labelledby="rec-t"><h3 class="ay-h3" id="rec-t">${icon('rotate-ccw', 'ico-s')}Guardaste una copia el ${esc(fechaCorta(info.copia))}</h3>
+                <p class="txt">Búscala en tu teléfono (en Descargas o en WhatsApp): se llama <span class="nw">«pamplanea-copia-${esc(info.copia)}»</span>. Toca «Recuperar» y elígela.</p>
+                ${r && r.error ? `<p class="campo-error">${icon('triangle-alert')}<span>${esc(r.error)}</span></p>` : ''}${elegir}</section>`;
+        } else {
+            cuerpo = `<section class="ay-card ay-card--prim" aria-labelledby="rec-t"><h3 class="ay-h3" id="rec-t">${icon('list-checks', 'ico-s')}No encontramos una copia de tus datos en este teléfono</h3>
+                <p class="txt">Puedes empezar tu Primer día: tu ingreso, lo que tienes, tus deudas y tus pagos. Son unos minutos.</p>${deNuevo(true)}</section>`;
+        }
+        return `${intro}${cuerpo}<p class="fila-s">Los datos de ejemplo quedaron guardados aparte, por si Victor o Pam los necesitan.</p><p class="ay-version">${esc(VERSION)}</p>`;
+    }
+    /**
      * v2.6 (V2-62): «Cuéntale a Victor o a Pam cómo vas». Antes del texto, las dos listas: «Esto se manda» sale de
      * las mismas partes que arman el texto (partesContar) y «Esto NO se manda» es lo que se tapa siempre.
      */
@@ -649,8 +775,29 @@
         P.ayuda.cerrar({ foco: false });
         if (d.v === 'uso') entrarUso();
         else entrarEntrenamiento({ tour: d.v === 'tour' });
-        P.avisar(d.v === 'uso' ? 'Estás usando tus datos' : 'Modo entrenamiento: datos de ejemplo', { check: false });
+        P.avisar(d.aviso || (d.v === 'uso' ? 'Estás usando tus datos' : 'Modo entrenamiento: datos de ejemplo'), { check: false });
         P.emitir('modo:cambio:' + (d.v === 'tour' ? 'entrenamiento' : d.v));
+    };
+    /** V2-79: «Mis datos» (arriba, con los ejemplos): a tus datos con un toque; el avance del entrenamiento queda guardado. */
+    acc.modoMisDatos = () => {
+        const mios = hayDatos();
+        acc.modoCambiar({ v: 'uso', aviso: mios ? 'Volviste a tus datos. Tu avance del entrenamiento quedó guardado.' : null });
+    };
+    /** V2-79: «Recuperar» la copia encontrada o «Empezar de nuevo» (el ejemplo queda apartado, sin borrarse). */
+    acc.modoRecuperar = (d) => {
+        resolverEjemplo();
+        P.ayuda.cerrar({ foco: false });
+        if (d.v === 'respaldo') {
+            const datos = migrarUso(P.almacen.leer(CLAVE_RESPALDO, null));
+            if (datos && datos.st && !esDeEjemplo(datos.st)) {
+                restaurar(datos);
+                P.avisar('Listo: recuperamos tu copia');
+                P.emitir('datos:recuperado');
+                return;
+            }
+        }
+        P.render({ nueva: true });
+        P.emitir('datos:empezarDeNuevo');
     };
     acc.modoCopia = () => {
         descargarCopia();
@@ -754,10 +901,14 @@
         tipsVistos,
         tipVisto,
         hoy,
-        cambiar: (modo) => acc.modoCambiar({ v: modo }),
+        cambiar: (modo, { aviso = null } = {}) => acc.modoCambiar({ v: modo, aviso }),
         /** v2.6: a los ejemplos sin aviso (la prueba guiada empieza enseguida); tus datos quedan guardados. */
         aEntrenamiento: () => entrarEntrenamiento(),
+        dejarTusDatos,
         tieneDatos,
+        hayDatos,
+        esDeEjemplo,
+        errores,
         partesContar,
         CLAVE_USO,
         CLAVE_RESPALDO,
@@ -773,6 +924,8 @@
             P.ayuda.registrar('introUso', 'Usarla con mis datos', vistaIntroUso);
             P.ayuda.registrar('datos', 'Tus datos', vistaDatos);
             P.ayuda.registrar('contar', 'Cuéntale a Victor o a Pam cómo vas', vistaContar);
+            P.ayuda.registrar('recuperar', 'Revisemos tus datos', vistaRecuperar);
+            listo = true;
             pintarAviso();
             // Enlace de tester (?set=A / ?set=B) la primera vez: directo a la prueba guiada, con los ejemplos.
             if (A.elegir && !P.enGuia && /[?&]set=[ab]/i.test(location.search)) {
@@ -780,6 +933,7 @@
                 guardarPref({ modo: 'entrenamiento' });
                 P.ayuda.abrir('bienvenida');
             } else if (A.elegir && !P.enGuia) P.ayuda.abrir('elegir');
+            else if (P.modo === 'uso' && !P.enGuia && infoRecuperar()) P.ayuda.abrir('recuperar');
             else if (P.modo === 'uso' && uso && !uso.introVista) P.ayuda.abrir('introUso');
         },
     });

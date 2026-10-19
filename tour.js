@@ -876,17 +876,18 @@
                 cab: cabecera(esc(cap.titulo)),
                 titulo: '¿Sigues donde te quedaste?',
                 cuerpo: `<p class="txt tour-para">${esc(donde)}</p>`,
-                acciones: `<div class="pila"><button type="button" class="btn btn--prim btn--48 btn--full" data-a="tourRetomar" data-v="si" data-fk="tour-seguir">Seguir</button><button type="button" class="btn btn--48 btn--full" data-a="tourRetomar" data-v="no" data-fk="tour-nuevo">Empezar de nuevo</button></div>`,
+                // V2-79: «Salir» en todas las pantallas del capítulo.
+                acciones: `<div class="pila"><button type="button" class="btn btn--prim btn--48 btn--full" data-a="tourRetomar" data-v="si" data-fk="tour-seguir">Seguir</button><button type="button" class="btn btn--48 btn--full" data-a="tourRetomar" data-v="no" data-fk="tour-nuevo">Empezar de nuevo</button></div>${pie(salir, '')}`,
             });
         }
         if (T.fase === 'paso') {
             const x = textosPaso(cap, paso);
             const ver = paso.ejemploVer;
             if (ver && T.ejemplo) {
-                return pintarTarjeta(capa, { el: resolver(paso.sel), cab: cabecera(indicador(cap, T.i)), titulo: esc(ver.que), cuerpo: `<p class="txt tour-para">${esc(valor(ver.texto))}</p>`, acciones: pie('', btn(esc(ver.volver), 'tourEjemplo', { prim: true, v: 'no', fk: 'tour-ejemplo-volver' })) });
+                return pintarTarjeta(capa, { el: resolver(paso.sel), cab: cabecera(indicador(cap, T.i)), titulo: esc(ver.que), cuerpo: `<p class="txt tour-para">${esc(valor(ver.texto))}</p>`, acciones: pie(salir, btn(esc(ver.volver), 'tourEjemplo', { prim: true, v: 'no', fk: 'tour-ejemplo-volver' })) });
             }
             let acciones;
-            if (T.repaso) acciones = pie('', btn('Volver a la pregunta', 'tourVolverPregunta', { prim: true, fk: 'tour-volver-pregunta' }));
+            if (T.repaso) acciones = pie(salir, btn('Volver a la pregunta', 'tourVolverPregunta', { prim: true, fk: 'tour-volver-pregunta' }));
             else if (paso.hazlo) acciones = pie(salir, `${atras}${btn('Hazlo tú', 'tourHazlo', { prim: true, fk: 'tour-hazlo' })}`);
             else acciones = `${ver ? `<button type="button" class="btn btn--48 btn--full tour-ver" data-a="tourEjemplo" data-v="si" data-fk="tour-ejemplo">${icon('eye', 'ico-s')}${esc(ver.boton)}</button>` : ''}${pie(salir, `${atras}${btn('Siguiente', 'tourSig', { prim: true, fk: 'tour-sig' })}`)}`;
             return pintarTarjeta(capa, { el: resolver(paso.sel), cab: `${barra(T.i + 1, n)}${cabecera(T.repaso ? 'Repaso' : indicador(cap, T.i))}`, titulo: esc(x.que), cuerpo: cuerpoPaso(x), acciones });
@@ -898,13 +899,13 @@
                 .map((f) => `<p class="tour-num"><span>${esc(f.l)}</span> ${f.a === f.d ? `<strong>${dinero(f.d, { aprox: f.aprox })}</strong> <span class="tour-igual">sin cambio</span>` : `${dinero(f.a, { aprox: f.aprox })} ${icon('arrow-right', 'ico-xs')} <strong>${dinero(f.d, { aprox: f.aprox })}</strong>`}</p>`)
                 .join('');
             const foco = paso.hazlo.foco ? resolver(paso.hazlo.foco) : null;
-            return pintarTarjeta(capa, { el: visible(foco) ? foco : null, cab: `${barra(T.i + 1, n)}${cabecera(indicador(cap, T.i))}`, titulo: esc(p.titulo), cuerpo: `${filas}<p class="txt tour-para tour-porque">${esc(p.texto)}</p>`, acciones: `<button type="button" class="btn btn--prim btn--48 btn--full" data-a="tourEntendido" data-fk="tour-entendido">Entendido</button>` });
+            return pintarTarjeta(capa, { el: visible(foco) ? foco : null, cab: `${barra(T.i + 1, n)}${cabecera(indicador(cap, T.i))}`, titulo: esc(p.titulo), cuerpo: `${filas}<p class="txt tour-para tour-porque">${esc(p.texto)}</p>`, acciones: pie(salir, btn('Entendido', 'tourEntendido', { prim: true, fk: 'tour-entendido' })) });
         }
         if (T.fase === 'pregunta') {
             const q = cap.pregunta;
             const fb = T.fb;
             const ops = q.ops.map((t, j) => `<button type="button" class="opcion-g tour-op${fb ? (j === q.bien ? ' tour-op--bien' : j === fb.elegida ? ' tour-op--casi' : '') : ''}" role="radio" aria-checked="${fb ? j === fb.elegida : false}" data-a="tourResponder" data-v="${j}" data-fk="tour-op-${j}" ${fb ? 'aria-disabled="true"' : ''}><span class="opcion-g-t">${esc(t)}</span>${fb && j === q.bien ? icon('circle-check', 'ico-ok') : ''}</button>`).join('');
-            const acciones = !fb ? pie(salir, atras) : fb.ok ? pie('', btn('Terminar', 'tourTerminar', { prim: true, fk: 'tour-terminar' })) : `<div class="pila"><button type="button" class="btn btn--48 btn--full" data-a="tourRepasar" data-fk="tour-repasar">${icon('rotate-ccw', 'ico-s')}Repasar este paso</button><button type="button" class="btn btn--prim btn--48 btn--full" data-a="tourTerminar" data-fk="tour-terminar">Seguir</button></div>`;
+            const acciones = !fb ? pie(salir, atras) : fb.ok ? pie(salir, btn('Terminar', 'tourTerminar', { prim: true, fk: 'tour-terminar' })) : `<div class="pila"><button type="button" class="btn btn--48 btn--full" data-a="tourRepasar" data-fk="tour-repasar">${icon('rotate-ccw', 'ico-s')}Repasar este paso</button><button type="button" class="btn btn--prim btn--48 btn--full" data-a="tourTerminar" data-fk="tour-terminar">Seguir</button></div>${pie(salir, '')}`;
             return pintarTarjeta(capa, { cab: cabecera(`${esc(cap.titulo)} · ¿Lo entendí?`), titulo: esc(q.p), cuerpo: `<div class="opciones-grandes" role="radiogroup" aria-labelledby="tour-t">${ops}</div>${fb ? `<p class="txt tour-fb${fb.ok ? ' tour-fb--bien' : ''}" role="status" tabindex="-1">${esc(fb.ok ? q.si : q.casi)}</p>` : ''}`, acciones });
         }
         if (T.fase === 'fin') {
@@ -1053,8 +1054,26 @@
         nuevaFase('pregunta');
         P.emitir(`tour:${T.cap.id}:pregunta`);
     }
+    /**
+     * v2.6.4 (V2-79): el entrenamiento NUNCA corre sobre tus datos. Antes de mostrar o cargar un ejemplo se pasa al modo
+     * entrenamiento (tus datos se guardan antes, tal como están) y se recuerda volver a ellos al salir. Hasta la v2.6.3,
+     * «Cambiar» la versión desde tus datos cargaba a Rosa sin cambiar de modo y se guardaba encima de tus datos.
+     */
+    function aEjemplos() {
+        if (P.modo !== 'uso' || !P.modos) return;
+        T.volverAUso = true;
+        P.modos.aEntrenamiento();
+    }
+    /** Al salir del entrenamiento: a tus datos si vienes de ellos o ya los usas (nunca dentro de la guía de escritorio). */
+    const aTusDatos = () => !P.enGuia && !!P.modos && (!!T.volverAUso || P.modos.hayDatos());
+    T.aTusDatos = aTusDatos;
+    function volverATusDatos() {
+        T.volverAUso = false;
+        P.modos.cambiar('uso', { aviso: 'Volviste a tus datos. Tu avance del entrenamiento quedó guardado.' });
+    }
     /** Empieza un capítulo: si lo dejó a medias, primero pregunta si sigue. */
     function empezarCap(cap, { retomar = true } = {}) {
+        aEjemplos();
         if (P.ayuda) P.ayuda.cerrar({ foco: false });
         if (P.practica) P.practica.salir();
         T.activo = true;
@@ -1085,10 +1104,11 @@
     T.empezarCap = (version, id, opciones = {}) => {
         const cap = capDe(version, id);
         if (!cap) return;
-        T.volverAUso = !!opciones.desdeUso;
+        if (opciones.desdeUso) T.volverAUso = true;
         empezarCap(cap, opciones);
     };
     function mostrarElegir() {
+        aEjemplos();
         quitarSemanaMala();
         cerrarHoja();
         if (P.ayuda) P.ayuda.cerrar({ foco: false });
@@ -1098,6 +1118,7 @@
         P.emitir('tour:elegir');
     }
     function elegirVersion(id) {
+        aEjemplos();
         const v = VERSIONES[id] || VERSIONES.fijo;
         if (P.modos) P.modos.guardarEntrenamiento({ tourVersion: v.id });
         const esencial = v.caps[0];
@@ -1117,9 +1138,10 @@
      * si no lo ha terminado; si ya lo hizo, «Aprende más». `cap` abre un capítulo directo.
      */
     T.empezar = function ({ version = null, cap = null, desdeUso = false } = {}) {
+        aEjemplos();
         if (P.ayuda) P.ayuda.cerrar({ foco: false });
         if (P.practica) P.practica.salir();
-        T.volverAUso = desdeUso;
+        if (desdeUso) T.volverAUso = true;
         const v = version || progreso().version;
         if (!v) return mostrarElegir();
         if (cap) return T.empezarCap(v, cap, { desdeUso });
@@ -1152,8 +1174,10 @@
         mostrarElegir();
     };
     acc.tourCerrar = () => {
+        const vuelve = aTusDatos();
         terminar({ avisar: false, reiniciar: !!T.cap });
-        P.render({ foco: '#pantalla h1' });
+        if (vuelve) volverATusDatos();
+        else P.render({ foco: '#pantalla h1' });
         P.emitir('tour:elegir:no');
     };
     acc.tourEmpezarCap = () => {
@@ -1272,17 +1296,23 @@
         } else terminar();
         P.emitir('tour:fin:' + d.v + ':' + version);
     };
+    /**
+     * «Salir» (en cualquier pantalla del capítulo, en «Hazlo tú» o con el botón atrás). V2-79: si vienes de tus datos o ya
+     * los usas, vuelves a ellos; si no, quedan los ejemplos como al inicio. El avance queda guardado.
+     */
     acc.tourSalir = () => {
-        guardarPaso();
-        terminar();
-        P.render({ foco: '#pantalla h1' });
+        // Al retomar todavía no se ha movido nada: el avance guardado se deja como está.
+        if (T.fase !== 'retomar') guardarPaso();
+        const vuelve = aTusDatos();
+        terminar({ avisar: !vuelve });
+        if (vuelve) volverATusDatos();
+        else P.render({ foco: '#pantalla h1' });
         P.emitir('tour:salir');
     };
     acc.tourCap = (d) => {
         const [version, id] = String(d.v).split(':');
-        const desdeUso = P.modo === 'uso' || T.volverAUso;
-        if (P.modo === 'uso') P.modos.cambiar('entrenamiento');
-        T.empezarCap(version, id, { desdeUso });
+        aEjemplos();
+        T.empezarCap(version, id);
     };
     // «Hazlo tú»: cuando la persona hace la acción, se ve primero el cambio en la app y después la pausa.
     window.addEventListener('proto', (e) => {
@@ -1388,11 +1418,13 @@
             <ul class="ay-casos" aria-label="Lo esencial">${fila(esencial)}</ul>
             <h3 class="campo-l" id="am-mas">Aprende más <span class="opcional">· ${hechos} de ${resto.length} hechos</span></h3>
             <ul class="ay-casos" aria-labelledby="am-mas">${resto.map(fila).join('')}</ul>
-            <div class="pila">${P.modo === 'uso' ? '' : `<button type="button" class="btn btn--48 btn--full" data-a="ayIr" data-v="practica" data-fk="am-practica">${icon('list-checks', 'ico-s')}Practicar con ejemplos</button>`}<button type="button" class="btn btn--48 btn--full" data-a="${P.modo === 'uso' ? 'ayCerrar' : T.volverAUso ? 'amVolverUso' : 'modoCambiar'}" data-v="uso" data-fk="am-usar">${icon('smartphone', 'ico-s')}${P.modo === 'uso' || T.volverAUso ? 'Volver a mis datos' : 'Empezar con mis datos'}</button></div>`;
+            <div class="pila">${P.modo === 'uso' ? '' : `<button type="button" class="btn btn--48 btn--full" data-a="ayIr" data-v="practica" data-fk="am-practica">${icon('list-checks', 'ico-s')}Practicar con ejemplos</button>`}<button type="button" class="btn btn--48 btn--full" data-a="${P.modo === 'uso' ? 'ayCerrar' : 'amVolverUso'}" data-v="uso" data-fk="am-usar">${icon('smartphone', 'ico-s')}${P.modo === 'uso' || aTusDatos() ? 'Volver a mis datos' : 'Empezar con mis datos'}</button></div>`;
     }
     acc.amVolverUso = () => {
-        T.volverAUso = false;
+        const vuelve = aTusDatos();
         P.ayuda.cerrar({ foco: false });
+        if (vuelve) return volverATusDatos();
+        T.volverAUso = false;
         P.modos.cambiar('uso');
     };
 
@@ -1410,6 +1442,7 @@
         P.ayuda && P.ayuda.pintarBarra();
     };
     PR.empezar = (id) => {
+        aEjemplos();
         PR.caso = buscarCaso(id);
         PR.logrado = false;
         if (P.ayuda) {
@@ -1474,7 +1507,7 @@
             <ul class="ay-casos" aria-labelledby="pr-tuyos">${tuyos.map(fila).join('')}</ul>
             ${otros.length ? `<h3 class="campo-l" id="pr-otros">De ${esc(otra.corto)}</h3><ul class="ay-casos" aria-labelledby="pr-otros">${otros.map(fila).join('')}</ul>` : ''}
             <button type="button" class="btn btn--48 btn--full" data-a="ayIr" data-v="aprendeMas" data-fk="pr-capitulos">${icon('book-open', 'ico-s')}Ver los capítulos</button>
-            <button type="button" class="btn btn--48 btn--full" data-a="modoCambiar" data-v="uso" data-fk="pr-usar">${icon('smartphone', 'ico-s')}Empezar con mis datos</button>`;
+            <button type="button" class="btn btn--48 btn--full" data-a="amVolverUso" data-v="uso" data-fk="pr-usar">${icon('smartphone', 'ico-s')}${aTusDatos() ? 'Volver a mis datos' : 'Empezar con mis datos'}</button>`;
     }
     T.capituloAntes = capituloAntes;
     function vistaComoSeHace() {

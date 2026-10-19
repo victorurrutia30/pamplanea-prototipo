@@ -530,7 +530,7 @@ caso('H-01', 'H', 'Dos pestañas con tus datos: lo que guardas en una no se pier
     await b.ir('about:blank');
     await b.ir(base + 'telefono.html#tema=serena-claro');
     await ev(`P.sinGuardar = true; localStorage.clear(); true`);
-    await ev(`(() => { const s = DATOS.crearAna(); s.persona = 'uso'; const u = { esquema: 2, creado: new Date().toISOString(), st: s, tab: 'hoy', tema: null, introVista: true, nombre: '', metricas: { dias: [], anotaciones: 0, cuadres: 0, pagados: 0, reparte: 0, alDia: 0, pantallas: {}, noEntendio: 0, instalada: false }, feedback: [] }; localStorage.setItem('pamplanea-uso:v1', JSON.stringify(u)); localStorage.setItem('pamplanea-modo', JSON.stringify({ modo: 'uso', notaAvisos: true })); return true; })()`);
+    await ev(`(() => { const s = DATOS.crearAna(); Object.assign(s, { persona: 'uso', nombre: 'Marta' }); const u = { esquema: 2, creado: new Date().toISOString(), st: s, tab: 'hoy', tema: null, introVista: true, nombre: '', metricas: { dias: [], anotaciones: 0, cuadres: 0, pagados: 0, reparte: 0, alDia: 0, pantallas: {}, noEntendio: 0, instalada: false }, feedback: [] }; localStorage.setItem('pamplanea-uso:v1', JSON.stringify(u)); localStorage.setItem('pamplanea-modo', JSON.stringify({ modo: 'uso', notaAvisos: true })); return true; })()`);
     await b.ir('about:blank');
     await b.ir(base + 'telefono.html#tema=serena-claro');
     await esperar(400);
@@ -547,7 +547,7 @@ caso('H-02', 'H', 'Si el teléfono no deja guardar, la app lo dice (no se pierde
     await b.ir('about:blank');
     await b.ir(base + 'telefono.html#tema=serena-claro');
     await ev(`P.sinGuardar = true; localStorage.clear(); true`);
-    await ev(`(() => { const s = DATOS.crearAna(); s.persona = 'uso'; localStorage.setItem('pamplanea-uso:v1', JSON.stringify({ esquema: 2, creado: new Date().toISOString(), st: s, tab: 'hoy', introVista: true, nombre: '', metricas: { dias: [], anotaciones: 0, cuadres: 0, pagados: 0, reparte: 0, alDia: 0, pantallas: {}, noEntendio: 0, instalada: false }, feedback: [] })); localStorage.setItem('pamplanea-modo', JSON.stringify({ modo: 'uso', notaAvisos: true })); return true; })()`);
+    await ev(`(() => { const s = DATOS.crearAna(); Object.assign(s, { persona: 'uso', nombre: 'Marta' }); localStorage.setItem('pamplanea-uso:v1', JSON.stringify({ esquema: 2, creado: new Date().toISOString(), st: s, tab: 'hoy', introVista: true, nombre: '', metricas: { dias: [], anotaciones: 0, cuadres: 0, pagados: 0, reparte: 0, alDia: 0, pantallas: {}, noEntendio: 0, instalada: false }, feedback: [] })); localStorage.setItem('pamplanea-modo', JSON.stringify({ modo: 'uso', notaAvisos: true })); return true; })()`);
     await b.ir('about:blank');
     await b.ir(base + 'telefono.html#tema=serena-claro');
     await esperar(400);
@@ -596,3 +596,5 @@ const resumen = Object.entries(informe.casos.reduce((t, c) => ((t[c.area] = t[c.
 await writeFile(path.join(salida, 'informe.json'), JSON.stringify(informe, null, 1));
 console.log(JSON.stringify({ resumen, fallan: informe.casos.filter((c) => !c.ok).map((c) => `${c.id} [${c.prioridad}] ${c.titulo}: ${c.fallas.join(' | ')}`), errores: informe.errores, rendimiento: informe.rendimiento }, null, 1));
 b.cerrar();
+// v2.6.4: si un caso falla (o hay errores de consola), la prueba termina con error (antes terminaba bien igual).
+process.exit(informe.casos.some((c) => !c.ok) || informe.errores.length ? 1 : 0);
