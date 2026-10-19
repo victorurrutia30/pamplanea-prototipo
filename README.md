@@ -1,15 +1,25 @@
-# PamPlanea · prototipo v2.5
+# PamPlanea · prototipo v2.6
 
 Una versión de prueba de **PamPlanea**: saber cuánto te queda libre hasta tu próximo ingreso y que no se te olvide ningún pago.
 
 **Ábrela aquí:** <https://victorurrutia30.github.io/pamplanea-prototipo/>
 
-Al abrirla eliges uno de dos caminos (y puedes cambiar cuando quieras desde tu letra, arriba a la izquierda):
+La primera vez eliges cómo empezar: **«Aprender a usarla»** (recomendado) o **«Usarla con mis datos»**. Después, en **«Ayuda»** (arriba a la derecha) y en **tu letra** (arriba a la izquierda) siempre ves lo mismo, y nada más:
 
-- **Aprender a usarla** (recomendado): primero te pregunta cómo te entra el dinero —en fecha fija (quincena, mes o semana) o cuando vendes o trabajas— y te enseña, a tu ritmo, con un ejemplo como tú (Ana o Rosa). **«Lo esencial»** son 6 pasos que bastan para empezar; en algunos lo haces tú y ves el número cambiar. Después, si quieres, **«Aprende más»**: capítulos cortos que haces cuando quieras, y 18 ejercicios para practicar. Nada de lo que hagas ahí toca tus datos.
 - **Usarla con mis datos:** tu dinero real, con la fecha real de tu teléfono. Empiezas desde cero: cómo te pagan, cuánto tienes y dónde, y tus pagos fijos.
+- **Aprender a usarla:** primero te pregunta cómo te entra el dinero —en fecha fija (quincena, mes o semana) o cuando vendes o trabajas— y te enseña, a tu ritmo, con **datos de ejemplo**. **«Lo esencial»** son 6 pasos que bastan para empezar; en algunos lo haces tú y ves el número cambiar. Después, si quieres, **«Aprende más»**: capítulos cortos que haces cuando quieras, y ejercicios para practicar. Nada de lo que hagas ahí toca tus datos.
+- **Prueba guiada:** tareas cortas para ver si la app se entiende (unos 15 minutos, con datos de ejemplo). No es un examen para ti: es para la app.
+- **Cuéntale a Victor o a Pam cómo vas** y **Tus datos** (copia, restaurar, borrar e instalar), la apariencia y la versión.
 
-Los dos modos guardan sus datos por separado. Reiniciar los ejemplos no borra tus datos.
+Lo de tus datos y lo de los ejemplos se guarda por separado: nada de lo que hagas con los ejemplos toca tus datos.
+
+## Lo nuevo en la v2.6
+
+- **Más simple:** «Casos y ayuda» ahora es **«Ayuda»**, con solo tres caminos: usarla con tus datos, aprender a usarla y la prueba guiada. Ya no se ven los 13 casos, ni Ana o Carlos para explorar, ni «Practicar» suelto (está dentro de «Aprender a usarla»), ni los sets de la prueba.
+- **La prueba guiada sin letras:** un solo botón; la app elige las tareas sola.
+- **«Cuéntale a Victor o a Pam cómo vas»** (antes «Contarle a Victor»): antes del texto, dos listas: **qué se manda** y **qué NO se manda** (montos y nombres de tus cuentas, pagos, ahorros, tarjetas y préstamos). Al terminar la prueba guiada, una tarjeta te lleva ahí. Sin recordatorios.
+- «Aprender a usarla» usa los mismos ejemplos, presentados como **datos de ejemplo**.
+- Al actualizar, tus datos y lo que llevas de «Aprender a usarla» siguen igual.
 
 ## Lo nuevo en la v2.5
 
@@ -57,9 +67,9 @@ Los dos modos guardan sus datos por separado. Reiniciar los ejemplos no borra tu
 
 ## Tus datos
 
-- **Se guardan solo en tu teléfono.** No hay servidor, cuentas, analítica ni rastreadores. Nadie más los ve, ni Victor.
-- **Es una versión de prueba:** si algo no cuadra, avísale a Victor.
-- **Guarda una copia de vez en cuando:** tu letra → **«Tus datos»** → **«Guardar copia»** (descarga un archivo `pamplanea-copia-AAAA-MM-DD.json`) o **«Compartir copia»** (para mandártela por WhatsApp o correo; va como `pamplanea-copia-AAAA-MM-DD.txt`). Con **«Restaurar una copia»** la vuelves a cargar (te pide confirmar antes de reemplazar). **«Borrar todos mis datos»** pide confirmar dos veces.
+- **Se guardan solo en tu teléfono.** No hay servidor, cuentas, analítica ni rastreadores. Nadie más los ve, ni Victor ni Pam.
+- **Es una versión de prueba:** si algo no cuadra, avísale a Victor o a Pam.
+- **Guarda una copia de vez en cuando:** «Ayuda» o tu letra → **«Tus datos»** → **«Guardar copia»** (descarga un archivo `pamplanea-copia-AAAA-MM-DD.json`) o **«Compartir copia»** (para mandártela por WhatsApp o correo; va como `pamplanea-copia-AAAA-MM-DD.txt`). Con **«Restaurar una copia»** la vuelves a cargar (te pide confirmar antes de reemplazar). **«Borrar todos mis datos»** pide confirmar dos veces.
 - Cuando hay una versión nueva verás «Hay una versión nueva · Actualizar»: actualizar **no borra** tus datos.
 
 ## Instálala en tu pantalla de inicio
@@ -69,22 +79,29 @@ Así abre a pantalla completa, funciona sin internet y tus datos están más seg
 - **Android (Chrome):** menú **⋮** → «Instalar app» o «Agregar a la pantalla principal».
 - **iPhone:** ábrela en **Safari** → **Compartir** (el cuadro con la flecha) → **«Agregar a pantalla de inicio»** → «Agregar». **Instálala antes de empezar con tus datos:** en iPhone la app instalada no ve lo que pusiste en Safari, y Safari puede borrar los datos de páginas que no abres en varios días.
 
-En «Ayuda» (arriba a la derecha) están los mismos pasos.
+En «Ayuda» → **«Tus datos»** → «Instálala en tu teléfono» están los mismos pasos.
 
-## Contarle a Victor cómo te va
+## Cuéntale a Victor o a Pam cómo vas
 
-Tu letra → **«Contarle a Victor cómo me va»**. Arma un texto con tu nombre o apodo, las fechas en que la usaste, lo que más hiciste (anotar, Pagado, cuadrar…) y tus respuestas a «¿Cómo te ha ido?». **No lleva montos ni los nombres de tus cuentas, pagos o ahorros**: lo ves completo antes de mandarlo. Toca **«Compartir»** (WhatsApp) o **«Copiar»**.
+«Ayuda» o tu letra → **«Cuéntale a Victor o a Pam cómo vas»**. Al final de la prueba, mándaselo a Victor o a Pam: toca **«Compartir»** y elige su chat, o **«Copiar»** y pégalo. Antes del texto ves dos listas:
+
+- **Esto se manda:** la versión de la app; tu nombre o apodo; qué días la abriste con tus datos y cuántos; si la instalaste y qué hiciste en «Aprender a usarla»; cuántas veces anotaste, marcaste «Pagado», cuadraste y usaste «Reparte» y «Pongámonos al día»; las 5 pantallas que más abriste (solo cuáles); cuántas veces la app no te entendió al anotar; y, si los hay, tus respuestas a «¿Cómo te ha ido?», tu prueba guiada (cada tarea y tus respuestas del final), lo que contestaste en «Sobre ti» y lo que escribas en «¿Algo más…?».
+- **Esto NO se manda:** montos, ni los nombres de tus cuentas, pagos, ahorros, tarjetas y préstamos. Si escribes alguno en lo que cuentas, se tapa: sale [monto] o [nombre].
+
+Lo ves completo antes de mandarlo. Nada sale solo: no hay recordatorios ni notificaciones.
 
 Cada 3 días de uso, Hoy te pregunta «¿Cómo te ha ido?» (1 a 5 y dos preguntas opcionales). Puedes dejarlo para después.
 
-## Para Victor (prueba guiada A/B)
+## Para Victor: herramientas con `?victor=1`
 
-La prueba guiada de la v2.1 sigue en el modo entrenamiento: «Casos y ayuda» → **«Para Victor: prueba guiada (sets A y B)»**, con el **Modo moderador** adentro. Los enlaces `…/pamplanea-prototipo/?set=A` y `…/?set=B` llevan directo a la prueba.
+Los 13 casos, explorar con Ana, Carlos o Rosa, «Mis notas», «Reiniciar ejemplos», la prueba guiada con sus **sets A y B** y el **Modo moderador** (elegir el set, «Nueva persona») ya no se ven en «Ayuda». Abre el enlace especial **<https://victorurrutia30.github.io/pamplanea-prototipo/?victor=1>**: «Ayuda» las muestra abajo, en «Herramientas de Victor» (en el modo entrenamiento; con tus datos, «Ir a los ejemplos»). Vale mientras el enlace lo tenga: la app instalada abre sin él.
+
+Los enlaces `…/pamplanea-prototipo/?set=A` y `…/?set=B` siguen llevando directo a la prueba con ese set. La guía de la computadora no cambia.
 
 ## Para el equipo
 
 - Abre `index.html` con doble clic (Chrome o Edge): funciona sin servidor ni internet, con la guía de los 13 casos y los dos sets.
-- Detalle, decisiones y preguntas abiertas: [`LEEME.md`](LEEME.md) (secciones «Prototipo v2.5», «Prototipo v2.4.1», «Prototipo v2.4», «Prototipo v2.3.1», «Prototipo v2.3» y «Modos v2.2»).
+- Detalle, decisiones y preguntas abiertas: [`LEEME.md`](LEEME.md) (secciones «Prototipo v2.6», «Prototipo v2.5», «Prototipo v2.4.1», «Prototipo v2.4», «Prototipo v2.3.1», «Prototipo v2.3» y «Modos v2.2»).
 - Licencias de fuentes, emoji e íconos: [`recursos/licencias`](recursos/licencias).
 
-Prototipo v2.5 · 2026-10-18
+Prototipo v2.6 · 2026-10-19
