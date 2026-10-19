@@ -1,4 +1,4 @@
-# PamPlanea · prototipo v2.6.3
+# PamPlanea · prototipo v2.6.4
 
 Una versión de prueba de **PamPlanea**: saber cuánto te queda libre hasta tu próximo ingreso y que no se te olvide ningún pago.
 
@@ -12,6 +12,12 @@ La primera vez eliges cómo empezar: **«Aprender a usarla»** (recomendado) o *
 - **Instalar la app** (solo si todavía no la instalaste), **Completar tu Primer día** (con tus datos), **Cuéntale a Victor o a Pam cómo vas** y **Tus datos** (copia, restaurar y borrar), la apariencia y la versión.
 
 Lo de tus datos y lo de los ejemplos se guarda por separado: nada de lo que hagas con los ejemplos toca tus datos.
+
+## Lo nuevo en la v2.6.4
+
+- **Salir del entrenamiento te lleva a tus datos.** «Salir» está en todas las pantallas de un capítulo (también en la pausa y en la pregunta) y, si ya usas tus datos, vuelves a ellos con un toque; tu avance queda guardado para seguir después. Con los ejemplos, arriba está **«Mis datos»** (o «Usar mis datos» si todavía no los usas): también si cerraste la app a mitad del entrenamiento.
+- **Arreglado un error grave:** desde tus datos, «Aprender a usarla» → «Cambiar» la versión podía guardar los datos de ejemplo (Rosa o Ana) encima de los tuyos. Ya no pasa, y la app tiene un candado para que nunca se guarden ejemplos como tus datos.
+- **Si te pasó:** al abrir, la app lo reconoce, no te muestra esos datos como tuyos y te ayuda a recuperar una copia (o a empezar tu Primer día).
 
 ## Lo nuevo en la v2.6.3
 
@@ -128,8 +134,8 @@ Los enlaces `…/pamplanea-prototipo/?set=A` y `…/?set=B` siguen llevando dire
 ## Para el equipo
 
 - Abre `index.html` con doble clic (Chrome o Edge): funciona sin servidor ni internet, con la guía de los 13 casos y los dos sets.
-- Detalle, decisiones y preguntas abiertas: [`LEEME.md`](LEEME.md) (secciones «Prototipo v2.6.3», «Prototipo v2.6.2», «Prototipo v2.6.1», «Prototipo v2.6», «Prototipo v2.5», «Prototipo v2.4.1», «Prototipo v2.4», «Prototipo v2.3.1», «Prototipo v2.3» y «Modos v2.2»). La matriz de QA: [`herramientas/MATRIZ-QA.md`](herramientas/MATRIZ-QA.md).
-- **Pruebas** (`herramientas/`, en el repo desde la v2.6.1; no se publican en la app): Node 22 o más nuevo y **Chrome** (o Edge) instalado en su ruta normal de Windows (`herramientas/cdp.mjs`); sin dependencias ni `npm install`. Por file:// basta `node herramientas/<prueba>.mjs` (por ejemplo `qa-v261.mjs`, `atras.mjs`, `numeros-entrenamiento.mjs`, `v261.mjs`, `v26.mjs`, `v25.mjs`…). Para probarla servida como en Pages: `node herramientas/servidor.mjs 8765` y la prueba con `--base=http://127.0.0.1:8765/pamplanea-prototipo/`. Que los datos sobrevivan a una actualización: `node herramientas/actualizar.mjs --ref=7c0d06e` (desde la v2.5) o `--ref=ca97256` (desde la v2.6). `generar-recursos.mjs` lee la piel del repo de la app (`C:/laragon/www/pamplanea`, solo lectura). `recorrer.mjs` es el recorrido de la v1: queda como historia (sus casos esperan cosas que acuerdos posteriores cambiaron). Para publicar una versión: `VERSION_PROTOTIPO` en `casos.js`, la de `index.html` y `node herramientas/generar-sw.mjs vX-AAAA-MM-DD`.
+- Detalle, decisiones y preguntas abiertas: [`LEEME.md`](LEEME.md) (secciones «Prototipo v2.6.4», «Prototipo v2.6.3», «Prototipo v2.6.2», «Prototipo v2.6.1», «Prototipo v2.6», «Prototipo v2.5», «Prototipo v2.4.1», «Prototipo v2.4», «Prototipo v2.3.1», «Prototipo v2.3» y «Modos v2.2»). La matriz de QA: [`herramientas/MATRIZ-QA.md`](herramientas/MATRIZ-QA.md).
+- **Pruebas** (`herramientas/`, en el repo desde la v2.6.1; no se publican en la app): Node 22 o más nuevo y **Chrome** (o Edge) instalado en su ruta normal de Windows (`herramientas/cdp.mjs`); sin dependencias ni `npm install`. Por file:// basta `node herramientas/<prueba>.mjs` (por ejemplo `qa-v261.mjs`, `atras.mjs`, `numeros-entrenamiento.mjs`, `v261.mjs`, `v26.mjs`, `v25.mjs`…). Para probarla servida como en Pages: `node herramientas/servidor.mjs 8765` y la prueba con `--base=http://127.0.0.1:8765/pamplanea-prototipo/`. Que los datos sobrevivan a una actualización: `node herramientas/actualizar.mjs --ref=7c0d06e` (desde la v2.5), `--ref=ca97256` (desde la v2.6) o `--ref=7f48ead` (desde la v2.6.3). `generar-recursos.mjs` lee la piel del repo de la app (`C:/laragon/www/pamplanea`, solo lectura). `recorrer.mjs` es el recorrido de la v1: queda como historia (sus casos esperan cosas que acuerdos posteriores cambiaron). Para publicar una versión: `VERSION_PROTOTIPO` en `casos.js`, la de `index.html` y `node herramientas/generar-sw.mjs vX-AAAA-MM-DD`.
 - Licencias de fuentes, emoji e íconos: [`recursos/licencias`](recursos/licencias).
 
-Prototipo v2.6.3 · 2026-10-19
+Prototipo v2.6.4 · 2026-10-19
