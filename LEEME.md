@@ -1,4 +1,4 @@
-# Producto v2 · prototipo de teléfono — versión 2.6.4
+# Producto v2 · prototipo de teléfono — versión 2.6.5
 
 **Qué es:** un prototipo clicable de la app completa propuesta en Producto v2. Desde la v2.2 tiene **dos modos**: **entrenamiento** (datos inventados de Ana, Carlos y Rosa; entrenamiento en dos versiones —fecha fija o ingresos que varían— con «Lo esencial» y «Aprende más», 18 ejercicios y la prueba A/B para testers) y **uso normal** (la familia cercana de Victor la usa 1–2 semanas con su dinero real, guardado solo en su teléfono). Desde la v2.6, la persona solo ve tres caminos —«Usarla con mis datos», «Aprender a usarla» y «Prueba guiada»— y las herramientas de Victor (casos, sets, moderador) se abren con `?victor=1`. Es una maqueta de flujo y comprensión, no producción.
 
@@ -14,7 +14,107 @@ Sin servidor propio, sin dependencias, sin CDN, sin analítica ni rastreadores. 
 
 **Estado:** brief y acuerdos V2-01…V2-22 APROBADOS por Victor (2026-10-16); **V2-23 a V2-30** y **V2-31 (respuestas v2.1)** APROBADOS por Victor (2026-10-16); **V2-34 a V2-49** APROBADOS por Victor (2026-10-17) — V2-15 y V2-31 #7 quedan REEMPLAZADAS por V2-34. **V2-50 a V2-55** y la corrección adicional (adelanto de salario) APROBADOS por Victor (2026-10-17). **v2.4 «Entrenamiento a prueba de todo»** y sus tres ajustes previos APROBADOS por Victor (2026-10-17). **V2-56 a V2-58** y el **entrenamiento en dos versiones** (v2.4.1) APROBADOS por Victor (2026-10-18). **v2.5 «Entrenamiento sencillo y a fondo»** (estructura, ritmo y claridad) y **V2-59** (respuestas 26–29) APROBADOS por Victor (2026-10-18). **V2-60 a V2-63** (v2.6 «Simplificar para la prueba familiar») APROBADOS por Victor (2026-10-19). **V2-64 a V2-78** (QA profundo, deudas y tarjetas, Primer día, lenguaje, botón atrás, iPhone y entrenamiento; v2.6.1 a v2.6.3) APROBADOS por Victor (2026-10-19). **V2-79 a V2-84** (salir del entrenamiento sin perder tus datos, duplicados, pagos futuros y formularios; v2.6.4 y v2.6.5) APROBADOS por Victor (2026-10-19). Nada de esto está documentado todavía en el repo de la app: se documentará después de las pruebas con personas. Este prototipo no cambia nada del repo de la app.
 
-Versión visible en la app y en la guía: **«Prototipo v2.6.4 · 2026-10-19»**.
+Versión visible en la app y en la guía: **«Prototipo v2.6.5 · 2026-10-19»**.
+
+---
+
+## Prototipo v2.6.5 (2026-10-19): duplicados, pagos futuros y formularios (V2-80 a V2-84)
+
+**Decisiones APROBADAS por Victor (2026-10-19)**, con la misma frase literal de la v2.6.4: «… puedo pagar 2 veces como marcado un servicio o pago programado es mes? al darle recibi, como afecta o see vita duplicidad si por ejemplo selecciono salario ahi? al parecer a darle pagado puedo ir pagando asi cada fecha futura pero no da como una adbertencia. […] tambien que formulario de recordarme de pag, como nos aseguramos que eso no provoca duplicidad como anotar luz dos vecez? ademas, al seleccionar una categoria pago frecuente no sale como el borde que rodea la categoria que se selecciona, revisa bien los formularios, todos». Comportamiento esperado aprobado por Victor (recomendación del chat auditor).
+
+Con la libertad de V2-71 y sus tres límites: la lógica del dinero no cambió salvo para cerrar los duplicados (contra los acuerdos), nadie pierde datos ni progreso (probado desde la v2.6.3 y la v2.6.4) y las pantallas principales siguen donde estaban.
+
+### Lo que se encontró (las pruebas nuevas fallan en la v2.6.4)
+
+- La ficha de un pago, después de «Pagado», ofrecía enseguida el del mes siguiente con otro «Pagado»: así se pagaba «dos veces en el mes» sin aviso. En Pagos, cada fecha futura tenía su «Pagado», aunque quedara una vencida antes.
+- «+ Pago» con «Luz» creaba una segunda «Luz» sin preguntar; en «Recordarme un pago» solo había una nota. La luz elegida en «¿Cuál factura?» no se marcaba (el borde que Victor no veía): la lista se dibujaba sin lo elegido.
+- «Recibí» de tipo Salario, por un monto distinto al de la quincena, creaba un ingreso suelto que después se sumaba otra vez al marcar «Ya llegó».
+- «Completar tu Primer día» ofrecía otra vez la luz que ya estaba en Pagos.
+
+### V2-80 — «Pagado» sin duplicar ni pagar el futuro por error
+
+| Caso | Ahora |
+|---|---|
+| Marcar una ocurrencia | UNA vez. Después, en su ficha: **«Pagado ✓ · [fecha]» con «Deshacer»**, sin un segundo «Pagado» (mientras su fecha no pase o si se marcó hoy). En Hoy y en Pagos, la fila dice «Pagado ✓» y, si se marcó hoy, tiene «Deshacer». Un «Pagado» de una pantalla vieja no duplica: «Ya está pagado: Colegio del 5 de noviembre». |
+| Pagar por adelantado | Solo la próxima por pagar, con **«Este pago es del 5 de noviembre. ¿Ya lo pagaste por adelantado?» [Sí, ya lo pagué] [Cancelar]**. |
+| Una más lejana | No se puede: su «Pagado» se ve apagado y al tocarlo dice **«Primero el del 12 de octubre.»** (una línea, sin culpa). |
+| Quedó una vencida | Se resuelve primero esa (pagarla o «Saltar esta vez»). |
+| Anotar «luz 35» | La conexión de siempre: marca la luz que toca (la vencida del 12 oct). Si ya estaba pagada y hay una siguiente, pregunta **«¿Es el pago de Colegio del 5 de noviembre?» [Sí, ya lo pagué] [No, es otro gasto]** en vez de anotar un gasto suelto. |
+| El entrenamiento | El «Hazlo tú» de «Pagado» (el teléfono vence el 25) ahora guía la pregunta: «Todavía no vence: toca «Sí, ya lo pagué»». |
+
+**Con números (los datos de Ana el 21 de octubre, medidos por `herramientas/v265.mjs`):** el colegio ($20, vence el 5 de noviembre) pagado por adelantado hoy: tu libre baja de **$270.60 a $250.60** (los $20 salen hoy de tu banco); en «Próxima quincena (30)», «te quedarían» sube de **$545 a $565** (ese pago ya no se cuenta ahí); en Mes, octubre suma **$20 una sola vez**; «Deshacer» deja todo como estaba ($270.60). Nunca se cuenta dos veces: o está en tu dinero de hoy, o en lo que se aparta de la quincena.
+
+**Acuerdo que se toca (aviso):** V2-29 #8 («[Pagado] con monto fijo se guarda sin preguntar»). Sigue igual: no se pide el monto ni con qué pagaste. Lo único nuevo es la confirmación cuando la fecha todavía no llega (V2-80); un pago que vence hoy o ya venció se marca como siempre, sin preguntar.
+
+### V2-81 — «Recibí» sin duplicar ingresos
+
+| Caso | Ahora |
+|---|---|
+| Marcar un ingreso esperado | UNA vez por ocurrencia («Ya llegó»). Después, en su ficha: **«Recibido ✓ · [fecha]» con «Deshacer»**, sin otro «Ya llegó». |
+| Recibir por adelantado | Igual que V2-80: solo el próximo, con **«Este ingreso es del 30 de octubre. ¿Ya te llegó por adelantado?» [Sí, ya llegó] [Cancelar]**. |
+| Anotar «Recibí» de tipo Salario (o con su nombre, o un monto parecido) cerca de su fecha (12 días) | **«¿Es tu quincena del 30?» [Sí, marcarla como recibida] [No, es otro ingreso]**. Con «Sí» no se crea un ingreso nuevo: se marca la del 30 (con lo que llegó). |
+| Ya estaba recibida | **«Ya marcaste tu quincena del 30 como recibida. ¿Es otro ingreso?»** (lo que guardes es otro ingreso). |
+| «me pagaron 600» (V2-29 #10) | La misma pregunta, con las palabras nuevas. |
+| «Deshacer» | Sale lo que llegó y vuelve a esperarse; si después tocaste «Listo» en Reparte, esas confirmaciones dejan de contarlo (un cuadre que contaste de verdad no se toca). |
+
+**Cómo afecta «Recibí» al libre y al próximo periodo, con números (Ana, 21 de octubre):** antes, tu libre es **$270.60 hasta tu quincena del 30**, y «Próxima quincena (30)» dice «ingreso ~$600 · pagos ~$55 · te quedarían ~$545». Si marcas la del 30 como recibida ($600, por adelantado), pasan dos cosas: los $600 entran a lo que tienes hoy y tu libre ahora llega **hasta el 15 de noviembre**. Por eso sube a **$815.60 = $270.60 + $545** (lo que te quedaba de esa quincena después de sus pagos). Si solo llegaron $300: **$515.60 = $270.60 + ($300 − $55)**. El periodo siguiente (la quincena del 15) se proyecta aparte («te quedarían ~$528»). Lo mismo pasa el día que llega, sin adelantar: el número siempre es «lo que tienes, menos lo que ya está apartado, hasta tu próximo ingreso».
+
+### V2-82 — «Recordarme de pagar» y anotar sin duplicar
+
+- Al guardar un pago nuevo (o al editar uno), si ya existe uno parecido —el mismo nombre sin tildes ni mayúsculas; uno dentro del otro («Luz» y «Luz eléctrica») si además coincide la categoría, el día o el monto (así «Préstamo cooperativa» no se confunde con otro «Préstamo»); o la misma categoría con el mismo día y el mismo monto— se pregunta antes: **«Ya tienes «Luz» el 12 por ~$35. ¿Es otro pago?» [Ver el que tengo] [Sí, es otro]**. «Ver el que tengo» abre su ficha sin crear nada. En «+ Pago», «Editar» y Anotar («Recordarme un pago», que antes solo tenía una nota). Una factura con nombre propio dentro de «Facturas de servicios» queda en esa categoría (antes quedaba en «Otros»).
+- Anotar un gasto que coincide con un pago pendiente mantiene la conexión de siempre (marca el pago) y, si el que toca ya está pagado, ofrece el siguiente (V2-80, arriba). Probado con «luz».
+- **«Completar tu Primer día» no repite lo que ya tienes:** en gastos fijos, lo que ya está en Pagos se ve como «Luz · Ya está en Pagos» (con borde punteado) y no se puede volver a agregar; al guardar, tampoco se agrega un pago con el mismo nombre. (El Primer día de alguien nuevo no tiene nada que repetir.)
+
+### V2-83 — Selección visible en TODOS los formularios
+
+- **Una sola «opción seleccionable»** (chips, cuadros, opciones grandes, la nota del 1 al 5): borde de 2 px del acento, fondo sutil, texto más firme y un **✓**; con `aria-pressed` o `aria-checked`. Nunca solo el color. **Contraste del borde contra lo de alrededor ≥ 3:1 (WCAG 1.4.11) en los 4 temas — medido: 5.69:1 en Serena claro y Ancla claro, 7.44:1 en Serena oscuro y 7.11:1 en Ancla oscuro.** En los días y el calendario, el elegido va relleno (para no confundirse con «hoy», que lleva el anillo) y también con su ✓.
+- **El token de acento** es `--color-primary` (el que la app ya usa para elegir). El `--color-accent` de los tokens (naranja en Serena, turquesa en Ancla) no llega a 3:1 sobre blanco (~2.3:1) en los temas claros. *Decisión técnica — REVISAR.*
+- **Revisados uno por uno (`herramientas/formularios-v265.mjs`, en los 4 temas):**
+
+| Formulario | Qué se corrigió |
+|---|---|
+| Anotar · gasto | «Tipo de gasto» → «¿Qué tipo de gasto?»; «Pagado con» → «¿Con qué pagaste?»; el día del calendario elegido con ✓ |
+| Anotar · Recibí | La pregunta del ingreso esperado (V2-81) |
+| Anotar · Recordarme un pago | «Pagos frecuentes» → «¿Cuál pago?» y **el elegido se ve marcado** (el borde que faltaba); la pregunta de duplicado (V2-82) |
+| Anotar · Cuadrar, Mover, Ahorrar | Ya cumplían; «O crea uno nuevo» → «¿O es un ahorro nuevo?» |
+| + Pago | **La factura elegida se ve marcada** (la causa: la lista se dibujaba sin lo elegido); «Frecuentes» → «¿Cuál pago?»; el día elegido con ✓; la pregunta de duplicado |
+| Editar pago | La pregunta de duplicado; el día con ✓ |
+| Ingreso nuevo | Ya cumplía |
+| Ya llegó | «Monto» → «¿Cuánto te llegó?»; «¿Dónde cayó?» → «¿Dónde llegó?» (V2-75 se había quedado ahí y al corregir un movimiento); el título «Ya llegó» |
+| Tarjeta o préstamo | El tipo elegido con ✓; «Día de corte» → «¿Qué día es el corte?»; «Día de pago» → «¿Qué día se paga?»; «Límite de crédito» → «¿Cuál es tu límite de crédito?»; «Pago de contado» / «Pago mínimo» → «¿Cuánto es el pago de contado?» / «¿Cuánto es el pago mínimo?» (los términos de V2-75 siguen); «Cuota» → «¿De cuánto es la cuota?» |
+| Estado de cuenta | La opción elegida con ✓; las mismas preguntas del pago de contado y mínimo |
+| Lo que debes | El botón decía «Guardar»: ahora «Guardar lo que debes» |
+| Pagado | «Pagado con» → «¿Con qué lo pagaste?» |
+| Lo pagas con, Pagar ya, Ya lo usé | La opción elegida con ✓ |
+| Medio y lugar nuevos | Ya cumplían |
+| Corregir un movimiento | «Monto» → «¿Cuánto fue?»; «Tipo de gasto» y «Pagado con» como preguntas |
+| Primer día y «Completar tu Primer día» | Los días elegidos con ✓; «¿Qué día es el corte?» / «¿Qué día se paga?»; el gasto fijo que estás editando con ✓; «Ya está en Pagos» |
+| «¿Cómo te ha ido?» y la prueba guiada (1 a 5) | La nota elegida con ✓ |
+
+- En cada uno se revisa además: foco visible con el teclado, error junto al campo, botón que dice la acción, teclado numérico en los montos, todo lo que se toca ≥ 44 px y que, con el teclado del teléfono abierto, el botón principal siga a la vista.
+
+### V2-84 — «Aprender a usarla» y la prueba guiada, de punta a punta
+
+- Los capítulos completos de las dos versiones (`v25.mjs`, con «Hazlo tú» a mano y con «Hazlo por mí»), las salidas y reentradas de V2-79 (`v264.mjs`), «Empezar de nuevo» de la prueba guiada (`v261.mjs`), los sets de la prueba (`recorrer-sets.mjs`) y el botón atrás (`atras.mjs`).
+- Lo que cambió con V2-80 y V2-81: en cualquier «Hazlo tú», si «Pagado» o «Ya llegó» preguntan si es por adelantado, la flecha señala «Sí» («Todavía no vence: toca «Sí, ya lo pagué»» o «Todavía no es su día: toca «Sí, ya llegó»»). Pasa en «Lo esencial» (el teléfono vence el 25) y en «El próximo mes y la remesa» (la remesa se espera el 28). Los ejercicios de «Practicar» lo dicen: C05 «Como vence mañana, confirma «Sí, ya lo pagué»» y la remesa «Como la esperabas para el 28, confirma «Sí, ya llegó»».
+- Los ejemplos siguen coincidiendo con la pantalla (V2-76): `numeros-entrenamiento.mjs` (todos los textos de todos los capítulos, sin montos que no estén en la pantalla).
+
+### Pruebas
+
+- `herramientas/v265.mjs` (V2-80 a V2-82, con números: 56 comprobaciones) y `herramientas/formularios-v265.mjs` (V2-83: 25 formularios × 4 temas): fallan en la v2.6.4 y pasan en la v2.6.5.
+- Toda la batería por file:// (29 pruebas, también `v25.mjs`) y servida en la subruta de Pages (21), sin fallos ni errores de consola. `numeros-entrenamiento.mjs`: 308 textos, ninguno con montos que no se ven. `actualizar.mjs --ref=7f48ead` y `--ref=3974d06`: datos reales, «Lo esencial» a medias, un capítulo hecho, un ejercicio y la prueba guiada en pausa sobreviven al actualizar desde la v2.6.3 y la v2.6.4, también sin internet.
+- Las pruebas viejas que marcaban una fecha futura (qa-v261, aceptacion-v23, viaje-v23, v241 y recorrer-v2) ahora confirman la pregunta nueva; v262 y v231 leen las etiquetas nuevas; recorrer-v2 y qa-v261, las palabras nuevas de V2-29 #10.
+- Capturas a 390 × 844 en Serena claro y Ancla oscuro de cada caso (`capturas/v265/`, `capturas/v265-ancla-oscuro/`) y de los 25 formularios (`capturas/formularios-v265/`), revisadas una por una: se corrigieron la pregunta de duplicado, que quedaba fuera de la vista al tocar «Guardar pago»; «Agua · Ya lo tienes», que no sonaba bien («Ya está en Pagos»); y el «Pagado» apagado y el «Ya está en Pagos», que no respondían al tocarlos.
+
+### DECISIONES PENDIENTES PARA VICTOR (v2.6.5)
+
+1. **Pagar por adelantado cuando faltan pocos días.** Hoy cualquier pago cuya fecha todavía no llega pregunta «¿Ya lo pagaste por adelantado?» (también si vence mañana). *Recomendación:* dejarlo así para la prueba con la QA (es un toque más y evita marcar el mes equivocado). *Tradeoff:* quien paga sus cuentas unos días antes verá la pregunta seguido; se podría no preguntar dentro de los 3 días antes del vencimiento.
+2. **Tarjetas de crédito:** V2-80 aplica a los pagos y a los ingresos; el pago de una tarjeta no se toca (se puede pagar en partes y más de una vez por corte, como siempre).
+3. **«Deshacer» en las filas** solo aparece en lo marcado hoy; lo de días anteriores se desmarca desde el movimiento («Desmarcar pagado»), como antes. *Tradeoff:* menos botones en Pagos, a cambio de un paso más para corregir algo viejo.
+
+### Limitaciones
+
+- La revisión de formularios es en Chrome sin ventana: el teclado del teléfono se simula achicando la pantalla (no es el de un iPhone de verdad).
 
 ---
 
