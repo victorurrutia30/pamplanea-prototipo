@@ -1,4 +1,4 @@
-# PamPlanea · prototipo v2.6.5
+# PamPlanea · prototipo v2.6.6
 
 Una versión de prueba de **PamPlanea**: saber cuánto te queda libre hasta tu próximo ingreso y que no se te olvide ningún pago.
 
@@ -12,6 +12,13 @@ La primera vez eliges cómo empezar: **«Aprender a usarla»** (recomendado) o *
 - **Instalar la app** (solo si todavía no la instalaste), **Completar tu Primer día** (con tus datos), **Cuéntale a Victor o a Pam cómo vas** y **Tus datos** (copia, restaurar y borrar), la apariencia y la versión.
 
 Lo de tus datos y lo de los ejemplos se guarda por separado: nada de lo que hagas con los ejemplos toca tus datos.
+
+## Lo nuevo en la v2.6.6
+
+- **Lo de antes de que empezaras ya no se cobra solo.** Si agregas un pago (o una tarjeta, un préstamo, un cuchubal) y su fecha de este mes ya pasó, la app pregunta una vez: **«El de octubre (14 oct), ¿ya lo pagaste?»**. «Sí, ya lo pagué» viene elegido: no baja tu libre y tu primer pago en la app es el siguiente. «No, todavía lo debo» lo deja pendiente. Con los ingresos: **«La del 15 de octubre, ¿ya te llegó?»**.
+- **Tarjetas: la fecha correcta.** Una tarjeta con «¿Cuánto pagas normalmente?» ya no dice «venció el 14» por el pago que hiciste antes de usar la app: dice **«vence el 14 nov»**, que es el pago que se cuenta.
+- **Si ya usabas la app:** al abrir, si quedó algo de antes de que empezaras contado como vencido, Hoy muestra **«Revisemos unos pagos de antes de que empezaras»**: contesta cada uno (o «Ya pagué todos») y la app te dice cómo cambió tu libre. Puedes **deshacer**, y antes de corregir guarda una copia de tus datos.
+- Cambiar el día de un pago ya no crea un pago vencido que no estaba.
 
 ## Lo nuevo en la v2.6.5
 

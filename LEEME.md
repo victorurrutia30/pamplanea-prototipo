@@ -1,4 +1,4 @@
-# Producto v2 · prototipo de teléfono — versión 2.6.5
+# Producto v2 · prototipo de teléfono — versión 2.6.6
 
 **Qué es:** un prototipo clicable de la app completa propuesta en Producto v2. Desde la v2.2 tiene **dos modos**: **entrenamiento** (datos inventados de Ana, Carlos y Rosa; entrenamiento en dos versiones —fecha fija o ingresos que varían— con «Lo esencial» y «Aprende más», 18 ejercicios y la prueba A/B para testers) y **uso normal** (la familia cercana de Victor la usa 1–2 semanas con su dinero real, guardado solo en su teléfono). Desde la v2.6, la persona solo ve tres caminos —«Usarla con mis datos», «Aprender a usarla» y «Prueba guiada»— y las herramientas de Victor (casos, sets, moderador) se abren con `?victor=1`. Es una maqueta de flujo y comprensión, no producción.
 
@@ -12,9 +12,106 @@
 
 Sin servidor propio, sin dependencias, sin CDN, sin analítica ni rastreadores. Fuentes, emoji, íconos y los íconos de la app instalable son locales, con sus licencias (`recursos/licencias`).
 
-**Estado:** brief y acuerdos V2-01…V2-22 APROBADOS por Victor (2026-10-16); **V2-23 a V2-30** y **V2-31 (respuestas v2.1)** APROBADOS por Victor (2026-10-16); **V2-34 a V2-49** APROBADOS por Victor (2026-10-17) — V2-15 y V2-31 #7 quedan REEMPLAZADAS por V2-34. **V2-50 a V2-55** y la corrección adicional (adelanto de salario) APROBADOS por Victor (2026-10-17). **v2.4 «Entrenamiento a prueba de todo»** y sus tres ajustes previos APROBADOS por Victor (2026-10-17). **V2-56 a V2-58** y el **entrenamiento en dos versiones** (v2.4.1) APROBADOS por Victor (2026-10-18). **v2.5 «Entrenamiento sencillo y a fondo»** (estructura, ritmo y claridad) y **V2-59** (respuestas 26–29) APROBADOS por Victor (2026-10-18). **V2-60 a V2-63** (v2.6 «Simplificar para la prueba familiar») APROBADOS por Victor (2026-10-19). **V2-64 a V2-78** (QA profundo, deudas y tarjetas, Primer día, lenguaje, botón atrás, iPhone y entrenamiento; v2.6.1 a v2.6.3) APROBADOS por Victor (2026-10-19). **V2-79 a V2-84** (salir del entrenamiento sin perder tus datos, duplicados, pagos futuros y formularios; v2.6.4 y v2.6.5) APROBADOS por Victor (2026-10-19). Nada de esto está documentado todavía en el repo de la app: se documentará después de las pruebas con personas. Este prototipo no cambia nada del repo de la app.
+**Estado:** brief y acuerdos V2-01…V2-22 APROBADOS por Victor (2026-10-16); **V2-23 a V2-30** y **V2-31 (respuestas v2.1)** APROBADOS por Victor (2026-10-16); **V2-34 a V2-49** APROBADOS por Victor (2026-10-17) — V2-15 y V2-31 #7 quedan REEMPLAZADAS por V2-34. **V2-50 a V2-55** y la corrección adicional (adelanto de salario) APROBADOS por Victor (2026-10-17). **v2.4 «Entrenamiento a prueba de todo»** y sus tres ajustes previos APROBADOS por Victor (2026-10-17). **V2-56 a V2-58** y el **entrenamiento en dos versiones** (v2.4.1) APROBADOS por Victor (2026-10-18). **v2.5 «Entrenamiento sencillo y a fondo»** (estructura, ritmo y claridad) y **V2-59** (respuestas 26–29) APROBADOS por Victor (2026-10-18). **V2-60 a V2-63** (v2.6 «Simplificar para la prueba familiar») APROBADOS por Victor (2026-10-19). **V2-64 a V2-78** (QA profundo, deudas y tarjetas, Primer día, lenguaje, botón atrás, iPhone y entrenamiento; v2.6.1 a v2.6.3) APROBADOS por Victor (2026-10-19). **V2-79 a V2-84** (salir del entrenamiento sin perder tus datos, duplicados, pagos futuros y formularios; v2.6.4 y v2.6.5) APROBADOS por Victor (2026-10-19). **V2-85 y V2-86** (lo de antes de empezar no se cobra solo y la revisión para quienes ya usan la app; v2.6.6) APROBADOS por Victor (2026-10-19). Nada de esto está documentado todavía en el repo de la app: se documentará después de las pruebas con personas. Este prototipo no cambia nada del repo de la app.
 
-Versión visible en la app y en la guía: **«Prototipo v2.6.5 · 2026-10-19»**.
+Versión visible en la app y en la guía: **«Prototipo v2.6.6 · 2026-10-19»**.
+
+---
+
+## Prototipo v2.6.6 (2026-10-19): hotfix — lo de antes de empezar no se cobra solo (V2-85 y V2-86)
+
+**Decisiones APROBADAS por Victor (2026-10-19)**, recomendación del chat auditor.
+
+> **V2-85**, frase literal: «Una usuario registro su pago mensual de tarjeta que normalmente paga, hoy 19 de oct, y ella paga el 14. Le aparece el pago de 14 de oct como no pagado y se lo descuenta de su disponible cuando ella ya lo pagó el 14, deben nuevos usuarios justificar pagos anteriores pendientes o como funciona? Pueden haber varios escenarios dependiendo de la fecha en que usuarios se registren»
+>
+> **V2-86**, frase literal: «tambien que se arregle para current users, que no solo para los nuevos, que detecte si los que ya se registraron tienen issues tambien»
+
+V2-86 amplía y prevalece sobre el punto 4 (recuperación) de V2-85. El error contradecía **V2-43** (nunca mostrar ni cobrar pagos de antes de que la persona empezó o agregó ese pago). Se respetan V2-54, V2-57 y V2-78.
+
+### La causa real (verificada: `herramientas/v266.mjs` falla en la v2.6.5)
+
+1. **El caso de la tester** (tarjeta con «¿Cuánto pagas normalmente?», corte después del día en que se registró —el 25— y pago el 14). El motor ya contaba el pago que sigue, el del **14 de noviembre**, pero Hoy, «¿De dónde sale?» y la ficha de la tarjeta leían la fecha del ciclo anterior (`ult.vence`, el 14 de octubre) y decían **«Incluye tarjeta ~$100, venció el 14»** y **«lo que pagas normalmente, venció el 14 oct»**: el pago que ella ya había hecho, como vencido y restado de su libre. Esas etiquetas son de la v2.3.1 (`7be1eed`, V2-54), cuando solo la tarjeta **sin** corte tenía «lo que pagas normalmente» y su fecha siempre era la próxima. La **v2.6.2** (`403640e`, V2-78) dio «¿Cuánto pagas normalmente?» a toda tarjeta nueva, también con corte: desde ahí, si el corte de este mes todavía no llegaba, la fecha que se mostraba era la del pago anterior. **Ese cambio lo introdujo.** Con sus números (Primer día el 19 de octubre, $950 en el banco y $50 en efectivo): el libre era **$900.00** en la v2.6.5 y sigue en **$900.00**: los ~$100 son lo que paga normalmente, apartado para el **14 de noviembre** (V2-54/V2-78: lo de la tarjeta se aparta de lo que ya tienes); lo que estaba mal era la fecha y el «venció».
+2. **Otros caminos que sí creaban un pago vencido de antes de empezar:** una tarjeta agregada **con su último estado de cuenta** cuyo vencimiento ya pasó (corte 25 → vencía el 14 oct) quedaba vencida y bajaba el libre (desde la v2.1, `180b04b`; la corrección de V2-43 en la v2.3.1 solo cubrió la tarjeta sin estado de cuenta); en «+ Pago», «¿Ya venció y no lo has pagado?» (v2.3, `42b095f`) y una fecha pasada en «Cada 2 semanas», «Cada 3 meses» o «Cada año» creaban vencidos sin preguntar; y **editar el día** de un pago (o el corte y el pago de una tarjeta, V2-57) podía traer una fecha que ya pasó y dejarla vencida.
+
+### V2-85 — Lo anterior a tu inicio no se cobra solo
+
+| | Ahora |
+|---|---|
+| **La pregunta** | Al crear un pago que se repite cuya fecha de este periodo **ya pasó o es hoy**, el mismo formulario pregunta **una vez**: **«El de octubre (14 oct), ¿ya lo pagaste?» [Sí, ya lo pagué] [No, todavía lo debo]** («El de hoy, ¿ya lo pagaste?», «El del 16 de octubre, ¿ya lo pagaste?» si es semanal o quincenal). Debajo dice qué pasa: «No se cuenta en tu libre. Tu próximo pago: 14 de noviembre.» o «Queda pendiente desde el 14 de octubre y se cuenta en tu libre.» Si la fecha se escribió sin volver a dibujar el formulario (el corte y el pago de una tarjeta), «Guardar» muestra la pregunta primero. |
+| **Dónde** | Primer día y «Completar tu Primer día» (deudas, tarjetas, gastos fijos, suscripciones y cuchubal), «+ Pago», «Editar pago», «Recordarme un pago» (Anotar), Mi dinero → «Tarjeta o préstamo» (tarjeta con pago estimado V2-78, con su último estado de cuenta, préstamo, casa comercial, vivienda) y al editar una tarjeta (V2-57). |
+| **«Sí» (o sin respuesta)** | Ese periodo queda pagado antes de empezar: **no resta del libre ni cuenta en el mes**; el primer pago visible es el siguiente. Nunca se inventa una deuda. |
+| **«No, todavía lo debo»** | Queda vencido (o para hoy) y se cuenta, como antes. La respuesta queda guardada: al abrir no se vuelve a preguntar. |
+| **Ingresos** | Lo mismo con los ingresos esperados («+ Ingreso esperado» y el paso 1 del Primer día): **«La del 15 de octubre, ¿ya te llegó?» [Sí, ya me llegó] [No, todavía no]**. «Sí»: ya está en lo que tienes, no se espera ni suma otra vez. «No»: se espera («Libre por ahora · Falta confirmar tu quincena del 15», o «¿Ya llegó lo de…?»). Si es hoy, sigue la pregunta de siempre del Primer día (V2-43). El turno del cuchubal no puede ser un día que ya pasó (su calendario empieza hoy). |
+| **Tarjetas** | El pago de este periodo de la tarjeta (con o sin su último estado de cuenta) se pregunta igual. Nunca se crea un pago con fecha de antes de agregarla salvo «No, todavía lo debo». Todas las pantallas dicen la fecha del pago que se cuenta (`vence` del motor): «Incluye tarjeta ~$100, vence el 14 nov» (si vence en otro mes, con el mes). |
+| **Editar el día** | Las fechas que ya pasaron y que solo aparecen por el cambio no se cuentan; la de este periodo se pregunta. Un vencido de verdad que cambia de día sigue vencido, sin pregunta. |
+
+**«Este periodo» — decisión técnica — REVISAR:** la última fecha del mes en curso que ya pasó (o es hoy); en lo semanal, la de los últimos 7 días; cada 2 semanas, la de los últimos 14. Así, registrarse el 10 con un pago del 14 no pregunta nada (queda pendiente el 14), y el 19 pregunta por el 14. Lo de antes de esa fecha nunca se crea (V2-43). Un pago de «Una vez» u «Otras fechas» no pregunta: la persona eligió esa fecha («Si ya venció y no lo has pagado, elige esa fecha»).
+
+**El caso de la tester, con números** (Primer día el lunes 19 de octubre; $950 en el Banco Agrícola y $50 en efectivo; quincena del 15 y el 30; Crédito BAC con corte 25, pago el 14 y ~$100 que paga normalmente): en el paso de tarjetas la app pregunta **«El de octubre (14 oct), ¿ya lo pagaste?»** con «Sí, ya lo pagué» elegido. Con «Sí»: Hoy **Libre $900.00 · Incluye tarjeta ~$100, vence el 14 nov**; «¿De dónde sale?»: «Crédito BAC · lo que pagas normalmente, vence el 14 nov · ~$100»; la ficha: «Lo que pagas normalmente · vence el 14 nov»; Pagos: su pago el 14 de noviembre; Mes (octubre): $0 de esa tarjeta. Con «No, todavía lo debo»: «Incluye tarjeta ~$100, venció el 14» y el pago del 14 de octubre vencido (lo que es cierto si no lo ha pagado).
+
+### V2-86 — Revisión automática para quienes ya usan la app
+
+**Qué se detecta** (al abrir, y en cada apertura hasta que se conteste; solo con «Usarla con mis datos»):
+
+| Caso | Se detecta | Al abrir la v2.6.6 |
+|---|---|---|
+| **a)** pagos que se repiten (tarjeta como pago, préstamo, cuota, servicios, suscripción, cuchubal) con fechas sin pagar de antes de agregarlos o de empezar | sí | en la revisión |
+| **b)** ingresos esperados (salario, quincena, remesa, turno del cuchubal) contados «por llegar» desde antes de empezar | sí | en la revisión, con «Sí, ya me llegó» / «No, todavía no» (el principal de antes de empezar ya estaba en el primer cuadre, V2-43: nunca se contó) |
+| **c)** pago estimado de una tarjeta (V2-78) de un periodo de antes de agregarla | sí | **se corrige solo con la versión nueva**: el motor ya contaba el pago siguiente; solo la fecha estaba mal. No hay nada que contestar: ahora dice «vence el 14 nov» y el libre no cambia |
+| **d)** cualquier vencido que exista solo porque el registro fue después de su fecha (la tarjeta con su último estado de cuenta) | sí | en la revisión |
+
+**Regla de «antes de empezar»:** una fecha es de antes si es anterior a cuando se agregó ese elemento: los pagos e ingresos creados desde la v2.6.6 guardan `creado`; las tarjetas, `desde` (el día en que se agregaron). Si no se guardó, el **primer día de uso** (`st.inicio`, que guarda el Primer día desde la v2.3); si tampoco existe, **la fecha de la primera anotación**. Solo cuenta lo que la app cuenta sin pagar (o por llegar) **antes** de esa fecha (un vencido del mismo día ya se veía «vence hoy» al crearlo).
+
+**La tarjeta en Hoy:** una sola, arriba de los avisos: **«Revisemos unos pagos de antes de que empezaras»** — «Tienen fecha de antes de que empezaras a usar la app. Si ya los pagaste, dejan de contar en tu libre.» Cada caso con su nombre, «venció el 14 oct» y su monto, y **[No, lo debo] [Sí, ya lo pagué]** (en un ingreso, [No, todavía no] [Sí, ya me llegó]); con dos o más, **«Ya pagué todos»**; y **«Ahora no»**, que la oculta hasta la próxima apertura (no se pierde). Al contestar, el libre se corrige al instante y se dice: **«Tu libre pasó de $760.00 a $860.00. Guardamos tu respuesta.» [Deshacer]** («Tu libre sigue en $760.00» si no cambia, como con un ingreso). Al terminar: «Listo, revisamos tus pagos de antes» con el cambio, «Deshacer» y «Entendido». Lo contestado no se vuelve a preguntar: «Sí» lo deja pagado antes de empezar (sin anotar un gasto: el dinero ya había salido) y «No» queda guardado como contestado. Mientras se revisa, ese pago no sale en el aviso de vencidos, en «Pongámonos al día» ni en «Por confirmar» (ahí «Pagado» lo habría anotado otra vez).
+
+**Seguridad de los datos:** antes de la primera respuesta se guarda una **copia interna** de tus datos (`pamplanea-uso:respaldo-antes-de-empezar`, como el respaldo de la migración); **«Deshacer»** vuelve exactamente lo que cambiaron las respuestas de esa revisión (lo que la persona anotó después se queda) y la copia queda guardada con la marca de cuándo se deshizo. Nada cambia sin respuesta: abrir la v2.6.6 no escribe nada distinto en tus datos. El candado V2-79 sigue activo (probado).
+
+**Un ejemplo con números** (datos creados con la v2.6.5 el 19 de octubre: $1,000 en total; la tarjeta Crédito Agrícola con su estado de cuenta de $100 que vencía el 14 oct; un «Préstamo de mi tía» de $40 marcado «¿Ya venció y no lo has pagado?»; y el Crédito BAC con ~$100 que paga normalmente): la v2.6.5 decía **Libre $760.00** («Incluye tarjeta $100.00, venció el 14»). Al abrir la v2.6.6 aparece la revisión con los dos primeros (el BAC ya cuenta el 14 de noviembre). «Sí» en la tarjeta: **$760.00 → $860.00**; «Ya pagué todos»: **$760.00 → $900.00** (queda solo lo del BAC para el 14 de noviembre). «Deshacer»: otra vez $760.00 y los dos casos.
+
+### Escenarios probados (`herramientas/v266.mjs`, con la fecha del teléfono de cada caso)
+
+| Escenario | Pregunta | Resultado (libre) |
+|---|---|---|
+| Antes del día: registro 10, paga 14 | ninguna | pendiente el 14 oct; el libre baja $25 (vence antes de la quincena del 15) |
+| El mismo día: registro 14, paga 14 | «El de hoy, ¿ya lo pagaste?» | «Sí»: el primero el 14 nov; el libre no baja |
+| Después: registro 19, paga 14 | «El de octubre (14 oct), ¿ya lo pagaste?» | «Sí»: el primero el 14 nov, el libre no baja y octubre no lo cuenta; «No»: vencido el 14 oct y el libre baja $25 |
+| Fin de mes: paga 31, el 30 nov y el 28 feb | «El de hoy, ¿ya lo pagaste?» | el primero el 31 dic / el 31 mar; el libre no baja |
+| Fin de mes: paga 31, registro 1 dic | ninguna | el primero el 31 dic (el del 30 nov no se crea) |
+| Quincenal (15 y 30), registro 19 | «El del 15 de octubre…» | «Sí»: el primero el 30 oct |
+| Semanal (viernes), registro el lunes 19 | «El del 16 de octubre…» | «No»: vencido el 16, el siguiente el 23 (nada de antes) |
+| «Recordarme un pago» (Anotar), registro 19, el 14 | «El de octubre (14 oct)…» | «Sí»: el primero el 14 nov; el libre no baja |
+| Tarjeta: corte 25 (después del registro), pago 14, ~$100 | «El de octubre (14 oct)…» | su pago el 14 nov; se apartan los ~$100 una vez; Hoy «vence el 14 nov» |
+| Tarjeta: corte 10 (antes del registro), pago 14 | ninguna | su pago el 14 nov |
+| Tarjeta con su último estado de cuenta ($100), corte 25, pago 14 | «El de octubre (14 oct)…» | «Sí»: no se ve ni se cuenta, el libre no baja, lo que debes $0; «No»: vencido y el libre baja $100 |
+| Editar el corte y el pago de una tarjeta (V2-57): 10/20 → 25/14 | «El de octubre (14 oct)…» | su pago el 14 nov, sin vencidos; el libre igual |
+| Préstamo (cuota el 14), registro 19 | «El de octubre (14 oct)…» | el primero el 14 nov; el libre no baja |
+| Cuchubal: aporte cada viernes y turno | «El del 16 de octubre…»; el turno no deja elegir un día pasado | aportes desde el 23; turno el 30 oct; el libre baja solo $10 (el del 23) |
+| Ingreso esperado: remesa del 10, registro 19 | «La del 10 de octubre, ¿ya te llegó?» | «Sí»: la siguiente el 10 nov; «No»: por confirmar y Hoy pregunta «¿Ya llegó lo de…?» |
+| Primer día: quincena del 15, registro 19 | «La del 15 de octubre, ¿ya te llegó?» | «Sí»: hasta tu quincena del 30; «No»: «Libre por ahora · Falta confirmar tu quincena del 15» |
+| **El caso exacto de la tester** | «El de octubre (14 oct)…» en el Primer día | Libre $900.00 · «vence el 14 nov» en Hoy, «¿De dónde sale?», la ficha y Pagos; octubre $0 |
+| Recuperación desde datos de la v2.6.5 (a, c, d) y un ingreso guardado por una versión anterior (b) | la tarjeta en Hoy | se detectan; «Sí», «No», «Ya pagué todos», «Deshacer», «Ahora no» (vuelve al abrir); lo contestado no se vuelve a preguntar; quien no tiene problemas no ve nada; copia interna; candado |
+| Editar el día de un pago (agregado el 10 para el 25) al 14, el 19 | «El de octubre (14 oct)…» | ningún vencido; el siguiente el 14 nov; el libre igual |
+| Editar el día de un vencido de verdad (la luz del 12 → 14) | ninguna | sigue vencido |
+
+### Pruebas y calidad
+
+- **`herramientas/v266.mjs`** (los escenarios de arriba, con la fecha del teléfono de cada uno y los números del libre): en la **v2.6.5 fallan 37 de sus 58 comprobaciones de A–E y G** (entre ellas «Incluye tarjeta ~$100, venció el 14», «lo que pagas normalmente, venció el 14 oct» y la ficha «vence el 14 oct» del caso de la tester; editar el día dejaba un vencido y bajaba el libre); en la v2.6.6 pasan todas, también la parte F (la revisión, con datos creados por la v2.6.5 sacada de git).
+- Toda la batería por file:// (**30 pruebas**: las 29 de siempre y `v266.mjs`) y servida en la subruta de Pages (**22**), sin fallos ni errores de consola (el único «error» es el del candado, que `v264.mjs` y `v266.mjs` provocan a propósito). `numeros-entrenamiento.mjs`: 308 textos, ninguno con montos que no se ven.
+- **Pruebas viejas al día** (la pregunta nueva aparece al guardar cuando su fecha de este periodo ya pasó; todas contestan «Sí», lo mismo que su escenario ya suponía, y sus números no cambian): `aceptacion-v23` y `v231` (el cuchubal del 8 y el 23 el 17 de octubre), `v231`, `v241`, `v25` y `v262` (tarjetas con corte 21/25 y pago 10/12), `entrega2-v23` (la tarjeta Cuscatlán del Primer día) y `qa-v261` (su atajo guarda otra vez si aparece la pregunta). `recorrer-v2`, `v231` y el resultado esperado de un caso de la guía (`casos.js`): «Incluye tarjeta $245.00, vence el 5 nov» (con el mes, porque vence en otro mes).
+- **Datos y progreso intactos al actualizar:** `actualizar.mjs --ref=078dcc6` (desde la v2.6.5): datos reales, «Lo esencial» a medias, un capítulo hecho, un ejercicio y la prueba guiada en pausa sobreviven, también sin internet; lo guardado queda igual (abrir la v2.6.6 no escribe nada nuevo) y el libre es el mismo.
+- **Capturas a 390 × 844** en Serena claro (`capturas/v266/`) y Ancla oscuro (`capturas/v266-ancla-oscuro/`), revisadas una por una: la pregunta en «+ Pago» (de hoy, de octubre y con «No»), en Mi dinero (tarjeta), en el Primer día (tarjeta e ingreso) y en Anotar; Hoy del caso de la tester; la v2.6.5 con el error; la revisión, después de «Sí» (el cambio del libre y «Deshacer») y «Listo». Se corrigió «Tu libre pasó de $760.00 a $760.00» (un ingreso no cambia el libre): ahora «Tu libre sigue en $760.00».
+
+### DECISIONES PENDIENTES PARA VICTOR (v2.6.6)
+
+1. **Lo que pagas normalmente de una tarjeta se aparta de lo que ya tienes, aunque venza después de tu próxima quincena** (V2-54/V2-78, sin cambio). Por eso, en el caso de la tester, el libre sigue en $900.00 (y no $1,000.00): esos ~$100 son su pago del 14 de noviembre. *Recomendación:* dejarlo así (son compras que ya hizo con la tarjeta; si no se apartan, ese dinero se gastaría dos veces). *Tradeoff:* hasta que llegue su quincena del 30, su libre se ve $100 más bajo que si ese pago se pagara con esa quincena, como los demás pagos.
+2. **«Este periodo»** (decisión técnica — REVISAR, arriba): la última fecha de este mes que ya pasó (7 días en lo semanal, 14 cada 2 semanas). *Recomendación:* dejarlo así. *Tradeoff:* quien se registra el 2 y paga el 30 no ve pregunta por el 30 del mes anterior (se da por pagado).
+3. **Editar el día de un ingreso esperado** no pregunta (solo los pagos y las tarjetas): un ingreso que pasa a una fecha que ya pasó queda «por confirmar» («¿Ya llegó…?»), que no baja el libre. *Recomendación:* dejarlo así para esta prueba.
+
+### Limitaciones
+
+- Un pago guardado antes de la v2.6.6 no tiene `creado`: para él cuenta el primer día de uso. Un pago agregado después del primer día con una fecha vencida elegida a mano («¿Ya venció y no lo has pagado?») no entra en la revisión: la persona dijo que lo debe.
+- La tarjeta todavía pone el pago en el mes siguiente a su corte (con corte el 5 y pago el 14, el estado del 5 de octubre se espera para el 14 de noviembre): es el modelo de siempre; no cambió el libre ni las fechas de este caso.
+- La pregunta de un pago con el día escrito a mano (el corte y el pago de una tarjeta, los días de un cuchubal quincenal) aparece al tocar «Guardar»: un toque más (con «Sí» ya elegido).
 
 ---
 
