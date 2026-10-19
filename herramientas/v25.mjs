@@ -1,5 +1,5 @@
 // PRUEBAS v2.5 «Entrenamiento sencillo y a fondo». A 390×844, como una persona nueva:
-//  A) la entrada (sin «4 minutos») y «¿Cómo te entra el dinero?»;
+//  A) la entrada (sin «4 minutos») y «¿Cómo recibes tu dinero?»;
 //  B) «Lo esencial» en las dos versiones: cada paso (qué ves · para qué · ejemplo, los mismos textos del glosario;
 //     ≤ 2 líneas; resaltado correcto; sin «quincena» en la variable), NADA avanza solo (paso, «Hazlo tú», pausa y
 //     pregunta se quedan quietos), «Hazlo tú» a mano y con «Hazlo por mí» (un solo toque a la vez), lo oscuro no se toca,
@@ -7,7 +7,7 @@
 //     y la marca de «hecho»; al terminar, los ejemplos vuelven al inicio;
 //  C) retomar (Salir → «Sigue donde te quedaste» en Hoy y en «Aprende más»);
 //  D) cada capítulo de «Aprende más» en las dos versiones (sus pasos, su «Hazlo tú», su pregunta y su marca);
-//  E) V2-59: #27 «Tus ventas cuentan cuando las anotas», #28 «Cómo te entra el dinero», #29 «Ver un ejemplo»;
+//  E) V2-59: #27 «Tus ventas cuentan cuando las anotas», #28 «Cómo recibes tu dinero», #29 «Ver un ejemplo»;
 //  F) la oferta de tarjetas con tus datos (y «Volver a mis datos» sin perder nada);
 //  G) «Practicar»: 18 ejercicios, cada uno con el capítulo de antes; H) «?» y «Aprende» con los mismos textos;
 //  I) legibilidad; J) reducir movimiento y 44 px; K) contraste en los 4 temas.
@@ -271,7 +271,7 @@ try {
         await foto('A-bienvenida');
         await clic('[data-fk="elegir-aprender"]');
         await pintado('elegir');
-        check('una sola pregunta al entrar', [await texto('#tour-t'), await ev('[...document.querySelectorAll(".tour-version .opcion-g-t")].map((e) => e.textContent)')], ['¿Cómo te entra el dinero?', ['Me pagan en fecha fija', 'Me entra cuando vendo o trabajo']]);
+        check('una sola pregunta al entrar', [await texto('#tour-t'), await ev('[...document.querySelectorAll(".tour-version .opcion-g-t")].map((e) => e.textContent)')], ['¿Cómo recibes tu dinero?', ['Me pagan en fecha fija', 'Lo recibo cuando vendo o trabajo']]);
         await foto('A-pregunta');
         await clic('[data-fk="tour-saltar"]');
         await esperar(300);
@@ -289,8 +289,8 @@ try {
         await clic('[data-fk="tour-version-fijo"]');
         check('fijo: Ana sin tarjeta y con números redondos', await ev('[P.st.persona, P.st.tarjetas.length, P.calc().libre]'), ['ana', 0, 40000]);
         await recorrerCap('fijo', 'esencial', { aMano: true, quietud: true });
-        check('fijo: al final, «Empezar con mis datos» y «Aprender más»', [await texto('#tour-t'), await ev('[...document.querySelectorAll(".tour-card .btn")].map((e) => e.innerText.trim())'), await texto('[data-fk="tour-mirar"]')], ['¡Listo! Ya sabes lo esencial', ['Empezar con mis datos', 'Aprender más'], 'Seguir mirando los ejemplos']);
-        await clic('[data-fk="tour-fin"][data-v="mirar"], [data-fk="tour-mirar"]');
+        check('fijo: al final, «Empezar con mis datos» y «Aprender más»', [await texto('#tour-t'), await ev('[...document.querySelectorAll(".tour-card .btn")].map((e) => e.innerText.trim())'), await texto('[data-fk="tour-mirar"]')], ['¡Listo! Ya sabes lo esencial', ['Empezar con mis datos', 'Aprender más'], null]); // V2-69 #36: sin «Seguir mirando los ejemplos»
+        await ev('P.acciones.tourFin({ v: "mirar" }); true');
         await esperar(400);
         check('fijo: al terminar, los ejemplos como al inicio', [await ev('P.calc().libre'), await ev('!!P.st.recorrido'), await texto('.toast')], (x) => x[0] === 27060 && x[1] === false && x[2].includes('Listo, dejé los ejemplos como al inicio'));
         // «Aprende más»: la marca de hecho.
@@ -308,7 +308,7 @@ try {
         await clic('[data-fk="tour-version-variable"]');
         check('variable: con Rosa', await ev('[P.st.persona, P.calc().libre]'), ['rosa', 8000]);
         await recorrerCap('variable', 'esencial', { aMano: true, quietud: true });
-        await clic('[data-fk="tour-mirar"]');
+        await ev('P.acciones.tourFin({ v: "mirar" }); true');
         await esperar(400);
         check('variable: al terminar, Rosa como al inicio', [await ev('P.st.persona'), await ev('P.calc().libre'), await ev('!!P.st.recorrido')], ['rosa', 8000, false]);
     }
@@ -416,7 +416,7 @@ try {
         actual = 'E V2-59 #27';
         await fecha('2026-10-18');
         await limpio('persona=rosa');
-        check('#27 Hoy: «Tus ventas cuentan cuando las anotas», sin «entra ~$0» ni rojo', [await texto('.proy-l'), await texto('.proy-s'), await ev('document.querySelector(".proy-l").classList.contains("proy-l--falta")'), await ev('/entra ~\\$0/.test(document.body.innerText)')], ['pagas ~$191 · tus ventas cuentan cuando las anotas', 'este mes llevas $316.00 en ventas', false, false]);
+        check('#27 Hoy: «Tus ventas cuentan cuando las anotas», sin «ingreso ~$0» ni rojo', [await texto('.proy-l'), await texto('.proy-s'), await ev('document.querySelector(".proy-l").classList.contains("proy-l--falta")'), await ev('/entra ~\\$0/.test(document.body.innerText)')], ['pagas ~$191 · tus ventas cuentan cuando las anotas', 'este mes llevas $316.00 en ventas', false, false]);
         check('#27 el aviso del próximo mes tampoco dice «te faltarían»', await texto('.aviso-hoy'), (x) => x.includes('Del 1 nov al 30 nov pagas ~$191.') && x.includes('Tus ventas cuentan cuando las anotas.') && !x.includes('faltarían'));
         await foto('E-27-hoy');
         await clic('[data-fk="portada"]');
@@ -430,15 +430,15 @@ try {
         check('#27 en Pagos → Próxima', await texto('.per-res'), (x) => x.includes('Pagas ~$191 · tus ventas cuentan cuando las anotas') && !x.includes('~$0'));
         // Con ingreso fijo, igual que antes.
         await abrirApp('persona=ana');
-        check('#27 con quincena, sin cambio', await texto('.proy-l'), 'entra ~$600 · pagos ~$55 · te quedarían ~$545');
+        check('#27 con quincena, sin cambio', await texto('.proy-l'), 'ingreso ~$600 · pagos ~$55 · te quedarían ~$545');
 
         actual = 'E V2-59 #28';
         await abrirApp('persona=rosa');
         await clic('[data-fk="avatar"]');
-        check('#28 Tu cuenta → «Cómo te entra el dinero»', await texto('[data-fk="menu-calendar-clock"]'), 'Cómo te entra el dinero Varía · ves tu libre hasta fin de mes');
+        check('#28 Tu cuenta → «Cómo recibes tu dinero»', await texto('[data-fk="menu-calendar-clock"]'), 'Cómo recibes tu dinero Varía · ves tu libre hasta fin de mes');
         await clic('[data-fk="menu-calendar-clock"]');
         await esperar(250);
-        check('#28 elige hasta cuándo', [await texto('#hoja-t'), await ev('[...document.querySelectorAll(".hoja [data-fk^=hz-]")].map((e) => e.textContent.trim())')], ['Cómo te entra el dinero', ['Hasta fin de mes', 'Los próximos 15 días']]);
+        check('#28 elige hasta cuándo', [await texto('#hoja-t'), await ev('[...document.querySelectorAll(".hoja [data-fk^=hz-]")].map((e) => e.textContent.trim())')], ['Cómo recibes tu dinero', ['Hasta fin de mes', 'Los próximos 15 días']]);
         await foto('E-28-como-te-entra');
         await clic('[data-fk="hz-quince"]');
         await clic('[data-fk="cte-listo"]');
@@ -484,6 +484,7 @@ try {
         await clic('[data-fk="ob-sig"]');
         await clic('[data-fk="ob-sig"]');
         await clic('[data-fk="ob-sig"]');
+        await clic('[data-fk="ob-sig"]'); // v2.6.2 (V2-68): un paso más (deudas y tarjetas por separado)
         await clic('[data-fk="pn-listo"]');
         await ev('["hoy", "pagos", "midinero", "cuentas", "ahorros", "deudas", "mes", "anotar", "pago"].forEach((p) => P.modos.tipVisto(p)); P.render(); true');
         check('sin tarjeta, no hay oferta', await hay('[data-fk="oferta-hoy-si"]'), false);
@@ -526,7 +527,7 @@ try {
         await ev('P.modos.guardarEntrenamiento({ tourVersion: "fijo", caps: { "fijo:esencial": { paso: 0, hecho: true } } }); P.ayuda.abrir("practica"); true');
         await esperar(300);
         const filas = await ev('[...document.querySelectorAll(".ay-caso--ej")].map((e) => [e.dataset.v, e.querySelector(".pr-antes")?.textContent.trim()])');
-        check('18 ejercicios, cada uno con el capítulo de antes', [filas.length, filas.filter((f) => !f[1]).length], [18, 0]);
+        check('16 ejercicios (V2-69 #37: sin los de Carlos), cada uno con el capítulo de antes', [filas.length, filas.filter((f) => !f[1]).length], [16, 0]);
         check('ejemplos: Lo esencial (hecho), Ahorros, Tarjetas', Object.fromEntries(filas), (x) => x.C05 === 'Antes: «Lo esencial» (hecho)' && x.C23 === 'Antes: «Ahorros»' && x.C16 === 'Antes: «Tarjetas y estado de cuenta»' && x['P-AGUINALDO'] === 'Antes: «Aguinaldo y adelanto»' && x.C19 === 'Antes: «Próxima quincena y pasar lo que sobra»');
         await foto('G-practicar-fijo');
         await ev('P.modos.guardarEntrenamiento({ tourVersion: "variable" }); P.ayuda.abrir("practica"); true');

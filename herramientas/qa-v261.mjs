@@ -54,7 +54,7 @@ const AYUDA = `(() => {
             const p = st.pagos.find((x) => x.id === r.pago);
             if (p && !Object.values(p.hechos || {}).some((h) => h.registro === r.id)) f.push('gasto «' + r.nombre + '»: dice que es de Pagos y su pago no lo tiene');
         }
-        for (const i of st.ingresos.filter((x) => x.activo !== false)) if (!lugar(i.lugar)) f.push('ingreso «' + i.nombre + '»: cae en un lugar que no existe');
+        for (const i of st.ingresos.filter((x) => x.activo !== false)) if (!lugar(i.lugar)) f.push('ingreso «' + i.nombre + '»: llega a un lugar que no existe');
         for (const t of st.tarjetas) if (!st.medios.some((m) => m.tarjeta === t.id && !m.oculto)) f.push('tarjeta «' + t.nombre + '»: no se puede elegir para pagar');
         for (const x of st.reservasTarjeta || []) if (!tarjeta(x.tarjeta)) f.push('reserva para una tarjeta que no existe');
         for (const p of st.pagos) if (p.deuda && p.deuda.debe !== null && p.deuda.debe !== undefined && !(Number.isInteger(p.deuda.debe) && p.deuda.debe >= 0)) f.push('deuda «' + p.nombre + '»: lo que debes no es un monto');
@@ -124,7 +124,7 @@ caso('B-L2', 'B', 'Después de eliminar un lugar, «Pagado» de un pago que sal�
     const d = await ev('QA.dinero()');
     return d.tienes === a.tienes - r.monto ? [] : [`Tienes ${a.tienes} → ${d.tienes}: el pago de ${r.monto} no salió de ningún lugar`];
 });
-caso('B-L3', 'B', 'Después de eliminar un lugar, «¿Ya te cayó?» de un ingreso que caía ahí suma a un lugar que existe', 'P1', async () => {
+caso('B-L3', 'B', 'Después de eliminar un lugar, «¿Ya llegó?» de un ingreso que caía ahí suma a un lugar que existe', 'P1', async () => {
     await cargar();
     await ev(`P.st.hoy = '2026-10-30'; P.render(); QA.hoja('lugar', { id: 'agricola' }, { confirmarEliminar: true }); P.acciones.lugarEliminar(); true`);
     const a = await ev('QA.dinero()');

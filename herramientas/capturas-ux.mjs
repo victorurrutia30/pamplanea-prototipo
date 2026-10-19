@@ -145,9 +145,13 @@ await clic('[data-fk="ob-sig"]');
 await foto('ob-3');
 await clic('[data-fk="ob-sig"]');
 await foto('ob-4');
-await clic('[data-fk="ob-d-prestamo"]');
+// v2.6.2 (V2-68): ob-4 es el paso de las deudas; las tarjetas y los gastos fijos van después.
+await clic('[data-fk="ob-dn-prestamo"]');
 await foto('ob-4-prestamo');
-await clic('[data-fk="ob-p-cancelar"]');
+await clic('[data-fk="ob-ed-cancelar"]');
+await clic('[data-fk="ob-sig"]');
+await foto('ob-5-tarjetas');
+await clic('[data-fk="ob-sig"]');
 await clic('[data-fk="ob-s-nueva"]');
 await foto('ob-4-suscripcion');
 await clic('[data-fk="ob-p-cancelar"]');

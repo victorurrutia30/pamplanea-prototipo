@@ -89,7 +89,7 @@
         if (!top || top.tipo !== 'aldia') return enPantalla('hoy') ? tocar('[data-fk="aldia"]', 'Toca «Empezar» en «Pongámonos al día».') : tocar('[data-fk="nav-hoy"]', 'Toca «Hoy» abajo.');
         if (top.paso === 1) {
             const si = document.querySelector('[data-fk^="adi-si-"][aria-pressed="false"]');
-            return si ? tocar(`[data-fk="${si.dataset.fk}"]`, 'Sí te llegó: toca «Sí, me cayó».') : tocar('[data-fk="ad-sig"]', 'Toca «Siguiente».');
+            return si ? tocar(`[data-fk="${si.dataset.fk}"]`, 'Sí te llegó: toca «Sí, ya llegó».') : tocar('[data-fk="ad-sig"]', 'Toca «Siguiente».');
         }
         if (top.paso === 2) {
             const falta = document.querySelector('[data-fk^="adp-pagado-"][aria-pressed="false"]');
@@ -177,6 +177,17 @@
         deudas: () => {
             const p = P.st.pagos.find((x) => x.activo !== false && x.deuda && x.frecuencia === 'mensual');
             return p ? `«${p.nombre}»: ${corto(p.monto)} al mes. La ves aquí y en Pagos cada mes.` : null;
+        },
+        // V2-77: lo disponible de la tarjeta, con su límite (los dos se ven en su ficha).
+        disponible: () => {
+            const t = P.calc().tarjetas.find((x) => x.cupoLibre !== null);
+            return t ? `Disponible ${corto(t.cupoLibre)} de ${corto(t.t.cupo)}: es prestado, nunca suma a tu libre.` : null;
+        },
+        // V2-77: el corte, el pago y lo que dice el estado de cuenta, con los datos de su ficha.
+        estadoCortePago: () => {
+            const t = P.st.tarjetas[0];
+            const e = t && t.estados && t.estados.at(-1);
+            return t && t.corte && e && e.total ? `Corta el ${t.corte} y se paga el ${t.pagoDia}: pago de contado ${corto(e.total)}, mínimo ${corto(e.minimo)}.` : null;
         },
         estadoCuenta: () => {
             const t = P.st.tarjetas[0];
@@ -401,8 +412,9 @@
             sel: '[data-fk="nav-anotar"]',
             hazlo: { claves: ['guardado:gasto'], senal: senalAnotar(frase), foco: '.portada', pausa: pausaLibre('Mira tu libre', (a, d) => `compraste ${corto(a.libre - d.libre)} con tarjeta, aunque la pagues después`) },
         },
-        { que: 'Esto es «Deudas»', g: 'deudas', ejemplo: ej.deudas, antes: abrirEn('midinero', 'deudas'), sel: seccion('Tus deudas') },
-        { que: 'Este es tu estado de cuenta', g: 'estadoCuenta', ejemplo: ej.estadoCuenta, antes: () => abrirEn('midinero', 'tarjeta', P.st.tarjetas[0].id)(), sel: () => document.querySelector('#pantalla .dato-grid')?.closest('section') || null },
+        // V2-77: «¿el disponible de mi tarjeta cuenta?» No: es dinero prestado.
+        { que: 'El disponible no es tu dinero', para: 'Tu límite de crédito es dinero prestado: nunca suma a tu libre.', ejemplo: ej.disponible, antes: () => abrirEn('midinero', 'tarjeta', P.st.tarjetas[0].id)(), sel: '#pantalla .cupo' },
+        { que: 'Estado de cuenta, corte y pago', para: 'Estado de cuenta: cuánto pagar. Corte: cierra tus compras. Pago: tu último día.', ejemplo: ej.estadoCortePago, antes: () => abrirEn('midinero', 'tarjeta', P.st.tarjetas[0].id)(), sel: () => document.querySelector('#pantalla .dato-grid')?.closest('section') || null },
     ];
     const PREGUNTA_TARJETA = { p: 'Compras algo con tu tarjeta de crédito. ¿Cuándo baja tu libre?', ops: ['Hoy, el día que compras', 'Cuando pagas la tarjeta', 'Nunca'], bien: 0, si: '¡Así es! Baja hoy, aunque la pagues después. Así no te llevas sorpresas.', casi: 'Casi: baja hoy, el día que compras. Así no te llevas sorpresas.', repaso: 0 };
     const TARJETAS_FIJO = {
@@ -417,7 +429,7 @@
     const EXTRAS = {
         id: 'extras',
         titulo: 'Aguinaldo y adelanto',
-        sub: 'Lo que te cae una vez',
+        sub: 'Lo que recibes una sola vez',
         persona: 'ana',
         cargar: preparar(
             () =>
@@ -532,7 +544,7 @@
                     pausa: (a, d) => ({ titulo: 'Ahora ves 15 días', filas: [filaLibre(a, d), { l: 'Por día', a: a.porDia, d: d.porDia, aprox: true }], texto: `Tu libre ahora llega hasta el ${d.hasta ? M.fechaCorta(d.hasta) : 'día 15'}${d.porDia !== null ? `: son ${dinero(d.porDia, { aprox: true })} por día` : ''}.` }),
                 },
             },
-            { que: 'También lo cambias en tu cuenta', para: 'Toca tu letra, arriba, y luego «Cómo te entra el dinero».', ejemplo: 'Ahí eliges: hasta fin de mes o los próximos 15 días.', antes: () => (irA('hoy')(), P.abrirHoja('menu')), sel: '[data-fk="menu-calendar-clock"]' },
+            { que: 'También lo cambias en tu cuenta', para: 'Toca tu letra, arriba, y luego «Cómo recibes tu dinero».', ejemplo: 'Ahí eliges: hasta fin de mes o los próximos 15 días.', antes: () => (irA('hoy')(), P.abrirHoja('menu')), sel: '[data-fk="menu-calendar-clock"]' },
         ],
         pregunta: { p: 'Tu libre dice «Hasta fin de mes». ¿Lo puedes cambiar?', ops: ['No, es fijo', 'Sí, a los próximos 15 días', 'Solo el primer día'], bien: 1, si: '¡Así es! Lo cambias cuando quieras.', casi: 'Casi: lo cambias cuando quieras, desde tu número o desde tu cuenta.', repaso: 0 },
     };
@@ -622,7 +634,7 @@
 
     const VERSIONES = {
         fijo: { id: 'fijo', emoji: '💼', etiqueta: 'Me pagan en fecha fija', sub: 'Quincena, mes o semana', corto: 'fecha fija', persona: 'ana', caps: [ESENCIAL_FIJO, PROXIMA, AHORROS_FIJO, TARJETAS_FIJO, EXTRAS, VOLVER_FIJO] },
-        variable: { id: 'variable', emoji: '🏪', etiqueta: 'Me entra cuando vendo o trabajo', sub: 'Varía', corto: 'ingresos que varían', persona: 'rosa', caps: [ESENCIAL_VAR, HORIZONTE, PROXIMO_MES, AHORROS_VAR, TARJETAS_VAR, VOLVER_VAR] },
+        variable: { id: 'variable', emoji: '🏪', etiqueta: 'Lo recibo cuando vendo o trabajo', sub: 'Varía', corto: 'ingresos que varían', persona: 'rosa', caps: [ESENCIAL_VAR, HORIZONTE, PROXIMO_MES, AHORROS_VAR, TARJETAS_VAR, VOLVER_VAR] },
     };
     for (const v of Object.values(VERSIONES)) for (const c of v.caps) c.version = v.id;
     const capDe = (version, id) => (VERSIONES[version] || VERSIONES.fijo).caps.find((c) => c.id === id) || null;
@@ -681,7 +693,7 @@
         const a = { libre: 40000, tienes: 131500, efectivo: 1900, quedan: 54500, apartado: 90000, porDia: 4400, hasta: '2026-10-30' };
         const d = { libre: 39400, tienes: 130000, efectivo: 1500, quedan: 59500, apartado: 95000, porDia: 4300, hasta: '2026-11-05' };
         T.cuadre = T.cuadre || { cree: 1900, di: 1500 };
-        const out = [v.etiqueta, v.sub, TEXTO_ELEGIR, TEXTO_OSCURO, '¿Cómo te entra el dinero?', '¿Sigues donde te quedaste?'];
+        const out = [v.etiqueta, v.sub, TEXTO_ELEGIR, TEXTO_OSCURO, '¿Cómo recibes tu dinero?', '¿Sigues donde te quedaste?'];
         // V2-76: los ejemplos se calculan con los datos de cada capítulo, como en la pantalla (solo con los ejemplos;
         // al terminar, lo que estaba cargado vuelve como estaba).
         const antes = P.modo !== 'uso' && P.st ? structuredClone(P.st) : null;
@@ -841,7 +853,7 @@
             const estado = e.hecho ? `${icon('circle-check', 'ico-xs')}Ya hiciste «Lo esencial»` : e.paso > 0 ? `Ibas en el paso ${Math.min(e.paso, esencial.pasos.length) + 1} de ${esencial.pasos.length}` : '';
             return `<button type="button" class="opcion-g elegir-op tour-version" data-a="tourVersion" data-v="${v.id}" data-fk="tour-version-${v.id}">${P.caja(v.emoji)}<span class="opcion-g-txt"><span class="opcion-g-t">${esc(v.etiqueta)}</span><span class="fila-s">${esc(v.sub)}</span>${estado ? `<span class="fila-s tour-version-e">${estado}</span>` : ''}</span>${icon('chevron-right', 'ico-xs')}</button>`;
         };
-        capa.innerHTML = `<div class="tour-dim tour-dim--todo" aria-hidden="true"></div><section class="tour-card tour-card--centro" role="dialog" aria-modal="true" aria-labelledby="tour-t" aria-describedby="tour-x"><p class="paso">Aprender a usarla</p><h2 class="tour-t" id="tour-t" tabindex="-1">¿Cómo te entra el dinero?</h2><p class="txt" id="tour-x">${esc(TEXTO_ELEGIR)}</p><div class="opciones-grandes">${op(VERSIONES.fijo)}${op(VERSIONES.variable)}</div><div class="tour-acc">${enlace('Ahora no', 'tourCerrar', 'tour-saltar')}</div></section>`;
+        capa.innerHTML = `<div class="tour-dim tour-dim--todo" aria-hidden="true"></div><section class="tour-card tour-card--centro" role="dialog" aria-modal="true" aria-labelledby="tour-t" aria-describedby="tour-x"><p class="paso">Aprender a usarla</p><h2 class="tour-t" id="tour-t" tabindex="-1">¿Cómo recibes tu dinero?</h2><p class="txt" id="tour-x">${esc(TEXTO_ELEGIR)}</p><div class="opciones-grandes">${op(VERSIONES.fijo)}${op(VERSIONES.variable)}</div><div class="tour-acc">${enlace('Ahora no', 'tourCerrar', 'tour-saltar')}</div></section>`;
     }
 
     function pintarFase(capa) {
@@ -898,7 +910,7 @@
             const [titulo, texto] = finTextos(cap);
             const usar = T.volverAUso ? btn(`${icon('smartphone', 'ico-s')}Volver a mis datos`, 'tourFin', { prim: true, v: 'uso', fk: 'tour-volver-uso', cls: 'btn--48 btn--full' }) : btn(`${icon('smartphone', 'ico-s')}Empezar con mis datos`, 'tourFin', { prim: cap.id === 'esencial', v: 'uso', fk: 'tour-usar', cls: 'btn--48 btn--full' });
             const mas = btn(`${icon('book-open', 'ico-s')}Aprender más`, 'tourFin', { prim: cap.id !== 'esencial' && !T.volverAUso, v: 'mas', fk: 'tour-mas', cls: 'btn--48 btn--full' });
-            return pintarTarjeta(capa, { cab: `${barra(1, 1)}${cabecera(esc(cap.titulo))}`, titulo: esc(titulo), cuerpo: `<p class="txt tour-para">${esc(texto)}</p>`, acciones: `<div class="pila">${cap.id === 'esencial' || T.volverAUso ? usar + mas : mas + usar}</div>${enlace('Seguir mirando los ejemplos', 'tourFin', 'tour-mirar', 'mirar')}` });
+            return pintarTarjeta(capa, { cab: `${barra(1, 1)}${cabecera(esc(cap.titulo))}`, titulo: esc(titulo), cuerpo: `<p class="txt tour-para">${esc(texto)}</p>`, acciones: `<div class="pila">${cap.id === 'esencial' || T.volverAUso ? usar + mas : mas + usar}</div>` });
         }
     }
     function finTextos(cap) {

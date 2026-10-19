@@ -87,11 +87,14 @@ async function primerDia({ nombre, ingresos, efectivo, banco, credito, pagos }) 
     }
     await escribir('#ob-efectivo', efectivo);
     await clic('[data-fk="ob-sig"]');
+    // v2.6.2 (V2-68): primero las deudas (aquí, ninguna) y después las tarjetas de crédito, cada una en su paso.
+    await clic('[data-fk="ob-sig"]');
     if (credito) {
-        await clic('[data-fk="ob-m-credito"]');
-        await clic(`[data-fk="ob-credito-banco-${credito.banco}"]`);
-        await escribir('#ob-credito-corte', credito.corte);
-        await escribir('#ob-credito-pago', credito.pago);
+        await clic('[data-fk="ob-tn"]');
+        await clic(`[data-fk="ob-t-banco-${credito.banco}"]`);
+        await escribir('#ob-t-corte', credito.corte);
+        await escribir('#ob-t-pago', credito.pago);
+        await clic('[data-fk="ob-t-guardar"]');
     }
     await clic('[data-fk="ob-sig"]');
     for (const p of pagos) {
@@ -132,7 +135,7 @@ try {
         check('aviso entrenamiento', await texto('#aviso-proto'), contiene('Modo entrenamiento · datos de ejemplo'));
         await foto('entrada-elegir');
         await clic('[data-fk="elegir-aprender"]');
-        // v2.4.1: primero «¿Cómo te entra el dinero?» (aquí, la versión de fecha fija).
+        // v2.4.1: primero «¿Cómo recibes tu dinero?» (aquí, la versión de fecha fija).
         await esperar(300);
         await foto('entrada-version');
         await clic('[data-fk="tour-version-fijo"]');

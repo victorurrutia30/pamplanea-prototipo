@@ -110,6 +110,7 @@ try {
     await clic('[data-fk="ob-sig"]');
     await clic('[data-fk="ob-sig"]');
     await clic('[data-fk="ob-sig"]');
+    await clic('[data-fk="ob-sig"]'); // v2.6.2 (V2-68): un paso más (deudas y tarjetas por separado)
     await clic('[data-fk="pn-listo"]');
     check('Hoy: un consejo la primera vez', await texto('.tip p'), 'Tu número dice cuánto puedes gastar hasta tu quincena. Tócalo para ver de dónde sale.');
     await foto('tip-hoy');
@@ -137,7 +138,8 @@ try {
     await esperar(300);
     const lista = await ev('[...document.querySelectorAll(".ay-caso--ej")].map((e) => [e.dataset.v, e.querySelector(".nivel").textContent])');
     // v2.4.1: 18 ejercicios; sin versión elegida, primero los de fecha fija (y los de todos), luego los de ingresos que varían.
-    check('18 ejercicios, de fácil a difícil, primero los de tu versión', lista, [['C05', 'Fácil'], ['C11', 'Fácil'], ['C23', 'Fácil'], ['C19', 'Fácil'], ['C26', 'Media'], ['C01', 'Media'], ['C33', 'Media'], ['C20', 'Media'], ['P-AGUINALDO', 'Media'], ['P-ADELANTO', 'Difícil'], ['C16', 'Difícil'], ['C31', 'Difícil'], ['C30', 'Difícil'], ['P-VENTA', 'Fácil'], ['P-HORIZONTE', 'Fácil'], ['P-REMESA', 'Fácil'], ['P-RESERVAR', 'Media'], ['P-SEMANA', 'Difícil']]);
+    // v2.6.2 (V2-69 #37): sin los dos ejercicios de Carlos (C33 y C20): 16.
+    check('16 ejercicios, de fácil a difícil, primero los de tu versión', lista, [['C05', 'Fácil'], ['C11', 'Fácil'], ['C23', 'Fácil'], ['C19', 'Fácil'], ['C26', 'Media'], ['C01', 'Media'], ['P-AGUINALDO', 'Media'], ['P-ADELANTO', 'Difícil'], ['C16', 'Difícil'], ['C31', 'Difícil'], ['C30', 'Difícil'], ['P-VENTA', 'Fácil'], ['P-HORIZONTE', 'Fácil'], ['P-REMESA', 'Fácil'], ['P-RESERVAR', 'Media'], ['P-SEMANA', 'Difícil']]);
     await foto('practicar');
     // Pagar con el aguinaldo.
     await clic('[data-fk="pr-P-AGUINALDO"]');
@@ -166,7 +168,8 @@ try {
     check('su próxima quincena: con el descuento', await texto('.proy'), contiene('te descuentan $200.00 del adelanto'));
     await foto('practicar-adelanto');
     // La tarjeta del primer día está en «Primer día» (C01).
-    check('«Primer día» enseña la tarjeta', await ev('window.CASOS.find((c) => c.id === "C01").pasos.some((p) => p.t.includes("«Tarjeta»"))'), true);
+    // v2.6.2 (V2-68): las tarjetas de crédito tienen su propio paso en el Primer día.
+    check('«Primer día» enseña la tarjeta', await ev('window.CASOS.find((c) => c.id === "C01").pasos.some((p) => p.t.includes("tarjetas de crédito") && p.t.includes("lo que pagas normalmente"))'), true);
 
     // 6. La accesibilidad del entrenamiento (44 px, reducir movimiento) se prueba en v25.mjs.
 } catch (e) {

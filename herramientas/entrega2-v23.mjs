@@ -72,28 +72,29 @@ try {
     await escribir('#ob-efectivo', '40');
     await foto('dos-bancos-billetera');
     await clic('[data-fk="ob-sig"]');
-    // Dos tarjetas de crédito y transferencias.
-    check('débito por banco', await texto('.ob-ops'), contiene('Tarjeta de débito Agrícola', 'Tarjeta de débito Cuscatlán', 'Tigo Money'));
-    await clic('[data-fk="ob-m-transferencia"]');
-    await clic('[data-fk="ob-m-credito"]');
-    await clic('[data-fk="ob-credito-banco-BAC"]');
-    await escribir('#ob-credito-corte', '15');
-    await escribir('#ob-credito-pago', '5');
-    await clic('[data-fk="ob-credito-mas"]');
-    await clic('[data-fk="ob-credito1-banco-Cuscatlán"]');
-    await escribir('#ob-credito1-corte', '20');
-    await escribir('#ob-credito1-pago', '10');
+    // v2.6.2 (V2-68): primero TODAS las deudas (dos préstamos), luego las tarjetas (dos con corte y la que todavía no
+    // tiene corte, V2-54), luego los gastos fijos (una suscripción, que se cobra en la primera tarjeta, V2-47).
+    for (const [nombre, cuota, dia] of [['Préstamo Liss', '156', '30'], ['Préstamo', '79', '30']]) {
+        await clic('[data-fk="ob-dn-prestamo"]');
+        await escribir('#ob-d-nombre', nombre);
+        await escribir('#ob-d-monto', cuota);
+        await clic(`[data-fk="ob-d-dia-${dia}"]`);
+        await clic('[data-fk="ob-d-guardar"]');
+    }
+    check('«Agregar otra deuda»', await texto('#ob-l-dn'), 'Agregar otra deuda');
+    await foto('deudas');
+    await clic('[data-fk="ob-sig"]');
+    for (const [banco, corte, pago, nombre, usual] of [['BAC', '15', '5'], ['Cuscatlán', '20', '10'], ['Otro', '', '10', 'Tarjeta Cuscatlán', '50']]) {
+        await clic('[data-fk="ob-tn"]');
+        await clic(`[data-fk="ob-t-banco-${banco}"]`);
+        if (nombre) await escribir('#ob-t-nombre', nombre);
+        if (corte) await escribir('#ob-t-corte', corte);
+        await escribir('#ob-t-pago', pago);
+        if (usual) await escribir('#ob-t-usual', usual);
+        await clic('[data-fk="ob-t-guardar"]');
+    }
     await foto('dos-tarjetas');
     await clic('[data-fk="ob-sig"]');
-    // V2-46: dos préstamos y una tarjeta (cuota); V2-47: una suscripción.
-    for (const [deuda, nombre, cuota, dia] of [['prestamo', 'Préstamo Liss', '156', '30'], ['prestamo', 'Préstamo', '79', '30'], ['tarjeta', 'Tarjeta Cuscatlán', '50', '10']]) {
-        await clic(`[data-fk="ob-d-${deuda}"]`);
-        await escribir('#ob-p-nombre', nombre);
-        await escribir('#ob-p-monto', cuota);
-        await clic(`[data-fk="ob-p-dia-${dia}"]`);
-        await clic('[data-fk="ob-p-agregar"]');
-    }
-    check('«+ Otro préstamo»', await texto('[data-fk="ob-d-prestamo"]'), contiene('Otro préstamo', '2'));
     await clic('[data-fk="ob-s-nueva"]');
     await clic('[data-fk="ob-p-servicio-netflix"]');
     await escribir('#ob-p-monto', '9.99');
@@ -106,8 +107,9 @@ try {
     const st = await ev('({ lugares: P.st.lugares.map((l) => [l.id, l.nombre, window.MOTOR.saldoLugar(P.st, l.id)]), medios: P.st.medios.map((m) => m.nombre), tarjetas: P.st.tarjetas.map((t) => [t.nombre, t.corte, t.pagoDia]), pagos: P.st.pagos.map((p) => [p.nombre, p.monto, p.tipoDeuda || p.tipoPago || "", p.medio]) })');
     check('lugares', st.lugares, [['efectivo', 'Efectivo', 4000], ['banco', 'Banco Agrícola', 30000], ['banco2', 'Banco Cuscatlán', 15000], ['billetera1', 'Tigo Money', 2000]]);
     // v2.3.1 (V2-54): la «Tarjeta» de los pagos fijos es una tarjeta de crédito de verdad (sin corte todavía), no una cuota.
-    check('medios', st.medios, ['Efectivo', 'Débito Agrícola', 'Transferencia Agrícola', 'Débito Cuscatlán', 'Transferencia Cuscatlán', 'Tigo Money', 'Crédito BAC', 'Crédito Cuscatlán', 'Tarjeta Cuscatlán']);
-    check('tres tarjetas (la del paso 4 sin corte)', st.tarjetas, [['Crédito BAC', 15, 5], ['Crédito Cuscatlán', 20, 10], ['Tarjeta Cuscatlán', null, 10]]);
+    // v2.6.2: el Primer día ya no pregunta por transferencias (se agregan en Cuentas si hacen falta).
+    check('medios', st.medios, ['Efectivo', 'Débito Agrícola', 'Débito Cuscatlán', 'Tigo Money', 'Crédito BAC', 'Crédito Cuscatlán', 'Tarjeta Cuscatlán']);
+    check('tres tarjetas (la tercera sin corte)', st.tarjetas, [['Crédito BAC', 15, 5], ['Crédito Cuscatlán', 20, 10], ['Tarjeta Cuscatlán', null, 10]]);
     check('pagos', st.pagos, [['Préstamo Liss', 15600, 'prestamo', 'debito'], ['Préstamo', 7900, 'prestamo', 'debito'], ['Netflix', 999, 'suscripcion', 'credito']]);
 
     // V2-49: Mi dinero con tres puertas.
@@ -137,7 +139,7 @@ try {
     check('dos vistas', await ev('[...document.querySelectorAll(".pagos-modo .app-tab")].map((x) => x.textContent)'), ['Calendario', 'Mis pagos e ingresos']);
     await clic('[data-fk="modo-lista"]');
     await foto('mis-pagos');
-    check('lista completa', await texto('#pantalla'), contiene('Lo que te pagan', 'Quincena', 'Cuotas y préstamos', 'Préstamo Liss', 'Suscripciones', 'Netflix', 'Pagas ~$9.99 al mes en suscripciones', 'Con la quincena de antes de que venza'));
+    check('lista completa', await texto('#pantalla'), contiene('Tus ingresos', 'Quincena', 'Cuotas y préstamos', 'Préstamo Liss', 'Suscripciones', 'Netflix', 'Pagas ~$9.99 al mes en suscripciones', 'Con la quincena de antes de que venza'));
     await clic('[data-fk="mp-p6"]').catch(() => null);
 
     // V2-47: «+ Pago» → Suscripción, con tarjeta de crédito por defecto; Mes lo suma.

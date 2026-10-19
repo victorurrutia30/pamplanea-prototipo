@@ -13,11 +13,13 @@ window.CASOS = [
             { t: 'Toca «Empezar» (el nombre es opcional).', clave: 'onboarding:paso1' },
             { t: '¿Cómo te pagan?: elige «Cada quincena», escribe ~600 y «En el banco».', clave: 'onboarding:ingreso:quincena' },
             { t: 'Siguiente. ¿Cuánto tienes?: elige un banco, escribe cuánto hay y algo de efectivo (este paso no se puede saltar).', clave: 'onboarding:paso3' },
-            { t: '¿Con qué pagas?: prueba «Tarjeta de crédito» o sáltalo.', clave: 'onboarding:paso4' },
-            { t: 'Tus pagos fijos: toca «Luz», pon 35 y el día 12. Si tienes tarjeta, toca «Tarjeta» y pon lo que pagas normalmente (su corte te lo pide después).', clave: 'onboarding:pago:luz' },
+            // v2.6.2 (V2-68): primero todas las deudas, luego las tarjetas, luego los gastos fijos.
+            { t: 'Tus deudas: agrega un préstamo con su cuota y su día (y otra deuda si quieres), o toca «No tengo deudas».', clave: 'onboarding:paso4' },
+            { t: 'Tus tarjetas de crédito: agrega una (el banco, su día de pago y lo que pagas normalmente) o toca «No tengo tarjeta».', clave: 'onboarding:paso5' },
+            { t: 'Tus gastos fijos: toca «Luz», pon 35 y el día 12. Si se cobra sola en tu cuenta o tarjeta, elígela.', clave: 'onboarding:pago:luz' },
             { t: '«Ver mi número» y luego «Ir a Hoy».', clave: 'onboarding:hoy' },
         ],
-        esperado: 'Aparece «Tu primer número»: libre hasta tu quincena del 30, ya sin la luz. En Hoy se ve el mismo número y la luz en Próximos pagos.',
+        esperado: 'Aparece «Tu primer número» con su frase («Es lo que puedes gastar hasta tu quincena del 30 sin tocar tus pagos, tus deudas ni tus tarjetas»), ya sin la luz ni la cuota. En Hoy se ve el mismo número y la luz en Próximos pagos.',
         observar: '¿Entiende qué le preguntamos y para qué? ¿Se siente largo? ¿Entiende que «cuánto tienes» es el punto de partida y no tiene que ser exacto?',
     },
     {
@@ -30,7 +32,7 @@ window.CASOS = [
             { t: 'Revisa lo que entendió (Gasto · $6.00 · Pupusas · Efectivo · Hoy) y toca Guardar.', clave: 'guardado:gasto:pupusas' },
             { t: 'Mira Hoy: el libre bajó $6.00 y «Pupusas» aparece en Últimos anotados. Prueba «Deshacer».' },
         ],
-        esperado: 'El libre pasa de $270.60 a $264.60 al instante y sale «✓ Guardado · Deshacer». El número dice «Incluye tarjeta $245.00, vence el 5 de noviembre» y, debajo, «Próxima quincena (30): entra ~$600 · pagos ~$55 · te quedarían ~$545» (V2-35). Ya no hay reserva automática (V2-34).',
+        esperado: 'El libre pasa de $270.60 a $264.60 al instante y sale «✓ Guardado · Deshacer». El número dice «Incluye tarjeta $245.00, vence el 5 de noviembre» y, debajo, «Próxima quincena (30): ingreso ~$600 · pagos ~$55 · te quedarían ~$545» (V2-35). Ya no hay reserva automática (V2-34).',
         observar: '¿Confía en lo que entendió sin revisarlo todo? ¿Sabe que puede tocar un dato para cambiarlo? ¿Nota que el número cambió?',
     },
     {
@@ -66,15 +68,15 @@ window.CASOS = [
     {
         id: 'C19', titulo: 'Llega la quincena', persona: 'ana', variante: 'quincena',
         para: 'El día de pago: confirmar, ver lo ya contado y repartir.',
-        tarea: 'Hoy es día de pago y te cayeron $600 en el banco. Confírmalo y decide si quieres apartar algo.',
+        tarea: 'Hoy es día de pago y te llegaron $600 al banco. Confírmalo y decide si quieres apartar algo.',
         pasos: [
-            { t: 'Hoy es 30 de octubre: el número dice «Libre por ahora». Toca «¿Ya te cayó?» (o la notificación).', clave: 'hoja:ingresoLlego' },
+            { t: 'Hoy es 30 de octubre: el número dice «Libre por ahora». Toca «¿Ya llegó?» (o la notificación).', clave: 'hoja:ingresoLlego' },
             { t: 'Revisa el monto (~$600 en Banco Agrícola) y toca Siguiente.', clave: 'ingreso:llego:quincena' },
             { t: 'En «Reparte tu quincena» mira «Ya está contado».', clave: 'pantalla:reparte:quincena' },
             { t: 'Acepta o no la sugerencia de apartar.', clave: 'reparte:apartar' },
             { t: 'Mira «3. ¿Cómo quedas la próxima?» y «4. ¿Cuadramos?» (opcional); toca Listo y mira Hoy.', clave: 'reparte:fin' },
         ],
-        esperado: 'Antes: «Libre por ahora» $270.60 con «¿Ya te cayó?» y una sola tarjeta (aunque lleva 10 días sin anotar, V2-31 #10). Después: $815.60 «Hasta tu quincena del 15»; «Ya está contado» trae el colegio y la luz de noviembre (se pagan con esta quincena) y la tarjeta. Sugiere $60.00 a Emergencias (10 %), nunca más que tu libre; con eso, $755.60. «3. ¿Cómo quedas la próxima?» muestra la quincena del 15 y ofrece pasar algo a la próxima; luego «4. ¿Cuadramos?».',
+        esperado: 'Antes: «Libre por ahora» $270.60 con «¿Ya llegó?» y una sola tarjeta (aunque lleva 10 días sin anotar, V2-31 #10). Después: $815.60 «Hasta tu quincena del 15»; «Ya está contado» trae el colegio y la luz de noviembre (se pagan con esta quincena) y la tarjeta. Sugiere $60.00 a Emergencias (10 %), nunca más que tu libre; con eso, $755.60. «3. ¿Cómo quedas la próxima?» muestra la quincena del 15 y ofrece pasar algo a la próxima; luego «4. ¿Cuadramos?».',
         observar: '¿Entiende que los pagos ya estaban restados? ¿Siente la sugerencia como opcional? ¿Le gustaría hacer esto cada quincena?',
     },
     {
@@ -83,13 +85,13 @@ window.CASOS = [
         tarea: 'Eres Carlos: te pagan cada viernes y el alquiler de $150 se paga el 1. Averigua cuánto puedes gastar hasta el viernes y qué te sugiere la app para el alquiler. Decide si reservas algo y de qué dinero.',
         pasos: [
             { t: 'Mira Hoy: «Hasta el viernes · en 2 días», libre $125.00 y «Próximo pago (viernes 23)».' },
-            { t: 'Lee la sugerencia (ámbar): el viernes 30 te caen ~$90 y ese periodo pagas ~$160; te faltarían ~$70.' },
+            { t: 'Lee la sugerencia (ámbar): el viernes 30 recibes ~$90 y ese periodo pagas ~$160; te faltarían ~$70.' },
             { t: 'Toca «Sí, $70.00», elige de cuál dinero (lo que tienes ahora o tu pago del viernes 23) y toca «Reservar».', clave: 'guardado:reservar' },
             { t: 'Abre el alquiler (en Pagos o en Próximos pagos) y mira «Lo pagas con».', clave: 'pantalla:pago:alquiler' },
             { t: 'Toca «Simular: llega el viernes 23» y confirma el pago de la semana.', clave: 'ingreso:llego:semana' },
             { t: 'Toca Listo y mira tu número.', clave: 'reparte:fin' },
         ],
-        esperado: 'Antes: libre $125.00 (~$62 por día): nada se reserva solo. La sugerencia es ámbar y no hace nada hasta que eliges. Si reservas $70.00 de lo que tienes ahora, el libre baja a $55.00 y el alquiler dice «Reservado de lo que tienes ahora $70.00 · Con tu pago del viernes 30 $80.00». Si lo reservas de tu pago del viernes 23, hoy sigues en $125.00 y ese viernes queda «entra ~$90 · pagos ~$80». Después del viernes (con lo reservado de ahora): $135.00 hasta el viernes 30.',
+        esperado: 'Antes: libre $125.00 (~$62 por día): nada se reserva solo. La sugerencia es ámbar y no hace nada hasta que eliges. Si reservas $70.00 de lo que tienes ahora, el libre baja a $55.00 y el alquiler dice «Reservado de lo que tienes ahora $70.00 · Con tu pago del viernes 30 $80.00». Si lo reservas de tu pago del viernes 23, hoy sigues en $125.00 y ese viernes queda «ingreso ~$90 · pagos ~$80». Después del viernes (con lo reservado de ahora): $135.00 hasta el viernes 30.',
         observar: '¿Entiende por qué la app sugiere reservar? ¿Elige de lo que tiene ahora o del próximo viernes? ¿Le da tranquilidad decidir él, o extraña que se guarde solo?',
         sims: [{ id: 'viernes', t: 'Simular: llega el viernes 23' }],
     },
@@ -113,11 +115,11 @@ window.CASOS = [
         pasos: [
             { t: 'Hoy es 6 de noviembre y no has anotado desde el 20 de octubre: «Libre por ahora» y la tarjeta «Pongámonos al día».' },
             { t: 'Toca «Empezar».', clave: 'pantalla:aldia' },
-            { t: 'Ingresos: di si te cayó la quincena del 30.', clave: 'aldia:paso2' },
+            { t: 'Ingresos: di si te llegó la quincena del 30.', clave: 'aldia:paso2' },
             { t: 'Pagos: marca Pagado, Aún no o Saltar (o «Marcar todos»).', clave: 'aldia:paso3' },
             { t: 'Cuadra Efectivo y Banco con lo que tienes de verdad. Toca Listo.', clave: 'aldia:fin' },
         ],
-        esperado: 'Al entrar: «Tu quincena del 30 · falta confirmarla», «Libre por ahora» $270.60 (lo que se paga con la quincena del 30 no se descuenta hasta confirmarla) y «¿Ya te cayó tu quincena del 30?»; en el paso de ingresos: «Sí, me cayó», «Todavía no» o «No me va a caer». Al terminar: «¡Listo, estás al día!» con el número nuevo; lo que no cuadró queda «sin detalle», sin pedir explicaciones.',
+        esperado: 'Al entrar: «Tu quincena del 30 · falta confirmarla», «Libre por ahora» $270.60 (lo que se paga con la quincena del 30 no se descuenta hasta confirmarla) y «¿Ya llegó tu quincena del 30?»; en el paso de ingresos: «Sí, ya llegó», «Todavía no» o «No me va a llegar». Al terminar: «¡Listo, estás al día!» con el número nuevo; lo que no cuadró queda «sin detalle», sin pedir explicaciones.',
         observar: '¿Se siente regañado en algún momento? ¿Entiende «sin detalle»? ¿Cuánto tarda?',
     },
     {
@@ -220,7 +222,7 @@ window.CASOS_PRACTICA = [
             { t: 'Elige «Tu quincena del 30», deja $200 y toca «Guardar».', clave: 'guardado:adelanto' },
             { t: 'Mira en Hoy tu próxima quincena: «te descuentan $200 del adelanto».' },
         ],
-        esperado: 'Hoy: «Próxima quincena (30) · entra ~$400 … te descuentan $200.00 del adelanto». Al confirmar esa quincena, el monto sugerido ya viene con $200 menos.',
+        esperado: 'Hoy: «Próxima quincena (30) · ingreso ~$400 … te descuentan $200.00 del adelanto». Al confirmar esa quincena, el monto sugerido ya viene con $200 menos.',
         observar: '¿Entiende que no se cuenta dos veces? ¿Le queda claro de dónde sale el descuento?',
     },
     // v2.4.1: ingresos que varían (Rosa vende pupusas y recibe una remesa sin fecha fija).
@@ -289,7 +291,7 @@ window.CASOS_PRACTICA = [
     },
 ];
 /**
- * v2.4.1: «Practicar» = 18 ejercicios, de fácil a difícil. `version`: a qué versión aplica (fijo, variable o
+ * v2.4.1: «Practicar» = 18 ejercicios, de fácil a difícil (v2.6.2, V2-69 #37: 16, sin los dos de Carlos). `version`: a qué versión aplica (fijo, variable o
  * ambos); la lista muestra primero los de la versión que la persona eligió. v2.5: `capitulo`, el capítulo del
  * entrenamiento que conviene hacer antes («Lo esencial», «Ahorros»…; el mismo id en las dos versiones). v2.6.1 (V2-76):
  * `montos`, lo que el ejercicio cuenta que pasó o pide escribir (no está en la pantalla antes de hacerlo).
@@ -304,8 +306,6 @@ window.PRACTICA = [
     { id: 'C19', nivel: 'Fácil', version: 'fijo', capitulo: 'proxima' },
     { id: 'C26', nivel: 'Media', version: 'fijo', capitulo: 'volver' },
     { id: 'C01', nivel: 'Media', version: 'fijo', capitulo: 'esencial', montos: [600] },
-    { id: 'C33', nivel: 'Media', version: 'fijo', capitulo: 'proxima' },
-    { id: 'C20', nivel: 'Media', version: 'fijo', capitulo: 'proxima' },
     { id: 'P-RESERVAR', nivel: 'Media', version: 'variable', capitulo: 'esencial', montos: [40] },
     { id: 'P-AGUINALDO', nivel: 'Media', version: 'fijo', capitulo: 'extras' },
     { id: 'P-ADELANTO', nivel: 'Difícil', version: 'fijo', capitulo: 'extras' },
@@ -327,7 +327,7 @@ window.SETS = {
         { id: 'primer-dia', titulo: 'Primer día', caso: 'C01', tarea: 'Imagina que acabas de bajar esta app. Configúrala con estos datos inventados: te pagan unos $600 cada quincena en el banco, tienes $1,000 en el banco y $40 en efectivo. Lo que no sepas, sáltalo. Termina cuando veas cuánto te queda libre.', logrado: (st) => st.configurado === true },
         { id: 'pupusas', titulo: 'Anotar un gasto', caso: 'C05', tarea: 'Hoy compraste pupusas por $6 y pagaste en efectivo. Anótalo en la app.', logrado: (st) => st.registros.some((r) => r.nuevo && r.tipo === 'gasto' && r.monto === 600) },
         { id: 'colegio', titulo: 'Recordatorio del colegio', caso: 'C11', tarea: 'Pídele a la app que te recuerde pagar el colegio: son $20 el día 5 de cada mes. Si tu teclado tiene micrófono, puedes dictarlo.', logrado: (st, P, M) => st.pagos.some((p) => p.nuevo && p.activo !== false && M.normalizar(p.nombre).includes('colegio') && p.monto === 2000 && p.dia === 5 && p.frecuencia === 'mensual') },
-        { id: 'quincena', titulo: 'Llegó la quincena', caso: 'C19', tarea: 'Hoy es día de pago y te cayeron $600 en el banco. Díselo a la app y decide si quieres guardar algo para tus metas.', logrado: (st, P) => !!(st.ingresos.find((i) => i.id === 'quincena') || { llegadas: {} }).llegadas['2026-10-30'] && !P.ui.stack.length },
+        { id: 'quincena', titulo: 'Llegó la quincena', caso: 'C19', tarea: 'Hoy es día de pago y te llegaron $600 al banco. Díselo a la app y decide si quieres guardar algo para tus metas.', logrado: (st, P) => !!(st.ingresos.find((i) => i.id === 'quincena') || { llegadas: {} }).llegadas['2026-10-30'] && !P.ui.stack.length },
         { id: 'laptop', titulo: 'Usar lo que juntaste', caso: 'C23', inicio: 'hoy', tarea: 'Ya juntaste el dinero para la laptop y hoy la compraste: $600 con tu tarjeta de débito. Anótalo en la app.', logrado: (st) => st.logros.some((l) => l.nombre === 'Laptop') || st.registros.some((r) => r.apartado === 'laptop') },
         { id: 'regalo', titulo: 'El regalo de mamá', caso: 'C30', tarea: 'Ya compraste el regalo de tu mamá: $20 en efectivo. Anótalo. Si después ves algo raro en tus números, arréglalo.', logrado: (st) => !st.apartados.some((a) => a.id === 'regalo') },
         { id: 'comprension', titulo: 'Qué entendiste', persona: 'ana', comprension: true, tarea: 'Mira la pantalla de Hoy sin tocar nada. Cuando quieras, toca «Responder».' },
@@ -337,7 +337,7 @@ window.SETS = {
         { id: 'estado-cuenta', titulo: 'Estado de cuenta', caso: 'C16', tarea: 'Te llegó el estado de cuenta de tu tarjeta: dice pago de contado $245 y pago mínimo $25. Dile a la app cuánto te salió y cuánto vas a pagar.', logrado: (st) => st.tarjetas.some((t) => t.estados.at(-1).corte === '2026-10-15') },
         { id: 'laptop-credito', titulo: 'Usar lo que juntaste, con tarjeta', caso: 'C32', inicio: 'hoy', tarea: 'Ya juntaste el dinero para la laptop y hoy la compraste: $600, pero la pagaste con tu tarjeta de crédito BAC. Anótalo en la app.', logrado: (st) => st.logros.some((l) => l.nombre === 'Laptop') || st.registros.some((r) => r.apartado === 'laptop') },
         { id: 'tarjeta-prestamo', titulo: 'Tarjeta y cuotas nuevas', caso: 'C31', inicio: 'hoy', tarea: 'Sacaste una tarjeta nueva, «Crédito Cuscatlán»: corta el día 20 y se paga el 10. También compraste en «Almacén La Esquina» en cuotas de $25 cada día 28. Agrega las dos a la app.', logrado: (st) => st.tarjetas.length >= 2 && st.pagos.some((p) => p.nuevo && p.tipoDeuda) },
-        { id: 'dos-semanas', titulo: 'Volver después de dos semanas', caso: 'C26', tarea: 'Volviste a la app después de dos semanas sin usarla. Ya te cayó tu quincena del 30 y pagaste lo que vencía. Ponla al día.', logrado: (st, P) => !!(st.ingresos.find((i) => i.id === 'quincena') || { llegadas: {} }).llegadas['2026-10-30'] && st.registros.some((r) => r.tipo === 'cuadre' && r.fecha === st.hoy) && !P.ui.stack.length },
+        { id: 'dos-semanas', titulo: 'Volver después de dos semanas', caso: 'C26', tarea: 'Volviste a la app después de dos semanas sin usarla. Ya te llegó tu quincena del 30 y pagaste lo que vencía. Ponla al día.', logrado: (st, P) => !!(st.ingresos.find((i) => i.id === 'quincena') || { llegadas: {} }).llegadas['2026-10-30'] && st.registros.some((r) => r.tipo === 'cuadre' && r.fecha === st.hoy) && !P.ui.stack.length },
         { id: 'comprension', titulo: 'Qué entendiste', persona: 'ana', comprension: true, tarea: 'Mira la pantalla de Hoy sin tocar nada. Cuando quieras, toca «Responder».' },
     ],
 };

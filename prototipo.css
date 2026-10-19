@@ -3659,3 +3659,50 @@ html.con-hazlo .mask {
         animation: none;
     }
 }
+
+/* ------------------------------------------------------------------ v2.6.2 (V2-73) · ingreso o pago, de un vistazo */
+/* Signo (+ / −), flecha y palabra («Ingreso» / «Pago»); el color de los tokens ayuda, pero nunca es lo único. */
+.mov {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    margin-right: 6px;
+    padding: 0 6px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 20px;
+    white-space: nowrap;
+}
+.mov--ingreso {
+    background: color-mix(in srgb, var(--color-success) 12%, transparent);
+    color: var(--color-success);
+}
+.mov--pago {
+    background: color-mix(in srgb, var(--color-text) 8%, transparent);
+    color: var(--color-text);
+}
+.monto--pago {
+    color: var(--color-text);
+}
+.grupo-cab {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 4px 8px;
+}
+.dia-marcas {
+    display: inline-flex;
+    gap: 6px;
+}
+.dia-marca {
+    font-size: 12px;
+    font-weight: 700;
+}
+.dia-marca--ingreso {
+    color: var(--color-success);
+}
+.dia-marca--pago {
+    color: var(--color-text-muted);
+}

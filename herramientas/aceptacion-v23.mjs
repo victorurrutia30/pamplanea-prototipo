@@ -85,6 +85,7 @@ try {
     await escribir('#ob-efectivo', '120');
     await clic('[data-fk="ob-sig"]');
     await clic('[data-fk="ob-sig"]');
+    await clic('[data-fk="ob-sig"]'); // v2.6.2 (V2-68): deudas y tarjetas en pasos separados
     for (const [id, monto] of [['alquiler', '200'], ['luz', '60'], ['agua', '3'], ['internet', '30']]) {
         await clic(`[data-fk="ob-p-${id}"]`);
         await escribir('#ob-p-monto', monto);
@@ -139,7 +140,7 @@ try {
     check('~$7.90 por día', await texto('.portada-s'), '~$7.90 por día');
     check('sin avisos rojos', await hay('#pantalla .nota--atencion'), false);
     check('sin avisos en el motor', k.avisos, []);
-    check('proyección', await texto('.proy'), contiene('Próxima quincena (29)', 'entra ~$1,163 · pagos ~$713 · te quedarían ~$450', 'incluye ~$566 de tu pareja'));
+    check('proyección', await texto('.proy'), contiene('Próxima quincena (29)', 'ingreso ~$1,163 · pagos ~$713 · te quedarían ~$450', 'incluye ~$566 de tu pareja'));
     check('proyección (números)', k.prox, { clave: '2026-10-29', entra: 116300, pagos: 71300, quedan: 45000, deficit: 0 });
     check('sin llegadas inventadas', await ev('P.st.ingresos.flatMap((i) => Object.keys(i.llegadas))'), []);
     check('inicio = hoy', await ev('P.st.inicio'), '2026-10-17');
@@ -150,7 +151,7 @@ try {
     await clic('[data-fk="proyeccion"]');
     await foto('victor-pagos-proxima');
     check('la proyección lleva a Pagos → Próxima', await ev('[P.ui.tab, P.ui.pagosVista]'), ['pagos', 'proxima']);
-    check('Pagos → Próxima: mismos números', await texto('.per-res'), contiene('Entra ~$1,163 · pagos ~$713 · te quedarían ~$450'));
+    check('Pagos → Próxima: mismos números', await texto('.per-res'), contiene('Ingreso ~$1,163 · pagos ~$713 · te quedarían ~$450'));
     await clic('[data-fk="tab-actual"]');
     check('esta quincena sin llegadas del 14', await texto('.linea'), (x) => !String(x).includes('Llegó'));
     check('«Más adelante» solo el aguinaldo', await ev('(() => { const g = [...document.querySelectorAll(".grupo")].find((x) => x.querySelector(".grupo-t")?.textContent === "Más adelante"); return g ? [...g.querySelectorAll(".fila-t")].map((x) => x.textContent) : []; })()'), ['Aguinaldo']);
@@ -282,7 +283,7 @@ try {
     await abrirApp('caso=C20&tema=' + tema);
     await foto('carlos-hoy');
     check('libre sin reserva automática', await texto('.portada-n'), '$125.00');
-    check('sugerencia (ámbar)', await texto('.aviso-hoy'), contiene('El viernes 30 te caen ~$90', 'el alquiler', 'te faltarían ~$70', '¿Reservas algo de tu pago del viernes 23?'));
+    check('sugerencia (ámbar)', await texto('.aviso-hoy'), contiene('El viernes 30 recibes ~$90', 'el alquiler', 'te faltarían ~$70', '¿Reservas algo de tu pago del viernes 23?'));
     check('ámbar, no rojo', await ev('document.querySelector(".aviso-hoy")?.classList.contains("nota--ambar")'), true);
     await clic('[data-fk="at-sug-si"]');
     await foto('carlos-reservar');

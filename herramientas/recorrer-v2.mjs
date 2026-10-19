@@ -94,6 +94,7 @@ for (const tema of temas) {
         await escribir('#ob-efectivo', '45');
         await clic('[data-fk="ob-sig"]');
         await clic('[data-fk="ob-sig"]');
+        await clic('[data-fk="ob-sig"]'); // v2.6.2 (V2-68): deudas y tarjetas en pasos separados
         await clic('[data-fk="ob-p-luz"]');
         await escribir('#ob-p-monto', '35');
         await clic('[data-fk="ob-p-dia-12"]');
@@ -112,7 +113,7 @@ for (const tema of temas) {
         check('libre antes', await libre(), '$270.60');
         check('incluye tarjeta', await texto('.portada-v'), 'Incluye tarjeta $245.00, vence el 5 de noviembre');
         check('próxima quincena (V2-35)', await texto('.proy'), contiene('Próxima quincena (30)'));
-        check('próxima quincena: números', await texto('.proy'), contiene('entra ~$600 · pagos ~$55 · te quedarían ~$545'));
+        check('próxima quincena: números', await texto('.proy'), contiene('ingreso ~$600 · pagos ~$55 · te quedarían ~$545'));
         check('sin reserva automática', await ev('document.body.textContent.includes("Ya separa")'), false);
         await clic('[data-fk="nav-anotar"]');
         await escribir('#anotar-q', 'pupusas 6');
@@ -185,7 +186,7 @@ for (const tema of temas) {
         await esperar(1100);
         await foto('c19-hoy');
         check('libre por ahora', await texto('.portada-l'), 'Libre por ahora');
-        check('botón ya te cayó', await texto('[data-fk="ing-si"]'), '¿Ya te cayó?');
+        check('botón ya te cayó', await texto('[data-fk="ing-si"]'), '¿Ya llegó?');
         await clic('[data-fk="ing-si"]');
         await clic('[data-fk="ing-ok"]');
         await fotoLarga('c19-reparte');
@@ -200,7 +201,7 @@ for (const tema of temas) {
         await cargar('caso=C20', tema);
         check('libre antes (sin reserva automática)', await libre(), '$125.00');
         check('por día', await texto('.portada-s'), '~$62 por día');
-        check('sugerencia ámbar', await texto('.aviso-hoy'), contiene('El viernes 30 te caen ~$90', 'te faltarían ~$70', '¿Reservas algo de tu pago del viernes 23?'));
+        check('sugerencia ámbar', await texto('.aviso-hoy'), contiene('El viernes 30 recibes ~$90', 'te faltarían ~$70', '¿Reservas algo de tu pago del viernes 23?'));
         await fotoLarga('c20-hoy');
         await clic('[data-fk="portada"]');
         await foto('c20-desglose');
@@ -258,7 +259,7 @@ for (const tema of temas) {
         await esperar(1100);
         await fotoLarga('c26-hoy');
         check('libre por ahora', await texto('.portada-l'), 'Libre por ahora');
-        check('ya te cayó del 30', await texto('[data-fk="ing-si"]'), '¿Ya te cayó tu quincena del 30?');
+        check('ya te cayó del 30', await texto('[data-fk="ing-si"]'), '¿Ya llegó tu quincena del 30?');
         check('horizonte se queda', await texto('.portada-h'), 'Tu quincena del 30 · falta confirmarla');
         await clic('[data-fk="aldia"]');
         await clic('[data-fk="adi-si-2026-10-30"]');
@@ -357,7 +358,7 @@ for (const tema of temas) {
         await clic('[data-fk="nav-midinero"]');
         await clic('[data-fk="md-deudas"]');
         await fotoLarga('c31-midinero');
-        check('deudas', await texto('section[aria-labelledby=md-deudas-lista]'), (x) => x.includes('Crédito Cuscatlán') && x.includes('Almacén La Esquina') && x.includes('Te quedan $500.00 de cupo'));
+        check('deudas', await texto('section[aria-labelledby=md-deudas-lista]'), (x) => x.includes('Crédito Cuscatlán') && x.includes('Almacén La Esquina') && x.includes('Disponible $500.00 de $500.00'));
         check('préstamo en positivo', await texto('section[aria-labelledby=md-deudas-lista]'), contiene('$25.00al mes'));
         return {};
     });
@@ -378,7 +379,7 @@ for (const tema of temas) {
         check('reservado para la tarjeta (ficha)', await ev('P.calc().reservadoTarjetas'), 60000);
         await clic('[data-fk="md-deudas"]');
         check('deuda', await texto('[data-fk="t-bac"] .fila-m'), contiene('$890.00'));
-        check('cupo', await texto('[data-fk="t-bac"]'), contiene('Te quedan $610.00 de cupo'));
+        check('cupo', await texto('[data-fk="t-bac"]'), contiene('Disponible $610.00 de $1,500.00'));
         await clic('[data-fk="nav-midinero"]');
         await clic('[data-fk="md-ahorros"]');
         check('logro', await texto('section[aria-labelledby=md-logros]'), contiene('Usado con Crédito BAC · $600.00 reservados para tu pago del 5 de diciembre'));

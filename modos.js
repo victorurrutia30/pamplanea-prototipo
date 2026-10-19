@@ -130,6 +130,11 @@
             recordarNombres();
         }
         if (P.ui) uso.tab = P.ui.tab;
+        // V2-68: el Primer día a medias se retoma donde ibas.
+        if (P.modo === 'uso' && P.ui) {
+            if (P.ui.ob && P.st && !P.st.configurado) uso.ob = P.ui.ob;
+            else delete uso.ob;
+        }
         uso.tema = P.tema;
         uso.actualizado = new Date().toISOString();
         P.almacen.escribir(CLAVE_USO, uso);
@@ -159,6 +164,10 @@
         P.guardando = true;
         // Cada vez que se abre, empieza en Hoy: ahí están los avisos del día.
         P.cargar(st, { tab: 'hoy' });
+        if (!st.configurado && uso.ob && uso.ob.datos) {
+            P.ui.ob = { ...uso.ob, datos: { ...P.obVacio(), ...uso.ob.datos } };
+            P.render({ nueva: true });
+        }
         if (uso.tema) P.aplicarTema(uso.tema);
         registrarDia();
         pintarAviso();

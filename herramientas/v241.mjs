@@ -78,6 +78,7 @@ async function usoQuincena(fechaIso = '2026-10-18') {
     await clic('[data-fk="ob-sig"]');
     await clic('[data-fk="ob-sig"]');
     await clic('[data-fk="ob-sig"]');
+    await clic('[data-fk="ob-sig"]'); // v2.6.2 (V2-68): un paso más (deudas y tarjetas por separado)
     await clic('[data-fk="pn-listo"]');
     // Los consejos de la primera vez: se dejan vistos (se prueban aparte).
     await ev('["hoy", "pagos", "midinero", "cuentas", "ahorros", "deudas", "mes", "anotar", "pago"].forEach((p) => P.modos.tipVisto(p)); P.render(); true');
@@ -318,7 +319,7 @@ try {
         await esperar(300);
         const listas = await ev('[...document.querySelectorAll("#ay .ay-casos, .ay-casos")].map((ul) => [...ul.querySelectorAll(".ay-caso--ej")].map((e) => [e.dataset.v, [...e.querySelectorAll(".nivel")].map((n) => n.textContent).join("/")]))');
         check('variable: primero los suyos (con su versión marcada)', [await ev('[...document.querySelectorAll("h3.campo-l")].map((h) => h.textContent)'), listas[0]], [['Para ti: ingresos que varían', 'De fecha fija'], [['C05', 'Fácil/Para todos'], ['P-VENTA', 'Fácil/Varía'], ['C11', 'Fácil/Para todos'], ['P-HORIZONTE', 'Fácil/Varía'], ['C23', 'Fácil/Para todos'], ['P-REMESA', 'Fácil/Varía'], ['P-RESERVAR', 'Media/Varía'], ['P-SEMANA', 'Difícil/Varía'], ['C16', 'Difícil/Para todos'], ['C31', 'Difícil/Para todos'], ['C30', 'Difícil/Para todos']]]);
-        check('y después los de fecha fija', listas[1].map((x) => x[0]), ['C19', 'C26', 'C01', 'C33', 'C20', 'P-AGUINALDO', 'P-ADELANTO']);
+        check('y después los de fecha fija (V2-69 #37: sin los de Carlos)', listas[1].map((x) => x[0]), ['C19', 'C26', 'C01', 'P-AGUINALDO', 'P-ADELANTO']);
         await foto('D-practicar-variable');
         const logrado = async (id) => {
             for (let i = 0; i < 10 && !(await ev('P.practica.logrado')); i++) await esperar(150);
@@ -376,7 +377,7 @@ try {
         // La versión fija: primero los suyos.
         await ev('P.modos.guardarEntrenamiento({ tourVersion: "fijo" }); P.ayuda.abrir("practica"); true');
         await esperar(300);
-        check('fijo: primero los suyos', [await ev('[...document.querySelectorAll("h3.campo-l")].map((h) => h.textContent)'), await ev('[...document.querySelectorAll(".ay-casos")][0].querySelectorAll(".ay-caso--ej").length')], [['Para ti: fecha fija', 'De ingresos que varían'], 13]);
+        check('fijo: primero los suyos', [await ev('[...document.querySelectorAll("h3.campo-l")].map((h) => h.textContent)'), await ev('[...document.querySelectorAll(".ay-casos")][0].querySelectorAll(".ay-caso--ej").length')], [['Para ti: fecha fija', 'De ingresos que varían'], 11]);
         await ev('P.ayuda.cerrar({ foco: false }); true');
 
     }

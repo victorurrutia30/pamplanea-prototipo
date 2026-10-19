@@ -22,10 +22,16 @@
         if (c === null || c === undefined) return '<span class="monto monto--pend">Por confirmar</span>';
         if (tipo === 'ingreso') return `<span class="monto monto--ingreso"><span class="sr-only">Ingreso: </span>${dinero(c, { signo: true, aprox })}</span>`;
         if (tipo === 'gasto') return `<span class="monto"><span class="sr-only">Gasto: </span>${dinero(-c, { aprox })}</span>`;
+        // V2-73: un pago resta (−) y un ingreso esperado suma (+). Un estimado sigue sin «+~» ni «−~» (acuerdo de la v2.3:
+        // «un estimado se escribe «~$597»»): lo que dice que suma es la etiqueta «Ingreso» y la marca del día.
+        if (tipo === 'pago') return `<span class="monto monto--pago"><span class="sr-only">Pago: </span>${aprox ? dinero(c, { aprox }) : dinero(-c)}</span>`;
+        if (tipo === 'esperado') return `<span class="monto monto--esperado"><span class="sr-only">Ingreso esperado: </span>${aprox ? '' : '+'}${dinero(c, { aprox })}</span>`;
         if (tipo === 'neutro') return `<span class="monto monto--neutro">${icon('arrow-left-right', 'ico-xs')}${dinero(c, { aprox })}</span>`;
         return `<span class="monto">${dinero(c, { aprox })}</span>`;
     }
     const sr = (t) => `<span class="sr-only">${esc(t)}</span>`;
+    /** V2-73: «Ingreso» (flecha hacia abajo: entra) o «Pago» (flecha hacia arriba: sale), con texto, nunca solo color. */
+    const marcaMov = (tipo) => (tipo === 'ingreso' ? `<span class="mov mov--ingreso">${icon('arrow-down', 'ico-xs')}Ingreso</span>` : `<span class="mov mov--pago">${icon('arrow-up', 'ico-xs')}Pago</span>`);
     const plural = (n, uno, varios) => `${n} ${n === 1 ? uno : varios}`;
 
     // ------------------------------------------------------------------ estado
@@ -44,10 +50,13 @@
         P.ui = uiInicial(tab);
         P.deshacer = [];
         if (pantalla) P.ui.stack.push(pantalla);
-        if (!st.configurado) P.ui.ob = { paso: 0, datos: { ingresos: {}, bancosMas: [], billeteras: [], creditosMas: [], efectivo: '', medios: { transferencia: false, credito: false }, credito: { banco: 'BAC', corte: '15', pago: '5' }, pagos: [] } };
+        if (!st.configurado) P.ui.ob = { paso: 0, datos: P.obVacio() };
         render({ nueva: true });
     };
     P.calc = () => M.calcular(P.st);
+    P.marcaMov = marcaMov;
+    /** El Primer día está a la vista: sin configurar o en «Completar tu Primer día» (V2-68). */
+    P.enPrimerDia = () => !!(P.ui && P.ui.ob && P.st && (!P.st.configurado || P.ui.ob.completar));
 
     // ------------------------------------------------------------------ comunicación con la guía (index.html)
     P.emitir = function (clave, datos = {}) {
@@ -133,7 +142,7 @@
         const fk = activo && activo.dataset ? activo.dataset.fk : null;
         const enHoja = activo && activo.closest && activo.closest('.hoja');
 
-        const enOnboarding = P.ui.ob && !P.st.configurado;
+        const enOnboarding = P.enPrimerDia();
         document.getElementById('pantalla').innerHTML = enOnboarding ? P.pantallas.onboarding() : pantallaActual();
         const nav = document.getElementById('nav');
         const sinNav = enOnboarding || ['reparte', 'aldia', 'logro', 'primerNumero'].includes(P.ui.stack.at(-1)?.tipo);
@@ -306,8 +315,8 @@
         return `<li class="fila fila--pago${o.estado === 'pagado' || o.estado === 'saltado' ? ' fila--hecha' : ''}">
             <button type="button" class="fila-main" ${abrir} data-fk="${fk}">
                 ${caja(emoji)}
-                <span class="fila-txt"><span class="fila-t">${esc(nombre)}</span><span class="fila-s"><span>${avisoOn}${esc(sub)}</span></span>${marca ? `<span class="fila-s">${marca}</span>` : ''}${partesTxt}</span>
-                <span class="fila-m">${montoHtml(o.monto, null, { aprox: o.estimado })}${o.estimado ? '<span class="fila-s">estimado</span>' : ''}</span>
+                <span class="fila-txt"><span class="fila-t">${esc(nombre)}</span><span class="fila-s">${enLinea ? marcaMov('pago') : ''}<span>${avisoOn}${esc(sub)}</span></span>${marca ? `<span class="fila-s">${marca}</span>` : ''}${partesTxt}</span>
+                <span class="fila-m">${montoHtml(o.monto, 'pago', { aprox: o.estimado })}${o.estimado ? '<span class="fila-s">estimado</span>' : ''}</span>
             </button>
             ${puedePagar ? `<button type="button" class="btn btn--sm" data-a="pagado" data-tipo="${esTarjeta ? 'tarjeta' : 'pago'}" data-id="${esTarjeta ? o.tarjeta.id : o.pago.id}" data-fecha="${o.fecha}" data-fk="pagado-${fk}" aria-label="Marcar ${esc(nombre)} como pagado">Pagado</button>` : ''}
         </li>`;
@@ -470,7 +479,7 @@
         // V2-59 (#27): sin ingreso fijo y sin nada esperado, no se dice «entra ~$0»: las ventas cuentan cuando se anotan.
         if (P.variable() && !x.entra) return `pagas ${dinero(x.pagos, { aprox: true })} · tus ventas cuentan cuando las anotas`;
         const quedan = x.quedan >= 0 ? `te quedarían ${dinero(x.quedan, { aprox: true })}` : `te faltarían ${dinero(-x.quedan, { aprox: true })}`;
-        return `entra ${dinero(x.entra, { aprox: true })} · pagos ${dinero(x.pagos, { aprox: true })} · ${quedan}`;
+        return `ingreso ${dinero(x.entra, { aprox: true })} · pagos ${dinero(x.pagos, { aprox: true })} · ${quedan}`;
     }
     /** ¿Se marca en color de «falta»? Para quien vende, no tener nada esperado no es un faltante (V2-59 #27). */
     P.faltaPeriodo = (x) => x.deficit > 0 && !(P.variable() && !x.entra);
@@ -533,7 +542,7 @@
             if (a.tipo === 'falta') {
                 const o = a.primero;
                 const titulo = o && a.nivel === 'rojo' ? `${o.estado === 'vencido' ? 'Te faltarían' : `El ${M.partes(o.fecha)[2]} te faltarían`} ${dinero(Math.min(a.faltan, o.parte))} para ${P.conArticulo(o.pago.nombre)}` : `Te faltan ${dinero(a.faltan)} para cubrir lo que viene`;
-                const texto = a.nivel === 'rojo' ? 'Mira qué puedes mover o sacar de tus ahorros, o cambia con qué pagas algo.' : `Te alcanza cuando te caiga ${P.lista(a.esperados.map((x) => `${dinero(x.monto, { aprox: x.aprox })} ${P.deQuien(x.ingreso)}`))}.`;
+                const texto = a.nivel === 'rojo' ? 'Mira qué puedes mover o sacar de tus ahorros, o cambia con qué pagas algo.' : `Te alcanza cuando llegue ${P.lista(a.esperados.map((x) => `${dinero(x.monto, { aprox: x.aprox })} ${P.deQuien(x.ingreso)}`))}.`;
                 items.push({ id: 'falta', nivel: a.nivel, pago: true, titulo, texto, corto: `te faltan ${dinero(a.faltan)}`, acciones: btn('Ver detalle', 'data-a="hoja" data-hoja="desglose" data-fk="at-falta"') });
             } else if (a.tipo === 'sugerencia') {
                 const x = a.periodo;
@@ -602,7 +611,7 @@
         // Otros ingresos que ya debían llegar (el principal se confirma en el número).
         for (const ing of st.ingresos.filter((x) => x.activo !== false && !x.principal && x.frecuencia !== 'unico')) {
             const o = M.ocurrenciasIngreso(st, ing, M.sumarDias(st.hoy, -20), st.hoy).filter((x) => x.estado === 'porConfirmar' || x.estado === 'hoy').at(-1);
-            if (o) items.push({ id: 'ing-' + ing.id, nivel: 'info', corto: `lo ${P.deQuien(ing)}`, titulo: `¿Ya te cayó lo ${P.deQuien(ing)}?`, texto: `${dinero(o.monto, { aprox: o.aprox })}, ${o.fecha === st.hoy ? 'hoy' : 'del ' + M.fechaCorta(o.fecha)}.`, acciones: btn('Sí, me cayó', `data-a="hoja" data-hoja="ingresoLlego" data-id="${ing.id}" data-fecha="${o.fecha}" data-fk="at-ing-${ing.id}"`, true) });
+            if (o) items.push({ id: 'ing-' + ing.id, nivel: 'info', corto: `lo ${P.deQuien(ing)}`, titulo: `¿Ya llegó lo ${P.deQuien(ing)}?`, texto: `${dinero(o.monto, { aprox: o.aprox })}, ${o.fecha === st.hoy ? 'hoy' : 'del ' + M.fechaCorta(o.fecha)}.`, acciones: btn('Sí, ya llegó', `data-a="hoja" data-hoja="ingresoLlego" data-id="${ing.id}" data-fecha="${o.fecha}" data-fk="at-ing-${ing.id}"`, true) });
         }
         // En el entrenamiento: las notificaciones simuladas de hoy que no estén ya en la lista.
         if (P.modo !== 'uso') {
@@ -639,9 +648,9 @@
         if (!p) return { titulo: `Del ${M.fechaCorta(x.inicio)} al ${M.fechaCorta(x.fin)} pagas ${dinero(x.pagos, { aprox: true })}${x.entra ? ` y esperas ${dinero(x.entra, { aprox: true })}` : ''}.`, texto: 'Tus ventas cuentan cuando las anotas. ¿Guardas algo de lo que tienes ahora?' };
         if (a.siguiente) {
             const nombre = semanal ? 'con tu próximo pago' : p.frecuencia === 'quincenal' ? 'la próxima quincena' : `con tu próximo ${p.nombre.toLowerCase()}`;
-            return { titulo: `${M.capital(nombre)} te faltarían ${dinero(x.deficit, { aprox: true })}. ¿Guardas algo ${fuente}?`, texto: `${M.capital(cual)} te caen ${caen} y ${quePagas}.` };
+            return { titulo: `${M.capital(nombre)} te faltarían ${dinero(x.deficit, { aprox: true })}. ¿Guardas algo ${fuente}?`, texto: `${M.capital(cual)} recibes ${caen} y ${quePagas}.` };
         }
-        return { titulo: `${M.capital(cual)} te caen ${caen} y ${quePagas}: te faltarían ${dinero(x.deficit, { aprox: true })}.`, texto: `¿Reservas algo ${fuente}?` };
+        return { titulo: `${M.capital(cual)} recibes ${caen} y ${quePagas}: te faltarían ${dinero(x.deficit, { aprox: true })}.`, texto: `¿Reservas algo ${fuente}?` };
     }
     P.textoSugerencia = textoSugerencia;
     /** El aviso de Hoy: uno solo (V2-42). */
@@ -685,7 +694,7 @@
                     <span class="portada-h">${esc(textoHorizonte(hz))}</span><span class="portada-l">${porConfirmar ? 'Libre por ahora' : 'Libre'}</span><span class="portada-n">${dinero(k.libre)}</span>${lineas.join('')}
                     <span class="portada-mas">¿De dónde sale? ${icon('chevron-right', 'ico-xs')}</span>
                 </button>
-                ${porConfirmar ? `<div class="portada-pie"><button type="button" class="btn btn--prim btn--48 btn--full" data-a="hoja" data-hoja="ingresoLlego" data-id="${porConfirmar.ingreso.id}" data-fecha="${porConfirmar.fecha}" data-fk="ing-si">${hz.esHoy ? '¿Ya te cayó?' : `¿Ya te cayó tu ${esc(nombreIngreso(hz))} del ${M.partes(porConfirmar.fecha)[2]}?`}</button></div>` : ''}
+                ${porConfirmar ? `<div class="portada-pie"><button type="button" class="btn btn--prim btn--48 btn--full" data-a="hoja" data-hoja="ingresoLlego" data-id="${porConfirmar.ingreso.id}" data-fecha="${porConfirmar.fecha}" data-fk="ing-si">${hz.esHoy ? '¿Ya llegó?' : `¿Ya llegó tu ${esc(nombreIngreso(hz))} del ${M.partes(porConfirmar.fecha)[2]}?`}</button></div>` : ''}
             </div>`;
 
         const tarjetasAviso = [];
@@ -819,11 +828,11 @@
         }
         for (const ing of st.ingresos.filter((i) => i.activo !== false)) {
             for (const o of M.ocurrenciasIngreso(st, ing, desde, hasta)) {
-                const estado = (o.estado === 'llego' ? `${icon('circle-check', 'ico-xs')}Llegó` : o.estado === 'noLlego' ? 'No llegó' : o.estado === 'porConfirmar' ? `${icon('clock', 'ico-xs')}Por confirmar` : o.estado === 'hoy' ? 'Hoy · ¿ya te cayó?' : ing.frecuencia === 'unico' ? 'Esperado · suma cuando llegue' : ing.principal ? 'Esperado' : 'Esperado · suma cuando llegue') + (o.descuento ? ` · te descuentan ${dinero(o.descuento)} del adelanto` : '');
+                const estado = (o.estado === 'llego' ? `${icon('circle-check', 'ico-xs')}Llegó` : o.estado === 'noLlego' ? 'No llegó' : o.estado === 'porConfirmar' ? `${icon('clock', 'ico-xs')}Por confirmar` : o.estado === 'hoy' ? 'Hoy · ¿ya llegó?' : ing.frecuencia === 'unico' ? 'Esperado · suma cuando llegue' : ing.principal ? 'Esperado' : 'Esperado · suma cuando llegue') + (o.descuento ? ` · te descuentan ${dinero(o.descuento)} del adelanto` : '');
                 items.push({
                     fecha: o.fecha,
                     ingreso: true,
-                    html: `<li class="fila fila--ingreso"><button type="button" class="fila-main" data-a="abrir" data-tipo="ingreso" data-id="${ing.id}" data-fk="i-${ing.id}-${o.fecha}">${caja(ing.emoji)}<span class="fila-txt"><span class="fila-t">${esc(ing.nombre)}</span><span class="fila-s">${estado}</span></span><span class="fila-m">${o.estado === 'llego' ? montoHtml(o.monto, 'ingreso') : `<span class="monto monto--esperado">${dinero(o.monto, { aprox: o.aprox })}</span>`}</span></button></li>`,
+                    html: `<li class="fila fila--ingreso"><button type="button" class="fila-main" data-a="abrir" data-tipo="ingreso" data-id="${ing.id}" data-fk="i-${ing.id}-${o.fecha}">${caja(ing.emoji)}<span class="fila-txt"><span class="fila-t">${esc(ing.nombre)}</span><span class="fila-s">${marcaMov('ingreso')}<span>${estado}</span></span></span><span class="fila-m">${o.estado === 'llego' ? montoHtml(o.monto, 'ingreso') : montoHtml(o.monto, 'esperado', { aprox: o.aprox })}</span></button></li>`,
                 });
             }
         }
@@ -833,9 +842,13 @@
         const grupos = [];
         for (const it of items) {
             let g = grupos.at(-1);
-            if (!g || g.fecha !== it.fecha) grupos.push((g = { fecha: it.fecha, filas: [], hoy: false }));
+            if (!g || g.fecha !== it.fecha) grupos.push((g = { fecha: it.fecha, filas: [], hoy: false, ing: 0, pag: 0 }));
             if (it.hoy) g.hoy = true;
-            else g.filas.push(it.html);
+            else {
+                g.filas.push(it.html);
+                if (it.ingreso) g.ing++;
+                else g.pag++;
+            }
         }
         if (!grupos.length) return '<p class="vacio">Nada en estas fechas.</p>';
         return grupos
@@ -843,7 +856,8 @@
                 const conMes = `${M.diaCorto(g.fecha)} ${M.MESES_CORTOS[M.partes(g.fecha)[1] - 1]}`;
                 const etiqueta = g.fecha === st.hoy ? `Hoy · ${conMes}` : M.capital(conMes);
                 const cuerpo = g.filas.length ? `<ul class="lista card">${g.filas.join('')}</ul>` : g.hoy ? '<p class="hoy-marca-t">Nada que pagar hoy.</p>' : '';
-                return `<div class="grupo${g.fecha === st.hoy ? ' grupo--hoy' : ''}"><h3 class="grupo-t">${esc(etiqueta)}</h3>${cuerpo}</div>`;
+                const marcas = g.ing || g.pag ? `<span class="dia-marcas" aria-hidden="true">${g.ing ? '<span class="dia-marca dia-marca--ingreso">+ Ingreso</span>' : ''}${g.pag ? `<span class="dia-marca dia-marca--pago">− ${g.pag === 1 ? 'Pago' : g.pag + ' pagos'}</span>` : ''}</span>` : '';
+                return `<div class="grupo${g.fecha === st.hoy ? ' grupo--hoy' : ''}"><div class="grupo-cab"><h3 class="grupo-t">${esc(etiqueta)}</h3>${marcas}</div>${cuerpo}</div>`;
             })
             .join('');
     }
@@ -867,7 +881,7 @@
             if (!r.entra && !r.pagos && !r.tarjetasSinMonto) return '';
             const ap = { aprox: r.aprox };
             const queda = r.queda >= 0 ? `queda ${dinero(r.queda, ap)}` : `faltan ${dinero(-r.queda, ap)}`;
-            return `<div class="per-res${r.queda < 0 ? ' per-res--falta' : ''}"><p class="per-res-l">Entra ${dinero(r.entra, ap)} · pagos ${dinero(r.pagos, ap)}${r.tarjetasSinMonto ? ' + tus tarjetas' : ''} · ${queda}</p><p class="fila-s">Lo que te pagan y lo que pagas en ${esc(M.MESES[m - 1])}. Sin tus gastos del día a día (esos están en la pestaña Mes).</p></div>`;
+            return `<div class="per-res${r.queda < 0 ? ' per-res--falta' : ''}"><p class="per-res-l">Ingresos ${dinero(r.entra, ap)} · pagos ${dinero(r.pagos, ap)}${r.tarjetasSinMonto ? ' + tus tarjetas' : ''} · ${queda}</p><p class="fila-s">Tus ingresos y tus pagos de ${esc(M.MESES[m - 1])}. Sin tus gastos del día a día (esos están en la pestaña Mes).</p></div>`;
         }
         if (vista !== 'proxima') return '';
         const x = k.periodos.find((y) => y.clave === rango.desde) || (k.proxima && k.proxima.inicio <= rango.desde && rango.desde <= k.proxima.fin ? k.proxima : null);
@@ -910,7 +924,7 @@
             const medio = M.medio(st, p.medio);
             const prox = M.ocurrenciasPago(st, p, M.sumarDias(st.hoy, -62), M.sumarDias(st.hoy, 400)).find((o) => o.estado === 'pendiente' || o.estado === 'vencido');
             const cambiada = prox && !p.descuento ? M.asignacion(st, p, prox.fecha, prox.monto, hz) : [];
-            const conQue = p.descuento ? `Se descuenta solo de ${(M.ingreso(st, p.descuento)?.nombre || 'tu salario').toLowerCase()}` : `${medio ? medio.nombre : 'Sin medio'} · ${textoRegla(p)}`;
+            const conQue = p.descuento ? `Se descuenta solo de ${(M.ingreso(st, p.descuento)?.nombre || 'tu salario').toLowerCase()}` : p.automatico && medio ? `Se cobra solo en ${medio.nombre} · ${textoRegla(p)}` : `${medio ? medio.nombre : 'Sin medio'} · ${textoRegla(p)}`;
             const proxTxt = prox ? `${prox.estado === 'vencido' ? 'Venció' : 'Próximo'}: ${M.fechaCorta(prox.fecha)}${cambiada.length > 1 || (cambiada[0] && cambiada[0].de !== M.periodoDe(st, prox.fecha, hz)) ? ' · ' + P.textoPartes(prox, cambiada, hz).toLowerCase() : ''}` : 'Sin fechas por delante';
             return `<li class="fila"><button type="button" class="fila-main" data-a="abrir" data-tipo="pago" data-id="${p.id}" data-fk="mp-${p.id}">${caja(p.emoji)}<span class="fila-txt"><span class="fila-t">${esc(p.nombre)}</span><span class="fila-s">${esc(textoFrecuencia(p, { corto: true }))}</span><span class="fila-s">${esc(conQue)}</span><span class="fila-s">${esc(proxTxt)}</span></span><span class="fila-m">${montoHtml(p.monto, null, { aprox: p.estimado })}${p.frecuencia !== 'mensual' && alMes(p) ? `<span class="fila-s">${esc(dinero(alMes(p), { aprox: true }))} al mes</span>` : ''}</span></button></li>`;
         };
@@ -928,12 +942,12 @@
         });
         const ingresos = st.ingresos.filter((i) => i.activo !== false).map((i) => {
             const prox = M.ocurrenciasIngreso(st, i, i.desde, M.sumarDias(st.hoy, 400)).find((o) => o.estado !== 'llego' && o.estado !== 'noLlego');
-            return `<li class="fila fila--ingreso"><button type="button" class="fila-main" data-a="abrir" data-tipo="ingreso" data-id="${i.id}" data-fk="mp-i-${i.id}">${caja(i.emoji)}<span class="fila-txt"><span class="fila-t">${esc(i.nombre)}${i.principal ? ' <span class="pronto">Principal</span>' : ''}</span><span class="fila-s">${esc(textoFrecuencia(i))} · cae en ${esc(M.lugar(st, i.lugar)?.nombre || '—')}</span><span class="fila-s">${esc(i.principal ? 'Tu libre se calcula hasta que llegue' : i.frecuencia === 'unico' ? 'No suma hasta que llegue' : 'Cuenta como estimado en tus próximos días de pago')}${prox ? ` · próximo: ${M.fechaCorta(prox.fecha)}` : ''}</span></span><span class="fila-m"><span class="monto monto--esperado">${dinero(i.monto, { aprox: i.aprox })}</span></span></button></li>`;
+            return `<li class="fila fila--ingreso"><button type="button" class="fila-main" data-a="abrir" data-tipo="ingreso" data-id="${i.id}" data-fk="mp-i-${i.id}">${caja(i.emoji)}<span class="fila-txt"><span class="fila-t">${esc(i.nombre)}${i.principal ? ' <span class="pronto">Principal</span>' : ''}</span><span class="fila-s">${esc(textoFrecuencia(i))} · llega a ${esc(M.lugar(st, i.lugar)?.nombre || '—')}</span><span class="fila-s">${esc(i.principal ? 'Tu libre se calcula hasta que llegue' : i.frecuencia === 'unico' ? 'No suma hasta que llegue' : 'Cuenta como estimado en tus próximos días de pago')}${prox ? ` · próximo: ${M.fechaCorta(prox.fecha)}` : ''}</span></span><span class="fila-m">${montoHtml(i.monto, 'esperado', { aprox: i.aprox })}</span></button></li>`;
         });
         const entraMes = M.suma(st.ingresos.filter((i) => i.activo !== false), (i) => alMes(i));
         const salesMes = M.suma(activos.filter((p) => !p.descuento), (p) => alMes(p));
-        return `<div class="per-res"><p class="per-res-l">Al mes, más o menos: te entra ${dinero(entraMes, { aprox: true })} · pagas ${dinero(salesMes, { aprox: true })}${st.tarjetas.length ? ' + tus tarjetas' : ''}</p><p class="fila-s">Toca cualquiera para cambiarlo.</p></div>
-            ${tarjetaSeccion(`Lo que te pagan <span class="contador">${ingresos.length}</span>`, ingresos.length ? `<ul class="lista">${ingresos.join('')}</ul>` : '<p class="vacio">Todavía no tienes ingresos esperados.</p>', { id: 'mp-ingresos' })}
+        return `<div class="per-res"><p class="per-res-l">Al mes, más o menos: ingresos ${dinero(entraMes, { aprox: true })} · pagos ${dinero(salesMes, { aprox: true })}${st.tarjetas.length ? ' + tus tarjetas' : ''}</p><p class="fila-s">Toca cualquiera para cambiarlo.</p></div>
+            ${tarjetaSeccion(`Tus ingresos <span class="contador">${ingresos.length}</span>`, ingresos.length ? `<ul class="lista">${ingresos.join('')}</ul>` : '<p class="vacio">Todavía no tienes ingresos esperados.</p>', { id: 'mp-ingresos' })}
             ${grupos.map(([t, l]) => tarjetaSeccion(`${t} <span class="contador">${l.length}</span>`, `<ul class="lista">${l.map(filaPagoLista).join('')}</ul>${t === 'Suscripciones' ? `<p class="txt txt--card">Pagas ${esc(dinero(M.suma(l, (p) => alMes(p)), { aprox: true }))} al mes en suscripciones.</p>` : ''}`, { id: 'mp-' + M.normalizar(t).replace(/\s+/g, '-') })).join('')}
             ${tarjetas.length ? tarjetaSeccion(`Tarjetas de crédito <span class="contador">${tarjetas.length}</span>`, `<ul class="lista">${tarjetas.join('')}</ul>`, { id: 'mp-tarjetas' }) : ''}
             ${!grupos.length && !tarjetas.length ? '<p class="vacio">Todavía no tienes pagos. Agrega la luz, el alquiler o una cuota con «+ Pago».</p>' : ''}`;
@@ -988,7 +1002,7 @@
             ${mesNav}
             ${resumenPeriodo(vista, rango, k)}
             <div class="linea">${lineaTiempo(rango.desde, rango.hasta)}</div>
-            ${extras.length ? `<div class="grupo"><h3 class="grupo-t">Más adelante</h3><ul class="lista card">${extras.map((o) => `<li class="fila fila--ingreso"><button type="button" class="fila-main" data-a="abrir" data-tipo="ingreso" data-id="${o.ingreso.id}" data-fk="x-${o.ingreso.id}">${caja(o.ingreso.emoji)}<span class="fila-txt"><span class="fila-t">${esc(o.ingreso.nombre)}</span><span class="fila-s">${esc(M.fechaLarga(o.fecha))} · no suma a tu libre hasta que llegue</span></span><span class="fila-m"><span class="monto monto--esperado">${dinero(o.monto, { aprox: o.aprox })}</span></span></button></li>`).join('')}</ul></div>` : ''}
+            ${extras.length ? `<div class="grupo"><h3 class="grupo-t">Más adelante</h3><ul class="lista card">${extras.map((o) => `<li class="fila fila--ingreso"><button type="button" class="fila-main" data-a="abrir" data-tipo="ingreso" data-id="${o.ingreso.id}" data-fk="x-${o.ingreso.id}">${caja(o.ingreso.emoji)}<span class="fila-txt"><span class="fila-t">${esc(o.ingreso.nombre)}</span><span class="fila-s">${marcaMov('ingreso')}<span>${esc(M.fechaLarga(o.fecha))} · no suma a tu libre hasta que llegue</span></span></span><span class="fila-m">${montoHtml(o.monto, 'esperado', { aprox: o.aprox })}</span></button></li>`).join('')}</ul></div>` : ''}
         </div>`;
     };
 
@@ -1003,7 +1017,7 @@
     /** Lo que debes: tarjetas (lo que dice su estado más las compras) y préstamos con «cuánto debes» anotado. */
     function deudaTotal(st) {
         const infos = st.tarjetas.map((t) => M.tarjetaInfo(st, t));
-        const tarjetas = M.suma(infos, (x) => x.debeTotal);
+        const tarjetas = M.suma(infos, (x) => x.debeTotal + (x.ult.inicial && x.t.debeInicial ? x.t.debeInicial : 0));
         // V2-54: una tarjeta sin su primer estado de cuenta: no se sabe cuánto debe; cuenta como cuota sin saldo (lo que paga normalmente).
         const sinEstado = infos.filter((x) => x.usual > 0);
         const conSaldo = st.pagos.filter((p) => p.activo !== false && p.deuda && p.deuda.debe !== null && p.deuda.debe !== undefined);
@@ -1122,8 +1136,9 @@
             const linea = info.pendiente && info.sinCorte ? `${info.estimado ? `Pagas ${dinero(info.estimado, { aprox: true })} el ${M.partes(info.ult.vence)[2]} · ` : ''}estado de cuenta por anotar` : info.pendiente ? `Estado de cuenta por anotar · ${info.pendiente.corte > st.hoy ? 'corta' : 'cortó'} el ${M.partes(info.pendiente.corte)[2]}` : info.porPagarEstado > 0 ? `Por pagar ${dinero(info.porPagarEstado)} el ${M.partes(info.ult.vence)[2]}` : 'Al día con tu último estado';
             const extra = [info.comprasNetas ? `+ ${dinero(info.comprasNetas)} en compras nuevas` : '', info.resto ? `debes ${dinero(info.resto)} aparte` : ''].filter(Boolean).join(' · ');
             // V2-25: el cupo disponible se ve aquí y en la ficha, pero nunca suma al libre.
-            const cupo = info.cupoLibre !== null ? `Te quedan ${dinero(info.cupoLibre)} de cupo` : '';
-            filas.push(`<li class="fila"><button type="button" class="fila-main" data-a="abrir" data-tipo="tarjeta" data-id="${t.id}" data-fk="t-${t.id}">${caja(t.emoji)}<span class="fila-txt"><span class="fila-t">${esc(t.nombre)}</span><span class="fila-s">${esc(linea)}</span>${extra ? `<span class="fila-s">${esc(extra)}</span>` : ''}${cupo ? `<span class="fila-s">${esc(cupo)}</span>` : ''}</span><span class="fila-m">${info.usual ? '<span class="monto monto--pend">Por confirmar</span><span class="fila-s">lo que debes</span>' : `${montoHtml(info.debeTotal)}<span class="fila-s">debes</span>`}</span></button></li>`);
+            // V2-75: «Disponible» y «Límite de crédito» en vez de «cupo».
+            const cupo = info.cupoLibre !== null ? `Disponible ${dinero(info.cupoLibre)} de ${dinero(t.cupo)}` : '';
+            filas.push(`<li class="fila"><button type="button" class="fila-main" data-a="abrir" data-tipo="tarjeta" data-id="${t.id}" data-fk="t-${t.id}">${caja(t.emoji)}<span class="fila-txt"><span class="fila-t">${esc(t.nombre)}</span><span class="fila-s">${esc(linea)}</span>${extra ? `<span class="fila-s">${esc(extra)}</span>` : ''}${cupo ? `<span class="fila-s">${esc(cupo)}</span>` : ''}</span><span class="fila-m">${info.ult.inicial && t.debeInicial ? `${montoHtml(t.debeInicial + info.debeTotal, null, { aprox: true })}<span class="fila-s">debes · por confirmar</span>` : info.usual ? '<span class="monto monto--pend">Por confirmar</span><span class="fila-s">lo que debes</span>' : `${montoHtml(info.debeTotal)}<span class="fila-s">debes</span>`}</span></button></li>`);
         }
         for (const p of st.pagos.filter((x) => (x.deuda || x.tipoDeuda) && x.activo !== false)) {
             const tipo = D.TIPOS_DEUDA.find((x) => x.id === p.tipoDeuda);
@@ -1135,8 +1150,9 @@
         return `<div class="pg">
             ${encabezado('Deudas', 'Tarjetas, préstamos y casa comercial', { atras: P.atrasDe('Mi dinero') })}
             ${P.tipHtml('deudas')}
-            <section class="card ficha-cifra ficha-cifra--q" aria-label="Lo que debes">${P.qBtn('deudas')}<p class="fila-s">${deuda.total > 0 || !deuda.sinSaldo ? `Debes en total${deuda.sinSaldo ? ' (lo que tienes anotado)' : ''}` : 'Pagas en cuotas'}</p><p class="cifra">${deuda.total > 0 || !deuda.sinSaldo ? dinero(deuda.total, { aprox: deuda.aprox }) : `${dinero(deuda.cuotasSinSaldo)} al mes`}</p><p class="fila-s">${deuda.sinSaldo ? `${plural(deuda.sinSaldo, 'cuota no tiene', 'cuotas no tienen')} «cuánto debes» anotado. ` : ''}Su pago aparece solo en Pagos. El cupo de una tarjeta nunca suma a tu libre.</p>${P.qTexto('deudas')}</section>
-            ${tarjetaSeccion('Tus deudas', `${filas.length ? `<ul class="lista">${filas.join('')}</ul>` : '<p class="vacio">Si tienes una tarjeta, una cuota o un préstamo, agrégalo aquí y su pago aparece solo en Pagos.</p>'}<div class="card-pie"><button type="button" class="btn btn--full" data-a="hoja" data-hoja="nuevaDeuda" data-fk="md-deuda">${icon('plus', 'ico-s')}Tarjeta o préstamo</button></div>`, { id: 'md-deudas-lista' })}
+            <section class="card ficha-cifra ficha-cifra--q" aria-label="Lo que debes">${P.qBtn('deudas')}<p class="fila-s">${deuda.total > 0 || !deuda.sinSaldo ? `Debes en total${deuda.sinSaldo ? ' (lo que tienes anotado)' : ''}` : 'Pagas en cuotas'}</p><p class="cifra">${deuda.total > 0 || !deuda.sinSaldo ? dinero(deuda.total, { aprox: deuda.aprox }) : `${dinero(deuda.cuotasSinSaldo)} al mes`}</p><p class="fila-s">${deuda.sinSaldo ? `${plural(deuda.sinSaldo, 'cuota no tiene', 'cuotas no tienen')} «cuánto debes» anotado. ` : ''}Su pago aparece solo en Pagos. El disponible de una tarjeta nunca suma a tu libre: es dinero prestado.</p>${P.qTexto('deudas')}</section>
+            ${tarjetaSeccion('Tus deudas', `${filas.length ? `<ul class="lista">${filas.join('')}</ul>` : '<p class="vacio">Si tienes una tarjeta, una cuota o un préstamo, agrégalo aquí y su pago aparece solo en Pagos.</p>'}<div class="card-pie"><button type="button" class="btn btn--full" data-a="hoja" data-hoja="nuevaDeuda" data-fk="md-deuda">${icon('plus', 'ico-s')}${filas.length ? 'Agregar otra deuda o tarjeta' : 'Agregar una deuda o tarjeta'}</button></div>`, { id: 'md-deudas-lista' })}
+            ${P.modo === 'uso' ? `<button type="button" class="link link--start" data-a="obCompletar" data-fk="md-completar">${icon('list-checks', 'ico-s')}Completar tu Primer día: deudas, tarjetas y gastos fijos</button>` : ''}
         </div>`;
     };
 
@@ -1292,7 +1308,7 @@
         const avisoTexto = (a) => (a.tipo === 'recibo' ? `Revisar el recibo · el ${a.dia}` : a.tipo === 'antes' ? `Un día antes · 8:00 a. m.` : 'El día que vence · 8:00 a. m.');
         const atrasTexto = P.atrasDe('Pagos');
         const estadoProx = ing
-            ? `<p class="fila-s">Se descuenta solo de ${esc(ing.nombre.toLowerCase())}: al confirmar que te cayó, queda pagado. No baja tu libre otra vez.</p>`
+            ? `<p class="fila-s">Se descuenta solo de ${esc(ing.nombre.toLowerCase())}: al confirmar que llegó, queda pagado. No baja tu libre otra vez.</p>`
             : prox
               ? `<div class="ficha-prox"><p class="fila-s">${prox.estado === 'vencido' ? 'Venció' : 'Próximo'}: ${esc(M.capital(M.fechaLarga(prox.fecha)))}${prox.estado === 'vencido' ? ' · por confirmar' : ''}</p>
                 <div class="acciones-2"><button type="button" class="btn btn--48" data-a="saltar" data-id="${p.id}" data-fecha="${prox.fecha}" data-fk="saltar">${p.frecuencia === 'unico' ? 'Saltar' : 'Saltar esta vez'}</button><button type="button" class="btn btn--prim btn--48" data-a="pagado" data-tipo="pago" data-id="${p.id}" data-fecha="${prox.fecha}" data-fk="ficha-pagado">Pagado</button></div></div>`
@@ -1308,6 +1324,11 @@
         }
         const tipoDeuda = D.TIPOS_DEUDA.find((x) => x.id === p.tipoDeuda);
         const debe = p.deuda && p.deuda.debe !== null && p.deuda.debe !== undefined;
+        // V2-75: el cuchubal: tu turno de recibir (un ingreso esperado) y cuánto aportas y cuándo.
+        const turno = P.turnoCuchubal(st, p);
+        const turnoHtml = P.esCuchubal(p)
+            ? tarjetaSeccion('Tu turno', turno ? `<div class="dato"><p class="txt"><strong>Tu turno de recibir: ${esc(M.fechaLarga(turno.fecha))} · ${dinero(turno.monto)}</strong></p><p class="fila-s">Aportas ${dinero(p.monto)} ${esc(textoFrecuencia(p).toLowerCase())}. Tu turno suma a tu libre el día que llega.</p></div>` : `<div class="dato"><p class="txt">Aportas ${dinero(p.monto)} ${esc(textoFrecuencia(p).toLowerCase())}. ¿Cuándo te toca recibir?</p></div><div class="card-pie"><button type="button" class="btn btn--full" data-a="hoja" data-hoja="turnoCuchubal" data-id="${p.id}" data-fk="pago-turno">${icon('calendar-days', 'ico-s')}Anotar mi turno</button></div>`, { id: 'p-turno' })
+            : '';
         // Corrección v2.3.1: un préstamo o una cuota creados como pago normal se pueden anotar en Deudas (es el mismo pago).
         const esDeuda = !p.tipoDeuda && !p.descuento && !p.deuda && p.tipoPago !== 'suscripcion' && /pr[eé]stamo|cuota|cr[eé]dito|deuda|casa comercial|financ/i.test(p.nombre) ? tarjetaSeccion('¿Es una deuda?', `<p class="txt txt--card">Anótala en Deudas para ver cuánto debes; baja con cada «Pagado». Es este mismo pago: no se duplica.</p><div class="card-pie"><button type="button" class="btn btn--full" data-a="hoja" data-hoja="esDeuda" data-id="${p.id}" data-fk="es-deuda">Anotarla en Deudas</button></div>`, { id: 'f-es-deuda' }) : '';
         const filaHist = (h) => {
@@ -1325,6 +1346,7 @@
                 <p class="fila-s">${p.estimado ? 'Estimado: cambia cada vez. Al marcarlo Pagado te pido el monto real.' : tipoDeuda ? 'Cuota fija' : 'Monto fijo'}</p>
                 ${estadoProx}
             </section>
+            ${turnoHtml}
             ${pagasCon}
             ${esDeuda}
             ${p.deuda || tipoDeuda ? tarjetaSeccion('Lo que debes', `<div class="dato"><p class="cifra cifra--s">${debe ? dinero(p.deuda.debe, { aprox: true }) : 'Sin anotar'}</p><p class="fila-s">Opcional. Baja con cada «Pagado».</p></div><div class="card-pie"><button type="button" class="link" data-a="hoja" data-hoja="deuda" data-id="${p.id}" data-fk="deuda">${debe ? 'Actualizar lo que debo' : 'Anotar cuánto debo'}</button></div>`, { id: 'f-deuda' }) : ''}
@@ -1360,7 +1382,7 @@
                     ${info.comprasNetas ? `<li><span>Compras desde el corte · se pagan el ${esc(M.fechaCorta(info.venceCompras))}</span><span>${dinero(info.comprasNetas)}</span></li>` : ''}
                     ${info.resto ? `<li><span>Sigue como deuda</span><span>${dinero(info.resto)}</span></li>` : ''}
                 </ul>
-                ${info.cupoLibre !== null ? `<p class="cupo"><strong>Te quedan ${dinero(info.cupoLibre)} de cupo</strong> <span class="fila-s">de ${dinero(t.cupo)}. El cupo no suma a tu libre.</span></p>` : ''}
+                ${info.cupoLibre !== null ? `<p class="cupo"><strong>Disponible ${dinero(info.cupoLibre)}</strong> <span class="fila-s">de tu límite de crédito de ${dinero(t.cupo)}. El disponible nunca suma a tu libre: es dinero prestado.</span></p>` : ''}
                 <p class="fila-s">Las compras con tarjeta bajan tu libre el día que las haces.</p>
                 ${info.reservado ? `<div class="nota nota--ok" role="note">${icon('check')}<p><strong>${dinero(info.reservado)} reservados para tu pago del ${esc(P.diaPago(info, info.venceCompras))}</strong>${info.reservas.length ? ` (de tu ahorro ${esc(info.reservas.map((r) => r.de).join(', '))})` : ''}. Ya no cuentan en tu libre.</p></div>` : ''}
                 ${info.porPagarEstado || info.estimado || info.reservado ? `<button type="button" class="btn btn--prim btn--48 btn--full" data-a="pagado" data-tipo="tarjeta" data-id="${t.id}" data-fecha="${ult.vence}" data-fk="t-pagar">${icon('arrow-left-right', 'ico-s')}Pagar tarjeta</button>` : ''}
@@ -1446,14 +1468,14 @@
             adelanto = tarjetaSeccion('¿Es un adelanto de tu salario?', `<p class="txt txt--card">Si después te lo descuentan de tu quincena, dime de cuál. Así esa quincena ya viene con el descuento y no contamos el mismo dinero dos veces.</p><div class="card-pie"><button type="button" class="btn btn--full" data-a="hoja" data-hoja="adelanto" data-id="${ing.id}" data-fk="adelanto-si">Sí, anotar el descuento</button></div>`, { id: 'i-adelanto' });
         }
         return `<div class="pg">
-            ${encabezado(`${emo(ing.emoji, 28)} ${esc(ing.nombre)}`, `${esc(textoFrecuencia(ing))} · cae en ${esc(M.lugar(st, ing.lugar)?.nombre || '—')}`, { atras: atrasTexto })}
+            ${encabezado(`${emo(ing.emoji, 28)} ${esc(ing.nombre)}`, `${esc(textoFrecuencia(ing))} · llega a ${esc(M.lugar(st, ing.lugar)?.nombre || '—')}`, { atras: atrasTexto })}
             <section class="card ficha-cifra" aria-label="Ingreso esperado">
                 <p class="cifra cifra--ingreso">${dinero(ing.monto, { signo: true, aprox: ing.aprox })}</p>
                 <p class="fila-s">${ing.principal ? 'Tu ingreso principal: tu libre se calcula hasta que llegue.' : ing.frecuencia === 'unico' ? 'No suma a tu libre hasta que llegue. Cuando llegue, te ayudo a repartirlo.' : 'No suma a tu libre hasta que llegue, pero sí cuenta (estimado) para tus próximos pagos.'}</p>
                 ${prox ? `<p class="fila-s">Próximo: ${esc(M.capital(M.fechaLarga(prox.fecha)))}${prox.descuento ? ` · ${esc(dinero(prox.monto, { aprox: true }))}, te descuentan ${esc(dinero(prox.descuento))} del adelanto` : ''}</p>${prox.fecha <= st.hoy || ing.frecuencia === 'unico' || !ing.principal ? `<button type="button" class="btn btn--prim btn--48 btn--full" data-a="hoja" data-hoja="ingresoLlego" data-id="${ing.id}" data-fecha="${prox.fecha}" data-fk="ing-llego">Ya llegó</button>` : ''}` : ''}
             </section>
             ${adelanto}
-            ${descuentos.length ? tarjetaSeccion('Te descuentan del salario', `<ul class="lista">${descuentos.map((p) => `<li class="fila"><button type="button" class="fila-main" data-a="abrir" data-tipo="pago" data-id="${p.id}" data-fk="desc-${p.id}">${caja(p.emoji)}<span class="fila-txt"><span class="fila-t">${esc(p.nombre)}</span><span class="fila-s">Se paga solo al confirmar que te cayó${p.deuda && p.deuda.debe !== null && p.deuda.debe !== undefined ? ` · debes ${dinero(p.deuda.debe, { aprox: true })}` : ''}</span></span><span class="fila-m">${montoHtml(p.monto)}</span></button></li>`).join('')}</ul><p class="fila-s">Lo que esperas (${dinero(ing.monto, { aprox: ing.aprox })}) ya es lo que te cae, sin estos descuentos.</p>`, { id: 'i-desc' }) : ''}
+            ${descuentos.length ? tarjetaSeccion('Te descuentan del salario', `<ul class="lista">${descuentos.map((p) => `<li class="fila"><button type="button" class="fila-main" data-a="abrir" data-tipo="pago" data-id="${p.id}" data-fk="desc-${p.id}">${caja(p.emoji)}<span class="fila-txt"><span class="fila-t">${esc(p.nombre)}</span><span class="fila-s">Se paga solo al confirmar que llegó${p.deuda && p.deuda.debe !== null && p.deuda.debe !== undefined ? ` · debes ${dinero(p.deuda.debe, { aprox: true })}` : ''}</span></span><span class="fila-m">${montoHtml(p.monto)}</span></button></li>`).join('')}</ul><p class="fila-s">Lo que esperas (${dinero(ing.monto, { aprox: ing.aprox })}) ya es lo que recibes, sin estos descuentos.</p>`, { id: 'i-desc' }) : ''}
             ${tarjetaSeccion('Llegadas', llegadas.length ? `<ul class="lista">${llegadas.map(([f, l]) => `<li class="fila"><div class="fila-main fila-main--quieta">${caja(ing.emoji)}<span class="fila-txt"><span class="fila-t">${esc(M.capital(M.fechaLarga(f)))}</span><span class="fila-s">${textoLlegada(l)}</span></span><span class="fila-m">${l.noLlego ? '' : montoHtml(l.monto, 'ingreso')}</span></div></li>`).join('')}</ul>` : '<p class="vacio">Todavía no ha llegado.</p>', { id: 'i-hist' })}
             ${ing.activo === false ? '' : `<div class="pie-acciones"><button type="button" class="btn btn--full" data-a="hoja" data-hoja="nuevoIngreso" data-id="${ing.id}" data-fk="editar-ingreso">${icon('pencil', 'ico-s')}Editar</button></div>`}
         </div>`;

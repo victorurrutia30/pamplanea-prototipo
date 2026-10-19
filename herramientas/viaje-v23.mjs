@@ -119,7 +119,7 @@ try {
     check('Reparte lo dice', await texto('#pantalla'), (x) => x.includes('Llegó antes de tu quincena del 29') && x.includes('Usarla desde ya'));
     await clic('[data-fk="rep-listo"]');
     check('adelantado: el libre no sube', await texto('.portada-n'), libre28);
-    check('adelantado: la próxima lo cuenta', await texto('.proy'), (x) => x.includes('entra ~$1,163') && x.includes('$566.00 de tu pareja, que ya llegó'));
+    check('adelantado: la próxima lo cuenta', await texto('.proy'), (x) => x.includes('ingreso ~$1,163') && x.includes('$566.00 de tu pareja, que ya llegó'));
     await coherente('pareja adelantada');
 
     // 29 oct: llega la quincena. Se confirma; lo del 30 ya sale de este dinero.

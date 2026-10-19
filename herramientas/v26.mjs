@@ -182,7 +182,8 @@ try {
         check('con tus datos: botón «Ayuda»', await texto('#btn-ayuda'), 'Ayuda');
         await clic('#btn-ayuda');
         await foto('A-ayuda-uso');
-        check('Ayuda (uso): solo lo permitido', await tocables('.ay button, .ay a, .ay summary'), ['Cerrar', ...SOLO, ...TEMAS]);
+        // v2.6.2 (V2-68): con tus datos, también «Completar tu Primer día» (después de «Instalar la app»).
+        check('Ayuda (uso): solo lo permitido', await tocables('.ay button, .ay a, .ay summary'), ['Cerrar', ...SOLO.slice(0, 4), 'Completar tu Primer día', ...SOLO.slice(4), ...TEMAS]);
         check('Ayuda (uso): «Usarla con mis datos» · Estás aquí', await ev('[...document.querySelectorAll(".ay [aria-current=true]")].map((e) => e.innerText.replace(/\\s+/g, " ").trim())'), ['Usarla con mis datos Estás aquí']);
         check('Ayuda (uso): nada prohibido', prohibidoEn(await texto('.ay')), []);
         check('Ayuda (uso): sin «Ir al modo entrenamiento» ni «Instalar» suelto', await texto('.ay'), (t) => !/Ir al modo entrenamiento/i.test(t) && !/Instalar en tu teléfono/.test(t));

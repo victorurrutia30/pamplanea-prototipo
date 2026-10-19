@@ -110,7 +110,7 @@
 
     // ------------------------------------------------------------------ un paso atrás dentro de la app
     const conTarea = () => raiz.classList.contains('con-tarea');
-    const enPrimerDia = () => !!(P.ui.ob && P.st && !P.st.configurado);
+    const enPrimerDia = () => !!(P.enPrimerDia && P.enPrimerDia());
     /** Hoy, sin nada abierto y sin entrenamiento, prueba ni ejercicio: atrás es del teléfono. */
     function enRaiz() {
         if (!P.ui || !P.st) return true;

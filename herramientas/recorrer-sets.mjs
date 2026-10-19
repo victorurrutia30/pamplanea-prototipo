@@ -129,6 +129,7 @@ try {
         await clic('[data-fk="ob-sig"]');
         await clic('[data-fk="ob-saltar"]');
         await clic('[data-fk="ob-saltar"]');
+        await clic('[data-fk="ob-saltar"]'); // v2.6.2 (V2-68): un paso más (deudas y tarjetas por separado)
     });
     await tarea('A2-pupusas', async () => {
         await anotar('pupusas 6');

@@ -166,7 +166,7 @@ try {
     await abrirApp();
     await clic('[data-fk="elegir-aprender"]');
     await esperar(300);
-    check('«¿Cómo te entra el dinero?» con guarda', await estado(), (e) => e.tour === 'elegir:0' && e.guarda);
+    check('«¿Cómo recibes tu dinero?» con guarda', await estado(), (e) => e.tour === 'elegir:0' && e.guarda);
     await clic('[data-fk="tour-version-fijo"]');
     await esperar(300);
     await clic('[data-fk="tour-empezar"]');
