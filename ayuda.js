@@ -1,9 +1,12 @@
 // Producto v2.1 · prototipo. Para probar en el teléfono de otras personas: pantalla completa con
-// safe areas y teclado reales, aviso fijo de prototipo, «Casos y ayuda» (casos, notas, tema,
-// reiniciar), la PRUEBA GUIADA PARA TESTERS (bienvenida con perfil, set A o B alternado, una tarea a
-// la vez sin decir dónde tocar, registro de tiempo, toques y pantallas, comprensión final y resumen
-// para WhatsApp), el modo moderador, la guía de instalación y el aviso de versión nueva (PWA).
-// Todo se guarda en este navegador (o en memoria si no se puede).
+// safe areas y teclado reales, aviso fijo de prototipo, «Ayuda», la PRUEBA GUIADA PARA TESTERS
+// (bienvenida con perfil, set A o B alternado, una tarea a la vez sin decir dónde tocar, registro de
+// tiempo, toques y pantallas, comprensión final), el modo moderador, la guía de instalación y el aviso
+// de versión nueva (PWA). Todo se guarda en este navegador (o en memoria si no se puede).
+// v2.6 (V2-60, V2-61): la persona ve en «Ayuda» solo tres caminos (usarla con sus datos, aprender a usarla y
+// la prueba guiada, que nunca dice «set A» ni «set B»), «Cuéntale a Victor o a Pam cómo vas», «Tus datos»,
+// la apariencia y la versión. Los casos, explorar, las notas, reiniciar los ejemplos, los sets y el
+// moderador quedan para Victor, con el enlace ?victor=1.
 'use strict';
 (() => {
     const P = window.P;
@@ -23,6 +26,9 @@
         d.nombre = d.nombre || '';
         d.notas = d.notas || {};
         d.prueba = { ...pruebaVacia(), ...(d.prueba || {}) };
+        // v2.6: el set B tiene una tarea menos (V2-63); quien iba en la última sigue en la última.
+        const s = d.prueba.set && SETS[d.prueba.set];
+        if (s && d.prueba.i >= s.length) d.prueba.i = s.length - 1;
         return d;
     };
     const guardar = (d) => P.almacen.escribir(CLAVE, d);
@@ -34,6 +40,9 @@
         const m = /[?&]set=([ab])\b/i.exec(location.search);
         return m ? m[1].toUpperCase() : null;
     })();
+    /** v2.6 (V2-60): las herramientas de Victor (casos, explorar, notas, reiniciar los ejemplos, sets y moderador) solo con ?victor=1. */
+    const victor = /[?&]victor=1\b/.test(location.search);
+    P.victor = victor;
 
     // ------------------------------------------------------------------ plataforma e instalación
     const ua = navigator.userAgent || '';
@@ -117,7 +126,12 @@
         if (disp.setSiguiente) return [disp.setSiguiente, 'moderador'];
         return [disp.personas % 2 === 0 ? 'A' : 'B', 'alterno'];
     }
+    /** La prueba usa datos de ejemplo: desde «Usarla con mis datos» primero se pasa al entrenamiento (los datos reales quedan guardados). */
+    function aEjemplos() {
+        if (P.modo === 'uso' && P.modos) P.modos.aEntrenamiento();
+    }
     function empezarPrueba() {
+        aEjemplos();
         const d = datos();
         const [set, origen] = asignarSet();
         const disp = dispositivo();
@@ -130,6 +144,7 @@
         else iniciarTarea(0);
     }
     function iniciarTarea(i) {
+        aEjemplos();
         const d = datos();
         const s = setActual(d);
         if (!s) return;
@@ -308,24 +323,68 @@
         return lineas.join('\n').trim();
     }
     A.armarResumen = armarResumen;
+    const fechaDia = (iso) => {
+        try {
+            return new Date(iso).toLocaleDateString('es-SV', { dateStyle: 'medium' });
+        } catch {
+            return String(iso || '').slice(0, 10);
+        }
+    };
+    /**
+     * v2.6 (V2-61, V2-62): la prueba guiada dentro de «Cuéntale a Victor o a Pam cómo vas». Sin letra de set (se
+     * reconoce por las tareas) y sin notas; lo que la persona escribió pasa por `tapar` (montos y nombres).
+     * Cada parte trae la frase de «Esto se manda» que la describe: la lista y el texto salen de aquí mismo.
+     */
+    A.partesPrueba = (tapar = (t) => t) => {
+        const d = datos();
+        const p = d.prueba;
+        const s = setActual(d);
+        if (!s) return [];
+        const conResultado = s.some((t) => !t.comprension && p.tareas[t.id] && p.tareas[t.id].resultado);
+        if (p.estado !== 'fin' && !conResultado) return [];
+        const instalar = { sí: 'la instalé', no: 'no pude', 'no lo intentó': 'no lo intenté' }[p.instalada];
+        const lineas = ['', `${p.estado === 'fin' ? `Prueba guiada: la terminé${p.finalizada ? ` el ${fechaDia(p.finalizada)}` : ''}` : `Prueba guiada: la dejé en la tarea ${p.i + 1} de ${s.length}`}${instalar ? ` · instalarla al empezar: ${instalar}` : ''}`];
+        s.forEach((t, i) => {
+            if (t.comprension) return;
+            const r = p.tareas[t.id];
+            if (!r || !r.resultado) {
+                lineas.push(`${i + 1}. ${t.titulo}: no llegué`);
+                return;
+            }
+            const res = r.resultado === 'rendida' ? 'no pude' : r.detectada ? 'la logré (la app lo detectó)' : 'dije que la terminé (la app no lo detectó)';
+            lineas.push(`${i + 1}. ${t.titulo}: ${res} · ${duracion((r.fin || Date.now()) - r.inicio)} · ${r.toques} toques${r.facil ? ` · fácil ${r.facil} de 5` : ''}`);
+            if (r.confuso) lineas.push(`   Me confundió: ${tapar(r.confuso)}`);
+            if (r.pantallas && r.pantallas.length) lineas.push(`   Pantallas: ${r.pantallas.join(' › ')}`);
+        });
+        if (p.estado === 'fin') {
+            const f = p.final || {};
+            const resp = (x) => ((x || '').trim() ? tapar(x.trim()) : '(sin respuesta)');
+            lineas.push('Al final, con mis palabras:', `- ¿Qué significa el número grande de Hoy? ${resp(f.numero)}`, `- ¿Para qué sirve esta app? ${resp(f.sirve)}`, `- ¿La usaría? ¿Qué me haría dejarla? ${resp(f.usarias)}`);
+        }
+        const partes = [{ id: 'prueba', lista: 'De tu prueba guiada: si pudiste instalarla al empezar, cada tarea (si la lograste, el tiempo, los toques, qué tan fácil fue, lo que te confundió y las pantallas que abriste) y tus respuestas del final', lineas }];
+        if (PERFIL.some(([c]) => p.perfil[c])) {
+            const mio = (campo) => (p.perfil[campo] ? etiquetaPerfil(campo, p.perfil[campo]) : 'no contesté');
+            partes.push({ id: 'sobreTi', lista: 'Lo que contestaste en «Sobre ti»: cómo te pagan, dónde tienes tu dinero, si usas tarjeta y cómo llevas tus cuentas', lineas: [`Sobre mí: me pagan ${mio('pago')} · mi dinero: ${mio('dinero')} · tarjeta de crédito: ${mio('tarjeta')} · llevo mis cuentas: ${mio('cuentas')}`] });
+        }
+        return partes;
+    };
 
     // ------------------------------------------------------------------ paneles
     const chipsPerfil = (perfil) =>
         PERFIL.map(([campo, pregunta, ops]) => `<div class="campo-g" role="group" aria-labelledby="ay-p-${campo}"><p class="campo-l" id="ay-p-${campo}">${pregunta}</p><div class="chips">${ops.map(([v, t]) => `<button type="button" class="chip" aria-pressed="${perfil[campo] === v}" data-a="ayPerfil" data-campo="${campo}" data-v="${v}" data-fk="ay-p-${campo}-${v}">${perfil[campo] === v ? icon('check', 'ico-xs') : ''}${t}</button>`).join('')}</div></div>`).join('');
-    const pieVersion = () => `<p class="ay-version">${esc(VERSION)} · Modo entrenamiento: datos de ejemplo · Sin rastreadores</p>`;
+    const pieVersion = () => `<p class="ay-version">${esc(VERSION)} · ${P.modo === 'uso' ? 'Tus datos solo están en este teléfono' : 'Modo entrenamiento: datos de ejemplo'} · Sin rastreadores</p>`;
     const compartirHtml = (texto, id = 'ay-texto') => `<div class="campo-g"><label class="campo-l" for="${id}">Si no se puede compartir, mantén presionado el texto y cópialo</label><textarea id="${id}" class="ay-textarea ay-texto" readonly rows="9">${esc(texto)}</textarea></div>
         <div class="ay-acc">${navigator.share ? `<button type="button" class="btn btn--prim btn--48" data-a="ayCompartir" data-fk="ay-compartir">Compartir</button>` : ''}${navigator.clipboard && window.isSecureContext ? `<button type="button" class="btn btn--48" data-a="ayCopiar" data-fk="ay-copiar">Copiar</button>` : ''}<button type="button" class="btn btn--48" data-a="aySeleccionar" data-fk="ay-sel">Seleccionar todo</button></div><p class="fila-s" id="ay-copiado" aria-live="polite"></p>`;
 
+    /** v2.6 (V2-61): al empezar, dos líneas simples; la app elige el set sola y nunca lo dice. */
     function vistaBienvenida() {
         const perfil = A.perfil || {};
-        return `<div class="ay-bienvenida"><p class="ay-bien-t">¡Hola! Gracias por ayudarnos.</p><p class="txt">Es una prueba de una app para organizar tu dinero. <strong>Los datos son inventados: no pongas tus datos reales.</strong></p></div>
-            <section class="ay-card" aria-labelledby="ay-como"><h3 class="ay-h3" id="ay-como">${icon('list-checks', 'ico-s')}Cómo funciona</h3>
-                <ul class="ay-puntos"><li>Te damos tareas cortas, una a la vez. Son unos <strong>15 minutos</strong>.</li><li>Mientras usas la app, <strong>di en voz alta lo que piensas</strong>.</li><li>No hay respuestas malas: <strong>si algo no se entiende, es culpa de la app, no tuya</strong>.</li><li>Si te trabas, toca «No pude» y seguimos.</li></ul></section>
+        return `<div class="ay-bienvenida"><p class="ay-bien-l">Te pongo tareas cortas para ver si la app se entiende. <strong>No es un examen para ti: es para la app.</strong></p><p class="txt">Usas datos de ejemplo, no los tuyos. Son unos 15 minutos.</p></div>
             <section class="ay-card" aria-labelledby="ay-quien"><h3 class="ay-h3" id="ay-quien">${icon('users', 'ico-s')}Sobre ti <span class="opcional">(opcional)</span></h3>
                 <div class="campo-g"><label class="campo-l" for="ay-nombre-t">Tu nombre o apodo</label><div class="campo"><input id="ay-nombre-t" data-ay="nombreTester" type="text" autocomplete="off" autocapitalize="words" value="${esc(A.nombreTester || '')}" placeholder="Ej. Sofi"></div></div>
                 ${chipsPerfil(perfil)}</section>
             <button type="button" class="btn btn--prim btn--48 btn--full" data-a="ayEmpezarPrueba" data-fk="ay-empezar-prueba">Empezar</button>
-            <button type="button" class="link" data-a="ayExplorar" data-fk="ay-explorar">Solo quiero mirar la app (sin prueba)</button>
+            <button type="button" class="link" data-a="ayExplorar" data-fk="ay-explorar">Ahora no</button>
             ${pieVersion()}`;
     }
     const dibujo = {
@@ -386,10 +445,14 @@
             ${campo('usarias', '¿La usarías? ¿Qué te haría dejarla?')}
             <button type="button" class="btn btn--prim btn--48 btn--full" data-a="ayFinal" data-fk="ay-final">Terminar</button>`;
     }
+    /** v2.6 (V2-62): al terminar, la tarjeta «Cuéntale a Victor o a Pam cómo te fue» lleva a esa pantalla (ahí va el resultado). */
     function vistaFin() {
-        return `<div class="ay-gracias"><p class="ay-bien-t">¡Gracias! Terminaste la prueba.</p><p class="txt">Manda este resumen a quien te invitó a probar la app: toca «Compartir» y elige WhatsApp.</p></div>
-            <section class="ay-card" aria-labelledby="ay-res">${'<h3 class="ay-h3" id="ay-res">' + icon('receipt-text', 'ico-s') + 'Tu resumen</h3>'}${compartirHtml(A.texto || armarResumen())}</section>
-            <button type="button" class="btn btn--48 btn--full" data-a="ayCerrar" data-fk="ay-fin-cerrar">Seguir mirando la app</button>
+        const tiene = P.modos && P.modos.tieneDatos();
+        return `<div class="ay-gracias"><p class="ay-bien-t">¡Gracias! Terminaste la prueba.</p><p class="txt">Lo que hiciste nos ayuda a que la app se entienda mejor.</p></div>
+            <section class="ay-card ay-card--prim" aria-labelledby="ay-fin-c"><h3 class="ay-h3" id="ay-fin-c">${icon('receipt-text', 'ico-s')}Cuéntale a Victor o a Pam cómo te fue</h3>
+                <p class="txt">Lo que hiciste en la prueba. Tú eliges a quién se lo mandas.</p>
+                <button type="button" class="btn btn--prim btn--48 btn--full" data-a="ayIr" data-v="contar" data-fk="ay-fin-contar">Ver qué se manda</button></section>
+            <button type="button" class="btn btn--48 btn--full" data-a="modoCambiar" data-v="uso" data-fk="ay-fin-usar">${icon('smartphone', 'ico-s')}${tiene ? 'Volver a mis datos' : 'Usarla con mis datos'}</button>
             ${pieVersion()}`;
     }
     function vistaModerador() {
@@ -408,23 +471,50 @@
             <section class="ay-card" aria-labelledby="ay-m-n"><h3 class="ay-h3" id="ay-m-n">${icon('rotate-ccw', 'ico-s')}Nueva persona</h3>
                 ${A.confirmar === 'nueva' ? `<div class="nota nota--atencion" role="note">${icon('triangle-alert')}<div><p><strong>¿Ya enviaste el resumen de ${esc(d.nombre || 'esta persona')}?</strong> Se borran su estado, sus respuestas y sus notas.</p><div class="ay-acc"><button type="button" class="btn" data-a="ayNueva" data-v="no" data-fk="ay-nueva-no">Todavía no</button><button type="button" class="btn btn--peligro" data-a="ayNueva" data-v="si" data-fk="ay-nueva-si">Sí, ya lo envié</button></div></div></div>` : `<button type="button" class="btn btn--48 btn--full btn--reiniciar" data-a="ayNueva" data-v="pregunta" data-fk="ay-nueva">Nueva persona</button>`}
                 <p class="fila-s">Para repartir sets entre teléfonos distintos, manda enlaces alternados: <span class="ay-enlace">${esc(base)}?set=A</span> y <span class="ay-enlace">${esc(base)}?set=B</span>.</p></section>
-            <button type="button" class="link" data-a="ayIr" data-v="inicio" data-fk="ay-m-volver">${icon('chevron-left', 'ico-s')}Volver a Casos y ayuda</button>
+            <button type="button" class="link" data-a="ayIr" data-v="inicio" data-fk="ay-m-volver">${icon('chevron-left', 'ico-s')}Volver a Ayuda</button>
             ${pieVersion()}`;
     }
     const notaDe = () => (P.caso ? P.caso.id : 'general');
+    /**
+     * v2.6 (V2-60): «Ayuda», igual en los dos modos. Tres caminos (el de ahora, marcado), «Cuéntale a Victor o a Pam
+     * cómo vas», «Tus datos», la apariencia y la versión. Con ?victor=1, debajo, las herramientas de Victor.
+     */
     function vistaInicio() {
+        const d = datos();
+        const p = d.prueba;
+        const enUso = P.modo === 'uso';
+        const activa = p.estado === 'activa' && !enUso;
+        const s = setActual(d);
+        const enCursoCard = activa
+            ? `<section class="ay-card ay-card--prim" aria-labelledby="ay-g-t"><h3 class="ay-h3" id="ay-g-t">${icon('list-checks', 'ico-s')}Prueba guiada · tarea ${p.i + 1} de ${s.length}</h3><p class="ay-tarea">${esc(tareaActual(d).tarea)}</p>
+                   <button type="button" class="btn btn--prim btn--48 btn--full" data-a="ayTarea" data-fk="ay-g-ver">Ver la tarea</button><button type="button" class="link" data-a="aySalirPrueba" data-fk="ay-g-salir">Pausar la prueba</button></section>`
+            : '';
+        const subPrueba = activa ? `Vas en la tarea ${p.i + 1} de ${s.length}` : p.estado === 'fin' ? 'Ya la hiciste: cuéntale a Victor o a Pam cómo te fue' : s && p.estado === 'libre' ? `La dejaste en la tarea ${p.i + 1} de ${s.length}` : 'Tareas cortas para ver si la app se entiende';
+        const op = (emoji, titulo, sub, accion, fk, extra = '', actual = false) => `<button type="button" class="opcion-g elegir-op ay-op" data-a="${accion}" data-fk="${fk}" ${extra}${actual ? ' aria-current="true"' : ''}>${P.caja(emoji)}<span class="opcion-g-txt"><span class="opcion-g-t">${titulo}</span><span class="fila-s">${sub}</span></span>${icon(actual ? 'check' : 'chevron-right', 'ico-xs')}</button>`;
+        const tres = `<div class="opciones-grandes ay-tres" role="group" aria-label="¿Qué quieres hacer?">
+                ${enUso ? op('💰', 'Usarla con mis datos', 'Estás aquí', 'ayCerrar', 'ay-usar', '', true) : op('💰', 'Usarla con mis datos', 'Tu dinero real, solo en este teléfono', 'modoCambiar', 'ay-usar', 'data-v="uso"')}
+                ${op('🎓', 'Aprender a usarla', 'Lo esencial y capítulos cortos, con datos de ejemplo', 'ayIr', 'ay-tour', 'data-v="aprendeMas"')}
+                ${op('🎯', 'Prueba guiada', subPrueba, 'ayPrueba', 'ay-prueba')}</div>`;
+        const fila = (ic, t, sub, v, fk) => `<li class="fila"><button type="button" class="fila-main" data-a="ayIr" data-v="${v}" data-fk="${fk}"><span class="emo emo--ico" aria-hidden="true">${icon(ic)}</span><span class="fila-txt"><span class="fila-t">${t}</span><span class="fila-s">${sub}</span></span>${icon('chevron-right', 'ico-xs')}</button></li>`;
+        const mas = `<ul class="lista card ay-lista">${fila('receipt-text', 'Cuéntale a Victor o a Pam cómo vas', 'Qué se manda y qué no', 'contar', 'au-contar')}${fila('rotate-ccw', 'Tus datos', 'Guardar copia, restaurar o borrar', 'datos', 'au-datos')}</ul>`;
+        const donde = `<p class="txt">${enUso ? 'Estás usando tus datos: se guardan solo en este teléfono.' : 'Estás en modo entrenamiento: datos de ejemplo.'}</p>`;
+        return `${enCursoCard}${donde}${tres}${mas}${vistaApariencia()}${victor ? herramientasVictor() : ''}${pieVersion()}`;
+    }
+    /** v2.6 (V2-60): las herramientas de Victor (solo con ?victor=1). Usan los ejemplos: con tus datos, primero se pasa a ellos. */
+    function herramientasVictor() {
+        if (P.modo === 'uso') {
+            return `<section class="ay-card ay-victor-h" aria-labelledby="ay-v-t"><h3 class="ay-h3" id="ay-v-t">${icon('users', 'ico-s')}Herramientas de Victor</h3><p class="txt">Los casos, los sets y el moderador usan los ejemplos. Tus datos quedan guardados.</p><button type="button" class="btn btn--48 btn--full" data-a="modoCambiar" data-v="entrenamiento" data-fk="ay-v-ejemplos">Ir a los ejemplos</button></section>`;
+        }
         const d = datos();
         const p = d.prueba;
         const caso = P.caso;
         const sims = (caso && caso.sims) || [];
         const prueba =
-            p.estado === 'activa'
-                ? `<section class="ay-card ay-card--prim" aria-labelledby="ay-g-t"><h3 class="ay-h3" id="ay-g-t">${icon('list-checks', 'ico-s')}Prueba · set ${p.set} · tarea ${p.i + 1} de ${setActual(d).length}</h3><p class="ay-tarea">${esc(tareaActual(d).tarea)}</p>
-                   <button type="button" class="btn btn--prim btn--48 btn--full" data-a="ayTarea" data-fk="ay-g-ver">Ver la tarea</button><button type="button" class="link" data-a="aySalirPrueba" data-fk="ay-g-salir">Pausar la prueba</button></section>`
-                : p.estado === 'fin'
-                  ? `<section class="ay-card ay-card--prim" aria-labelledby="ay-g-t"><h3 class="ay-h3" id="ay-g-t">${icon('circle-check', 'ico-s')}Terminaste la prueba</h3><button type="button" class="btn btn--prim btn--48 btn--full" data-a="ayIr" data-v="fin" data-fk="ay-g-res">Ver y enviar mi resumen</button></section>`
-                  : `<section class="ay-card ay-card--prim" aria-labelledby="ay-g-t"><h3 class="ay-h3" id="ay-g-t">${icon('list-checks', 'ico-s')}Prueba guiada</h3><p class="txt">Unas 7 tareas cortas, una a la vez, unos 15 minutos.</p><button type="button" class="btn btn--prim btn--48 btn--full" data-a="ayIr" data-v="bienvenida" data-fk="ay-g-empezar">${p.set ? 'Seguir con la prueba' : 'Empezar la prueba'}</button></section>`;
-        const instalar = instalada() ? '' : `<section class="ay-card" aria-labelledby="ay-i-t2"><h3 class="ay-h3" id="ay-i-t2">${icon('smartphone', 'ico-s')}Instalar en tu teléfono</h3><p class="txt">Ábrela como una app, a pantalla completa y sin internet.</p><button type="button" class="btn btn--48 btn--full" data-a="ayIr" data-v="instalar" data-fk="ay-i-ver">Ver cómo</button></section>`;
+            p.estado === 'fin'
+                ? `<section class="ay-card ay-card--prim" aria-labelledby="ay-g-t2"><h3 class="ay-h3" id="ay-g-t2">${icon('circle-check', 'ico-s')}Set ${p.set} · terminó</h3><button type="button" class="btn btn--prim btn--48 btn--full" data-a="ayIr" data-v="fin" data-fk="ay-g-res">Ver el final de la prueba</button></section>`
+                : p.estado === 'activa'
+                  ? `<p class="fila-s">Set ${p.set} · tarea ${p.i + 1} de ${setActual(d).length}</p>`
+                  : `<section class="ay-card ay-card--prim" aria-labelledby="ay-g-t2"><h3 class="ay-h3" id="ay-g-t2">${icon('list-checks', 'ico-s')}Prueba guiada</h3><p class="txt">Tareas cortas, una a la vez, unos 15 minutos.</p><button type="button" class="btn btn--prim btn--48 btn--full" data-a="ayIr" data-v="bienvenida" data-fk="ay-g-empezar">${p.set ? 'Seguir con la prueba' : 'Empezar la prueba'}</button></section>`;
         const pasos = caso && p.estado !== 'activa' ? `<details class="ay-pasos"><summary>Pasos de este caso</summary><ol>${caso.pasos.map((x) => `<li>${esc(x.t)}</li>`).join('')}</ol><p class="fila-s"><strong>Resultado esperado:</strong> ${esc(caso.esperado)}</p></details>` : '';
         const actual = `<section class="ay-card" aria-labelledby="ay-c-t"><h3 class="ay-h3" id="ay-c-t">${caso ? `${esc(caso.id)} · ${esc(caso.titulo)}` : `Explorando con ${esc(P.st.nombre || 'Ana')}`}</h3>
             <p class="txt">${caso ? esc(caso.para) : 'Sin pasos: toca lo que quieras. Todo cambia los números de verdad.'}</p>${pasos}
@@ -437,25 +527,22 @@
         const lista = `<section class="ay-card" aria-labelledby="ay-l-t"><h3 class="ay-h3" id="ay-l-t">Elegir un caso</h3>${p.estado === 'activa' ? '<p class="fila-s">Elegir un caso pausa la prueba.</p>' : ''}
             <ul class="ay-casos">${CASOS.map((c) => `<li><button type="button" class="ay-caso" data-a="ayCaso" data-v="${c.id}" aria-current="${caso && caso.id === c.id ? 'true' : 'false'}" data-fk="ay-caso-${c.id}"><span class="ay-caso-cod">${c.id}</span><span class="ay-caso-t">${esc(c.titulo)}</span>${(d.notas[c.id] || '').trim() ? `<span class="ay-caso-ok">${icon('check', 'ico-xs')}<span class="sr-only">con notas</span></span>` : ''}</button></li>`).join('')}</ul>
             <p class="campo-l">Explorar libre</p><div class="ay-acc"><button type="button" class="btn btn--48" data-a="ayPersona" data-v="ana" data-fk="ay-ana">Ana · quincenal</button><button type="button" class="btn btn--48" data-a="ayPersona" data-v="carlos" data-fk="ay-carlos">Carlos · semanal</button><button type="button" class="btn btn--48" data-a="ayPersona" data-v="rosa" data-fk="ay-rosa">Rosa · ventas</button></div></section>`;
-        const apariencia = vistaApariencia();
-        const e = P.modos ? P.modos.entrenamiento() : { practicas: {} };
-        const aprender = `<section class="ay-card ay-card--prim" aria-labelledby="ay-ap-t"><h3 class="ay-h3" id="ay-ap-t">${icon('book-open', 'ico-s')}Modo entrenamiento</h3><p class="txt">Datos de ejemplo (Ana, Carlos y Rosa): practica sin miedo, nada toca tus datos.</p>
-            <div class="pila"><button type="button" class="btn btn--prim btn--48 btn--full" data-a="ayIr" data-v="practica" data-fk="ay-practica">${icon('list-checks', 'ico-s')}Practicar con ejemplos${Object.keys(e.practicas || {}).length ? ` · ${(window.PRACTICA || []).filter((x) => (e.practicas || {})[x.id]).length} de ${(window.PRACTICA || []).length}` : ''}</button><button type="button" class="btn btn--48 btn--full" data-a="ayIr" data-v="aprendeMas" data-fk="ay-tour">${icon('book-open', 'ico-s')}Aprender a usarla: lo esencial y más</button><button type="button" class="btn btn--48 btn--full" data-a="modoCambiar" data-v="uso" data-fk="ay-usar">${icon('smartphone', 'ico-s')}Usarla con mis datos</button></div></section>`;
-        const datosHtml = `<section class="ay-card" aria-labelledby="ay-d-t"><h3 class="ay-h3" id="ay-d-t">${icon('rotate-ccw', 'ico-s')}Datos</h3>
+        const datosHtml = `<section class="ay-card" aria-labelledby="ay-d-t"><h3 class="ay-h3" id="ay-d-t">${icon('rotate-ccw', 'ico-s')}Datos de los ejemplos</h3>
             <button type="button" class="btn btn--48 btn--full btn--reiniciar" data-a="ayReiniciar" data-fk="ay-reiniciar">${icon('rotate-ccw', 'ico-s')}Reiniciar ejemplos</button>
             <p class="fila-s">Vuelve ${caso ? 'este caso' : 'los ejemplos'} al inicio. Solo el entrenamiento: tus datos reales no se tocan.</p>
             ${A.confirmar === 'borrar' ? `<div class="nota nota--atencion" role="note">${icon('triangle-alert')}<div><p><strong>¿Borrar todo?</strong> Se borran tus notas, tus respuestas y lo que hiciste en la app.</p><div class="ay-acc"><button type="button" class="btn" data-a="ayBorrar" data-v="no" data-fk="ay-borrar-no">Cancelar</button><button type="button" class="btn btn--peligro" data-a="ayBorrar" data-v="si" data-fk="ay-borrar-si">Sí, borrar todo</button></div></div></div>` : `<button type="button" class="link link--peligro" data-a="ayBorrar" data-v="pregunta" data-fk="ay-borrar">${icon('trash-2', 'ico-s')}Borrar todo, también mis notas</button>`}
             ${P.almacen.disponible ? '' : '<p class="fila-s">Este navegador no deja guardar: lo que hagas se pierde al cerrar.</p>'}
             <a class="link" href="index.html?guia=1">${icon('eye', 'ico-s')}Ver la guía completa (para computadora)</a></section>`;
-        const paraVictor = `<details class="ay-card ay-victor"${p.estado === 'activa' || p.estado === 'fin' ? ' open' : ''}><summary class="ay-h3">${icon('users', 'ico-s')}Para Victor: prueba guiada (sets A y B)</summary>${prueba}<button type="button" class="ay-moderador" data-a="ayIr" data-v="moderador" data-fk="ay-moderador">Modo moderador</button></details>`;
-        return `${p.estado === 'activa' ? prueba : ''}${aprender}${instalar}${actual}${notas}${lista}${apariencia}${datosHtml}${p.estado === 'activa' ? '' : paraVictor}${pieVersion()}`;
+        const paraVictor = `<details class="ay-card ay-victor"${p.estado === 'activa' || p.estado === 'fin' ? ' open' : ''}><summary class="ay-h3">${icon('users', 'ico-s')}Prueba guiada: sets A y B</summary>${prueba}<button type="button" class="ay-moderador" data-a="ayIr" data-v="moderador" data-fk="ay-moderador">Modo moderador</button></details>`;
+        return `<h3 class="campo-l campo-l--sec ay-v-sec" id="ay-v-t">${icon('users', 'ico-xs')}Herramientas de Victor (enlace ?victor=1)</h3>${actual}${notas}${lista}${datosHtml}${paraVictor}`;
     }
     function vistaApariencia() {
         const temas = [['serena-claro', 'Serena claro'], ['serena-oscuro', 'Serena oscuro'], ['ancla-claro', 'Ancla claro'], ['ancla-oscuro', 'Ancla oscuro']];
         return `<section class="ay-card" aria-labelledby="ay-t-t"><h3 class="ay-h3" id="ay-t-t">${icon('palette', 'ico-s')}Apariencia</h3><div class="chips" role="group" aria-labelledby="ay-t-t">${temas.map(([v, t]) => `<button type="button" class="chip" aria-pressed="${P.tema === v}" data-a="ayTema" data-v="${v}" data-fk="ay-tema-${v}">${P.tema === v ? icon('check', 'ico-xs') : ''}${t}</button>`).join('')}</div></section>`;
     }
-    const TITULOS = { inicio: 'Casos y ayuda', bienvenida: 'Prueba de PamPlanea', instalar: 'Instalar la app', tarea: 'Tu tarea', respuesta: 'Cuéntanos', comprension: '¿Qué entendiste?', fin: '¡Gracias!', moderador: 'Modo moderador' };
-    const VISTAS = { inicio: vistaInicio, bienvenida: vistaBienvenida, instalar: vistaInstalar, tarea: vistaTarea, respuesta: vistaRespuesta, comprension: vistaComprension, fin: vistaFin, moderador: vistaModerador };
+    // v2.6: «Casos y ayuda» pasa a «Ayuda» (V2-60); la de «Usarla con mis datos» es la misma.
+    const TITULOS = { inicio: 'Ayuda', ayudaUso: 'Ayuda', bienvenida: 'Prueba guiada', instalar: 'Instalar la app', tarea: 'Tu tarea', respuesta: 'Cuéntanos', comprension: '¿Qué entendiste?', fin: '¡Gracias!', moderador: 'Modo moderador' };
+    const VISTAS = { inicio: vistaInicio, ayudaUso: vistaInicio, bienvenida: vistaBienvenida, instalar: vistaInstalar, tarea: vistaTarea, respuesta: vistaRespuesta, comprension: vistaComprension, fin: vistaFin, moderador: vistaModerador };
     function pintar({ foco = null } = {}) {
         const capa = $('#capa-ayuda');
         if (!A.abierto) {
@@ -534,7 +621,27 @@
 
     // ------------------------------------------------------------------ acciones
     const acc = P.acciones;
-    acc.abrirAyuda = () => abrirPanel(P.modo === 'uso' ? 'ayudaUso' : 'inicio');
+    acc.abrirAyuda = () => abrirPanel('inicio');
+    /**
+     * v2.6 (V2-61): «Prueba guiada» desde «Ayuda» o desde la letra. En curso: la tarea; terminada: el final (con
+     * «Cuéntale…»); en pausa: sigue donde iba; si no, la bienvenida. El set lo elige la app (asignarSet).
+     */
+    function abrirPrueba() {
+        const d = datos();
+        if (d.prueba.estado === 'activa' && P.modo !== 'uso' && tareaActual(d)) return abrirPanel('tarea');
+        if (d.prueba.estado === 'fin' && d.prueba.set) return abrirPanel('fin');
+        if (d.prueba.set && (d.prueba.estado === 'libre' || d.prueba.estado === 'activa')) {
+            d.prueba.estado = 'activa';
+            guardar(d);
+            iniciarTarea(d.prueba.i);
+            return;
+        }
+        A.nombreTester = d.nombre;
+        A.enFlujo = false;
+        abrirPanel('bienvenida');
+    }
+    acc.ayPrueba = () => abrirPrueba();
+    A.abrirPrueba = abrirPrueba;
     // Cerrar la tarea sin tocar «Empezar» también la empieza (si no, no correría el tiempo).
     acc.ayCerrar = () => (A.panel === 'tarea' && !A.armada ? comenzarTarea() : cerrar());
     acc.ayIr = (d) => {
@@ -716,6 +823,11 @@
         P.cargarPersona('ana');
         P.avisar('Borramos todo', { check: false });
     };
+    // v2.6: las herramientas de Victor cargan ejemplos: nunca encima de los datos reales (con tus datos no se ofrecen; esto es por si acaso).
+    for (const k of ['ayCaso', 'ayPersona', 'ayReiniciar', 'aySimular', 'ayNueva', 'ayBorrar', 'ayCambiarSet']) {
+        const fn = acc[k];
+        acc[k] = (d) => (P.modo === 'uso' ? undefined : fn(d));
+    }
     acc.ayArmar = () => {
         A.texto = armarResumen();
         pintar({ foco: '#ay-texto' });
@@ -843,7 +955,7 @@
     A.iniciar = function () {
         // La franja la pinta modos.js según el modo; esto queda solo por si ese módulo faltara.
         const aviso = P.modos ? null : $('#aviso-proto');
-        if (aviso) aviso.innerHTML = `<span class="aviso-proto-t">${icon('info', 'ico-xs')}<span><span class="nw">Prototipo de prueba ·</span> <span class="nw">no pongas tus datos reales</span></span></span>${P.enGuia ? '' : `<button type="button" class="aviso-proto-b" id="btn-ayuda" data-a="abrirAyuda" data-fk="btn-ayuda" aria-haspopup="dialog">Casos y ayuda</button>`}`;
+        if (aviso) aviso.innerHTML = `<span class="aviso-proto-t">${icon('info', 'ico-xs')}<span><span class="nw">Prototipo de prueba ·</span> <span class="nw">no pongas tus datos reales</span></span></span>${P.enGuia ? '' : `<button type="button" class="aviso-proto-b" id="btn-ayuda" data-a="abrirAyuda" data-fk="btn-ayuda" aria-haspopup="dialog">Ayuda</button>`}`;
         P.colorBarra();
         const d = datos();
         if (instalada() && d.prueba.estado && !d.prueba.instalada) marcarInstalada('sí');

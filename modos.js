@@ -4,6 +4,9 @@
 //   este navegador con un esquema versionado (pamplanea-uso:v1) y una migración: una versión nueva
 //   nunca los borra. Copia en .json, restaurar y borrar. Avisos al abrir (sin servidor no hay
 //   notificaciones). Registro de uso SIN montos ni nombres financieros y «Contarle a Victor».
+// v2.6 (V2-62): «Cuéntale a Victor o a Pam cómo vas» dice antes del texto qué se manda y qué no (las dos listas
+// salen de las mismas partes que arman el texto) y, si la hizo, trae la prueba guiada. Sin recordatorios.
+// «Tus datos» y «Cuéntale…» también desde el modo entrenamiento (leen lo guardado; no tocan los ejemplos).
 'use strict';
 (() => {
     const P = window.P;
@@ -98,11 +101,29 @@
         if (crudo && typeof crudo === 'object' && (!crudo.esquema || crudo.esquema < ESQUEMA) && !P.almacen.leer(CLAVE_RESPALDO, null)) P.almacen.escribir(CLAVE_RESPALDO, crudo);
         return migrarUso(crudo) || usoVacio();
     }
+    /** v2.6: lo de «Usarla con mis datos»; desde el modo entrenamiento se lee de lo guardado (los ejemplos no se tocan). */
+    const usoGuardado = () => (P.modo === 'uso' && uso ? uso : leerUso());
+    /** Cambios chicos a lo guardado (el nombre de «Cuéntale…», la fecha de la última copia) desde cualquiera de los dos modos. */
+    function cambiarUsoGuardado(cambios) {
+        if (P.modo === 'uso' && uso) {
+            Object.assign(uso, cambios);
+            guardarUso();
+            return;
+        }
+        const u = leerUso();
+        Object.assign(u, cambios);
+        P.almacen.escribir(CLAVE_USO, u);
+        if (uso) Object.assign(uso, cambios);
+    }
+    const tieneDatos = () => {
+        const u = usoGuardado();
+        return !!(u.st && u.st.configurado);
+    };
     function guardarUso() {
         if (!uso) return;
         if (P.modo === 'uso' && P.st) {
             uso.st = P.st;
-            // Nombres que la persona ha usado (aunque luego los borre): solo sirven para taparlos en «Contarle a Victor».
+            // Nombres que la persona ha usado (aunque luego los borre): solo sirven para taparlos en «Cuéntale a Victor o a Pam».
             recordarNombres();
         }
         if (P.ui) uso.tab = P.ui.tab;
@@ -180,7 +201,7 @@
         if (!aviso) return;
         const [a, b] = textoAviso();
         aviso.classList.toggle('aviso-proto--uso', P.modo === 'uso');
-        aviso.innerHTML = `<span class="aviso-proto-t">${icon(P.modo === 'uso' ? 'smartphone' : 'book-open', 'ico-xs')}<span><span class="nw">${a}</span> <span class="nw">${b}</span></span></span>${P.enGuia ? '' : `<button type="button" class="aviso-proto-b" id="btn-ayuda" data-a="abrirAyuda" data-fk="btn-ayuda" aria-haspopup="dialog">${P.modo === 'uso' ? 'Ayuda' : 'Casos y ayuda'}</button>`}`;
+        aviso.innerHTML = `<span class="aviso-proto-t">${icon(P.modo === 'uso' ? 'smartphone' : 'book-open', 'ico-xs')}<span><span class="nw">${a}</span> <span class="nw">${b}</span></span></span>${P.enGuia ? '' : `<button type="button" class="aviso-proto-b" id="btn-ayuda" data-a="abrirAyuda" data-fk="btn-ayuda" aria-haspopup="dialog">Ayuda</button>`}`;
         if (P.colorBarra) P.colorBarra();
     }
 
@@ -247,7 +268,7 @@
         }
         if (feedbackToca()) {
             const op = (n) => `<button type="button" class="ay-nota-n" role="radio" aria-checked="${fb.facil === n}" data-a="fbFacil" data-v="${n}" data-fk="fb-${n}"><span class="ay-nota-num">${n}</span></button>`;
-            out.push(`<section class="card card--aviso" aria-labelledby="fb-t"><div class="aviso-cab">${P.caja('💬')}<div><h2 class="card-t" id="fb-t">¿Cómo te ha ido?</h2><p class="txt">Unos segundos. Lo verá Victor cuando le cuentes cómo te va (sin montos).</p></div></div>
+            out.push(`<section class="card card--aviso" aria-labelledby="fb-t"><div class="aviso-cab">${P.caja('💬')}<div><h2 class="card-t" id="fb-t">¿Cómo te ha ido?</h2><p class="txt">Unos segundos. Solo lo ven Victor o Pam si tú se lo mandas (sin montos).</p></div></div>
                 <div role="radiogroup" aria-labelledby="fb-t" class="ay-notas-n fb-notas">${[1, 2, 3, 4, 5].map(op).join('')}</div><p class="fila-s fb-escala"><span>1 · Me costó</span><span>5 · Me encanta</span></p>
                 <div class="campo-g"><label class="campo-l" for="fb-confuso">¿Qué te confundió? <span class="opcional">(opcional)</span></label><div class="campo"><input id="fb-confuso" data-fb="confuso" type="text" maxlength="200" value="${esc(fb.confuso || '')}"></div></div>
                 <div class="campo-g"><label class="campo-l" for="fb-gustaria">¿Qué te gustaría que hiciera? <span class="opcional">(opcional)</span></label><div class="campo"><input id="fb-gustaria" data-fb="gustaria" type="text" maxlength="200" value="${esc(fb.gustaria || '')}"></div></div>
@@ -306,16 +327,16 @@
         fb = {};
         guardarUso();
         P.render({ foco: '#pantalla h1' });
-        P.avisar('¡Gracias! Lo verá Victor cuando le cuentes cómo te va');
+        P.avisar('¡Gracias! Lo verán Victor o Pam si se lo mandas');
         P.emitir('feedback:guardado');
     };
 
-    // ------------------------------------------------------------------ «Contarle a Victor cómo me va»
-    /** Quita montos y los nombres que la persona les puso a sus cosas (lugares, pagos, ahorros…). */
+    // ------------------------------------------------------------------ «Cuéntale a Victor o a Pam cómo vas» (V2-62)
+    /** Los nombres que la persona les puso a sus cosas (lugares, medios, pagos, ahorros, ingresos, tarjetas…), de cualquier largo. */
     const nombresDe = (st) =>
         [...(st.lugares || []), ...(st.medios || []), ...(st.tarjetas || []), ...(st.prestamos || []), ...(st.pagos || []), ...(st.apartados || []), ...(st.ingresos || []), ...(st.logros || []), ...(st.cerrados || [])]
             .map((x) => x && x.nombre)
-            .filter((n) => n && n.trim().length > 2)
+            .filter((n) => n && n.trim())
             .map((n) => n.trim());
     /** Junta los nombres que hay ahora (incluso si luego se cambian o borran antes de guardar). */
     function recordarNombres() {
@@ -325,20 +346,70 @@
         for (const n of nombresDe(P.st)) vistos.add(n);
         if (vistos.size !== antes) uso.nombresVistos = [...vistos];
     }
+    // v2.6: para tapar sin importar mayúsculas ni tildes, cada letra se compara en su forma simple (una por una: mismo largo).
+    const SIN_TILDE = { á: 'a', é: 'e', í: 'i', ó: 'o', ú: 'u', ü: 'u', ñ: 'n' };
+    const simple = (s) =>
+        String(s)
+            .split('')
+            .map((ch) => {
+                const l = ch.toLowerCase();
+                return l.length === 1 ? SIN_TILDE[l] || l : ch;
+            })
+            .join('');
+    const SUELTAS = new Set(['de', 'del', 'la', 'las', 'el', 'los', 'en', 'con', 'por', 'para', 'mis', 'tus', 'sus', 'una', 'uno', 'que']);
+    /**
+     * Tapa con [nombre] cada nombre de sus cosas: completo (los de 1 o 2 letras, solo como palabra suelta) y, si tiene
+     * varias palabras, cada palabra de 3 letras o más como palabra suelta («Agrícola» de «Banco Agrícola»). Mejor tapar de más.
+     */
+    function taparNombres(texto, nombres) {
+        const t = String(texto || '');
+        const s = simple(t);
+        const marcas = [];
+        const letra = (i) => i >= 0 && i < s.length && /[a-z0-9]/.test(s[i]);
+        const buscar = (q, suelta) => {
+            if (!q) return;
+            for (let i = s.indexOf(q); i !== -1; i = s.indexOf(q, i + 1)) {
+                if (suelta && (letra(i - 1) || letra(i + q.length))) continue;
+                marcas.push([i, i + q.length]);
+            }
+        };
+        for (const n of nombres) {
+            const q = simple(n.trim());
+            buscar(q, q.length <= 2);
+            const piezas = q.split(/[^a-z0-9]+/).filter((w) => w.length >= 3 && !SUELTAS.has(w));
+            if (piezas.length > 1) for (const w of piezas) buscar(w, true);
+        }
+        marcas.sort((a, b) => a[0] - b[0] || b[1] - a[1]);
+        const unidas = [];
+        for (const [a, b] of marcas) {
+            const u = unidas.at(-1);
+            if (u && a <= u[1]) u[1] = Math.max(u[1], b);
+            else unidas.push([a, b]);
+        }
+        let out = t;
+        for (const [a, b] of unidas.reverse()) out = out.slice(0, a) + '[nombre]' + out.slice(b);
+        return out;
+    }
+    /** Lo que la persona escribe va sin montos ni nombres de sus cosas. v2.6: cualquier número se tapa («me pagan 600» ya no se cuela). */
     function sinDatosFinancieros(texto) {
-        const u = uso || leerUso();
-        let t = String(texto || '').replace(/\$\s*\d[\d,]*(\.\d+)?|\b\d[\d,]*\.\d{1,2}\b|\b\d{2,}(,\d{3})+\b/g, '[monto]');
-        const nombres = new Set([...(u.st ? nombresDe(u.st) : []), ...(u.nombresVistos || [])]);
-        for (const n of [...nombres].sort((a, b) => b.length - a.length)) t = t.replace(new RegExp(n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), '[nombre]');
-        return t;
+        const u = usoGuardado();
+        const nombres = [...new Set([...(u.st ? nombresDe(u.st) : []), ...(u.nombresVistos || [])])].sort((a, b) => b.length - a.length);
+        return taparNombres(texto, nombres).replace(/\$\s*\d+(?:[.,]\d+)*|\d+(?:[.,]\d+)*/g, '[monto]');
     }
     const fechaCorta = (iso) => {
         const [y, m, d] = iso.split('-').map(Number);
         return `${d} ${M.MESES_CORTOS[m - 1]} ${y}`;
     };
     const NOMBRE_PANTALLA = { hoy: 'Hoy', pagos: 'Pagos', midinero: 'Mi dinero', mes: 'Mes', anotar: 'Anotar', desglose: 'Detalle del libre', pago: 'Ficha de pago', tarjeta: 'Ficha de tarjeta', apartado: 'Ficha de ahorro', lugar: 'Ficha de lugar', lugares: 'Cuentas', cuentas: 'Cuentas', ahorros: 'Ahorros', deudas: 'Deudas', atencion: 'Necesitan atención', pagarCon: 'Lo pagas con', reservar: 'Reservar', pasarProxima: 'Pasar a la próxima', ingreso: 'Ficha de ingreso', reparte: 'Reparte', aldia: 'Pongámonos al día', menu: 'Menú', cuadrar: 'Cuadrar', pagado: 'Pagado', apartar: 'Ahorrar', pagarYa: 'Pagar ya', mover: 'Mover dinero', moverApartado: 'Mover ahorro', usar: 'Usar ahorro', liberar: 'Sacar de ahorro', meta: 'Editar ahorro', nuevoIngreso: 'Ingreso nuevo o editado', ingresoLlego: 'Me cayó', nuevoPago: 'Pago nuevo', editarPago: 'Editar pago', decidirPago: 'Decidir pago', nuevaDeuda: 'Tarjeta o préstamo', deuda: 'Abonar deuda', estadoCuenta: 'Estado de cuenta', editarRegistro: 'Editar anotación', yaLoUse: 'Ya lo usé', yaNoAplica: 'Ya no aplica', medio: 'Medio de pago', apariencia: 'Apariencia', avisos: 'Avisos', aprende: 'Aprende', espacio: 'Espacio', invitar: 'Invitar' };
-    function textoContar() {
-        const u = uso || leerUso();
+    /** El nombre o apodo que va en el texto: el de «Cuéntale…», si no el de la prueba guiada, si no el del primer día. */
+    const nombreContar = (u) => (u.nombre || (P.ayuda && P.ayuda.datos().nombre) || (u.st && u.st.nombre) || '').trim();
+    /**
+     * Lo que se manda, por partes. Cada parte trae la frase de «Esto se manda» que la describe y sus líneas del texto:
+     * la lista y el texto salen de aquí mismo, así nunca dicen cosas distintas. `siEscribes`: solo lleva líneas si la
+     * persona escribe algo.
+     */
+    function partesContar() {
+        const u = usoGuardado();
         const m = u.metricas;
         const e = entrenamiento();
         const dias = [...m.dias].sort();
@@ -347,28 +418,33 @@
             .slice(0, 5)
             .map(([k, n]) => `${NOMBRE_PANTALLA[k] || 'Otra pantalla'} (${n})`);
         const practicas = Object.keys(e.practicas || {}).length;
-        const lineas = [
-            `PamPlanea · ${VERSION} · cómo me va`,
-            `Nombre: ${(u.nombre || (u.st && u.st.nombre) || '').trim() || '(sin nombre)'}`,
-            dias.length ? `Fechas: del ${fechaCorta(dias[0])} al ${fechaCorta(dias.at(-1))} · abrí la app ${dias.length} ${dias.length === 1 ? 'día' : 'días'}` : 'Fechas: todavía no la uso',
-            `Instalada: ${m.instalada || instalada() ? 'sí' : 'no'} · Entrenamiento: ${P.tour && P.tour.resumen ? P.tour.resumen() : e.tour === 'hecho' ? 'hice el recorrido' : e.tour === 'saltado' ? 'salté el recorrido' : 'no lo hice'}${practicas ? `, ${practicas} ${practicas === 1 ? 'ejemplo practicado' : 'ejemplos practicados'}` : ''}`,
-            `Lo que hice: ${m.anotaciones} ${m.anotaciones === 1 ? "anotación" : "anotaciones"} · ${m.pagados} ${m.pagados === 1 ? "pago marcado" : "pagos marcados"} como Pagado · ${m.cuadres} ${m.cuadres === 1 ? "cuadre" : "cuadres"} · Reparte ${m.reparte} ${m.reparte === 1 ? 'vez' : 'veces'} · Pongámonos al día ${m.alDia} ${m.alDia === 1 ? 'vez' : 'veces'}`,
-            `Pantallas que más usé: ${top.length ? top.join(' · ') : '—'}`,
-            `Veces que la app no me entendió al anotar: ${m.noEntendio}`,
+        const partes = [
+            { id: 'version', lista: 'La versión de la app', lineas: [`PamPlanea · ${VERSION} · cómo me va`] },
+            { id: 'nombre', lista: 'Tu nombre o apodo (el que escribas abajo)', lineas: [`Nombre: ${nombreContar(u) || '(sin nombre)'}`] },
+            { id: 'fechas', lista: 'Qué días la abriste con tus datos (del primero al último) y cuántos fueron', lineas: [dias.length ? `Fechas: del ${fechaCorta(dias[0])} al ${fechaCorta(dias.at(-1))} · abrí la app ${dias.length} ${dias.length === 1 ? 'día' : 'días'}` : 'Fechas: todavía no la uso con mis datos'] },
+            { id: 'aprender', lista: 'Si la instalaste y qué hiciste en «Aprender a usarla»', lineas: [`Instalada: ${m.instalada || instalada() ? 'sí' : 'no'} · Entrenamiento: ${P.tour && P.tour.resumen ? P.tour.resumen() : e.tour === 'hecho' ? 'hice el recorrido' : e.tour === 'saltado' ? 'salté el recorrido' : 'no lo hice'}${practicas ? `, ${practicas} ${practicas === 1 ? 'ejemplo practicado' : 'ejemplos practicados'}` : ''}`] },
+            { id: 'uso', lista: 'Cuántas veces anotaste, marcaste «Pagado», cuadraste y usaste «Reparte» y «Pongámonos al día»', lineas: [`Lo que hice: ${m.anotaciones} ${m.anotaciones === 1 ? 'anotación' : 'anotaciones'} · ${m.pagados} ${m.pagados === 1 ? 'pago marcado' : 'pagos marcados'} como Pagado · ${m.cuadres} ${m.cuadres === 1 ? 'cuadre' : 'cuadres'} · Reparte ${m.reparte} ${m.reparte === 1 ? 'vez' : 'veces'} · Pongámonos al día ${m.alDia} ${m.alDia === 1 ? 'vez' : 'veces'}`] },
+            { id: 'pantallas', lista: 'Las 5 pantallas que más abriste (solo cuáles, como «Hoy» o «Pagos»)', lineas: [`Pantallas que más usé: ${top.length ? top.join(' · ') : '—'}`] },
+            { id: 'noEntendio', lista: 'Cuántas veces la app no te entendió al anotar (no lo que escribiste)', lineas: [`Veces que la app no me entendió al anotar: ${m.noEntendio}`] },
         ];
         if (u.feedback.length) {
-            lineas.push('', 'Cómo me ha ido:');
-            for (const f of u.feedback) lineas.push(`- ${fechaCorta(f.fecha)}: ${f.facil} de 5${f.confuso ? ` · Me confundió: ${sinDatosFinancieros(f.confuso)}` : ''}${f.gustaria ? ` · Me gustaría: ${sinDatosFinancieros(f.gustaria)}` : ''}`);
+            partes.push({ id: 'comoTeHaIdo', lista: 'Tus respuestas a «¿Cómo te ha ido?»', lineas: ['', 'Cómo me ha ido:', ...u.feedback.map((f) => `- ${fechaCorta(f.fecha)}: ${f.facil} de 5${f.confuso ? ` · Me confundió: ${sinDatosFinancieros(f.confuso)}` : ''}${f.gustaria ? ` · Me gustaría: ${sinDatosFinancieros(f.gustaria)}` : ''}`)] });
         }
-        if ((A.contarMas || '').trim()) lineas.push('', `Algo más: ${sinDatosFinancieros(A.contarMas.trim())}`);
-        return lineas.join('\n');
+        if (P.ayuda && P.ayuda.partesPrueba) partes.push(...P.ayuda.partesPrueba(sinDatosFinancieros));
+        const mas = (A.contarMas || '').trim();
+        partes.push({ id: 'algoMas', siEscribes: true, lista: 'Lo que escribas en «¿Algo más que quieras contarle?», si escribes algo', lineas: mas ? ['', `Algo más: ${sinDatosFinancieros(mas)}`] : [] });
+        return partes;
     }
+    const textoContar = () =>
+        partesContar()
+            .flatMap((p) => p.lineas)
+            .join('\n');
 
     // ------------------------------------------------------------------ copia, restaurar y borrar
     const nombreCopia = () => `pamplanea-copia-${hoy()}.json`;
     function contenidoCopia() {
-        guardarUso();
-        return JSON.stringify({ app: 'pamplanea-prototipo', tipo: 'copia-uso', esquema: ESQUEMA, version: VERSION, fecha: new Date().toISOString(), datos: uso }, null, 1);
+        if (P.modo === 'uso') guardarUso();
+        return JSON.stringify({ app: 'pamplanea-prototipo', tipo: 'copia-uso', esquema: ESQUEMA, version: VERSION, fecha: new Date().toISOString(), datos: usoGuardado() }, null, 1);
     }
     function descargarCopia() {
         const blob = new Blob([contenidoCopia()], { type: 'application/json' });
@@ -378,8 +454,7 @@
         a.click();
         a.remove();
         setTimeout(() => URL.revokeObjectURL(url), 2000);
-        uso.ultimaCopia = new Date().toISOString();
-        guardarUso();
+        cambiarUsoGuardado({ ultimaCopia: new Date().toISOString() });
         P.emitir('datos:copia');
     }
     /**
@@ -392,8 +467,7 @@
         try {
             if (navigator.canShare && !navigator.canShare({ files: [archivo] })) throw new Error('no se puede');
             await navigator.share({ files: [archivo] });
-            uso.ultimaCopia = new Date().toISOString();
-            guardarUso();
+            cambiarUsoGuardado({ ultimaCopia: new Date().toISOString() });
             P.emitir('datos:compartir');
         } catch (e) {
             // Cerrar el menú del teléfono no es un error.
@@ -434,12 +508,18 @@
         P.almacen.borrar(CLAVE_USO);
         P.almacen.borrar(CLAVE_RESPALDO);
         uso = null;
+        // v2.6: «Tus datos» también está en el modo entrenamiento; desde ahí, se queda con los ejemplos.
+        if (P.modo !== 'uso') {
+            guardarPref({ notaAvisos: false });
+            P.emitir('datos:borrado');
+            return;
+        }
         guardarPref({ modo: 'uso', notaAvisos: false });
         entrarUso();
         P.emitir('datos:borrado');
     }
 
-    // ------------------------------------------------------------------ paneles («Casos y ayuda» los pinta)
+    // ------------------------------------------------------------------ paneles («Ayuda» los pinta)
     const A = (P.modos = {});
     let restaurando = null;
     let borrar = 0;
@@ -454,40 +534,50 @@
     }
     function vistaIntroUso() {
         return `<section class="ay-card ay-card--prim" aria-labelledby="iu-t"><h3 class="ay-h3" id="iu-t">${icon('smartphone', 'ico-s')}Antes de empezar</h3>
-                <ul class="ay-puntos"><li><strong>Tus datos se guardan solo en este teléfono.</strong> Nadie más los ve: ni Victor.</li><li><strong>Es una versión de prueba:</strong> si algo no cuadra, avísale a Victor.</li><li><strong>Instálala en tu pantalla de inicio</strong> para no perder tus datos.${/iPhone|iPad|iPod/.test(navigator.userAgent) ? ' En iPhone, <strong>instálala antes de empezar</strong>: la app instalada no ve lo que pongas en Safari, y Safari puede borrar los datos de páginas que no abres en varios días.' : ''}</li><li>De vez en cuando, guarda una copia (en tu letra → «Tus datos»).</li></ul></section>
+                <ul class="ay-puntos"><li><strong>Tus datos se guardan solo en este teléfono.</strong> Nadie más los ve: ni Victor ni Pam.</li><li><strong>Es una versión de prueba:</strong> si algo no cuadra, avísale a Victor o a Pam.</li><li><strong>Instálala en tu pantalla de inicio</strong> para no perder tus datos.${/iPhone|iPad|iPod/.test(navigator.userAgent) ? ' En iPhone, <strong>instálala antes de empezar</strong>: la app instalada no ve lo que pongas en Safari, y Safari puede borrar los datos de páginas que no abres en varios días.' : ''}</li><li>De vez en cuando, guarda una copia (en tu letra → «Tus datos»).</li></ul></section>
             ${instalada() ? '' : `<section class="ay-card" aria-labelledby="iu-i">${'<h3 class="ay-h3" id="iu-i">' + icon('smartphone', 'ico-s') + 'Cómo instalarla</h3>'}${P.ayuda.pasosInstalar()}</section>`}
             <button type="button" class="btn btn--prim btn--48 btn--full" data-a="modoIntroOk" data-fk="intro-empezar">Empezar</button>
-            <button type="button" class="link" data-a="modoCambiar" data-v="entrenamiento" data-fk="intro-aprender">Mejor primero aprender a usarla</button>
+            <button type="button" class="link" data-a="modoCambiar" data-v="tour" data-fk="intro-aprender">Mejor primero aprender a usarla</button>
             <p class="ay-version">${esc(VERSION)}</p>`;
     }
+    /** «Tus datos» (v2.6: también desde el modo entrenamiento, sobre lo guardado). Instalar vive aquí: es para no perderlos. */
     function vistaDatos() {
-        const u = uso || leerUso();
+        const u = usoGuardado();
+        const hay = !!u.st;
         const copia = u.ultimaCopia ? `Tu última copia: ${fechaCorta(u.ultimaCopia.slice(0, 10))}.` : 'Todavía no has guardado una copia.';
         const r = restaurando;
-        return `<section class="ay-card ay-card--prim" aria-labelledby="dt-c"><h3 class="ay-h3" id="dt-c">${icon('receipt-text', 'ico-s')}Guardar copia de mis datos</h3>
+        const guardarHtml = hay
+            ? `<section class="ay-card ay-card--prim" aria-labelledby="dt-c"><h3 class="ay-h3" id="dt-c">${icon('receipt-text', 'ico-s')}Guardar copia de mis datos</h3>
                 <p class="txt">Descarga un archivo con todo lo que llevas. Guárdalo o mándatelo por WhatsApp. ${copia}</p>
-                <div class="ay-acc"><button type="button" class="btn btn--prim btn--48" data-a="modoCopia" data-fk="dt-copia">Guardar copia</button>${puedeCompartirArchivo() ? '<button type="button" class="btn btn--48" data-a="modoCompartirCopia" data-fk="dt-compartir">Compartir copia</button>' : ''}</div></section>
+                <div class="ay-acc"><button type="button" class="btn btn--prim btn--48" data-a="modoCopia" data-fk="dt-copia">Guardar copia</button>${puedeCompartirArchivo() ? '<button type="button" class="btn btn--48" data-a="modoCompartirCopia" data-fk="dt-compartir">Compartir copia</button>' : ''}</div></section>`
+            : `<section class="ay-card ay-card--prim" aria-labelledby="dt-c"><h3 class="ay-h3" id="dt-c">${icon('receipt-text', 'ico-s')}Todavía no usas tus datos</h3><p class="txt">Cuando la uses con tus datos, aquí guardas una copia. Si tienes una copia de antes, puedes restaurarla.</p></section>`;
+        const instalarHtml = instalada() ? '' : `<section class="ay-card" aria-labelledby="dt-i"><h3 class="ay-h3" id="dt-i">${icon('smartphone', 'ico-s')}Instálala en tu teléfono</h3><p class="txt">Así abre como una app, sin internet, y tus datos están más seguros.</p><button type="button" class="btn btn--48 btn--full" data-a="ayIr" data-v="instalar" data-fk="dt-instalar">Ver cómo</button></section>`;
+        const borrarHtml = hay
+            ? `<section class="ay-card" aria-labelledby="dt-b"><h3 class="ay-h3" id="dt-b">${icon('trash-2', 'ico-s')}Borrar todos mis datos</h3>
+                ${borrar === 0 ? `<p class="txt">Borra todo lo de «Usarla con mis datos» en este teléfono. Los ejemplos no se tocan.</p><button type="button" class="link link--peligro" data-a="modoBorrar" data-v="1" data-fk="dt-borrar">${icon('trash-2', 'ico-s')}Borrar todos mis datos</button>` : borrar === 1 ? `<div class="nota nota--atencion" role="alertdialog" aria-labelledby="dt-b1">${icon('triangle-alert')}<div><p id="dt-b1"><strong>¿Borrar todos tus datos?</strong> Lugares, pagos, ahorros y todo lo anotado.</p><div class="ay-acc"><button type="button" class="btn" data-a="modoBorrar" data-v="0" data-fk="dt-b-no">Cancelar</button><button type="button" class="btn btn--peligro" data-a="modoBorrar" data-v="2" data-fk="dt-b-si">Sí, borrar</button></div></div></div>` : `<div class="nota nota--atencion" role="alertdialog" aria-labelledby="dt-b2">${icon('triangle-alert')}<div><p id="dt-b2"><strong>Última confirmación: esto no se puede deshacer.</strong> ${u.ultimaCopia ? 'Tienes una copia guardada.' : 'No has guardado ninguna copia.'}</p><div class="ay-acc"><button type="button" class="btn" data-a="modoBorrar" data-v="0" data-fk="dt-b2-no">Cancelar</button><button type="button" class="btn btn--peligro" data-a="modoBorrarYa" data-fk="dt-b2-si">Borrar para siempre</button></div></div></div>`}</section>`
+            : '';
+        return `${guardarHtml}${instalarHtml}
             <section class="ay-card" aria-labelledby="dt-r"><h3 class="ay-h3" id="dt-r">${icon('rotate-ccw', 'ico-s')}Restaurar una copia</h3>
                 ${r && r.error ? `<p class="campo-error">${icon('triangle-alert')}<span>${esc(r.error)}</span></p>` : ''}
-                ${r && r.datos ? `<div class="nota nota--atencion" role="alertdialog" aria-labelledby="dt-r-c">${icon('triangle-alert')}<div><p id="dt-r-c"><strong>¿Reemplazar tus datos con esta copia?</strong> Copia del ${esc(fechaCorta((r.fecha || '').slice(0, 10) || hoy()))}: ${esc(r.resumen)}. Lo que tienes ahora se reemplaza.</p><div class="ay-acc"><button type="button" class="btn" data-a="modoRestaurarNo" data-fk="dt-r-no">Cancelar</button><button type="button" class="btn btn--peligro" data-a="modoRestaurarSi" data-fk="dt-r-si">Sí, reemplazar</button></div></div></div>` : `<p class="txt">Elige el archivo «pamplanea-copia-…» (.json o .txt). Antes de reemplazar te pido confirmar.</p><label class="btn btn--48 btn--full" for="dt-archivo" data-fk="dt-elegir">Elegir archivo</label><input id="dt-archivo" class="sr-only" type="file" accept="application/json,.json,text/plain,.txt" data-copia>`}</section>
-            <section class="ay-card" aria-labelledby="dt-b"><h3 class="ay-h3" id="dt-b">${icon('trash-2', 'ico-s')}Borrar todos mis datos</h3>
-                ${borrar === 0 ? `<p class="txt">Borra todo lo de «Usarla con mis datos» en este teléfono. Los ejemplos no se tocan.</p><button type="button" class="link link--peligro" data-a="modoBorrar" data-v="1" data-fk="dt-borrar">${icon('trash-2', 'ico-s')}Borrar todos mis datos</button>` : borrar === 1 ? `<div class="nota nota--atencion" role="alertdialog" aria-labelledby="dt-b1">${icon('triangle-alert')}<div><p id="dt-b1"><strong>¿Borrar todos tus datos?</strong> Lugares, pagos, ahorros y todo lo anotado.</p><div class="ay-acc"><button type="button" class="btn" data-a="modoBorrar" data-v="0" data-fk="dt-b-no">Cancelar</button><button type="button" class="btn btn--peligro" data-a="modoBorrar" data-v="2" data-fk="dt-b-si">Sí, borrar</button></div></div></div>` : `<div class="nota nota--atencion" role="alertdialog" aria-labelledby="dt-b2">${icon('triangle-alert')}<div><p id="dt-b2"><strong>Última confirmación: esto no se puede deshacer.</strong> ${u.ultimaCopia ? 'Tienes una copia guardada.' : 'No has guardado ninguna copia.'}</p><div class="ay-acc"><button type="button" class="btn" data-a="modoBorrar" data-v="0" data-fk="dt-b2-no">Cancelar</button><button type="button" class="btn btn--peligro" data-a="modoBorrarYa" data-fk="dt-b2-si">Borrar para siempre</button></div></div></div>`}</section>
+                ${r && r.datos ? `<div class="nota nota--atencion" role="alertdialog" aria-labelledby="dt-r-c">${icon('triangle-alert')}<div><p id="dt-r-c"><strong>¿Reemplazar tus datos con esta copia?</strong> Copia del ${esc(fechaCorta((r.fecha || '').slice(0, 10) || hoy()))}: ${esc(r.resumen)}. ${hay ? 'Lo que tienes ahora se reemplaza.' : 'Después verás tus datos.'}</p><div class="ay-acc"><button type="button" class="btn" data-a="modoRestaurarNo" data-fk="dt-r-no">Cancelar</button><button type="button" class="btn btn--peligro" data-a="modoRestaurarSi" data-fk="dt-r-si">${hay ? 'Sí, reemplazar' : 'Sí, restaurar'}</button></div></div></div>` : `<p class="txt">Elige el archivo «pamplanea-copia-…» (.json o .txt). Antes de reemplazar te pido confirmar.</p><label class="btn btn--48 btn--full" for="dt-archivo" data-fk="dt-elegir">Elegir archivo</label><input id="dt-archivo" class="sr-only" type="file" accept="application/json,.json,text/plain,.txt" data-copia>`}</section>
+            ${borrarHtml}
             <p class="ay-version">${esc(VERSION)} · Tus datos solo están en este teléfono</p>`;
     }
+    /**
+     * v2.6 (V2-62): «Cuéntale a Victor o a Pam cómo vas». Antes del texto, las dos listas: «Esto se manda» sale de
+     * las mismas partes que arman el texto (partesContar) y «Esto NO se manda» es lo que se tapa siempre.
+     */
     function vistaContar() {
-        const u = uso || leerUso();
-        return `<p class="txt">Esto es lo que le vas a mandar a Victor. <strong>No lleva montos ni los nombres de tus cuentas, pagos o ahorros</strong>: solo cuánto usas la app y lo que tú le cuentes.</p>
-            <div class="campo-g"><label class="campo-l" for="ct-nombre">Tu nombre o apodo</label><div class="campo"><input id="ct-nombre" data-ct="nombre" type="text" autocomplete="off" value="${esc(u.nombre || (u.st && u.st.nombre) || '')}"></div></div>
+        const u = usoGuardado();
+        const si = partesContar()
+            .map((p) => `<li data-parte="${p.id}">${esc(p.lista)}</li>`)
+            .join('');
+        return `<p class="txt">Al final de la prueba, mándale esto a Victor o a Pam. Tú eliges a quién: toca «Compartir» y elige su chat, o «Copiar» y pégalo.</p>
+            <section class="ay-card ct-lista ct-lista--si" aria-labelledby="ct-si-t"><h3 class="ay-h3" id="ct-si-t">${icon('circle-check', 'ico-s')}Esto se manda</h3><ul class="ay-puntos" id="ct-si">${si}</ul></section>
+            <section class="ay-card ct-lista ct-lista--no" aria-labelledby="ct-no-t"><h3 class="ay-h3" id="ct-no-t">${icon('ban', 'ico-s')}Esto NO se manda</h3><ul class="ay-puntos" id="ct-no"><li>Montos</li><li>Nombres de tus cuentas, pagos, ahorros, tarjetas y préstamos</li></ul><p class="fila-s">Si escribes alguno en lo que cuentas, lo tapo: sale [monto] o [nombre].</p></section>
+            <div class="campo-g"><label class="campo-l" for="ct-nombre">Tu nombre o apodo</label><div class="campo"><input id="ct-nombre" data-ct="nombre" type="text" autocomplete="off" value="${esc(nombreContar(u))}"></div></div>
             <div class="campo-g"><label class="campo-l" for="ct-mas">¿Algo más que quieras contarle? <span class="opcional">(opcional)</span></label><textarea id="ct-mas" class="ay-textarea" data-ct="mas" rows="3">${esc(A.contarMas || '')}</textarea></div>
-            <button type="button" class="btn btn--48 btn--full" data-a="modoContarArmar" data-fk="ct-armar">Ver el texto completo</button>
-            ${P.ayuda.compartirHtml(textoContar())}`;
-    }
-    function vistaAyudaUso() {
-        return `<section class="ay-card ay-card--prim" aria-labelledby="au-t"><h3 class="ay-h3" id="au-t">${icon('smartphone', 'ico-s')}Usando tus datos</h3><p class="txt">Todo lo que anotas se queda solo en este teléfono. Si algo no cuadra, avísale a Victor.</p>
-                <div class="pila"><button type="button" class="btn btn--48 btn--full" data-a="ayIr" data-v="contar" data-fk="au-contar">${icon('receipt-text', 'ico-s')}Contarle a Victor cómo me va</button><button type="button" class="btn btn--48 btn--full" data-a="ayIr" data-v="datos" data-fk="au-datos">${icon('rotate-ccw', 'ico-s')}Tus datos: copia, restaurar, borrar</button>${instalada() ? '' : `<button type="button" class="btn btn--48 btn--full" data-a="ayIr" data-v="instalar" data-fk="au-instalar">${icon('smartphone', 'ico-s')}Instalar en tu teléfono</button>`}</div></section>
-            <section class="ay-card" aria-labelledby="au-a"><h3 class="ay-h3" id="au-a">${icon('book-open', 'ico-s')}Aprender</h3><p class="txt">El modo entrenamiento usa datos de ejemplo: nada de lo que hagas ahí toca tus datos.</p><div class="pila"><button type="button" class="btn btn--48 btn--full" data-a="modoCambiar" data-v="tour" data-fk="au-tour">Aprender a usarla</button><button type="button" class="btn btn--48 btn--full" data-a="modoCambiar" data-v="entrenamiento" data-fk="au-entrenamiento">Ir al modo entrenamiento</button></div></section>
-            ${P.ayuda.vistaApariencia()}
-            <p class="ay-version">${esc(VERSION)} · Tus datos solo están en este teléfono · Sin rastreadores</p>`;
+            <section class="ay-card" aria-labelledby="ct-texto-t"><h3 class="ay-h3" id="ct-texto-t">${icon('receipt-text', 'ico-s')}El texto, tal como se manda</h3>${P.ayuda.compartirHtml(textoContar())}</section>`;
     }
 
     // ------------------------------------------------------------------ acciones
@@ -541,11 +631,6 @@
         borrarTodo();
         P.avisar('Borramos tus datos', { check: false });
     };
-    acc.modoContarArmar = () => {
-        P.ayuda.pintar({ foco: '#ay-texto' });
-        const t = $('#ay-texto');
-        if (t) t.select();
-    };
     document.addEventListener('change', (e) => {
         const el = e.target;
         if (!el.matches || !el.matches('input[data-copia]') || !el.files || !el.files[0]) return;
@@ -560,23 +645,33 @@
         const el = e.target;
         if (!el.dataset || !el.dataset.ct) return;
         if (el.dataset.ct === 'mas') A.contarMas = el.value;
-        if (el.dataset.ct === 'nombre' && uso) {
-            uso.nombre = el.value;
-            guardarUso();
-        }
+        if (el.dataset.ct === 'nombre') cambiarUsoGuardado({ nombre: el.value });
         const t = $('#ay-texto');
         if (t) t.value = textoContar();
     });
 
-    /** Filas extra del menú de la letra, según el modo. */
+    /**
+     * Filas extra del menú de la letra. v2.6 (V2-60): en los dos modos, lo mismo que «Ayuda»: los tres caminos (el de
+     * ahora dice «Estás aquí»), «Cuéntale a Victor o a Pam cómo vas», «Tus datos» y la versión (la apariencia ya está arriba).
+     */
     function menuExtra(fila) {
         if (P.enGuia) return '';
-        const filas = P.modo === 'uso'
-            ? [fila('receipt-text', 'Contarle a Victor cómo me va', 'Sin montos: solo cómo usas la app', 'menuIr', 'data-ir="contar"'), fila('rotate-ccw', 'Tus datos', 'Guardar copia, restaurar o borrar', 'menuIr', 'data-ir="datos"'), fila('play', 'Aprender a usarla', 'Modo entrenamiento con datos de ejemplo', 'menuIr', 'data-ir="modoEntrenamiento"')]
-            : [fila('smartphone', 'Usarla con mis datos', 'Tu dinero real, solo en este teléfono', 'menuIr', 'data-ir="modoUso"'), fila('play', 'Aprender a usarla', 'Lo esencial y capítulos cortos', 'menuIr', 'data-ir="aprendeMas"'), fila('list-checks', 'Practicar con ejemplos', `${(window.PRACTICA || []).length} ejercicios, de fácil a difícil`, 'menuIr', 'data-ir="practica"')];
-        return `<p class="campo-l campo-l--sec menu-sec">${P.modo === 'uso' ? 'Estás usando tus datos' : 'Estás en modo entrenamiento'}</p><ul class="lista card">${filas.join('')}</ul>`;
+        const enUso = P.modo === 'uso';
+        const filas = [
+            fila('smartphone', 'Usarla con mis datos', enUso ? 'Estás aquí' : 'Tu dinero real, solo en este teléfono', 'menuIr', enUso ? 'data-ir="cerrar" aria-current="true"' : 'data-ir="modoUso"'),
+            fila('play', 'Aprender a usarla', 'Lo esencial y capítulos cortos, con datos de ejemplo', 'menuIr', 'data-ir="aprendeMas"'),
+            fila('list-checks', 'Prueba guiada', 'Tareas cortas para ver si la app se entiende', 'menuIr', 'data-ir="prueba"'),
+            fila('receipt-text', 'Cuéntale a Victor o a Pam cómo vas', 'Qué se manda y qué no', 'menuIr', 'data-ir="contar"'),
+            fila('rotate-ccw', 'Tus datos', 'Guardar copia, restaurar o borrar', 'menuIr', 'data-ir="datos"'),
+        ];
+        return `<p class="campo-l campo-l--sec menu-sec">${enUso ? 'Estás usando tus datos' : 'Estás en modo entrenamiento'}</p><ul class="lista card">${filas.join('')}</ul><p class="ay-version">${esc(VERSION)}</p>`;
     }
     function irMenu(ir) {
+        if (ir === 'cerrar') return true;
+        if (ir === 'prueba') {
+            P.ayuda.abrirPrueba();
+            return true;
+        }
         if (ir === 'contar' || ir === 'datos' || ir === 'practica' || ir === 'aprendeMas') {
             P.ayuda.abrir(ir);
             return true;
@@ -608,6 +703,10 @@
         tipVisto,
         hoy,
         cambiar: (modo) => acc.modoCambiar({ v: modo }),
+        /** v2.6: a los ejemplos sin aviso (la prueba guiada empieza enseguida); tus datos quedan guardados. */
+        aEntrenamiento: () => entrarEntrenamiento(),
+        tieneDatos,
+        partesContar,
         CLAVE_USO,
         CLAVE_RESPALDO,
         ESQUEMA,
@@ -620,8 +719,7 @@
             P.ayuda.registrar('elegir', 'PamPlanea', vistaElegir);
             P.ayuda.registrar('introUso', 'Usarla con mis datos', vistaIntroUso);
             P.ayuda.registrar('datos', 'Tus datos', vistaDatos);
-            P.ayuda.registrar('contar', 'Contarle a Victor', vistaContar);
-            P.ayuda.registrar('ayudaUso', 'Ayuda', vistaAyudaUso);
+            P.ayuda.registrar('contar', 'Cuéntale a Victor o a Pam cómo vas', vistaContar);
             pintarAviso();
             // Enlace de tester (?set=A / ?set=B) la primera vez: directo a la prueba guiada, con los ejemplos.
             if (A.elegir && !P.enGuia && /[?&]set=[ab]/i.test(location.search)) {

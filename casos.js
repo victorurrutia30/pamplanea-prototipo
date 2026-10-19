@@ -315,9 +315,11 @@ window.PRACTICA = [
 ];
 
 /**
- * Prueba guiada para testers (V2-31 #12): dos sets de 7 tareas (~15 min), asignados alternadamente.
+ * Prueba guiada para testers (V2-31 #12): dos sets (~15 min), asignados alternadamente.
  * `tarea` va en lenguaje cotidiano y SIN decir dónde tocar. `logrado(st, P, M)` detecta sola cuando
  * se cumplió; `caso` es el estado con que empieza (o `persona`). La última tarea es de comprensión.
+ * v2.6 (V2-63): sin «Carlos sin dinero suficiente» (C33, «Ahora eres otra persona: Carlos»): el set B tiene 6.
+ * La persona nunca ve la letra del set (V2-61): en «Cuéntale…» se reconoce por la primera tarea.
  */
 window.SETS = {
     A: [
@@ -335,7 +337,6 @@ window.SETS = {
         { id: 'laptop-credito', titulo: 'Usar lo que juntaste, con tarjeta', caso: 'C32', inicio: 'hoy', tarea: 'Ya juntaste el dinero para la laptop y hoy la compraste: $600, pero la pagaste con tu tarjeta de crédito BAC. Anótalo en la app.', logrado: (st) => st.logros.some((l) => l.nombre === 'Laptop') || st.registros.some((r) => r.apartado === 'laptop') },
         { id: 'tarjeta-prestamo', titulo: 'Tarjeta y cuotas nuevas', caso: 'C31', inicio: 'hoy', tarea: 'Sacaste una tarjeta nueva, «Crédito Cuscatlán»: corta el día 20 y se paga el 10. También compraste en «Almacén La Esquina» en cuotas de $25 cada día 28. Agrega las dos a la app.', logrado: (st) => st.tarjetas.length >= 2 && st.pagos.some((p) => p.nuevo && p.tipoDeuda) },
         { id: 'dos-semanas', titulo: 'Volver después de dos semanas', caso: 'C26', tarea: 'Volviste a la app después de dos semanas sin usarla. Ya te cayó tu quincena del 30 y pagaste lo que vencía. Ponla al día.', logrado: (st, P) => !!(st.ingresos.find((i) => i.id === 'quincena') || { llegadas: {} }).llegadas['2026-10-30'] && st.registros.some((r) => r.tipo === 'cuadre' && r.fecha === st.hoy) && !P.ui.stack.length },
-        { id: 'carlos', titulo: 'Carlos sin dinero suficiente', caso: 'C33', tarea: 'Ahora eres otra persona: Carlos. Le pagan cada viernes en efectivo y el alquiler de $150 se paga el día 1. Hoy solo tiene $60. Averigua cuánto puede gastar y qué le falta.', claves: ['hoja:desglose', 'pantalla:midinero'] },
         { id: 'comprension', titulo: 'Qué entendiste', persona: 'ana', comprension: true, tarea: 'Mira la pantalla de Hoy sin tocar nada. Cuando quieras, toca «Responder».' },
     ],
 };

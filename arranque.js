@@ -171,7 +171,7 @@
         else cargarPersona(P.st && ['carlos', 'rosa'].includes(P.st.persona) ? P.st.persona : 'ana');
     }
 
-    /** Lo que la guía (o «Casos y ayuda») puede simular: el paso del tiempo y los avisos. */
+    /** Lo que la guía (o las herramientas de Victor en «Ayuda») puede simular: el paso del tiempo y los avisos. */
     function simular(id) {
         const st = P.st;
         if (id === 'dia4') {

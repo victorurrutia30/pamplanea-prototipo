@@ -1487,14 +1487,17 @@
             <button type="button" class="btn btn--prim btn--48 btn--full" data-a="interesInvitar" data-fk="inv-interes" ${st.interesInvitar ? 'disabled' : ''}>${st.interesInvitar ? `${icon('check', 'ico-s')}Te avisaremos` : 'Me interesa'}</button>
         </div>`;
     };
-    /** v2.5: «Aprende» = el entrenamiento («Lo esencial» y «Aprende más») y el glosario: los mismos textos que los «?». */
+    /**
+     * v2.5: «Aprende» = el entrenamiento («Lo esencial» y «Aprende más») y el glosario: los mismos textos que los «?».
+     * v2.6 (V2-60): sin «Practicar» suelto; está dentro de «Aprender a usarla».
+     */
     S.aprende = function () {
         const variable = P.variable();
         const g = (window.GLOSARIO || []).filter((x) => !x.solo || x.solo === (variable ? 'variable' : 'fijo')).map((x) => P.textoTermino(x));
         const uso = P.modo === 'uso';
         return `<div class="pg">
             ${encabezado('Aprende', 'La app, en sencillo', { atras: 'Hoy' })}
-            <div class="acciones-2"><button type="button" class="btn btn--48" data-a="menuIr" data-ir="aprendeMas" data-fk="apr-tour">${icon('book-open', 'ico-s')}Aprender a usarla</button>${uso ? '' : `<button type="button" class="btn btn--48" data-a="menuIr" data-ir="practica" data-fk="apr-practica">${icon('list-checks', 'ico-s')}Practicar</button>`}</div>
+            <button type="button" class="btn btn--48 btn--full" data-a="menuIr" data-ir="aprendeMas" data-fk="apr-tour">${icon('book-open', 'ico-s')}Aprender a usarla</button>
             ${uso ? '<p class="fila-s">Se aprende con datos de ejemplo: no toca tus datos.</p>' : ''}
             ${tarjetaSeccion('Glosario', `<dl class="glosario">${g.map((x) => `<div class="glosario-i" id="glo-${x.id}"><dt>${esc(x.t)}</dt><dd>${esc(x.para)}<span class="glosario-ej">Ejemplo: ${esc(x.ejemplo)}</span></dd></div>`).join('')}</dl>`, { id: 'apr-glosario' })}
             <p class="fila-s">Estos mismos textos salen al tocar «?» y en el entrenamiento.</p>

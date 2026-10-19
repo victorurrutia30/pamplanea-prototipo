@@ -3554,3 +3554,60 @@ html.con-hazlo .mask {
     background: color-mix(in srgb, var(--color-text) 9%, var(--color-surface-2));
     color: var(--color-text);
 }
+
+/* ------------------------------------------------------------------ v2.6 · «Ayuda» con tres caminos (V2-60) */
+.ay-tres .elegir-op {
+    min-height: 76px;
+}
+.opcion-g[aria-current='true'] {
+    border-color: var(--color-primary);
+    background: color-mix(in srgb, var(--color-primary) 8%, var(--color-surface-2));
+    box-shadow: inset 0 0 0 1px var(--color-primary);
+}
+.opcion-g[aria-current='true'] > .ico-xs {
+    color: var(--color-primary);
+}
+/* En la grilla con scroll de «Ayuda», una tarjeta con overflow oculto se aplasta a 0 cuando no cabe todo. */
+.ay-lista {
+    overflow: visible;
+    margin: 0;
+}
+.ay-lista .fila-t,
+.menu-sec + .lista .fila-t {
+    text-wrap: balance;
+}
+/* Tu letra, con tus datos: «Usarla con mis datos · Estás aquí» se marca y no lleva flecha (no lleva a otro lado). */
+.fila-main[aria-current='true'] {
+    background: color-mix(in srgb, var(--color-primary) 8%, transparent);
+}
+.fila-main[aria-current='true'] > .ico-xs:last-child {
+    visibility: hidden;
+}
+/* Herramientas de Victor (solo con ?victor=1). */
+.ay-v-sec {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 12px;
+    padding-top: 16px;
+    border-top: 1px dashed var(--color-border);
+}
+/* Prueba guiada (V2-61): la primera línea, un poco más grande; los chips cortos («Sí», «No») también de 44 px. */
+.ay-bien-l {
+    font-size: 16px;
+    line-height: 24px;
+}
+.ay .chip {
+    min-width: 44px;
+    justify-content: center;
+}
+/* «Cuéntale a Victor o a Pam cómo vas» (V2-62): el título largo se parte parejo; qué se manda y qué no. */
+.ay-t {
+    text-wrap: balance;
+}
+.ct-lista {
+    gap: 8px;
+}
+.ct-lista--no .ay-h3 .ico {
+    color: var(--color-text-muted);
+}

@@ -194,7 +194,8 @@
         titulo: 'Lo esencial',
         sub: 'Lo que basta para empezar',
         persona: 'ana',
-        intro: 'Usamos los datos de Ana, que cobra por quincena. Si cobras por mes o semana, es igual.',
+        // v2.6 (V2-63): los ejemplos se presentan como «datos de ejemplo», sin el nombre de la persona.
+        intro: 'Con datos de ejemplo de alguien que cobra por quincena. Si cobras por mes o semana, es igual.',
         cargar: preparar(() => ana(), 'fijo:esencial'),
         pasos: [
             pasoLibre,
@@ -360,7 +361,7 @@
         titulo: 'Lo esencial',
         sub: 'Lo que basta para empezar',
         persona: 'rosa',
-        intro: 'Usamos los datos de Rosa: vende pupusas y su hijo le manda remesa.',
+        intro: 'Con datos de ejemplo de alguien que vende pupusas y recibe una remesa de su hijo.',
         cargar: preparar(() => rosa(), 'variable:esencial'),
         pasos: [
             pasoLibre,
@@ -540,7 +541,7 @@
         const k = clave(cap);
         P.modos.guardarEntrenamiento({ caps: { ...pr.caps, [k]: { ...(pr.caps[k] || { paso: 0, hecho: false }), ...cambios } }, tourVersion: cap.version, tourUltimo: k });
     }
-    /** Para «Contarle a Victor»: qué hizo del entrenamiento. */
+    /** Para «Cuéntale a Victor o a Pam cómo vas»: qué hizo del entrenamiento. */
     T.resumen = () => {
         const pr = progreso();
         const partes = [];
@@ -1241,7 +1242,7 @@
         const [esencial, ...resto] = v.caps;
         const hechos = resto.filter((c) => (pr.caps[clave(c)] || {}).hecho).length;
         return `<p class="txt">Capítulos cortos con datos de ejemplo. Hazlos en el orden que quieras, hoy u otro día. Nada toca tus datos.</p>
-            <div class="ay-version-elegida"><p class="fila-s">Tu versión: <strong>${esc(v.corto)}</strong> (${v.id === 'fijo' ? 'con Ana' : 'con Rosa'})</p><button type="button" class="link" data-a="tourElegir" data-fk="am-cambiar">Cambiar</button></div>
+            <div class="ay-version-elegida"><p class="fila-s">Tu versión: <strong>${esc(v.corto)}</strong></p><button type="button" class="link" data-a="tourElegir" data-fk="am-cambiar">Cambiar</button></div>
             <ul class="ay-casos" aria-label="Lo esencial">${fila(esencial)}</ul>
             <h3 class="campo-l" id="am-mas">Aprende más <span class="opcional">· ${hechos} de ${resto.length} hechos</span></h3>
             <ul class="ay-casos" aria-labelledby="am-mas">${resto.map(fila).join('')}</ul>
