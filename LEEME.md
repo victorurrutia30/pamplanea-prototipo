@@ -1,4 +1,4 @@
-# Producto v2 · prototipo de teléfono — versión 2.6.6
+# Producto v2 · prototipo de teléfono — versión 2.6.7
 
 **Qué es:** un prototipo clicable de la app completa propuesta en Producto v2. Desde la v2.2 tiene **dos modos**: **entrenamiento** (datos inventados de Ana, Carlos y Rosa; entrenamiento en dos versiones —fecha fija o ingresos que varían— con «Lo esencial» y «Aprende más», 18 ejercicios y la prueba A/B para testers) y **uso normal** (la familia cercana de Victor la usa 1–2 semanas con su dinero real, guardado solo en su teléfono). Desde la v2.6, la persona solo ve tres caminos —«Usarla con mis datos», «Aprender a usarla» y «Prueba guiada»— y las herramientas de Victor (casos, sets, moderador) se abren con `?victor=1`. Es una maqueta de flujo y comprensión, no producción.
 
@@ -12,9 +12,157 @@
 
 Sin servidor propio, sin dependencias, sin CDN, sin analítica ni rastreadores. Fuentes, emoji, íconos y los íconos de la app instalable son locales, con sus licencias (`recursos/licencias`).
 
-**Estado:** brief y acuerdos V2-01…V2-22 APROBADOS por Victor (2026-10-16); **V2-23 a V2-30** y **V2-31 (respuestas v2.1)** APROBADOS por Victor (2026-10-16); **V2-34 a V2-49** APROBADOS por Victor (2026-10-17) — V2-15 y V2-31 #7 quedan REEMPLAZADAS por V2-34. **V2-50 a V2-55** y la corrección adicional (adelanto de salario) APROBADOS por Victor (2026-10-17). **v2.4 «Entrenamiento a prueba de todo»** y sus tres ajustes previos APROBADOS por Victor (2026-10-17). **V2-56 a V2-58** y el **entrenamiento en dos versiones** (v2.4.1) APROBADOS por Victor (2026-10-18). **v2.5 «Entrenamiento sencillo y a fondo»** (estructura, ritmo y claridad) y **V2-59** (respuestas 26–29) APROBADOS por Victor (2026-10-18). **V2-60 a V2-63** (v2.6 «Simplificar para la prueba familiar») APROBADOS por Victor (2026-10-19). **V2-64 a V2-78** (QA profundo, deudas y tarjetas, Primer día, lenguaje, botón atrás, iPhone y entrenamiento; v2.6.1 a v2.6.3) APROBADOS por Victor (2026-10-19). **V2-79 a V2-84** (salir del entrenamiento sin perder tus datos, duplicados, pagos futuros y formularios; v2.6.4 y v2.6.5) APROBADOS por Victor (2026-10-19). **V2-85 y V2-86** (lo de antes de empezar no se cobra solo y la revisión para quienes ya usan la app; v2.6.6) APROBADOS por Victor (2026-10-19). Nada de esto está documentado todavía en el repo de la app: se documentará después de las pruebas con personas. Este prototipo no cambia nada del repo de la app.
+**Estado:** brief y acuerdos V2-01…V2-22 APROBADOS por Victor (2026-10-16); **V2-23 a V2-30** y **V2-31 (respuestas v2.1)** APROBADOS por Victor (2026-10-16); **V2-34 a V2-49** APROBADOS por Victor (2026-10-17) — V2-15 y V2-31 #7 quedan REEMPLAZADAS por V2-34. **V2-50 a V2-55** y la corrección adicional (adelanto de salario) APROBADOS por Victor (2026-10-17). **v2.4 «Entrenamiento a prueba de todo»** y sus tres ajustes previos APROBADOS por Victor (2026-10-17). **V2-56 a V2-58** y el **entrenamiento en dos versiones** (v2.4.1) APROBADOS por Victor (2026-10-18). **v2.5 «Entrenamiento sencillo y a fondo»** (estructura, ritmo y claridad) y **V2-59** (respuestas 26–29) APROBADOS por Victor (2026-10-18). **V2-60 a V2-63** (v2.6 «Simplificar para la prueba familiar») APROBADOS por Victor (2026-10-19). **V2-64 a V2-78** (QA profundo, deudas y tarjetas, Primer día, lenguaje, botón atrás, iPhone y entrenamiento; v2.6.1 a v2.6.3) APROBADOS por Victor (2026-10-19). **V2-79 a V2-84** (salir del entrenamiento sin perder tus datos, duplicados, pagos futuros y formularios; v2.6.4 y v2.6.5) APROBADOS por Victor (2026-10-19). **V2-85 y V2-86** (lo de antes de empezar no se cobra solo y la revisión para quienes ya usan la app; v2.6.6) APROBADOS por Victor (2026-10-19). **V2-87 y V2-88** (lo que pagas normalmente de una tarjeta se paga como cualquier otro pago, y editar = los mismos campos que crear; v2.6.7) y su agregado (el caso de la segunda tester y la ficha de la tarjeta) APROBADOS por Victor (2026-10-19). Nada de esto está documentado todavía en el repo de la app: se documentará después de las pruebas con personas. Este prototipo no cambia nada del repo de la app.
 
-Versión visible en la app y en la guía: **«Prototipo v2.6.6 · 2026-10-19»**.
+Versión visible en la app y en la guía: **«Prototipo v2.6.7 · 2026-10-19»**.
+
+---
+
+## Prototipo v2.6.7 (2026-10-19): lo que pagas normalmente de una tarjeta se paga como cualquier otro pago (V2-87) y editar = crear (V2-88)
+
+**Decisiones APROBADAS por Victor (2026-10-19)**, recomendación del chat auditor.
+
+> **V2-87**, frase literal: «opcion A pero el user debe poder cambiar si quiere en otra quincena»
+>
+> **V2-88**, frase literal: «al editar tarjeta no le deja editar detalles que al agregarla le pide, no entiendo»
+
+**Contexto:** la decisión pendiente n.º 1 de la v2.6.6. A la tester 1 la app le mostraba Libre $900 y no $1,000, porque el pago estimado de su tarjeta (~$100, el 14 nov) se apartaba desde ese día de lo que tenía. **V2-87 deja sin efecto esa decisión pendiente y cambia V2-54/V2-78 para lo que pagas normalmente** (hasta tu primer estado de cuenta). Desde el segundo estado de cuenta sigue V2-29 #1, ver «Decisiones pendientes».
+
+En el **mismo agregado (APROBADO, 2026-10-19)** hay tres cosas más:
+
+- el caso real de una segunda tester, como prueba de aceptación de V2-87;
+- la ficha de la tarjeta, que debe decir lo que la persona debe (punto 3 del agregado);
+- un mensaje para esa tester.
+
+### V2-87 — qué hace la app ahora
+
+1. **Hasta el primer estado de cuenta, «¿Cuánto pagas normalmente?» se paga como cualquier otro pago** (V2-34). Lo cubre el último ingreso esperado que llega en o antes de su fecha de pago, con las mismas reglas de fuentes y repartos.
+   - **No se aparta de lo que tienes hoy**, salvo que no llegue un ingreso antes de esa fecha. En ese caso sale de lo que tienes, igual que cualquier otro pago.
+   - Sin ingreso fijo: si vence antes de fin de mes (o en tus 15 días) sale de lo que tienes; si vence después, «con lo que tengas cuando venza».
+   - En el motor: `tarjetaInfo` calcula `comoPago`, `partes` y `conIngreso`, y `calcular` lo pone en la quincena que lo paga (`futuro`). Lo que elegiste pagar con lo que tienes y vence después de tu próximo ingreso queda reservado (`reservados`), como en cualquier pago.
+2. **Se cambia con el mismo control que los demás pagos.** En la ficha de la tarjeta hay una sección **«Lo pagas con»**: «Con tu quincena del 30 ~$100» y «Cambiar o repartir». Abre la misma hoja de los pagos, «¿Con qué pagas tu tarjeta Crédito BAC?», con «Con tu quincena del 30 (lo normal)», «Con lo que tienes ahora», las demás quincenas antes de que venza y «Repartirlo».
+   - Lo elegido se guarda en la tarjeta (`asignaciones`, por fecha) y se respeta. «Deshacer» funciona como siempre.
+   - También se cambia en «Editar tarjeta» («¿Con qué ingreso la pagas?», V2-88).
+   - Si cambias los días de la tarjeta (V2-57), lo elegido pasa a la fecha nueva.
+3. **Cuando llega el estado de cuenta, el monto real reemplaza al estimado.** Sigue siendo un solo pago en esa fecha, sin duplicar (V2-70), y conserva la quincena: la elegida o la de por defecto (`deEstimado` en ese estado de cuenta).
+   - Si elegiste un solo ingreso, vale para todo el monto real.
+   - Si lo repartiste, se respetan tus montos y lo que sobra va a la quincena de por defecto, como en los demás pagos.
+   - Las compras que anotaste en ese ciclo ya bajaron tu libre el día que las hiciste (V2-07) y esa parte sigue saliendo de lo que tienes. Por eso **el libre no salta** al anotar el estado de cuenta (*decisión técnica — REVISAR*, ver abajo).
+4. **Textos (V2-75).**
+
+   | Dónde | Qué dice |
+   |---|---|
+   | Hoy | «Tarjeta ~$100 del 14 nov: se paga con tu quincena del 30». Si sale de lo que tienes porque vence antes del próximo ingreso, dice por qué: «Incluye tarjeta ~$100, vence el 25 (antes de tu quincena)». |
+   | «¿De dónde sale?» | En «Todavía no cuenta»: «Crédito BAC (~$100, vence el 14 nov): se paga con tu quincena del 30, no con lo que tienes hoy». En «Por pagar»: «lo que pagas normalmente, vence el 25 oct, antes de tu quincena». |
+   | Ficha de la tarjeta | Sección «Lo pagas con», como la ficha de un pago. Con el estado de cuenta: «$100.00 con tu quincena del 30 · $30.00 con lo que tienes ahora (tus compras de este ciclo)». |
+   | Próximos pagos (Hoy) | Cada pago va bajo el ingreso que lo paga: «Con tu quincena del 29 · Préstamo», «Con tu quincena del 14 de noviembre · Crédito Agrícola». Antes, todo lo de después del próximo ingreso iba bajo un solo título. |
+   | «Próxima quincena» (Hoy y Pagos) | La tarjeta cuenta en la quincena que la paga: «ingreso ~$600 · pagos ~$100 · te quedarían ~$500». |
+   | Pagos → Mis pagos e ingresos | «Lo que pagas normalmente: con tu quincena del 30, como tus otros pagos». |
+   | Pagos (fila) | Si cambiaste con qué la pagas, igual que un pago: «Reservado de lo que tienes ahora». |
+   | Pagar tarjeta | Si la ibas a pagar con una quincena que todavía no llega: «… si lo pagas desde ya, sale de lo que tienes hoy y tu libre baja». |
+   | Estado de cuenta (paso 3) | «Se paga con tu quincena del 30, como lo que pagas normalmente. Lo que ya anotaste en compras sigue saliendo de lo que tienes». |
+   | Primer día, «Tarjeta o préstamo» y «Tu número» | «Se paga como tus otros pagos, con tu ingreso de antes de esa fecha. Lo usamos hasta que anotes tu estado de cuenta» (antes: «Lo apartamos de tu libre…»). «Tu número»: «por ahora contamos lo que pagas normalmente (~$100), con tu quincena del 30». |
+
+5. **Quienes ya tienen una tarjeta con pago estimado:** al actualizar, su libre se recalcula solo, sin preguntas. No cambia nada de lo guardado y se respeta lo que ya hubieran elegido en sus pagos («Lo pagas con»). En la v2.6.6 las tarjetas no tenían «Lo pagas con», así que no había nada que respetar ahí. Está probado desde la v2.6.6 (parte F, abajo).
+6. **Entrenamiento, «?» y glosario (V2-76):**
+   - El capítulo «Tarjetas y estado de cuenta» usa la tarjeta de Ana, que ya tiene estado de cuenta (V2-29 #1, sin cambio): sus números no cambian.
+   - `numeros-entrenamiento.mjs` sigue en verde.
+   - El ejemplo «Tu libre ya tiene restados…» lee ahora solo lo que de verdad baja el libre.
+   - El «?» de «Lo pagas con» («Cada pago dice de qué dinero sale…») sirve igual para la tarjeta.
+
+### Los números de las dos testers
+
+| | v2.6.6 | v2.6.7 |
+|---|---|---|
+| **Tester 1** (19 oct; $950 en el banco y $50 en efectivo; quincena el 15 y el 30, ~$600; tarjeta con corte 25, pago 14, ~$100) | Libre **$900.00** · «Incluye tarjeta ~$100, vence el 14 nov» | Libre **$1,000.00** · «Tarjeta ~$100 del 14 nov: se paga con tu quincena del 30» · Próxima quincena (30): ingreso ~$600 · pagos ~$100 · te quedarían ~$500 |
+| **Tester 2** (19 oct; $50 en Banco Agrícola y $0 en efectivo; quincena el 29, ~$550; préstamo de $157 el 30; «Crédito Agrícola» con corte 21, pago 15, ~$150 y ~$2,000 que debe) | Libre **$0.00** · «Te faltan $100.00» · «Incluye tarjeta ~$150, vence el 15 nov» | Libre **$50.00**, sin «Te faltan» · «Tarjeta ~$150 del 15 nov: se paga con tu quincena del 14 de noviembre» · Próxima quincena (29): ingreso ~$550 · pagos ~$157 · te quedarían ~$393 · la del 14 nov: pagos ~$150 · te quedarían ~$400 · ficha, Deudas y Mi dinero: «Debes ~$2,000 · por confirmar con tu estado de cuenta» |
+
+No sabemos el otro día de cobro de la tester 2, así que se probaron tres versiones de su ingreso:
+
+| Su ingreso | Quién paga la tarjeta del 15 nov | Próxima quincena (29) |
+|---|---|---|
+| Quincenas el 14 y el 29 (como Victor) | La del 14 nov | ingreso ~$550 · pagos ~$157 · te quedarían ~$393 |
+| Quincenas el 15 y el 29 | La del 15 nov (el mismo día) | ingreso ~$550 · pagos ~$157 · te quedarían ~$393 |
+| Cada mes, el 29 | El salario del 29 oct | pagos ~$307 (préstamo + tarjeta) |
+
+En las tres: Libre **$50.00**, sin «Te faltan».
+
+### V2-88 — editar = los mismos campos que crear
+
+| Entidad | Faltaba al editar | Ahora |
+|---|---|---|
+| **Tarjeta** (Mi dinero, Primer día y «Completar tu Primer día») | «¿Cuánto debes hoy?»; «¿Cuánto pagas normalmente?» si no lo tenía; su estado de cuenta; con qué la pagas; con qué quincena (V2-87) | «Editar tarjeta» tiene el nombre, el corte, el pago y el límite de crédito. Hasta el primer estado de cuenta, también «¿Cuánto pagas normalmente?» y «¿Cuánto debes hoy?», los dos opcionales como al agregarla. Con estado de cuenta, «¿Cuánto es el pago de contado?» y «¿Cuánto es el pago mínimo?». Además, **«¿Con qué la pagas?»** (cuenta o medio, también al agregarla en Mi dinero; «Pagar tarjeta» sale de esa cuenta) y **«¿Con qué ingreso la pagas?»**. Al renombrarla, su medio de crédito se llama igual. |
+| **Préstamo, casa comercial y vivienda** (y la «Cuota de un préstamo» de «+ Pago», que abre el mismo formulario) | «¿Qué es?» | Se cambia entre préstamo, casa comercial y vivienda (con su emoji). |
+| **Cuchubal** | «¿Cuándo te toca recibir?» y «¿Cuánto recibes ese día?» | Al editar se cambian, se agregan o se quitan; un turno que ya llegó no se toca. |
+| **Pago fijo** | «¿Se cobra solo en una tarjeta o cuenta?» (del Primer día) | El chip **«Se cobra solo en esa tarjeta o cuenta»**, al agregar y al editar. |
+| **Ingreso esperado** | (nada) | Ya tenía todo. «¿Dónde cae?» pasa a «¿Dónde lo recibes?», como en el Primer día (V2-75). |
+| **Ahorro** | (nada) | Al editar: nombre, meta y fecha. Lo que tiene se cambia con «Ahorrar» y «Sacar» en su ficha (son movimientos de dinero, no un dato). |
+| **Cuenta** | «¿Qué es?», «¿Cuánto tienes ahí hoy?» y «Tengo tarjeta de débito de este banco» | Los tres. El monto nuevo queda como un cuadre de hoy, sin tocar lo de antes. Quitar la débito la oculta, salvo que un pago la use. |
+| **Medio de pago** | «¿Qué es?» | Débito, transferencia o billetera. El efectivo y las tarjetas de crédito no lo preguntan. |
+
+**Mismos textos:** las deudas del Primer día ahora dicen «¿De cuánto es la cuota?», «¿Qué día se paga?» y «¿Cuánto debes?», como en Mi dinero. El Primer día conserva sus frases guiadas cuando dan contexto, como «¿Cuánto recibes más o menos cada quincena?».
+
+**Lo que no se pregunta al editar, y por qué:**
+
+- El tipo de una tarjeta: una tarjeta no se vuelve préstamo.
+- Su último estado de cuenta, si todavía no tiene: se anota con «Llegó mi estado de cuenta».
+- «¿Cuál pago?» de «+ Pago»: es un atajo para llenar el nombre, no un dato.
+- «¿De qué banco?» del Primer día: al editar, es su nombre.
+
+### Punto 3 del agregado — la ficha de la tarjeta dice lo que debes
+
+Si anotaste «¿Cuánto debes hoy?», la app dice **«Debes ~$2,000 · por confirmar con tu estado de cuenta»** en tres lugares, con el mismo monto y la misma frase:
+
+- en la ficha: «Debes en total ~$2,000 · Por confirmar con tu estado de cuenta.»;
+- en Deudas, en la fila de la tarjeta;
+- en Mi dinero: «Debes ~$2,000 · por confirmar con tu estado de cuenta · y cuotas».
+
+Antes, la ficha solo decía «Por confirmar»; en Mi dinero no se veía el «~» y una tarjeta con lo que debe contaba como «cuota sin cuánto debes».
+
+### Pruebas y calidad
+
+- **`herramientas/v267.mjs`** (A–F, con la fecha del teléfono de cada caso):
+  - **En la v2.6.6 fallan 56 de las 66 comprobaciones de A–E** (`--raiz=` con la v2.6.6 sacada de git); en la v2.6.7 pasan todas (98).
+  - A, el caso exacto de la tester 1: $1,000.00, Hoy, desglose, ficha, Próximos pagos y la próxima quincena.
+  - B, cambiar la quincena: a «lo que tienes ahora» baja $100 y queda reservado; con «Deshacer» vuelve a $1,000.00. Con el pago el 20 nov, a la quincena del 30: la próxima paga $100 más y la del 15 nov $100 menos, con el mismo libre. Y lo mismo desde «Editar».
+  - C, sin un ingreso antes de su fecha: igual que un pago cualquiera del mismo monto y día, con o sin ingreso fijo.
+  - D, el estado de cuenta: un solo pago el 14 nov de $130 con la quincena del 30 y el libre igual; con una compra de $30 anotada, $100 con la quincena y $30 con lo que tiene, y el libre sigue en $970; con «lo que tienes ahora» elegido, el monto real también.
+  - E, la tester 2 en sus tres versiones, con la frase del punto 3 en la ficha, Deudas y Mi dinero.
+  - F, actualizar desde la v2.6.6 con la tarjeta estimada de la tester 2 y un pago con «Lo pagas con» elegido: sin preguntas, el libre se recalcula ($0.00 → $25.00 con ese pago reservado), con las mismas claves y datos guardados y el progreso del entrenamiento intacto.
+- **`herramientas/v267-editar.mjs`** (V2-88, 11 entidades, 57 comprobaciones). **En la v2.6.6 fallan 20 de 22 comprobaciones, en 9 de las 11 entidades** (a la tarjeta del Primer día, al editarla, le faltaba «¿Cuánto debes hoy?»; el ahorro y la cuota desde «+ Pago» ya estaban bien):
+  - Por cada una: crear con todos los campos, comparar las preguntas de «agregar» con las de «editar» (lo que falta solo con su motivo), editar cada campo y ver el cambio en Hoy, Pagos, Mi dinero o la ficha.
+  - Entidades: tarjeta de Mi dinero, del Primer día y con estado de cuenta; préstamo → casa comercial; cuota desde «+ Pago»; cuchubal con su turno; pago fijo; ingreso esperado; ahorro; cuenta; medio de pago.
+- **`herramientas/v266.mjs` (V2-85/86) sigue verde** (124 comprobaciones). Cinco de ellas esperaban el pago estimado apartado de lo que tienes y ahora esperan V2-87 ($1,000.00 y «Tarjeta ~$100 del 14 nov: se paga con tu quincena del 30»). Lo de antes del registro no cambió.
+- **Pruebas viejas al día por V2-87:**
+  - `v231`: el primer número con «Tarjeta» del Primer día es $300.00 (antes $200.00) y Hoy dice «se paga con tu quincena del 30».
+  - `v262`: el estimado cuenta una vez, con su ingreso o con lo que tienes, y el libre no baja al agregar una tarjeta que vence después de la quincena.
+- **Toda la batería, una prueba a la vez:**
+  - Por file://, **32 pruebas**: las 29 de siempre, `v266`, `v267` y `v267-editar`.
+  - Servida en la subruta de Pages, **24 pruebas**: las 22 de siempre más `v267` y `v267-editar`.
+  - Sin fallos ni errores de consola, salvo el error del candado que provocan a propósito `v264` y `v266`.
+- **Datos y progreso intactos al actualizar:** `actualizar.mjs --ref=fc02f7f` (desde la v2.6.6) conserva datos reales, entrenamiento, prueba guiada en pausa y modo sin internet.
+- **Capturas a 390 × 844** en Serena claro (`capturas/v267/`) y Ancla oscuro (`capturas/v267-ancla-oscuro/`), revisadas una por una:
+  - Hoy de las dos testers;
+  - «¿De dónde sale?»;
+  - la ficha de la tarjeta con «Lo pagas con» y «Debes ~$2,000»;
+  - la hoja «¿Con qué pagas tu tarjeta…?»;
+  - «Editar tarjeta» con «¿Con qué ingreso la pagas?»;
+  - Mi dinero.
+  Al revisarlas se corrigió «… con tu estado de cuenta + cuotas» por «… · y cuotas».
+
+### DECISIONES PENDIENTES PARA VICTOR (v2.6.7)
+
+1. **Desde el segundo estado de cuenta, la tarjeta sigue V2-29 #1** (sale de lo que ya tienes). Para entonces las compras que anotas ya bajaron el libre el día que las hiciste, así que el estado de cuenta casi no lo mueve. *Recomendación:* dejarlo así. *Tradeoff:* intereses o compras que no anotaste bajan el libre el día que anotas el estado de cuenta, no con la quincena.
+2. **El primer estado de cuenta, dividido** (*decisión técnica — REVISAR*). Lo que anotaste en compras de ese ciclo sigue saliendo de lo que tienes y el resto, con la quincena. *Recomendación:* dejarlo así (el libre no salta). *Tradeoff:* el pago de esa fecha se ve en dos partes, «$100 con tu quincena del 30 · $30 con lo que tienes ahora».
+3. **Próximos pagos, agrupados por el ingreso que los paga** (para todos los pagos, no solo la tarjeta). *Recomendación:* dejarlo. *Tradeoff:* puede haber dos o tres títulos, por ejemplo «Con tu quincena del 29» y «Con tu quincena del 14 de noviembre».
+4. **«¿Con qué la pagas?» de la tarjeta** se pregunta al agregarla en Mi dinero y al editarla, no en el Primer día (para no alargarlo); por defecto, la transferencia o la débito. *Recomendación:* dejarlo así.
+5. **Al editar una cuenta, «¿Cuánto tienes ahí hoy?» queda como un cuadre de hoy.** *Recomendación:* dejarlo así. *Tradeoff:* quien solo quería corregir un error de escritura del primer día ve un cuadre en su historial.
+
+### Limitaciones
+
+- Una compra pagada aparte con «solo compras» antes del primer corte no se resta de la parte «compras» del primer estado de cuenta. Es un caso raro, y el libre sigue siendo el correcto.
+- Si en «Editar tarjeta» cambias los días y la quincena a la vez, la quincena elegida tiene que llegar antes de la fecha nueva; si no, vale la de por defecto, como en los pagos.
+- El Primer día y los formularios todavía usan palabras distintas en algunas preguntas que dan contexto («¿Cuánto recibes más o menos cada quincena?» y «¿Cuánto recibes más o menos?»).
 
 ---
 
@@ -103,7 +251,7 @@ V2-86 amplía y prevalece sobre el punto 4 (recuperación) de V2-85. El error co
 
 ### DECISIONES PENDIENTES PARA VICTOR (v2.6.6)
 
-1. **Lo que pagas normalmente de una tarjeta se aparta de lo que ya tienes, aunque venza después de tu próxima quincena** (V2-54/V2-78, sin cambio). Por eso, en el caso de la tester, el libre sigue en $900.00 (y no $1,000.00): esos ~$100 son su pago del 14 de noviembre. *Recomendación:* dejarlo así (son compras que ya hizo con la tarjeta; si no se apartan, ese dinero se gastaría dos veces). *Tradeoff:* hasta que llegue su quincena del 30, su libre se ve $100 más bajo que si ese pago se pagara con esa quincena, como los demás pagos.
+1. ~~**Lo que pagas normalmente de una tarjeta se aparta de lo que ya tienes, aunque venza después de tu próxima quincena** (V2-54/V2-78, sin cambio).~~ **RESPONDIDA (V2-87, v2.6.7): se paga como cualquier otro pago, con la quincena de antes de su fecha (opción A), y la persona puede elegir otra.** Por eso, en el caso de la tester, el libre sigue en $900.00 (y no $1,000.00): esos ~$100 son su pago del 14 de noviembre. *Recomendación:* dejarlo así (son compras que ya hizo con la tarjeta; si no se apartan, ese dinero se gastaría dos veces). *Tradeoff:* hasta que llegue su quincena del 30, su libre se ve $100 más bajo que si ese pago se pagara con esa quincena, como los demás pagos.
 2. **«Este periodo»** (decisión técnica — REVISAR, arriba): la última fecha de este mes que ya pasó (7 días en lo semanal, 14 cada 2 semanas). *Recomendación:* dejarlo así. *Tradeoff:* quien se registra el 2 y paga el 30 no ve pregunta por el 30 del mes anterior (se da por pagado).
 3. **Editar el día de un ingreso esperado** no pregunta (solo los pagos y las tarjetas): un ingreso que pasa a una fecha que ya pasó queda «por confirmar» («¿Ya llegó…?»), que no baja el libre. *Recomendación:* dejarlo así para esta prueba.
 

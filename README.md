@@ -1,4 +1,4 @@
-# PamPlanea · prototipo v2.6.6
+# PamPlanea · prototipo v2.6.7
 
 Una versión de prueba de **PamPlanea**: saber cuánto te queda libre hasta tu próximo ingreso y que no se te olvide ningún pago.
 
@@ -12,6 +12,14 @@ La primera vez eliges cómo empezar: **«Aprender a usarla»** (recomendado) o *
 - **Instalar la app** (solo si todavía no la instalaste), **Completar tu Primer día** (con tus datos), **Cuéntale a Victor o a Pam cómo vas** y **Tus datos** (copia, restaurar y borrar), la apariencia y la versión.
 
 Lo de tus datos y lo de los ejemplos se guarda por separado: nada de lo que hagas con los ejemplos toca tus datos.
+
+## Lo nuevo en la v2.6.7
+
+- **Tu tarjeta se paga como tus otros pagos.** Hasta tu primer estado de cuenta, lo que pagas normalmente ya no se aparta de lo que tienes hoy: lo paga tu quincena de antes de esa fecha. Hoy dice, por ejemplo, **«Tarjeta ~$100 del 14 nov: se paga con tu quincena del 30»**. Solo sale de lo que tienes si vence antes de tu próximo ingreso, y Hoy dice por qué («(antes de tu quincena)»).
+- **Tú eliges con qué la pagas.** En la ficha de la tarjeta, **«Lo pagas con» → «Cambiar o repartir»**, como en cualquier pago: otra quincena, lo que tienes ahora o repartirlo. Cuando llega tu estado de cuenta, el monto real sigue con la quincena elegida, sin contarse dos veces.
+- **«Próximos pagos» por quincena:** cada pago aparece bajo la quincena con que se paga.
+- **Editar = lo mismo que agregar.** «Editar tarjeta» ahora tiene «¿Cuánto debes hoy?», «¿Cuánto pagas normalmente?», «¿Con qué la pagas?» y «¿Con qué ingreso la pagas?». Lo mismo para préstamos (también su tipo), el cuchubal (su turno), los pagos («Se cobra solo»), las cuentas (su tipo, cuánto tienes y su débito) y los medios de pago (su tipo).
+- **Lo que debes de tu tarjeta:** si anotaste cuánto debes, la ficha, Deudas y Mi dinero dicen lo mismo: **«Debes ~$2,000 · por confirmar con tu estado de cuenta»**.
 
 ## Lo nuevo en la v2.6.6
 
