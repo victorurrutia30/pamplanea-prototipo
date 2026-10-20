@@ -326,7 +326,17 @@
     }
 
     // ------------------------------------------------------------------ tarjeta
-    function tarjetaInfo(st, t) {
+    /**
+     * v2.6.7 (V2-87): la tarjeta como un pago más para «Lo pagas con» (V2-34): lo que la persona eligió para esa fecha
+     * (`t.asignaciones`). Si eligió un solo ingreso, vale para todo el monto: cuando llega el estado de cuenta, el monto real
+     * reemplaza al estimado y sigue con ese ingreso. Sin reglas de «cada vez»: solo cuenta hasta su primer estado de cuenta.
+     */
+    function pagoDeTarjeta(t, fecha, monto) {
+        const elegido = t.asignaciones && t.asignaciones[fecha];
+        const lista = Array.isArray(elegido) && elegido.length === 1 ? [{ de: elegido[0].de, monto }] : elegido;
+        return { id: t.id, tarjeta: true, nombre: t.nombre, emoji: t.emoji, asignaciones: Array.isArray(lista) && lista.length ? { [fecha]: lista } : {}, pagarCon: null };
+    }
+    function tarjetaInfo(st, t, hz = null) {
         const ult = t.estados[t.estados.length - 1];
         const regs = st.registros;
         const pagos = regs.filter((r) => r.tipo === 'pagoTarjeta' && r.tarjeta === t.id && r.fecha > ult.corte);
@@ -367,15 +377,32 @@
         const restoBruto = Math.max(0, ult.total - ult.aPagar);
         const resto = Math.max(0, restoBruto - excedente);
         const comprasNetas = Math.max(0, comprasTotal - Math.max(0, excedente - restoBruto) - pagadoCompras);
-        const enLibre = porPagarEstado + estimado + comprasNetas;
         // Lo que debe de verdad no se sabe hasta su primer estado de cuenta: el estimado no cuenta como deuda.
         const debeTotal = Math.max(0, ult.total - cubierto + comprasTotal - Math.max(0, pagado - usual) - pagadoCompras);
         // v2.6.6 (V2-85): la fecha del pago que se cuenta. Sin estado de cuenta, la del ciclo pendiente: las pantallas leían
         // `ult.vence`, que en una tarjeta agregada después de su día de pago es la del ciclo anterior («venció el 14 oct»).
         const vence = ult.inicial && pendiente ? pendiente.vence : ult.vence;
+        // v2.6.7 (V2-87): lo que pagas normalmente se paga como cualquier otro pago (V2-34): por defecto con el ingreso que
+        // llega antes de su fecha, o con el que elegiste en «Lo pagas con». El estado de cuenta que lo reemplaza
+        // (`deEstimado`) sigue con ese ingreso, sin contarse dos veces; lo que anotaste en compras de ese ciclo ya bajó tu
+        // libre el día que las hiciste (V2-07) y sigue saliendo de lo que tienes.
+        const deCompras = ult.deEstimado ? Math.max(0, Math.min(aPagarUlt, ult.anotado || 0) - pagado) : 0;
+        const comoPago = ult.inicial ? estimado : ult.deEstimado ? Math.max(0, porPagarEstado - deCompras) : 0;
+        const pagoComo = pagoDeTarjeta(t, vence, comoPago);
+        const partesPago = comoPago > 0 ? asignacion(st, pagoComo, vence, comoPago, hz) : [];
+        const conIngreso = suma(partesPago.filter((x) => !esFundado(st, x.de)), (x) => x.monto);
+        const enLibre = porPagarEstado + estimado + comprasNetas - conIngreso;
+        // Con lo que ya tienes: lo que vence antes de tu próximo ingreso (o ya venció) está «por pagar»; si vence después
+        // (porque elegiste pagarlo con lo que tienes), queda reservado (V2-34). Así lo dicen Hoy, el desglose y la ficha.
+        const hzT = partesPago.length ? hz || horizonte(st) : null;
+        const reservadoComo = hzT && vence >= st.hoy && vence >= hzT.fecha ? suma(partesPago.filter((x) => esFundado(st, x.de)), (x) => x.monto) : 0;
+        const fuera = conIngreso + reservadoComo;
+        const porPagarAhora = ult.inicial ? porPagarEstado : porPagarEstado - fuera;
+        const estimadoAhora = ult.inicial ? estimado - fuera : 0;
         // Lo apartado que se usó con esta tarjeta queda reservado para pagarla (V2-27).
         const reservas = (st.reservasTarjeta || []).filter((x) => x.tarjeta === t.id);
-        const reservado = Math.min(enLibre, suma(reservas, (x) => x.monto));
+        // (V2-87: lo que pagas normalmente va aparte, con su ingreso: lo reservado es de las compras.)
+        const reservado = Math.min(enLibre - (comoPago - conIngreso), suma(reservas, (x) => x.monto));
         const venceCompras = fechaDe(vy, vm, t.pagoDia);
         const cupoLibre = t.cupo ? Math.max(0, t.cupo - debeTotal) : null;
         // Sin estado de cuenta al agregarla, se le pide después del siguiente corte (V2-31 #8). Sin día de
@@ -383,7 +410,7 @@
         const pedir = !!pendiente && (sinCorte ? st.hoy >= sumarDias(pendiente.vence, -10) : siguiente ? st.hoy > pendiente.corte : !(ult.inicial && ult.esperarCorte && st.hoy <= proxCorte));
         // Dos pagos próximos de la misma tarjeta: el texto dice el mes (V2-31 #1).
         const dosPagos = porPagarEstado + estimado > 0 && comprasNetas > 0 && vence !== venceCompras;
-        return { t, ult, pagado, pagadoCompras, porPagarEstado, usual, estimado, sinCorte, compras, comprasTotal, comprasNetas, pendiente, pedir, proxCorte, resto, enLibre, debeTotal, reservas, reservado, venceCompras, cupoLibre, dosPagos, vence };
+        return { t, ult, pagado, pagadoCompras, porPagarEstado, usual, estimado, sinCorte, compras, comprasTotal, comprasNetas, pendiente, pedir, proxCorte, resto, enLibre, debeTotal, reservas, reservado, venceCompras, cupoLibre, dosPagos, vence, comoPago, deCompras, partes: partesPago, conIngreso, reservadoComo, porPagarAhora, estimadoAhora, pagoComo };
     }
     /** Pagos de tarjeta como ocurrencias de Pagos: el estado vigente y, si llegó otro, el pendiente. */
     function ocurrenciasTarjeta(st, desde, hasta) {
@@ -675,14 +702,32 @@
                 }
             }
         }
+        const tarjetas = st.tarjetas.map((x) => tarjetaInfo(st, x, hz));
+        // v2.6.7 (V2-87): lo que pagas normalmente de una tarjeta (y el estado de cuenta que lo reemplaza) va con el ingreso
+        // que lo paga, como cualquier otro pago: con un ingreso que todavía no llega no baja tu libre de hoy; si elegiste
+        // pagarlo con lo que tienes y vence después de tu próximo ingreso, queda reservado.
+        for (const ti of tarjetas) {
+            const o = { tarjeta: ti.t, pago: ti.pagoComo, fecha: ti.vence, monto: ti.comoPago, estimado: !!ti.ult.inicial, estado: ti.vence < st.hoy ? 'vencido' : 'pendiente' };
+            for (const parte of ti.partes) {
+                const x = { ...o, parte: parte.monto, de: parte.de };
+                if (esFundado(st, parte.de)) {
+                    if (ti.reservadoComo) reservados.push(x);
+                } else {
+                    (futuro[parte.de] = futuro[parte.de] || []).push(x);
+                    const ing = ingresoDeClave(st, parte.de);
+                    const l = ing && ing.llegadas && ing.llegadas[ing.fecha];
+                    if (ing && (o.fecha <= st.hoy || (l && l.noLlego))) sinIngreso.push({ ...x, ingreso: ing });
+                }
+            }
+        }
         const porFecha = (a, b) => (a.fecha < b.fecha ? -1 : a.fecha > b.fecha ? 1 : 0);
         items.sort(porFecha);
         reservados.sort(porFecha);
-        const tarjetas = st.tarjetas.map((x) => tarjetaInfo(st, x));
         const porPagar = suma(items, (x) => x.parte);
         const reservadoPagos = suma(reservados, (x) => x.parte);
-        // V2-07, V2-13, V2-29 #1: la tarjeta siempre se paga con lo que ya tienes.
-        const enTarjetas = suma(tarjetas, (x) => x.enLibre);
+        // V2-07, V2-13, V2-29 #1: la tarjeta se paga con lo que ya tienes (V2-87: salvo lo que pagas normalmente, que va
+        // con su ingreso; lo reservado de eso ya está en `reservadoPagos`).
+        const enTarjetas = suma(tarjetas, (x) => x.enLibre - x.reservadoComo);
         const reservadoTarjetas = suma(tarjetas, (x) => x.reservado);
         // V2-35: lo que la persona pasó de lo que tiene a un próximo día de pago (y lo que llegó antes de su quincena).
         const reservas = reservasDe(st, hz);
@@ -1135,5 +1180,6 @@
         esUnico, ingresoDeClave, llegoUnico, unicosPara,
         porPagar, porRecibir, ingresoEsperado, aplicarEsperado, pagoParecido,
         pasadaDelPeriodo, desdeSegun, inicioUso, antesDeEmpezar,
+        pagoDeTarjeta,
     };
 })();

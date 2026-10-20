@@ -171,8 +171,9 @@
         },
         tarjeta: () => {
             const k = P.calc();
-            const t = k.tarjetas.find((x) => x.porPagarEstado + x.estimado > 0);
-            return t ? `Tu libre de ${corto(k.libre)} ya tiene restados ${corto(t.porPagarEstado + t.estimado)} de tu tarjeta, que vence el ${P.diaPago(t, t.vence)}.` : null;
+            // V2-87: solo lo que ya baja tu libre (lo que pagas normalmente con una quincena que no llega no está restado).
+            const t = k.tarjetas.find((x) => x.porPagarAhora + x.estimadoAhora > 0);
+            return t ? `Tu libre de ${corto(k.libre)} ya tiene restados ${corto(t.porPagarAhora + t.estimadoAhora)} de tu tarjeta, que vence el ${P.diaPago(t, t.vence)}.` : null;
         },
         compraTarjeta: (cosa, frase) => () => `Escribes «${frase}»: tu libre de ${libreHoy()} baja $30 hoy.`,
         deudas: () => {

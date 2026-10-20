@@ -223,8 +223,9 @@
         let resta = monto;
         for (const x of partes) {
             if (resta <= 0) break;
-            const p = M.pago(st, x.pago.id);
-            const actual = M.asignacion(st, p, x.fecha, x.monto, k.hz);
+            // v2.6.7 (V2-87): lo que pagas normalmente de una tarjeta se reserva igual; lo elegido se guarda en la tarjeta.
+            const p = x.tarjeta ? M.tarjeta(st, x.tarjeta.id) : M.pago(st, x.pago.id);
+            const actual = M.asignacion(st, x.tarjeta ? M.pagoDeTarjeta(p, x.fecha, x.monto) : p, x.fecha, x.monto, k.hz);
             const mueve = Math.min(resta, x.parte);
             const nuevo = actual.map((y) => ({ ...y }));
             const de = nuevo.find((y) => y.de === periodo);
@@ -585,7 +586,7 @@
         if (H[h.tipo].vivo) H[h.tipo].vivo(h);
     };
     P.acciones.cerrarHoja = () => P.cerrarHoja();
-    P.acciones.hoja = (d) => P.abrirHoja(d.hoja, { id: d.id, fecha: d.fecha, ...(d.sugerida ? { sugerida: d.sugerida } : {}) });
+    P.acciones.hoja = (d) => P.abrirHoja(d.hoja, { id: d.id, fecha: d.fecha, ...(d.sugerida ? { sugerida: d.sugerida } : {}), ...(d.deTarjeta ? { deTarjeta: true } : {}) });
     function validar(h, faltan) {
         h.intento = true;
         h.errores = faltan;
@@ -1193,9 +1194,11 @@
                 if (t.pendiente && !t.usual) items.push(`<li><span>${emo(t.t.emoji, 16)} ${esc(t.t.nombre)} <span class="d-sub">estado de cuenta por anotar</span></span><span>Por confirmar</span></li>`);
                 // V2-54: hasta su primer estado de cuenta, lo que paga normalmente.
                 // v2.6.6 (V2-85): la fecha del ciclo que se cuenta (antes decía la del ciclo de antes de agregarla: «venció el 14 oct»).
-                if (t.estimado) items.push(`<li><span>${emo(t.t.emoji, 16)} ${esc(t.t.nombre)} <span class="d-sub">lo que pagas normalmente, ${t.vence < st.hoy ? 'venció' : 'vence'} el ${M.fechaCorta(t.vence)}</span></span><span>${dinero(t.estimado, { aprox: true })}</span></li>`);
+                // v2.6.7 (V2-87): solo lo que sale de lo que ya tienes (vence antes de tu próximo ingreso); lo que paga un
+                // ingreso que todavía no llega va en «Todavía no cuenta», y lo reservado, en «Reservado para pagos».
+                if (t.estimadoAhora > 0) items.push(`<li><span>${emo(t.t.emoji, 16)} ${esc(t.t.nombre)} <span class="d-sub">lo que pagas normalmente, ${t.vence < st.hoy ? 'venció' : 'vence'} el ${M.fechaCorta(t.vence)}${t.vence >= st.hoy && hz.ingreso && !hz.esHoy && !hz.atrasada ? `, antes de tu ${esc(P.nombreIngreso(hz))}` : ''}</span></span><span>${dinero(t.estimadoAhora, { aprox: true })}</span></li>`);
                 // V2-29 #1: vence después del ingreso, pero ya baja el libre; se dice cuándo vence.
-                if (t.porPagarEstado) items.push(`<li><span>${emo(t.t.emoji, 16)} ${esc(t.t.nombre)} <span class="d-sub">estado de cuenta, ${t.ult.vence < st.hoy ? 'venció' : 'vence'} el ${M.partes(t.ult.vence)[2]} ${M.MESES_CORTOS[M.partes(t.ult.vence)[1] - 1]}</span></span><span>${dinero(t.porPagarEstado)}</span></li>`);
+                if (t.porPagarAhora > 0) items.push(`<li><span>${emo(t.t.emoji, 16)} ${esc(t.t.nombre)} <span class="d-sub">estado de cuenta, ${t.ult.vence < st.hoy ? 'venció' : 'vence'} el ${M.partes(t.ult.vence)[2]} ${M.MESES_CORTOS[M.partes(t.ult.vence)[1] - 1]}${t.porPagarAhora < t.porPagarEstado ? ` · ${dinero(t.porPagarAhora)} de ${dinero(t.porPagarEstado)}` : ''}</span></span><span>${dinero(t.porPagarAhora)}</span></li>`);
                 const compras = t.comprasNetas - t.reservado;
                 if (compras > 0) items.push(`<li><span>${emo(t.t.emoji, 16)} ${esc(t.t.nombre)} <span class="d-sub">compras nuevas, se pagan el ${M.partes(t.venceCompras)[2]} ${M.MESES_CORTOS[M.partes(t.venceCompras)[1] - 1]}</span></span><span>${dinero(compras)}</span></li>`);
             }
@@ -1216,6 +1219,8 @@
                 const conEso = i.frecuencia === 'unico' ? [...new Set((k.futuro['unico:' + i.id] || []).map((y) => P.conArticulo(y.pago.nombre)))] : [];
                 if (o) noCuenta.push(`${esc(i.nombre)} (${dinero(o.monto, { aprox: o.aprox })}, ${M.fechaCorta(o.fecha)}): suma cuando llegue${conEso.length ? `; con eso pagas ${esc(P.lista(conEso))}` : ''}.`);
             }
+            // v2.6.7 (V2-87): lo que pagas normalmente de una tarjeta, con el ingreso que lo paga (como cualquier otro pago).
+            for (const t of k.tarjetas.filter((x) => x.conIngreso > 0)) noCuenta.push(`${esc(t.t.nombre)} (${dinero(t.conIngreso, { aprox: !!t.ult.inicial })}, vence el ${M.fechaCorta(t.vence)}): se paga con ${esc(P.fuentesTarjeta(t))}, no con lo que tienes hoy.`);
             for (const t of k.tarjetas.filter((x) => x.cupoLibre !== null)) noCuenta.push(`Lo disponible de ${esc(t.t.nombre)} (${dinero(t.cupoLibre)}): es dinero prestado, nunca suma.`);
             const fila = (signo, titulo, monto, ir, sub = '', extra = '', fk = ir) => `<li class="d-fila"><button type="button" class="d-b" data-a="desgloseIr" data-ir="${ir}" data-fk="d-${fk}"><span class="d-signo" aria-hidden="true">${signo}</span><span class="d-t">${titulo}${sub ? `<span class="d-sub">${sub}</span>` : ''}</span><span class="d-m">${monto}</span>${icon('chevron-right', 'ico-xs')}</button>${extra}</li>`;
             // v2.4.1: sin ingreso fijo, la persona elige hasta cuándo ve su libre (antes solo se podía el primer día).
@@ -1459,9 +1464,12 @@
         iniciar(h) {
             const st = P.st;
             if (h.tipoPago === 'tarjeta') {
-                const info = M.tarjetaInfo(st, M.tarjeta(st, h.id));
+                const t = M.tarjeta(st, h.id);
+                const info = M.tarjetaInfo(st, t);
                 h.monto = M.montoCampo(info.porPagarEstado + info.estimado + info.reservado);
-                h.lugar = (st.lugares.find((l) => l.tipo === 'banco') || st.lugares[0]).id;
+                // V2-88: desde la cuenta del medio con que dijiste que la pagas.
+                const m = t.medio ? M.medio(st, t.medio) : null;
+                h.lugar = m && m.lugar && M.lugar(st, m.lugar) ? m.lugar : (st.lugares.find((l) => l.tipo === 'banco') || st.lugares[0]).id;
                 h.cuando = st.hoy;
             } else {
                 const p = M.pago(st, h.id);
@@ -1483,7 +1491,13 @@
                     cuerpo: `${campoMonto(h, { label: '¿Cuánto vas a pagar?', valor: h.monto })}
                         ${bancos.length > 1 ? opciones(h, { campo: 'lugar', label: '¿Desde cuál cuenta?', lista: lugares(st), valor: h.lugar }) : `<p class="txt">Desde ${esc(M.lugar(st, h.lugar).nombre)}.</p>`}
                         ${campoFecha(h, 'cuando', h.cuando, { label: '¿Cuándo?' })}
-                        <div class="nota nota--info" role="note">${icon('info')}<p>Pagar la tarjeta mueve dinero de tu banco a la tarjeta: <strong>no es un gasto nuevo</strong> y tu libre no cambia, porque ya estaba contado.</p></div>`,
+                        ${(() => {
+                            // v2.6.7 (V2-87): lo que ibas a pagar con una quincena que todavía no llega no estaba contado.
+                            const info = M.tarjetaInfo(st, t);
+                            return info.conIngreso > 0
+                                ? `<div class="nota nota--info" role="note">${icon('info')}<p>Pagar la tarjeta mueve dinero de tu banco a la tarjeta: <strong>no es un gasto nuevo</strong>. Ibas a pagar ${dinero(info.conIngreso, { aprox: !!info.ult.inicial })} con ${esc(P.fuentesTarjeta(info))}: si lo pagas desde ya, sale de lo que tienes hoy y tu libre baja.</p></div>`
+                                : `<div class="nota nota--info" role="note">${icon('info')}<p>Pagar la tarjeta mueve dinero de tu banco a la tarjeta: <strong>no es un gasto nuevo</strong> y tu libre no cambia, porque ya estaba contado.</p></div>`;
+                        })()}`,
                     pie: pie2('pagadoGuardar', 'Marcar pagado'),
                 };
             }
@@ -1539,14 +1553,26 @@
         const x = k.periodos.find((y) => y.clave === f);
         return x ? `Ese día recibes ${dinero(x.entra, { aprox: true })} · ${x.quedan >= 0 ? `te quedarían ${dinero(x.quedan, { aprox: true })}` : `te faltarían ${dinero(-x.quedan, { aprox: true })}`}` : '';
     };
+    /**
+     * v2.6.7 (V2-87): «Lo pagas con» también para lo que pagas normalmente de una tarjeta (y el estado de cuenta que lo
+     * reemplaza): el mismo control; lo elegido se guarda en la tarjeta (`asignaciones`), por fecha, como en un pago.
+     */
+    const pagoParaPagarCon = (st, h, total) => (h.deTarjeta ? M.pagoDeTarjeta(M.tarjeta(st, h.id), h.fecha, total) : M.pago(st, h.id));
     H.pagarCon = {
         iniciar(h) {
             const st = P.st;
             const k = P.calc();
-            const p = M.pago(st, h.id);
-            const o = M.ocurrenciasPago(st, p, h.fecha, h.fecha)[0];
-            h.total = o ? o.monto : p.monto;
-            h.estimado = !!(o && o.estimado);
+            if (h.deTarjeta) {
+                const info = M.tarjetaInfo(st, M.tarjeta(st, h.id), k.hz);
+                h.total = info.comoPago;
+                h.estimado = !!info.ult.inicial;
+            } else {
+                const p0 = M.pago(st, h.id);
+                const o = M.ocurrenciasPago(st, p0, h.fecha, h.fecha)[0];
+                h.total = o ? o.monto : p0.monto;
+                h.estimado = !!(o && o.estimado);
+            }
+            const p = pagoParaPagarCon(st, h, h.total);
             h.fuentes = M.fuentesPara(st, h.fecha, k.hz);
             h.def = h.fuentes.at(-1);
             // Lo que ya está fundado (de antes o de hoy) se ve como «lo que tienes ahora».
@@ -1562,8 +1588,8 @@
         html(h) {
             const st = P.st;
             const k = P.calc();
-            const p = M.pago(st, h.id);
-            const repetido = p.frecuencia !== 'unico' && !!M.principal(st);
+            const p = pagoParaPagarCon(st, h, h.total);
+            const repetido = !h.deTarjeta && p.frecuencia !== 'unico' && !!M.principal(st);
             const etiqueta = (f) => (f === 'ahora' ? 'Con lo que tienes ahora' : M.capital('con ' + P.etiquetaFuente(f)));
             const op = (v, t, s) => `<button type="button" class="opcion-g" role="radio" aria-checked="${h.modo === v}" data-a="valor" data-campo="modo" data-v="${v}" data-fk="pc-${v}"><span class="opcion-g-txt"><span class="opcion-g-t">${esc(t)}</span>${s ? `<span class="fila-s">${esc(s)}</span>` : ''}</span>${h.modo === v ? icon('circle-check', 'ico-ok') : ''}</button>`;
             const vis = fuentesVisibles(h);
@@ -1577,9 +1603,11 @@
                 <div class="chips"><button type="button" class="chip" data-a="valor" data-campo="parejo" data-v="si" data-fk="pc-parejo">Repartir parejo</button></div>
                 <p class="fila-s" id="pc-suma" aria-live="polite">${resto === 0 ? `Suma ${dinero(h.total)}: cuadra.` : resto > 0 ? `Faltan ${dinero(resto)}: van ${P.etiquetaFuente(h.def) === 'lo que tienes ahora' ? 'con lo que tienes' : 'con ' + esc(P.etiquetaFuente(h.def))}.` : `Te pasaste ${dinero(-resto)} de ${dinero(h.total)}.`}</p></div>` : '';
             const reglaPosible = repetido && (h.modo === 'repartir' ? h.parejo : h.modo === 'uno:' + h.def || h.modo === 'uno:' + antesDeDef(st, h));
+            // V2-87: de la tarjeta, qué es ese monto y qué pasa cuando llega el estado de cuenta.
+            const deTarjeta = h.deTarjeta ? `<p class="fila-s">${h.estimado ? 'Es lo que pagas normalmente. Cuando anotes tu estado de cuenta, el monto real se paga con lo que elijas aquí.' : 'Es tu estado de cuenta. Lo que anotaste en compras de este ciclo sigue saliendo de lo que tienes.'}</p>` : '';
             return {
-                titulo: `¿Con qué pagas ${esc(P.conArticulo(p.nombre))}?`,
-                cuerpo: `<p class="txt">Vence el ${esc(M.fechaLarga(h.fecha))} · ${dinero(h.total, { aprox: h.estimado })}.</p><p class="fila-s">Si lo pagas con lo que ya tienes, queda reservado desde hoy.</p>
+                titulo: h.deTarjeta ? `¿Con qué pagas tu tarjeta ${esc(p.nombre)}?` : `¿Con qué pagas ${esc(P.conArticulo(p.nombre))}?`,
+                cuerpo: `<p class="txt">Vence el ${esc(M.fechaLarga(h.fecha))} · ${dinero(h.total, { aprox: h.estimado })}.</p>${deTarjeta}<p class="fila-s">Si lo pagas con lo que ya tienes, queda reservado desde hoy.</p>
                     <div class="opciones-grandes" role="radiogroup" aria-label="Con qué lo pagas">${opciones1}${repartir}</div>
                     ${verMas}
                     ${camposRepartir}
@@ -1637,13 +1665,13 @@
             validar(h, ['parte']);
             return;
         }
-        const p = M.pago(st, h.id);
         const k = P.calc();
         const libreAntes = k.libre;
         P.ui.hoja = null;
         P.cambiar(
             (s) => {
-                const x = M.pago(s, h.id);
+                // V2-87: lo de la tarjeta se guarda en la tarjeta.
+                const x = h.deTarjeta ? M.tarjeta(s, h.id) : M.pago(s, h.id);
                 const asign = { ...(x.asignaciones || {}) };
                 delete asign[h.fecha];
                 const elegido = h.modo.startsWith('uno:') ? h.modo.slice(4) : null;
@@ -1665,7 +1693,7 @@
                 claves: ['guardado:pagarCon', 'guardado:pagarCon:' + (h.modo === 'repartir' ? 'repartir' : h.modo.startsWith('uno:unico:') ? 'unico' : 'uno')],
             },
         );
-        P.emitir('pagarCon:' + p.id);
+        P.emitir('pagarCon:' + h.id);
     };
 
     // ================================================================== ADELANTO DE SALARIO (corrección v2.3.1)
@@ -2326,30 +2354,41 @@
             // Desde la ficha de la tarjeta llega su id: el mismo formulario edita la tarjeta.
             const t = h.tarjetaId ? M.tarjeta(st, h.tarjetaId) : !p && h.id ? M.tarjeta(st, h.id) : null;
             if (t) h.tarjetaId = t.id;
+            const medioDef = (st.medios.find((m) => m.id === 'transferencia' && !m.oculto) || st.medios.find((m) => m.tarjetaDebito && !m.oculto) || st.medios.find((m) => !m.tarjeta && !m.oculto) || st.medios[0]).id;
             if (p) Object.assign(h, { editar: true, tipoDeuda: p.tipoDeuda || 'prestamo', cuotaTarjeta: !!p.cuotaTarjeta, nombre: p.nombre, cuota: M.montoCampo(p.monto), dia: String(p.dia || ''), debe: p.deuda && p.deuda.debe !== null && p.deuda.debe !== undefined ? M.montoCampo(p.deuda.debe) : '', medio: p.medio });
             else if (t) {
-                // V2-54: la tarjeta del primer día todavía no tiene corte; hasta su estado de cuenta se edita lo que paga normalmente.
+                // V2-88: editar trae todo lo que se pide al agregarla: hasta su primer estado de cuenta, lo que pagas
+                // normalmente y lo que debes hoy (V2-54, V2-78); con estado de cuenta, su pago de contado y su mínimo. Y con qué
+                // la pagas y (V2-87) con qué ingreso.
                 const info = M.tarjetaInfo(st, t);
-                Object.assign(h, { editar: true, tipoDeuda: 'tarjeta', nombre: t.nombre, corte: t.corte ? String(t.corte) : '', sinCorte: !t.corte, pagoDia: String(t.pagoDia), cupo: t.cupo ? M.montoCampo(t.cupo) : '', usual: info.usual ? M.montoCampo(info.usual) : null });
+                const ult = info.ult;
+                Object.assign(h, { editar: true, tipoDeuda: 'tarjeta', nombre: t.nombre, corte: t.corte ? String(t.corte) : '', sinCorte: !t.corte, pagoDia: String(t.pagoDia), cupo: t.cupo ? M.montoCampo(t.cupo) : '', inicial: !!ult.inicial, usualNueva: ult.inicial && t.pagoUsual ? M.montoCampo(t.pagoUsual) : '', debeHoy: ult.inicial && t.debeInicial !== null && t.debeInicial !== undefined ? M.montoCampo(t.debeInicial) : '', ecTotal: ult.inicial ? '' : M.montoCampo(ult.total), ecMinimo: ult.inicial ? '' : M.montoCampo(ult.minimo), medio: t.medio && M.medio(st, t.medio) ? t.medio : medioDef });
+                if (info.comoPago > 0) {
+                    h.repartidaT = info.partes.length > 1;
+                    h.fuenteT = h.repartidaT ? null : M.esFundado(st, info.partes[0].de) ? 'ahora' : info.partes[0].de;
+                    h.fuenteTAntes = h.fuenteT;
+                }
             }
-            else Object.assign(h, { tipoDeuda: h.tipoInicial || null, nombre: '', corte: '', pagoDia: '', cupo: '', cuota: '', dia: '', debe: '', usualNueva: '', debeHoy: '', medio: (st.medios.find((m) => m.id === 'transferencia') || st.medios.find((m) => m.tarjetaDebito) || st.medios[0]).id });
+            else Object.assign(h, { tipoDeuda: h.tipoInicial || null, nombre: '', corte: '', pagoDia: '', cupo: '', cuota: '', dia: '', debe: '', usualNueva: '', debeHoy: '', medio: medioDef });
         },
         foco: (h) => (h.tipoDeuda ? '#f-nombre' : '#hoja-t'),
         html(h) {
             const st = P.st;
             const tipo = D.TIPOS_DEUDA.find((x) => x.id === h.tipoDeuda);
-            const tipos = h.editar
+            // V2-88: al editar un préstamo, «¿Qué es?» también se cambia (entre préstamo, casa comercial y vivienda).
+            const tiposLista = h.editar ? D.TIPOS_DEUDA.filter((x) => x.id !== 'tarjeta') : D.TIPOS_DEUDA;
+            const tipos = h.editar && (h.tipoDeuda === 'tarjeta' || h.tarjetaId)
                 ? ''
-                : `<div class="campo-g"><p class="campo-l" id="l-tipoDeuda">¿Qué es?</p><div class="opciones-grandes opciones-grandes--2" role="radiogroup" aria-labelledby="l-tipoDeuda">${D.TIPOS_DEUDA.map((x) => `<button type="button" class="opcion-g" role="radio" aria-checked="${h.tipoDeuda === x.id}" data-a="valor" data-campo="tipoDeuda" data-v="${x.id}" data-fk="td-${x.id}">${caja(x.emoji)}<span class="opcion-g-txt"><span class="opcion-g-t">${esc(x.nombre)}</span><span class="fila-s">${esc(x.s)}</span></span>${h.tipoDeuda === x.id ? icon('circle-check', 'ico-ok') : ''}</button>`).join('')}</div>${error(h, 'tipoDeuda', 'Elige qué es')}</div>`;
+                : `<div class="campo-g"><p class="campo-l" id="l-tipoDeuda">¿Qué es?</p><div class="opciones-grandes opciones-grandes--2" role="radiogroup" aria-labelledby="l-tipoDeuda">${tiposLista.map((x) => `<button type="button" class="opcion-g" role="radio" aria-checked="${h.tipoDeuda === x.id}" data-a="valor" data-campo="tipoDeuda" data-v="${x.id}" data-fk="td-${x.id}">${caja(x.emoji)}<span class="opcion-g-txt"><span class="opcion-g-t">${esc(x.nombre)}</span><span class="fila-s">${esc(x.s)}</span></span>${h.tipoDeuda === x.id ? icon('circle-check', 'ico-ok') : ''}</button>`).join('')}</div>${error(h, 'tipoDeuda', 'Elige qué es')}</div>`;
             let campos = '';
             if (h.tipoDeuda === 'tarjeta' && !h.cuotaTarjeta) {
                 campos = `${campoTexto(h, { campo: 'nombre', label: '¿Cómo se llama?', valor: h.nombre, placeholder: EJ_DEUDA.tarjeta, errorTexto: 'Ponle un nombre' })}
                     <div class="ob-2">${campoDia(h, 'corte', h.sinCorte ? '¿Qué día es el corte? <span class="opcional">(opcional)</span>' : '¿Qué día es el corte?')}${campoDia(h, 'pagoDia', '¿Qué día se paga?')}</div>
                     <p class="fila-s">${h.sinCorte ? 'Si no sabes el día de corte, déjalo vacío: te lo pido con tu estado de cuenta.' : 'Los dos están en tu estado de cuenta.'}</p>
-                    ${h.usual !== null && h.usual !== undefined ? campoMonto(h, { campo: 'usual', label: '¿Cuánto pagas normalmente?', valor: h.usual, id: 'f-usual', ayuda: 'Lo contamos hasta que anotes tu estado de cuenta.', errorTexto: 'Escribe cuánto pagas' }) : ''}
+                    ${h.editar ? (h.inicial ? grupoSinEstado(h) : grupoEstado(h)) : grupoEstado(h) + grupoSinEstado(h)}
                     ${campoMonto(h, { campo: 'cupo', label: '¿Cuál es tu límite de crédito? <span class="opcional">(opcional)</span>', valor: h.cupo, id: 'f-cupo', placeholder: 'Ej. 1,000.00', ayuda: 'Verás cuánto tienes disponible. Nunca suma a tu libre: es dinero prestado.' })}
-                    ${h.editar ? '' : `<div class="campo-g" role="group" aria-labelledby="l-ec"><p class="campo-l" id="l-ec">¿Tienes tu último estado de cuenta? <span class="opcional">(opcional)</span></p><div class="ob-2">${campoMonto(h, { campo: 'ecTotal', label: '¿Cuánto es el pago de contado?', valor: h.ecTotal, id: 'f-ecTotal', errorTexto: 'Escribe el pago de contado' })}${campoMonto(h, { campo: 'ecMinimo', label: '¿Cuánto es el pago mínimo?', valor: h.ecMinimo, id: 'f-ecMinimo' })}</div><p class="fila-s">Si no lo tienes a mano, te lo pedimos después del próximo corte.</p></div>
-                    <div class="campo-g" role="group" aria-labelledby="l-sinec"><p class="campo-l" id="l-sinec">¿Todavía no tienes estado de cuenta? <span class="opcional">(opcional)</span></p>${campoMonto(h, { campo: 'usualNueva', label: '¿Cuánto pagas normalmente?', valor: h.usualNueva, id: 'f-usualNueva', ayuda: 'Lo apartamos de tu libre hasta que anotes tu estado de cuenta.' })}${campoMonto(h, { campo: 'debeHoy', label: '¿Cuánto debes hoy?', valor: h.debeHoy, id: 'f-debeHoy', ayuda: 'Más o menos. Queda «por confirmar» hasta tu estado de cuenta.' })}</div>`}`;
+                    ${opciones(h, { campo: 'medio', label: '¿Con qué la pagas?', lista: medios(st).filter((m) => !M.medio(st, m.v).tarjeta), valor: h.medio })}
+                    ${h.editar ? fuenteTarjetaForm(st, h) : ''}`;
             } else if (h.tipoDeuda) {
                 campos = `${campoTexto(h, { campo: 'nombre', label: '¿Cómo se llama?', valor: h.nombre, placeholder: EJ_DEUDA[h.tipoDeuda], errorTexto: 'Ponle un nombre' })}
                     <div class="ob-2">${campoMonto(h, { campo: 'cuota', label: '¿De cuánto es la cuota?', valor: h.cuota, id: 'f-cuota', errorTexto: 'Escribe la cuota' })}${campoDia(h, 'dia', '¿Qué día se paga?', 'Cada mes')}</div>
@@ -2398,6 +2437,27 @@
         }, { aviso: `Eliminaste ${t.nombre}`, claves: ['guardado:tarjetaEliminar'] });
         if (P.ui.stack.at(-1)?.tipo === 'tarjeta') P.atras();
     };
+    /** V2-88: su último estado de cuenta (al agregarla, opcional; al editarla, lo que dice el que ya anotaste). */
+    function grupoEstado(h) {
+        return `<div class="campo-g" role="group" aria-labelledby="l-ec"><p class="campo-l" id="l-ec">${h.editar ? 'Tu último estado de cuenta' : '¿Tienes tu último estado de cuenta? <span class="opcional">(opcional)</span>'}</p><div class="ob-2">${campoMonto(h, { campo: 'ecTotal', label: '¿Cuánto es el pago de contado?', valor: h.ecTotal, id: 'f-ecTotal', errorTexto: 'Escribe el pago de contado' })}${campoMonto(h, { campo: 'ecMinimo', label: '¿Cuánto es el pago mínimo?', valor: h.ecMinimo, id: 'f-ecMinimo' })}</div><p class="fila-s">${h.editar ? 'Cuánto vas a pagar (todo, el mínimo u otro monto) se cambia en su ficha.' : 'Si no lo tienes a mano, te lo pedimos después del próximo corte.'}</p></div>`;
+    }
+    /** V2-88: hasta su primer estado de cuenta, lo que pagas normalmente y lo que debes hoy (los mismos textos al editar). */
+    function grupoSinEstado(h) {
+        return `<div class="campo-g" role="group" aria-labelledby="l-sinec"><p class="campo-l" id="l-sinec">${h.editar ? 'Hasta tu primer estado de cuenta' : '¿Todavía no tienes estado de cuenta? <span class="opcional">(opcional)</span>'}</p>${campoMonto(h, { campo: 'usualNueva', label: '¿Cuánto pagas normalmente? <span class="opcional">(opcional)</span>', valor: h.usualNueva, id: 'f-usualNueva', ayuda: 'Se paga como tus otros pagos, con tu ingreso de antes de esa fecha. Lo usamos hasta que anotes tu estado de cuenta.' })}${campoMonto(h, { campo: 'debeHoy', label: '¿Cuánto debes hoy? <span class="opcional">(opcional)</span>', valor: h.debeHoy, id: 'f-debeHoy', ayuda: 'Más o menos. Queda «por confirmar» hasta tu estado de cuenta.' })}</div>`;
+    }
+    /** V2-87 / V2-88: al editar la tarjeta, con qué ingreso pagas lo que pagas normalmente (lo mismo que «Lo pagas con»). */
+    function fuenteTarjetaForm(st, h) {
+        if (h.fuenteTAntes === undefined) return '';
+        const t = M.tarjeta(st, h.tarjetaId);
+        const info = M.tarjetaInfo(st, t);
+        if (!(info.comoPago > 0)) return '';
+        if (h.repartidaT) return `<div class="campo-g"><p class="campo-l">¿Con qué ingreso la pagas?</p><p class="fila-s">La repartiste: ${esc(P.textoPartes({ fecha: info.vence, estado: info.vence < st.hoy ? 'vencido' : 'pendiente' }, info.partes, M.horizonte(st)))}. Se cambia en su ficha, en «Lo pagas con».</p></div>`;
+        const fuentes = M.fuentesPara(st, info.vence);
+        if (fuentes.length < 2) return '';
+        const def = fuentes.at(-1);
+        const lista = [...fuentes].reverse().map((f) => ({ v: f, t: (f === 'ahora' ? 'Con lo que tienes ahora' : M.capital('con ' + P.etiquetaFuente(f))) + (f === def ? ' (lo normal)' : '') }));
+        return `${opciones(h, { campo: 'fuenteT', label: `¿Con qué ingreso la pagas? <span class="opcional">(vence el ${esc(M.fechaCorta(info.vence))}: ${dinero(info.comoPago, { aprox: !!info.ult.inicial })})</span>`, lista, valor: h.fuenteT, columnas: true })}`;
+    }
     const diaValido = (v) => /^\d{1,2}$/.test(String(v || '').trim()) && +v >= 1 && +v <= 31;
     const mediosDeTarjeta = (st, id) => st.medios.filter((m) => m.tarjeta === id).map((m) => m.id);
     /** El primer vencimiento de una tarjeta: el mes siguiente a su último corte; sin corte (V2-54), su próximo día de pago. */
@@ -2451,8 +2511,9 @@
             if (h.tipoDeuda === 'tarjeta' && !h.cuotaTarjeta) {
                 if (!diaValido(h.corte) && !(h.sinCorte && !String(h.corte || '').trim())) faltan.push('corte');
                 if (!diaValido(h.pagoDia)) faltan.push('pagoDia');
-                if (h.usual !== null && h.usual !== undefined && !M.leerMonto(h.usual)) faltan.push('usual');
                 if (M.leerMonto(h.ecMinimo) && !M.leerMonto(h.ecTotal)) faltan.push('ecTotal');
+                // V2-88: al editar un estado de cuenta, su pago de contado no se puede borrar.
+                if (h.editar && !h.inicial && !M.leerMonto(h.ecTotal)) faltan.push('ecTotal');
             } else {
                 if (!M.leerMonto(h.cuota)) faltan.push('cuota');
                 if (!diaValido(h.dia)) faltan.push('dia');
@@ -2475,11 +2536,24 @@
                 P.cambiar(
                     (s) => {
                         const t = M.tarjeta(s, h.tarjetaId);
+                        const venceAntes = M.tarjetaInfo(s, t).vence;
                         Object.assign(t, { nombre, corte: corte || t.corte || null, pagoDia, cupo });
+                        // V2-88: con qué la pagas; y su medio de crédito se llama como ella.
+                        if (h.medio) t.medio = h.medio;
+                        for (const m of s.medios) if (m.tarjeta === t.id) m.nombre = nombre;
                         const ult = t.estados.at(-1);
+                        if (!ult.inicial) {
+                            // V2-88: lo que dice su estado de cuenta (cuánto vas a pagar sigue lo que elegiste: todo, mínimo u otro).
+                            const total = M.leerMonto(h.ecTotal);
+                            const minimo = M.leerMonto(h.ecMinimo) || 0;
+                            if (total && (total !== ult.total || minimo !== ult.minimo)) Object.assign(ult, { total, minimo, aPagar: ult.opcion === 'minimo' ? minimo : ult.opcion === 'otro' ? Math.min(total, Math.max(minimo, ult.aPagar)) : total });
+                        }
                         if (ult.inicial) {
-                            // V2-54: sin estado de cuenta todavía, lo que paga normalmente.
-                            if (h.usual !== null && h.usual !== undefined) t.pagoUsual = M.leerMonto(h.usual);
+                            // V2-54 / V2-88: sin estado de cuenta todavía, lo que paga normalmente y lo que debe hoy (los dos opcionales).
+                            t.pagoUsual = M.leerMonto(h.usualNueva) || null;
+                            const debeHoy = M.leerMonto(h.debeHoy);
+                            if (debeHoy !== null) t.debeInicial = debeHoy;
+                            else if (t.debeInicial !== undefined) t.debeInicial = null;
                             // V2-57: el ciclo pendiente se recalcula con los días nuevos (corte, vencimiento, avisos y su pago
                             // en Pagos salen de aquí). Un estado de cuenta ya anotado no se toca.
                             const antesVence = ult.vence;
@@ -2491,6 +2565,18 @@
                             // (salvo «No, todavía lo debo»).
                             if (ult.vence !== antesVence) delete ult.antes;
                             if (antes) ult.antes = loDebe ? 'debe' : 'pagado';
+                        }
+                        // V2-87: con qué ingreso la pagas. Lo elegido sigue a la fecha nueva si cambiaste los días.
+                        const info = M.tarjetaInfo(s, t);
+                        if (t.asignaciones && t.asignaciones[venceAntes] && info.vence !== venceAntes) {
+                            t.asignaciones[info.vence] = t.asignaciones[venceAntes];
+                            delete t.asignaciones[venceAntes];
+                        }
+                        if (h.fuenteT && h.fuenteT !== h.fuenteTAntes && info.comoPago > 0) {
+                            const asign = { ...(t.asignaciones || {}) };
+                            if (h.fuenteT === M.fuentesPara(s, info.vence).at(-1)) delete asign[info.vence];
+                            else asign[info.vence] = [{ de: h.fuenteT, monto: info.comoPago }];
+                            t.asignaciones = asign;
                         }
                     },
                     { aviso: 'Cambios guardados', claves: ['guardado:deuda:editar'] },
@@ -2508,7 +2594,7 @@
                     // V2-78: sin estado de cuenta, lo que pagas normalmente cuenta (estimado) y lo que debes queda por confirmar.
                     const usual = !ecTotal ? M.leerMonto(h.usualNueva) : null;
                     const debeHoy = !ecTotal ? M.leerMonto(h.debeHoy) : null;
-                    s.tarjetas.push({ id, nombre, emoji: '💳', tipo: 'tarjeta', corte, pagoDia, cupo, interesesAnio: 0, desde: s.hoy, estados: [estado], ...(usual ? { pagoUsual: usual } : {}), ...(debeHoy !== null ? { debeInicial: debeHoy } : {}) });
+                    s.tarjetas.push({ id, nombre, emoji: '💳', tipo: 'tarjeta', corte, pagoDia, cupo, interesesAnio: 0, desde: s.hoy, estados: [estado], ...(usual ? { pagoUsual: usual } : {}), ...(debeHoy !== null ? { debeInicial: debeHoy } : {}), ...(h.medio ? { medio: h.medio } : {}) });
                     s.medios.push({ id: 'm' + id, nombre, emoji: '💳', tarjeta: id });
                 },
                 { aviso: `${nombre}: su pago ya está en Pagos`, claves: ['guardado:deuda', 'guardado:deuda:tarjeta'] },
@@ -2521,6 +2607,12 @@
             P.cambiar((s) => {
                 const nuevas = nuevasPasadas(s, M.pago(s, h.id), { frecuencia: 'mensual', dia: +h.dia });
                 const p = Object.assign(M.pago(s, h.id), { nombre, monto: cuota, dia: +h.dia, medio: h.medio, deuda: debe !== null ? { debe } : null });
+                // V2-88: «¿Qué es?» también se cambia (su emoji, si era el del tipo).
+                if (tipo && p.tipoDeuda !== tipo.id && !h.cuotaTarjeta) {
+                    const antes = D.TIPOS_DEUDA.find((x) => x.id === p.tipoDeuda);
+                    if (!antes || p.emoji === antes.emoji) p.emoji = tipo.emoji;
+                    p.tipoDeuda = tipo.id;
+                }
                 P.reubicarHechos(s, p);
                 // V2-85: con el día nuevo no aparece una cuota vencida que antes no estaba (salvo «No, todavía lo debo»).
                 for (const f of nuevas) {
@@ -2673,7 +2765,7 @@
                     ${campoMonto(h, { label: h.tipoIng === 'adelanto' ? '¿Cuánto te adelantan?' : '¿Cuánto recibes más o menos?', valor: h.monto, ayuda: h.tipoIng === 'adelanto' ? '' : 'Lo que te llega de verdad, ya con descuentos.' })}
                     ${adelanto ? calendario(h, 'fecha', h.fecha, { label: '¿Qué día te lo dan?' }) : bloqueFrecuencia(h, { esIngreso: true })}
                     ${adelanto}
-                    ${opciones(h, { campo: 'lugar', label: '¿Dónde cae?', lista: lugares(st), valor: h.lugar })}
+                    ${opciones(h, { campo: 'lugar', label: '¿Dónde lo recibes?', lista: lugares(st), valor: h.lugar })}
                     ${repetido ? `<div class="chips"><button type="button" class="chip" aria-pressed="${h.principal}" data-a="valor" data-campo="principal" data-v="${!h.principal}" data-fk="ing-principal">${h.principal ? icon('check', 'ico-xs') : ''}Es mi ingreso principal</button></div><p class="fila-s">${h.principal ? 'Tu libre se calcula hasta que llegue este.' : principal && principal.id !== h.id ? `Tu ingreso principal es «${esc(principal.nombre)}». Este cuenta como estimado para tus próximos pagos.` : 'Sin ingreso principal, ves tu libre hasta fin de mes.'}</p>` : ''}
                     ${bloqueDescuento}
                     ${h.editar ? (h.confirmarEliminar ? confirmarHtml(`¿Ya no esperas «${esc(h.nombre)}»?`, 'Deja de aparecer en Pagos. Lo que ya llegó se queda en tu historial.', 'ingresoEliminar', 'ing-eliminar') : `<button type="button" class="link link--peligro" data-a="valor" data-campo="confirmarEliminar" data-v="si" data-fk="ing-eliminar">${icon('trash-2', 'ico-s')}Ya no lo espero</button>`) : ''}`,
@@ -2856,8 +2948,11 @@
     const ligLugar = (st, id) => ligados(st, { medios: mediosDeLugar(st, id), lugar: id });
     H.lugar = {
         iniciar(h) {
-            const l = h.id ? M.lugar(P.st, h.id) : null;
-            Object.assign(h, l ? { editar: true, clase: l.tipo, nombre: l.nombre } : { clase: 'banco', nombre: '', monto: '', debito: true });
+            const st = P.st;
+            const l = h.id ? M.lugar(st, h.id) : null;
+            // V2-88: al editar, lo mismo que al agregarla (cuánto tienes hoy queda como un cuadre de hoy si lo cambias).
+            const debito = l ? st.medios.some((m) => m.lugar === l.id && m.tarjetaDebito && !m.oculto) : true;
+            Object.assign(h, l ? { editar: true, clase: l.tipo, nombre: l.nombre, monto: M.montoCampo(M.saldoLugar(st, l.id)), montoAntes: M.saldoLugar(st, l.id), debito, debitoAntes: debito } : { clase: 'banco', nombre: '', monto: '', debito: true });
             h.confirmarEliminar = false;
         },
         html(h) {
@@ -2865,10 +2960,10 @@
             const l = h.editar ? M.lugar(st, h.id) : null;
             return {
                 titulo: h.editar ? `Editar ${esc(l.nombre)}` : 'Nuevo lugar',
-                cuerpo: `${h.editar ? `<p class="txt">${esc(TIPOS_LUGAR.find((x) => x.v === l.tipo)?.t || '')} · tienes ${dinero(M.saldoLugar(st, l.id))}. Para cambiar el saldo, usa «Cuadrar».</p>` : opciones(h, { campo: 'clase', label: '¿Qué es?', lista: TIPOS_LUGAR, valor: h.clase })}
+                cuerpo: `${opciones(h, { campo: 'clase', label: '¿Qué es?', lista: TIPOS_LUGAR, valor: h.clase })}
                     ${campoTexto(h, { campo: 'nombre', label: '¿Cómo se llama?', valor: h.nombre, placeholder: h.clase === 'banco' ? 'Ej. Banco Cuscatlán' : h.clase === 'billetera' ? 'Ej. Billetera del celular' : 'Ej. Alcancía', errorTexto: 'Ponle un nombre' })}
-                    ${h.editar ? '' : campoMonto(h, { label: '¿Cuánto tienes ahí hoy?', valor: h.monto, ayuda: 'Más o menos. Es su primer cuadre.', errorTexto: 'Escribe cuánto tienes, aunque sea $0' })}
-                    ${!h.editar && h.clase === 'banco' ? `<div class="chips"><button type="button" class="chip" aria-pressed="${h.debito}" data-a="valor" data-campo="debito" data-v="${!h.debito}" data-fk="lugar-debito">${h.debito ? icon('check', 'ico-xs') : ''}Tengo tarjeta de débito de este banco</button></div>` : ''}
+                    ${campoMonto(h, { label: '¿Cuánto tienes ahí hoy?', valor: h.monto, ayuda: h.editar ? 'Si lo cambias, queda como un cuadre de hoy (lo de antes no se toca).' : 'Más o menos. Es su primer cuadre.', errorTexto: 'Escribe cuánto tienes, aunque sea $0' })}
+                    ${h.clase === 'banco' ? `<div class="chips"><button type="button" class="chip" aria-pressed="${h.debito}" data-a="valor" data-campo="debito" data-v="${!h.debito}" data-fk="lugar-debito">${h.debito ? icon('check', 'ico-xs') : ''}Tengo tarjeta de débito de este banco</button></div>` : ''}
                     ${h.editar ? (st.lugares.length < 2 ? '<p class="fila-s">Es tu único lugar: no se puede eliminar.</p>' : h.confirmarEliminar ? reasignarHtml(h, st, ligLugar(st, l.id), { fueraMedios: mediosDeLugar(st, l.id), fueraLugar: l.id }) + confirmarHtml(`¿Eliminar ${esc(l.nombre)}?`, `Sus ${dinero(M.saldoLugar(st, l.id))} dejan de contar en «Tienes». Lo que anotaste se queda en tu historial.`, 'lugarEliminar', 'lugar-eliminar') : `<button type="button" class="link link--peligro" data-a="valor" data-campo="confirmarEliminar" data-v="si" data-fk="lugar-eliminar">${icon('trash-2', 'ico-s')}Eliminar lugar</button>`) : ''}`,
                 pie: pie2('lugarOk', h.editar ? 'Guardar cambios' : 'Agregar lugar', { fk: 'lugar-ok' }),
             };
@@ -2888,11 +2983,26 @@
         const h = P.ui.hoja;
         const nombre = (h.nombre || '').trim();
         const monto = M.leerMonto(h.monto);
-        if (!validar(h, [...(nombre ? [] : ['nombre']), ...(h.editar || monto !== null ? [] : ['monto'])])) return;
+        if (!validar(h, [...(nombre ? [] : ['nombre']), ...(monto !== null ? [] : ['monto'])])) return;
         P.ui.hoja = null;
         if (h.editar) {
             P.cambiar((s) => {
-                M.lugar(s, h.id).nombre = nombre;
+                const l = M.lugar(s, h.id);
+                // V2-88: qué es, cómo se llama, cuánto tienes hoy (un cuadre de hoy) y su tarjeta de débito.
+                l.nombre = nombre;
+                if (h.clase !== l.tipo) Object.assign(l, { tipo: h.clase, emoji: TIPOS_LUGAR.find((x) => x.v === h.clase).e });
+                if (monto !== h.montoAntes) {
+                    const r = P.registrar(s, { tipo: 'cuadre', fecha: s.hoy, lugar: l.id, monto, esperado: M.saldoLugar(s, l.id) });
+                    l.cuadre = { fecha: s.hoy, seq: r.seq, monto };
+                }
+                const debitos = s.medios.filter((m) => m.lugar === l.id && m.tarjetaDebito);
+                if (h.clase === 'banco' && h.debito && !h.debitoAntes) {
+                    if (debitos.length) for (const m of debitos) delete m.oculto;
+                    else s.medios.push({ id: 'm' + s.seq++, nombre: 'Débito ' + nombre.replace(/^banco\s+/i, ''), emoji: '🏦', lugar: l.id, tarjetaDebito: true });
+                } else if ((!h.debito || h.clase !== 'banco') && h.debitoAntes) {
+                    // Si un pago la usa, se queda (se cambia en «Con qué pagas»).
+                    for (const m of debitos) if (!s.pagos.some((p) => p.activo !== false && p.medio === m.id)) m.oculto = true;
+                }
             }, { aviso: 'Cambios guardados', claves: ['guardado:lugarEditar'] });
             return;
         }
@@ -2921,12 +3031,15 @@
         }, { aviso: `Eliminaste ${l.nombre}`, claves: ['guardado:lugarEliminar'] });
         if (P.ui.stack.at(-1)?.tipo === 'lugar') P.atras();
     };
+    /** El efectivo no es débito, transferencia ni billetera: al editarlo no se pregunta qué es. */
+    const esEfectivoMedio = (m) => m.id === 'efectivo' || m.emoji === '💵';
     const TIPOS_MEDIO = [{ v: 'debito', t: 'Tarjeta de débito', e: '🏦' }, { v: 'transferencia', t: 'Transferencia', e: '🔁' }, { v: 'billetera', t: 'App o billetera', e: '📱' }, { v: 'credito', t: 'Tarjeta de crédito', e: '💳' }];
     H.medio = {
         iniciar(h) {
             const st = P.st;
             const m = h.id ? M.medio(st, h.id) : null;
-            Object.assign(h, m ? { editar: true, nombre: m.nombre, lugar: m.lugar || null, clase: m.tarjeta ? 'credito' : m.tarjetaDebito ? 'debito' : 'transferencia' } : { clase: 'debito', nombre: '', lugar: (st.lugares.find((l) => l.tipo === 'banco') || st.lugares[0]).id });
+            const claseDe = (x) => (x.tarjeta ? 'credito' : x.tarjetaDebito ? 'debito' : x.emoji === '📱' ? 'billetera' : 'transferencia');
+            Object.assign(h, m ? { editar: true, nombre: m.nombre, lugar: m.lugar || null, clase: claseDe(m), claseAntes: claseDe(m) } : { clase: 'debito', nombre: '', lugar: (st.lugares.find((l) => l.tipo === 'banco') || st.lugares[0]).id });
             h.confirmarEliminar = false;
         },
         html(h) {
@@ -2935,7 +3048,7 @@
             const credito = h.clase === 'credito';
             return {
                 titulo: h.editar ? `Editar ${esc(m.nombre)}` : 'Nuevo medio de pago',
-                cuerpo: `${h.editar ? '' : opciones(h, { campo: 'clase', label: '¿Qué es?', lista: TIPOS_MEDIO, valor: h.clase })}
+                cuerpo: `${h.editar ? (m && (m.tarjeta || esEfectivoMedio(m)) ? '' : opciones(h, { campo: 'clase', label: '¿Qué es?', lista: TIPOS_MEDIO.filter((x) => x.v !== 'credito'), valor: h.clase })) : opciones(h, { campo: 'clase', label: '¿Qué es?', lista: TIPOS_MEDIO, valor: h.clase })}
                     ${credito && !h.editar ? '<p class="txt">Las tarjetas de crédito se agregan con su corte y su día de pago.</p>' : `${campoTexto(h, { campo: 'nombre', label: '¿Cómo se llama?', valor: h.nombre, placeholder: 'Ej. Débito Cuscatlán', errorTexto: 'Ponle un nombre' })}
                     ${m && m.tarjeta ? '<p class="fila-s">Es una tarjeta de crédito: su corte y pago se editan en su ficha.</p>' : opciones(h, { campo: 'lugar', label: '¿De dónde sale el dinero?', lista: lugares(st), valor: h.lugar, errorTexto: 'Elige de dónde sale' })}`}
                     ${h.editar && !(m.id === 'efectivo') ? (h.confirmarEliminar ? reasignarHtml(h, st, ligados(st, { medios: [m.id] }), { fueraMedios: [m.id] }) + confirmarHtml(`¿Eliminar ${esc(m.nombre)}?`, 'Ya no aparece para elegir. Lo que pagaste con él se queda en tu historial.', 'medioEliminar', 'medio-eliminar') : `<button type="button" class="link link--peligro" data-a="valor" data-campo="confirmarEliminar" data-v="si" data-fk="medio-eliminar">${icon('trash-2', 'ico-s')}Eliminar medio</button>`) : ''}`,
@@ -2968,6 +3081,12 @@
                     const x = M.medio(s, h.id);
                     x.nombre = nombre;
                     if (!x.tarjeta) x.lugar = h.lugar;
+                    if (!x.tarjeta && !esEfectivoMedio(x) && h.clase !== h.claseAntes) {
+                        // V2-88: qué es (débito, transferencia o billetera). El efectivo es efectivo.
+                        x.emoji = TIPOS_MEDIO.find((y) => y.v === h.clase).e;
+                        if (h.clase === 'debito') x.tarjetaDebito = true;
+                        else delete x.tarjetaDebito;
+                    }
                     if (x.tarjeta) M.tarjeta(s, x.tarjeta).nombre = nombre;
                 } else s.medios.push({ id: 'm' + s.seq++, nombre, emoji: TIPOS_MEDIO.find((x) => x.v === h.clase).e, lugar: h.lugar, ...(h.clase === 'debito' ? { tarjetaDebito: true } : {}) });
             },
@@ -3075,6 +3194,26 @@
         if (ligado && ligado.activo !== false) return ligado;
         return st.ingresos.find((i) => i.activo !== false && i.frecuencia === 'unico' && /cuchubal/i.test(i.nombre) && i.fecha >= st.hoy) || null;
     };
+    /**
+     * El turno del cuchubal es un ingreso esperado de una vez. V2-88: al editar el cuchubal se cambia, se agrega o se quita
+     * (si ya llegó, se deja como está: es historia).
+     */
+    function guardarTurno(s, p, fecha, monto, turnoId) {
+        const ing = turnoId ? M.ingreso(s, turnoId) : null;
+        const llego = !!(ing && ing.llegadas && ing.llegadas[ing.fecha]);
+        if (ing && !llego) {
+            if (fecha && monto) Object.assign(ing, { fecha, monto });
+            else {
+                ing.activo = false;
+                if (p.turno === ing.id) delete p.turno;
+            }
+            return;
+        }
+        if (!fecha || !monto || llego) return;
+        const id = 'i' + s.seq++;
+        s.ingresos.push({ id, nombre: 'Tu turno del cuchubal', emoji: '🤝', categoria: 'cuchubal', monto, aprox: false, frecuencia: 'unico', fecha, lugar: (s.lugares.find((l) => l.id === 'efectivo') || s.lugares[0]).id, principal: false, extra: true, desde: s.hoy, llegadas: {} });
+        p.turno = id;
+    }
     /** V2-75: «¿Cuándo te toca recibir?» para un cuchubal que no lo tiene (lo guardado antes se completa después). */
     H.turnoCuchubal = {
         iniciar(h) {
@@ -3115,8 +3254,10 @@
             const st = P.st;
             if (h.id) {
                 const p = M.pago(st, h.id);
-                Object.assign(h, { nombre: p.nombre, emoji: p.emoji, categoria: p.categoria, monto: M.montoCampo(p.monto), estimado: p.estimado, medio: p.medio, hasta: p.hasta || '', tipoPago: p.tipoPago || null, editar: true, ...formFrecuencia(p) });
-            } else Object.assign(h, { nombre: '', emoji: '🧾', categoria: 'otros', monto: '', estimado: false, frecuencia: 'mensual', qModo: '15-30', d1: '', d2: '', dia: null, diaSemana: 5, fecha: '', fechas: [], hasta: '', turno: '', turnoMonto: '', medio: st.medios[0] ? st.medios[0].id : null });
+                // V2-88: lo mismo que al crearlo: también el turno del cuchubal y si se cobra solo.
+                const turno = P.esCuchubal(p) ? P.turnoCuchubal(st, p) : null;
+                Object.assign(h, { nombre: p.nombre, emoji: p.emoji, categoria: p.categoria, monto: M.montoCampo(p.monto), estimado: p.estimado, medio: p.medio, hasta: p.hasta || '', tipoPago: p.tipoPago || null, automatico: !!p.automatico, turno: turno ? turno.fecha : '', turnoMonto: turno ? M.montoCampo(turno.monto) : '', turnoId: turno ? turno.id : null, editar: true, ...formFrecuencia(p) });
+            } else Object.assign(h, { nombre: '', emoji: '🧾', categoria: 'otros', monto: '', estimado: false, frecuencia: 'mensual', qModo: '15-30', d1: '', d2: '', dia: null, diaSemana: 5, fecha: '', fechas: [], hasta: '', turno: '', turnoMonto: '', automatico: false, medio: st.medios[0] ? st.medios[0].id : null });
         },
         html(h) {
             const st = P.st;
@@ -3132,8 +3273,9 @@
                     <div class="chips"><button type="button" class="chip" aria-pressed="${h.estimado}" data-a="valor" data-campo="estimado" data-v="${!h.estimado}" data-fk="estimado">${h.estimado ? icon('check', 'ico-xs') : ''}Varía (es un estimado)</button></div>
                     ${bloqueFrecuencia(h, { solo: suscripcion ? ['mensual', 'anual'] : null })}
                     ${suscripcion && credito ? `<p class="fila-s">Con tarjeta de crédito, el cobro baja tu libre el día que se hace (V2-07).</p>` : ''}
-                    ${cuchubal ? `${calendario(h, 'hasta', h.hasta || null, { label: '¿Hasta cuándo aportas? <span class="opcional">(opcional)</span>', min: st.hoy })}${h.editar ? '' : `${calendario(h, 'turno', h.turno || null, { label: '¿Cuándo te toca recibir? <span class="opcional">(opcional)</span>', min: st.hoy, ayuda: 'Tu turno aparece como ingreso esperado.' })}${h.turno ? campoMonto(h, { campo: 'turnoMonto', label: '¿Cuánto recibes ese día?', valor: h.turnoMonto, id: 'f-turnoMonto' }) : ''}`}` : ''}
+                    ${cuchubal ? `${calendario(h, 'hasta', h.hasta || null, { label: '¿Hasta cuándo aportas? <span class="opcional">(opcional)</span>', min: st.hoy })}${calendario(h, 'turno', h.turno || null, { label: '¿Cuándo te toca recibir? <span class="opcional">(opcional)</span>', min: st.hoy, ayuda: 'Tu turno aparece como ingreso esperado.' })}${h.turno ? campoMonto(h, { campo: 'turnoMonto', label: '¿Cuánto recibes ese día?', valor: h.turnoMonto, id: 'f-turnoMonto' }) : ''}` : ''}
                     ${opciones(h, { campo: 'medio', label: '¿Con qué lo pagas?', lista: medios(st), valor: h.medio })}
+                    <div class="chips"><button type="button" class="chip" aria-pressed="${!!h.automatico}" data-a="valor" data-campo="automatico" data-v="${!h.automatico}" data-fk="np-automatico">${h.automatico ? icon('check', 'ico-xs') : ''}Se cobra solo en esa tarjeta o cuenta</button></div>
                     ${h.duplicado && M.pago(st, h.duplicado) ? preguntaDuplicado(h, M.pago(st, h.duplicado), 'nuevoPagoDup') : ''}`,
                 pie: pie2('nuevoPagoOk', h.editar ? 'Guardar cambios' : 'Guardar pago'),
             };
@@ -3172,6 +3314,7 @@
                 const x = D.SUSCRIPCIONES.find((y) => y.id === v);
                 Object.assign(h, { servicio: v, nombre: v === 'otra' ? '' : x.nombre, emoji: x.emoji });
             } else if (campo === 'estimado') h.estimado = v === 'true';
+            else if (campo === 'automatico') h.automatico = v === 'true';
             else if (campo === 'fechas') alternarFecha(h, v);
             else if (campo === 'hasta' || campo === 'turno') h[campo] = h[campo] === v ? '' : v;
             else h[campo] = v;
@@ -3247,6 +3390,10 @@
                 Object.assign(p, { nombre: h.nombre.trim(), monto, estimado: h.estimado, medio: h.medio, ...P.reglaDe(regla) });
                 if (esCuchubal(h) && h.hasta) p.hasta = h.hasta;
                 else delete p.hasta;
+                // V2-88: lo mismo que al crearlo.
+                if (h.automatico) p.automatico = true;
+                else delete p.automatico;
+                if (esCuchubal(h)) guardarTurno(s, p, h.turno, turnoMonto, h.turnoId);
                 P.reubicarHechos(s, p);
                 // V2-85: lo que ya pasó y solo aparece por el cambio no se cuenta (salvo «No, todavía lo debo» en la de este periodo).
                 for (const f of nuevas) {
@@ -3259,14 +3406,10 @@
         }
         P.cambiar(
             (s) => {
-                P.crearPago(s, { nombre: h.nombre.trim(), emoji: h.emoji, categoria: h.categoria, monto, estimado: h.estimado, medio: h.medio, hasta: esCuchubal(h) && h.hasta ? h.hasta : null, tipoPago: h.tipoPago || undefined, ...regla, antes: debe ? 'no' : 'si' });
+                const pc = P.crearPago(s, { nombre: h.nombre.trim(), emoji: h.emoji, categoria: h.categoria, monto, estimado: h.estimado, medio: h.medio, hasta: esCuchubal(h) && h.hasta ? h.hasta : null, tipoPago: h.tipoPago || undefined, ...regla, antes: debe ? 'no' : 'si' });
+                if (h.automatico) pc.automatico = true;
                 // El turno del cuchubal = un ingreso esperado de una vez.
-                if (esCuchubal(h) && h.turno && turnoMonto) {
-                    const idT = 'i' + s.seq++;
-                    s.ingresos.push({ id: idT, nombre: 'Tu turno del cuchubal', emoji: '🤝', categoria: 'cuchubal', monto: turnoMonto, aprox: false, frecuencia: 'unico', fecha: h.turno, lugar: (s.lugares.find((l) => l.id === 'efectivo') || s.lugares[0]).id, principal: false, extra: true, desde: s.hoy, llegadas: {} });
-                    const pc = s.pagos.at(-1);
-                    if (pc && esCuchubal(pc)) pc.turno = idT;
-                }
+                if (esCuchubal(h)) guardarTurno(s, pc, h.turno, turnoMonto, null);
             },
             { aviso: `${h.nombre.trim()}: guardado en Pagos`, claves: ['guardado:pago', 'guardado:pago:' + claveNombre(h.nombre)] },
         );
@@ -3328,7 +3471,11 @@
                     </div>
                     ${h.opcion === 'otro' ? campoMonto(h, { campo: 'otro', label: '¿Cuánto?', valor: h.otro, id: 'f-otro', errorTexto: 'Escribe cuánto vas a pagar' }) : ''}
                     <div class="nota nota--consejo" role="note">${icon('lightbulb')}<p><strong>Un consejo:</strong> pagar el total es lo que menos te cuesta. Si este mes no se puede, pagar más que el mínimo ya ayuda. Tú decides; aquí lo verás claro.</p></div>
-                    <p class="fila-s">Lo que decidas pagar baja tu libre desde hoy.</p>`,
+                    <p class="fila-s">${(() => {
+                        // v2.6.7 (V2-87): si reemplaza a lo que pagas normalmente, sigue con el mismo ingreso.
+                        const conQue = info.conIngreso > 0 && (info.ult.inicial ? info.usual > 0 : info.ult.deEstimado) ? P.fuentesTarjeta(info) : '';
+                        return conQue ? `Se paga con ${esc(conQue)}, como lo que pagas normalmente. Lo que ya anotaste en compras sigue saliendo de lo que tienes.` : 'Lo que decidas pagar baja tu libre desde hoy.';
+                    })()}</p>`,
                 pie: pie2('ecGuardar', 'Guardar estado de cuenta'),
             };
         },
@@ -3374,6 +3521,8 @@
                 const corte = pend.corte || M.ultimoDia(s.hoy, t.corte);
                 const dif = h.anotado ? total - h.anotado : 0;
                 const e = { corte, total, minimo, aPagar, opcion: h.opcion, vence: pend.vence, anotado: h.anotado, diferencia: dif > 0 ? dif : 0, motivo: h.motivo };
+                // v2.6.7 (V2-87): reemplaza a lo que pagas normalmente: el monto real sigue con el mismo ingreso («Lo pagas con»).
+                if (info.ult.inicial && info.usual > 0) e.deEstimado = true;
                 if (t.estados.at(-1).inicial) t.estados.pop();
                 t.estados.push(e);
                 if (dif > 0) {
@@ -4026,10 +4175,10 @@
                       const x = DEUDAS_OB.find((y) => y.id === ed.tipoDeuda);
                       return `<div class="card ob-card ob-editor" role="group" aria-labelledby="ob-ed-t"><p class="fila-t" id="ob-ed-t">${emo(x.emoji, 18)} ${esc(ed.clave ? 'Editar deuda' : x.nombre)}</p>
                         <div class="campo-g"><label class="campo-l" for="ob-d-nombre">¿Cómo se llama?</label><div class="campo"><input id="ob-d-nombre" data-campo="d-nombre" type="text" autocomplete="off" value="${esc(ed.nombre)}" placeholder="${esc(x.ejemplo)}"></div></div>
-                        ${monto('d-monto', '¿Cuánto pagas de cuota?', ed.monto)}
-                        ${obDias('d-dia', ed.dia, '¿Qué día la pagas?')}
+                        ${monto('d-monto', '¿De cuánto es la cuota?', ed.monto)}
+                        ${obDias('d-dia', ed.dia, '¿Qué día se paga?')}
                         ${preguntaOb(st, ed)}
-                        ${monto('d-debe', '¿Cuánto debes en total? <span class="opcional">(opcional)</span>', ed.debe)}
+                        ${monto('d-debe', '¿Cuánto debes? <span class="opcional">(opcional)</span>', ed.debe)}
                         <p class="fila-s">Más o menos. Baja con cada cuota que marques como pagada.</p>
                         ${err('deuda', 'Escribe el nombre y la cuota, y elige el día')}
                         ${botonesEditor('obDeudaGuardar', 'ob-d-guardar', 'Agregar deuda', !!ed.clave)}</div>`;
@@ -4053,7 +4202,7 @@
                     <div class="ob-2">${obDiaCorto('t-corte', '¿Qué día es el corte?', ed.corte)}${obDiaCorto('t-pago', '¿Qué día se paga?', ed.pago)}</div>
                     <p class="fila-s">Los dos están en tu estado de cuenta. Si no sabes el corte, déjalo vacío.</p>
                     ${monto('t-usual', '¿Cuánto pagas normalmente? <span class="opcional">(opcional)</span>', ed.usual)}
-                    <p class="fila-s">Lo apartamos de tu libre hasta que anotes tu estado de cuenta.</p>
+                    <p class="fila-s">Se paga como tus otros pagos, con tu ingreso de antes de esa fecha. Lo usamos hasta que anotes tu estado de cuenta.</p>
                     ${preguntaOb(st, ed)}${err('tarjeta', 'Elige el banco y escribe el día de pago (del 1 al 31)')}
                     ${botonesEditor('obTarjetaGuardar', 'ob-t-guardar', 'Agregar tarjeta', !!ed.clave)}</div>`
                 : '';
@@ -4651,7 +4800,8 @@
         const st = P.st;
         const k = P.calc();
         const pend = [];
-        for (const t of k.tarjetas) if (t.pendiente) pend.push(t.usual ? `Tu ${esc(t.t.nombre)}: por ahora contamos lo que pagas normalmente (${dinero(t.usual, { aprox: true })}). Tu día de corte y tu estado de cuenta te los pido antes de que venza.` : `Tu ${esc(t.t.nombre)}: la contamos cuando anotes tu estado de cuenta.`);
+        // V2-87: lo que pagas normalmente se paga como tus otros pagos (con qué ingreso, si no es con lo que tienes).
+        for (const t of k.tarjetas) if (t.pendiente) pend.push(t.usual ? `Tu ${esc(t.t.nombre)}: por ahora contamos lo que pagas normalmente (${dinero(t.usual, { aprox: true })})${t.conIngreso > 0 ? `, con ${esc(P.fuentesTarjeta(t))}` : ''}. Tu día de corte y tu estado de cuenta te los pido antes de que venza.` : `Tu ${esc(t.t.nombre)}: la contamos cuando anotes tu estado de cuenta.`);
         if (!M.principal(st)) pend.push(st.horizonteVariable === 'quince' ? 'Como tu ingreso varía, vemos los próximos 15 días.' : 'Como tu ingreso varía, vemos hasta fin de mes.');
         if (!st.pagos.length) pend.push('Tus pagos fijos: agrégalos en Pagos cuando quieras.');
         else if (k.hz.ingreso && k.proxima && k.proxima.salePagos > 0) pend.push(`Lo que vence desde tu ${P.nombreIngreso(k.hz)} del ${M.partes(k.hz.fecha)[2]} se paga con ese ingreso: no baja tu número de hoy. Si quieres pagar algo con lo que ya tienes, cámbialo en ese pago.`);

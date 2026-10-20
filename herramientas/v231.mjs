@@ -402,13 +402,14 @@ try {
     await clic('[data-fk="ob-t-guardar"]');
     await clic('[data-fk="ob-sig"]');
     await clic('[data-fk="ob-sig"]');
-    check('primer número: la cuenta', await texto('.portada-n'), '$200.00');
+    // v2.6.7 (V2-87): los ~$100 del 5 nov los paga la quincena del 30 (antes se apartaban de lo que tiene: $200.00).
+    check('primer número: la cuenta', await texto('.portada-n'), '$300.00');
     check('«Bueno saber» la explica', await texto('.pg .nota--info'), contiene('Visa Cuscatlán', 'lo que pagas normalmente (~$100)'));
     await foto('primer-numero-tarjeta');
     const t2 = await ev('(() => { const t = P.st.tarjetas[0]; return { n: P.st.tarjetas.length, corte: t.corte, usual: t.pagoUsual, medio: P.st.medios.some((m) => m.tarjeta === t.id), cuota: P.st.pagos.some((p) => p.cuotaTarjeta || p.tipoDeuda === "tarjeta") }; })()');
     check('una tarjeta real, sin corte, con su medio y sin cuota', t2, { n: 1, corte: null, usual: 10000, medio: true, cuota: false });
     await clic('[data-fk="pn-listo"]');
-    check('Hoy: «Incluye tarjeta ~$100, vence el 5 nov»', await texto('.portada-b'), contiene('Incluye tarjeta ~$100, vence el 5 nov'));
+    check('Hoy: «Tarjeta ~$100 del 5 nov: se paga con tu quincena del 30» (V2-87)', await texto('.portada-b'), contiene('Tarjeta ~$100 del 5 nov: se paga con tu quincena del 30'));
     await clic('[data-fk="nav-pagos"]');
     await clic('[data-fk="tab-proxima"]');
     check('su pago está en Pagos (~$100 estimado, 5 nov)', await texto('[data-fk^="t-credito-2026-11-05"]'), contiene('Visa Cuscatlán', '~$100'));

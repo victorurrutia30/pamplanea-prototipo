@@ -194,7 +194,8 @@ try {
         check('la luz se cobra sola en la cuenta', st.luz, ['debito', true]);
         check('Netflix en la tarjeta', st.netflix, ['credito', true]);
         check('el turno del cuchubal es un ingreso esperado (V2-75)', st.turno, [[40000, '2026-11-20', 'unico']]);
-        check('el libre cuenta lo que pagas normalmente de la tarjeta (V2-54, V2-78)', await ev(`(() => { const k = P.calc(); const t = k.tarjetas.find((x) => x.t.nombre === 'Crédito BAC'); return [t.usual, t.estimado, k.enTarjetas >= 10000]; })()`), [10000, 10000, true]);
+        // v2.6.7 (V2-87): cuenta una vez, como cualquier otro pago: con el ingreso de antes de su fecha o con lo que tienes.
+        check('cuenta lo que pagas normalmente de la tarjeta (V2-54, V2-78, V2-87)', await ev(`(() => { const k = P.calc(); const t = k.tarjetas.find((x) => x.t.nombre === 'Crédito BAC'); return [t.usual, t.estimado, t.conIngreso + t.estimadoAhora + t.reservadoComo]; })()`), [10000, 10000, 10000]);
         await clic('[data-fk="pn-listo"]');
         await clic('[data-fk="nav-midinero"]');
         await clic('[data-fk="md-deudas"]');
@@ -267,7 +268,8 @@ try {
         await clic('[data-fk="deuda-ok"]');
         await esperar(250);
         const k = await ev(`(() => { const k = P.calc(); const t = k.tarjetas.find((x) => x.t.nombre === 'Crédito Promerica'); return { libre: k.libre, usual: t.usual, estimado: t.estimado, debe: t.t.debeInicial }; })()`);
-        check('cuenta lo que pagas normalmente (estimado) y guarda lo que debes', { usual: k.usual, estimado: k.estimado, debe: k.debe, baja: libre0 - k.libre }, { usual: 8000, estimado: 8000, debe: 25000, baja: 8000 });
+        // v2.6.7 (V2-87): el del 12 nov lo paga la quincena de antes de esa fecha, como cualquier otro pago: el libre de hoy no baja.
+        check('cuenta lo que pagas normalmente (estimado) y guarda lo que debes', { usual: k.usual, estimado: k.estimado, debe: k.debe, baja: libre0 - k.libre }, { usual: 8000, estimado: 8000, debe: 25000, baja: 0 });
         check('Deudas: disponible, nunca «cupo»', await texto('#pantalla'), (t) => t.includes('Disponible') && !/cupo/i.test(t));
         // El estado de cuenta reemplaza al estimado: no se suma.
         await ev(`(() => { const t = P.st.tarjetas.find((x) => x.nombre === 'Crédito Promerica'); P.abrirHoja('estadoCuenta', { id: t.id }); return true; })()`);
