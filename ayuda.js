@@ -996,6 +996,23 @@
             sw.postMessage({ tipo: 'saltar' });
         });
     }
+    /** v2.7 (DATOS-2): «Actualizar la app» desde «Tus datos están a salvo»: la versión que espera, o buscar una y recargar. */
+    function buscarVersion() {
+        const recargar = () => location.reload();
+        if (!('serviceWorker' in navigator) || !navigator.serviceWorker.getRegistration) return recargar();
+        navigator.serviceWorker.getRegistration().then(
+            (reg) => {
+                if (reg && reg.waiting) {
+                    A.quiereActualizar = true;
+                    reg.waiting.postMessage({ tipo: 'saltar' });
+                    setTimeout(recargar, 3000);
+                } else if (reg) reg.update().then(recargar, recargar);
+                else recargar();
+            },
+            recargar,
+        );
+    }
+    A.buscarVersion = buscarVersion;
     function registrarSW() {
         if (!('serviceWorker' in navigator) || !/^https?:$/.test(location.protocol)) return;
         let recargando = false;

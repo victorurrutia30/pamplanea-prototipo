@@ -32,6 +32,32 @@
                 return clave in memoria ? memoria[clave] : defecto;
             }
         },
+        /**
+         * v2.7 (DATOS-2, A04): lo guardado tal cual, sin interpretarlo: `null` si no hay nada; si no, el texto. Así «no hay
+         * datos» no se confunde con «no puedo leerlos» (leer() devuelve el valor por defecto en los dos casos).
+         */
+        leerTexto(clave) {
+            try {
+                const v = localStorage.getItem(clave);
+                if (v !== null) return v;
+            } catch {
+                /* sin almacenamiento: lo de esta sesión */
+            }
+            return clave in memoria ? JSON.stringify(memoria[clave]) : null;
+        },
+        /** v2.7 (DATOS-1): las claves guardadas que empiezan así (para las copias por versión). */
+        claves(prefijo) {
+            const out = new Set(Object.keys(memoria).filter((k) => k.startsWith(prefijo)));
+            try {
+                for (let i = 0; i < localStorage.length; i++) {
+                    const k = localStorage.key(i);
+                    if (k && k.startsWith(prefijo)) out.add(k);
+                }
+            } catch {
+                /* sin almacenamiento */
+            }
+            return [...out];
+        },
         escribir(clave, valor) {
             memoria[clave] = valor;
             try {

@@ -127,11 +127,14 @@
 
     // ------------------------------------------------------------------ saldo con la regla del cuadre
     const despues = (r, cu) => r.fecha > cu.fecha || (r.fecha === cu.fecha && r.seq > cu.seq);
+    /**
+     * v2.7 (F04, DATOS-3): la cuenta de donde salió un gasto. Desde la v2.7 cada gasto la guarda al anotarse (`r.lugar`;
+     * null si fue con crédito): cambiar después la cuenta de un medio solo afecta lo nuevo. Lo anotado con una versión
+     * anterior que todavía no la tiene usa la de su medio, como antes.
+     */
+    const lugarGasto = (st, r) => (r.lugar !== undefined ? r.lugar : medio(st, r.medio)?.lugar || null);
     function efecto(st, r, lugarId) {
-        if (r.tipo === 'gasto') {
-            const m = medio(st, r.medio);
-            return m && m.lugar === lugarId ? -r.monto : 0;
-        }
+        if (r.tipo === 'gasto') return lugarGasto(st, r) === lugarId ? -r.monto : 0;
         if (r.tipo === 'ingreso') return r.lugar === lugarId ? r.monto : 0;
         if (r.tipo === 'mover') return (r.de === lugarId ? -r.monto : 0) + (r.a === lugarId ? r.monto : 0);
         if (r.tipo === 'pagoTarjeta') return r.lugar === lugarId ? -r.monto : 0;
@@ -146,8 +149,8 @@
     /** Lugares que toca un registro (para avisar si es anterior a su último cuadre). */
     function lugaresDe(st, r) {
         if (r.tipo === 'gasto') {
-            const m = medio(st, r.medio);
-            return m && m.lugar ? [m.lugar] : [];
+            const l = lugarGasto(st, r);
+            return l ? [l] : [];
         }
         if (r.tipo === 'ingreso' || r.tipo === 'pagoTarjeta') return r.lugar ? [r.lugar] : [];
         if (r.tipo === 'mover') return [r.de, r.a].filter(Boolean);
@@ -379,6 +382,8 @@
         const comprasNetas = Math.max(0, comprasTotal - Math.max(0, excedente - restoBruto) - pagadoCompras);
         // Lo que debe de verdad no se sabe hasta su primer estado de cuenta: el estimado no cuenta como deuda.
         const debeTotal = Math.max(0, ult.total - cubierto + comprasTotal - Math.max(0, pagado - usual) - pagadoCompras);
+        // agregado v2.6.7 #3: lo que dijiste que debes hoy (sin su primer estado de cuenta), o null si no lo dijiste.
+        const debeHoy = ult.inicial && t.debeInicial !== null && t.debeInicial !== undefined ? t.debeInicial + debeTotal : null;
         // v2.6.6 (V2-85): la fecha del pago que se cuenta. Sin estado de cuenta, la del ciclo pendiente: las pantallas leían
         // `ult.vence`, que en una tarjeta agregada después de su día de pago es la del ciclo anterior («venció el 14 oct»).
         const vence = ult.inicial && pendiente ? pendiente.vence : ult.vence;
@@ -410,7 +415,7 @@
         const pedir = !!pendiente && (sinCorte ? st.hoy >= sumarDias(pendiente.vence, -10) : siguiente ? st.hoy > pendiente.corte : !(ult.inicial && ult.esperarCorte && st.hoy <= proxCorte));
         // Dos pagos próximos de la misma tarjeta: el texto dice el mes (V2-31 #1).
         const dosPagos = porPagarEstado + estimado > 0 && comprasNetas > 0 && vence !== venceCompras;
-        return { t, ult, pagado, pagadoCompras, porPagarEstado, usual, estimado, sinCorte, compras, comprasTotal, comprasNetas, pendiente, pedir, proxCorte, resto, enLibre, debeTotal, reservas, reservado, venceCompras, cupoLibre, dosPagos, vence, comoPago, deCompras, partes: partesPago, conIngreso, reservadoComo, porPagarAhora, estimadoAhora, pagoComo };
+        return { t, ult, pagado, pagadoCompras, porPagarEstado, usual, estimado, sinCorte, compras, comprasTotal, comprasNetas, pendiente, pedir, proxCorte, resto, enLibre, debeTotal, debeHoy, reservas, reservado, venceCompras, cupoLibre, dosPagos, vence, comoPago, deCompras, partes: partesPago, conIngreso, reservadoComo, porPagarAhora, estimadoAhora, pagoComo };
     }
     /** Pagos de tarjeta como ocurrencias de Pagos: el estado vigente y, si llegó otro, el pendiente. */
     function ocurrenciasTarjeta(st, desde, hasta) {
@@ -1174,7 +1179,7 @@
         MONTO_MAX, hoyLocal,
         MESES, MESES_CORTOS, DIAS, DIAS_CORTOS, pad, sumarDias, diasEntre, diaSemana, partes, diasDelMes, fechaDe, mesMas, fechaCorta, fechaLarga, conDia, diaCorto, relativa, haceDias, ultimoDia, proximoDia,
         dinero, leerMonto, montoExcede, montoCampo, suma, lugar, medio, tarjeta, pago, ingreso, apartado, categoria, principal, sinVS,
-        despues, saldoLugar, anteriorAlCuadre, lugaresDe, tienes, apartadoTotal, ultimaActividad, fechasRegla, ocurrenciasPago, ocurrenciasIngreso, tarjetaInfo, ocurrenciasTarjeta,
+        despues, lugarGasto, saldoLugar, anteriorAlCuadre, lugaresDe, tienes, apartadoTotal, ultimaActividad, fechasRegla, ocurrenciasPago, ocurrenciasIngreso, tarjetaInfo, ocurrenciasTarjeta,
         horizonte, calcular, resumenMes, pagosDelMes, medioUsual, normalizar, entender, faltan, capital, porDiaDe, apartadosVencidos, esDiaDeIngreso, coincide,
         inicioDe, cortes, corteAntes, corteDespues, fundado, esFundado, periodoDe, fuentesPara, asignacion, reglaPago, recurrentes, descuentosDe, proyectar, claveVigente, reservasDe,
         esUnico, ingresoDeClave, llegoUnico, unicosPara,

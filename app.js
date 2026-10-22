@@ -97,6 +97,8 @@
     P.nuevoId = (prefijo) => prefijo + (P.st.seq++);
     P.registrar = function (st, fila) {
         const r = { id: 'r' + st.seq, seq: st.seq, ...fila };
+        // v2.7 (F04, DATOS-3): un gasto guarda la cuenta de donde salió; cambiar después la cuenta del medio no lo mueve.
+        if (r.tipo === 'gasto' && r.lugar === undefined) r.lugar = M.lugarGasto(st, r);
         st.seq++;
         st.registros.push(r);
         return r;
@@ -142,10 +144,12 @@
         const fk = activo && activo.dataset ? activo.dataset.fk : null;
         const enHoja = activo && activo.closest && activo.closest('.hoja');
 
-        const enOnboarding = P.enPrimerDia();
-        document.getElementById('pantalla').innerHTML = enOnboarding ? P.pantallas.onboarding() : pantallaActual();
+        // v2.7 (DATOS-2): con lo guardado que no se puede leer, solo «Tus datos están a salvo» (nada más se ve ni se guarda).
+        const aSalvo = P.modo === 'uso' && !!(P.modos && P.modos.bloqueado && P.modos.bloqueado());
+        const enOnboarding = !aSalvo && P.enPrimerDia();
+        document.getElementById('pantalla').innerHTML = aSalvo ? P.pantallas.aSalvo() : enOnboarding ? P.pantallas.onboarding() : pantallaActual();
         const nav = document.getElementById('nav');
-        const sinNav = enOnboarding || ['reparte', 'aldia', 'logro', 'primerNumero'].includes(P.ui.stack.at(-1)?.tipo);
+        const sinNav = aSalvo || enOnboarding || ['reparte', 'aldia', 'logro', 'primerNumero'].includes(P.ui.stack.at(-1)?.tipo);
         nav.hidden = sinNav;
         document.getElementById('app').classList.toggle('sin-nav', sinNav);
         for (const b of nav.querySelectorAll('[data-tab]')) {
@@ -1071,7 +1075,7 @@
     /** v2.6.7 (agregado v2.6.7 #3): la misma frase en Deudas, la ficha de la tarjeta y Mi dinero. */
     P.POR_CONFIRMAR = 'por confirmar con tu estado de cuenta';
     /** Lo que dijiste que debes de una tarjeta sin su primer estado de cuenta (más lo que anotaste con ella), o null. */
-    P.debeTarjeta = (info) => (info.ult.inicial && info.t.debeInicial !== null && info.t.debeInicial !== undefined ? info.t.debeInicial + info.debeTotal : null);
+    P.debeTarjeta = (info) => info.debeHoy;
     /** Lo que debes: tarjetas (lo que dice su estado más las compras) y préstamos con «cuánto debes» anotado. */
     function deudaTotal(st) {
         const infos = st.tarjetas.map((t) => M.tarjetaInfo(st, t));

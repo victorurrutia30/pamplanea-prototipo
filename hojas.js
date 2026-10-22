@@ -3568,7 +3568,8 @@
         html(h) {
             const st = P.st;
             const r = st.registros.find((x) => x.id === h.id);
-            const antes = M.anteriorAlCuadre(st, { ...r, fecha: h.fecha, medio: h.medio || r.medio, lugar: h.lugar || r.lugar });
+            const lugarNuevo = r.tipo === 'gasto' ? (h.medio !== h.orig.medio ? M.medio(st, h.medio)?.lugar || null : M.lugarGasto(st, r)) : h.lugar || r.lugar;
+            const antes = M.anteriorAlCuadre(st, { ...r, fecha: h.fecha, medio: h.medio || r.medio, lugar: lugarNuevo });
             const cambios = hayCambiosRegistro(h);
             const pago = r.pago ? M.pago(st, r.pago) : null;
             const conApartados = st.apartados.filter((a) => a.monto > 0);
@@ -3637,6 +3638,8 @@
                 const r = s.registros.find((x) => x.id === h.id);
                 Object.assign(r, { monto, nombre: h.nombre.trim() || r.nombre, fecha: h.fecha });
                 if (r.tipo === 'gasto') Object.assign(r, { medio: h.medio, categoria: h.categoria || r.categoria });
+                // v2.7 (F04): corregir con qué pagaste sí cambia de qué cuenta salió (es esta anotación, no el medio).
+                if (r.tipo === 'gasto' && h.medio !== h.orig.medio) r.lugar = M.medio(s, h.medio)?.lugar || null;
                 if (r.tipo === 'ingreso') r.lugar = h.lugar;
                 if (r.pago) {
                     const p = M.pago(s, r.pago);

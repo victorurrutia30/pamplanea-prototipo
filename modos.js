@@ -17,8 +17,14 @@
     const CLAVE_MODO = 'pamplanea-modo';
     const CLAVE_USO = 'pamplanea-uso:v1';
     const CLAVE_ENTRENAMIENTO = 'pamplanea-entrenamiento';
-    /** Respaldo intacto de lo guardado antes de migrar (por si acaso: nunca se pierde nada). */
+    /** Respaldo intacto de lo guardado antes de migrar (por si acaso: nunca se pierde nada). Se conserva tal cual. */
     const CLAVE_RESPALDO = 'pamplanea-uso:respaldo-esquema-1';
+    /**
+     * v2.7 (DATOS-1): una copia intacta POR VERSIÓN, antes de que esa versión cambie algo de lo guardado
+     * (`pamplanea-uso:respaldo:antes-de-v2.7.0`), y otra antes de reemplazar tus datos con una copia
+     * (`…:antes-de-restaurar-<fecha>`). Nunca se escribe encima de una que ya existe.
+     */
+    const PREFIJO_RESPALDO = 'pamplanea-uso:respaldo:';
     /** v2.6.4 (V2-79): un ejemplo que quedó guardado como tus datos (el error de la v2.6.3), apartado sin borrarlo. */
     const CLAVE_EJEMPLO = 'pamplanea-uso:ejemplo-guardado';
     const PERSONAS_EJEMPLO = new Set(['ana', 'carlos', 'rosa']);
@@ -61,6 +67,8 @@
             for (const k of ['lugares', 'medios', 'tarjetas', 'apartados', 'logros', 'pagos', 'ingresos', 'registros', 'avisos', 'reservasTarjeta', 'cerrados', 'reservas']) x.st[k] = Array.isArray(x.st[k]) ? x.st[k] : [];
             // V2-79: un ejemplo guardado por error conserva su persona (así se reconoce y no se muestra como tuyo).
             if (!PERSONAS_EJEMPLO.has(x.st.persona)) x.st.persona = 'uso';
+            // v2.7 (DATOS-3, F04): lo de antes queda en la cuenta donde aparece hoy.
+            congelar(x.st);
         }
         return x;
     }
@@ -114,14 +122,209 @@
         for (const p of st.pagos || []) p.hechos = p.hechos && typeof p.hechos === 'object' ? p.hechos : {};
         x.migracion = { de: 1, a: 2, fecha: new Date().toISOString(), inicio, llegadasInventadasQuitadas: quitadas, llegadasDelPrimerDia: delPrimerDia };
     }
+    /**
+     * v2.7 (DATOS-3, F04): lo que la actualización congela. Cada gasto guarda la cuenta donde aparece hoy (la de su medio):
+     * cambiar el medio después solo afecta lo nuevo. Solo se AGREGA ese dato a lo que no lo tiene; nada cambia de tipo
+     * ni de nombre, y los saldos quedan iguales. Sirve también para lo que anote una pestaña con una versión anterior.
+     */
+    function congelar(st) {
+        if (!st || !Array.isArray(st.registros)) return;
+        for (const r of st.registros) if (r && r.tipo === 'gasto' && r.lugar === undefined) r.lugar = M.lugarGasto(st, r);
+    }
+
+    // ------------------------------------------------------------------ v2.7 (DATOS-1, DATOS-2): versiones y copias
+    /** «Prototipo v2.6.7 · 2026-10-19» → [2, 6, 7] (null si no dice). */
+    const numVersion = (v) => {
+        const m = /v(\d+)\.(\d+)(?:\.(\d+))?/.exec(String(v || ''));
+        return m ? [+m[1], +m[2], +(m[3] || 0)] : null;
+    };
+    const cmpVersion = (a, b) => {
+        for (let i = 0; i < 3; i++) if (a[i] !== b[i]) return a[i] < b[i] ? -1 : 1;
+        return 0;
+    };
+    const VERSION_N = numVersion(VERSION) || [0, 0, 0];
+    /** «v2.7.0»: para el nombre de las copias (no se le muestra a la persona). */
+    const VERSION_CORTA = 'v' + VERSION_N.join('.');
+    /** ¿Lo guardó una versión más nueva que esta? */
+    const versionMasNueva = (v) => !!numVersion(v) && cmpVersion(numVersion(v), VERSION_N) > 0;
+    /** ¿Lo guardó una versión anterior a la v2.7 (o una que todavía no anotaba su versión)? */
+    const anteriorA27 = (v) => !numVersion(v) || cmpVersion(numVersion(v), [2, 7, 0]) < 0;
+    /**
+     * v2.7 (DATOS-2, F20): ¿se puede usar? `estricto` (al restaurar una copia): la forma de cada cosa, sus montos en
+     * centavos enteros, sus fechas y que lo que se nombra exista. Siempre: calcular en una copia aparte, antes de escribir
+     * nada. Devuelve el problema o null.
+     */
+    function problemaDatos(st, { estricto = false } = {}) {
+        if (!st) return null;
+        if (typeof st !== 'object' || Array.isArray(st)) return 'estado';
+        const iso = (x) => typeof x === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(x);
+        const cent = (x) => Number.isInteger(x);
+        const centONulo = (x) => x === null || x === undefined || Number.isInteger(x);
+        const obj = (x) => !!x && typeof x === 'object' && !Array.isArray(x);
+        if (estricto) {
+            for (const k of ['lugares', 'medios', 'tarjetas', 'apartados', 'pagos', 'ingresos', 'registros']) if (!Array.isArray(st[k])) return k;
+            const ids = (lista) => new Set(lista.filter(obj).map((x) => x.id));
+            const lugares = ids(st.lugares);
+            const tarjetas = ids(st.tarjetas);
+            if (st.lugares.some((l) => !obj(l) || typeof l.id !== 'string' || (l.cuadre && (!iso(l.cuadre.fecha) || !cent(l.cuadre.monto))))) return 'lugares';
+            if (st.medios.some((m) => !obj(m) || typeof m.id !== 'string' || (m.lugar && !lugares.has(m.lugar)) || (m.tarjeta && !tarjetas.has(m.tarjeta)))) return 'medios';
+            if (st.tarjetas.some((t) => !obj(t) || typeof t.id !== 'string' || !Array.isArray(t.estados) || !t.estados.length || t.estados.some((e) => !obj(e) || !iso(e.vence) || (e.corte !== null && !iso(e.corte)) || !cent(e.total) || !cent(e.aPagar)))) return 'tarjetas';
+            if (st.apartados.some((a) => !obj(a) || typeof a.id !== 'string' || !cent(a.monto))) return 'apartados';
+            if (st.pagos.some((p) => !obj(p) || typeof p.id !== 'string' || !centONulo(p.monto) || !obj(p.hechos))) return 'pagos';
+            if (st.ingresos.some((i) => !obj(i) || typeof i.id !== 'string' || !centONulo(i.monto) || !obj(i.llegadas) || (i.lugar && !lugares.has(i.lugar)))) return 'ingresos';
+            if (st.registros.some((r) => !obj(r) || typeof r.tipo !== 'string' || !iso(r.fecha) || !cent(r.monto))) return 'registros';
+        }
+        if (!st.configurado) return null;
+        try {
+            const x = structuredClone(st);
+            x.hoy = hoy();
+            const [y, m] = M.partes(x.hoy);
+            M.calcular(x);
+            M.resumenMes(x, y, m);
+            M.pagosDelMes(x, y, m);
+            M.ocurrenciasTarjeta(x, M.sumarDias(x.hoy, -62), M.sumarDias(x.hoy, 62));
+            M.antesDeEmpezar(x);
+        } catch {
+            return 'calculo';
+        }
+        return null;
+    }
+    /**
+     * v2.7 (DATOS-2, A04): lo guardado como tus datos, sin confundir tres cosas: no hay nada (`vacio`), no se puede leer
+     * (`danado`) o lo guardó una versión más nueva (`nueva`). En los dos últimos no se escribe nada y nunca se empieza de
+     * cero: «Tus datos están a salvo». La lectura se recuerda mientras lo guardado no cambie.
+     */
+    let lecturaPrevia = null;
+    function leerGuardado() {
+        const texto = P.almacen.leerTexto(CLAVE_USO);
+        if (lecturaPrevia && lecturaPrevia.texto === texto) return lecturaPrevia;
+        let g;
+        if (texto === null) g = { estado: 'vacio', texto };
+        else {
+            let crudo = null;
+            try {
+                crudo = JSON.parse(texto);
+            } catch {
+                crudo = undefined;
+            }
+            if (!crudo || typeof crudo !== 'object' || Array.isArray(crudo)) g = { estado: 'danado', texto };
+            else if ((typeof crudo.esquema === 'number' && crudo.esquema > ESQUEMA) || versionMasNueva(crudo.version)) g = { estado: 'nueva', texto, crudo };
+            else {
+                let u = null;
+                try {
+                    u = migrarUso(crudo);
+                } catch {
+                    u = null;
+                }
+                g = !u || problemaDatos(u.st) ? { estado: 'danado', texto, crudo } : { estado: 'ok', texto, crudo, uso: u };
+            }
+        }
+        lecturaPrevia = g;
+        return g;
+    }
+    /** v2.7 (DATOS-2): lo guardado no se puede usar en esta versión: { estado: 'danado' | 'nueva', texto }. Mientras tanto no se escribe nada. */
+    let bloqueo = null;
+    /**
+     * v2.7 (DATOS-1): guarda `valor` en una clave nueva de copias. Si no hay espacio, deja la original (la más vieja) y las
+     * 2 más recientes y vuelve a intentar; si aun así no se puede, lo avisa (no falla).
+     */
+    let copiaFallo = false;
+    function guardarCopiaInterna(clave, valor) {
+        if (P.almacen.leerTexto(clave) !== null) return true;
+        if (P.almacen.escribir(clave, valor)) return true;
+        const fecha = (k) => {
+            const c = P.almacen.leer(k, null);
+            return String((c && (c.fecha || c.actualizado || c.creado)) || '');
+        };
+        const copias = [...P.almacen.claves(PREFIJO_RESPALDO), ...(P.almacen.leerTexto(CLAVE_RESPALDO) !== null ? [CLAVE_RESPALDO] : [])].filter((k) => k !== clave);
+        const orden = copias.map((k) => ({ k, f: k === CLAVE_RESPALDO ? '' : fecha(k) })).sort((a, b) => (a.f < b.f ? -1 : a.f > b.f ? 1 : 0));
+        const quedan = new Set([orden[0], ...orden.slice(-2)].filter(Boolean).map((x) => x.k));
+        for (const x of orden) if (!quedan.has(x.k)) P.almacen.borrar(x.k);
+        if (P.almacen.escribir(clave, valor)) return true;
+        copiaFallo = true;
+        console.warn('PamPlanea: no hubo espacio para la copia interna ' + clave);
+        return false;
+    }
+    /** v2.7 (DATOS-1): antes de que esta versión cambie algo, la copia intacta de lo guardado por la anterior. */
+    function respaldarVersion(crudo) {
+        guardarCopiaInterna(PREFIJO_RESPALDO + 'antes-de-' + VERSION_CORTA, { fecha: new Date().toISOString(), de: crudo.version || null, para: VERSION, datos: crudo });
+    }
+    /** v2.7 (DATOS-2): antes de reemplazar tus datos con una copia, lo que había (aunque no se pudiera leer). */
+    function respaldarAntesDeReemplazar() {
+        const texto = P.almacen.leerTexto(CLAVE_USO);
+        if (texto === null) return;
+        let datos = null;
+        try {
+            datos = JSON.parse(texto);
+        } catch {
+            datos = null;
+        }
+        guardarCopiaInterna(PREFIJO_RESPALDO + 'antes-de-restaurar-' + new Date().toISOString(), { fecha: new Date().toISOString(), de: (datos && datos.version) || null, para: VERSION, ...(datos ? { datos } : { texto }) });
+    }
+
+    // ------------------------------------------------------------------ v2.7 (DATOS-4): los números antes y después
+    /** El Mes actual, lo que debes de cada tarjeta y tu libre, con las reglas de antes (`comoAntes`) o las de ahora. */
+    function numerosVisibles(st, comoAntes) {
+        const x = structuredClone(st);
+        x.hoy = hoy();
+        const [y, m] = M.partes(x.hoy);
+        const opts = comoAntes ? { comoAntes: true } : {};
+        const mes = M.resumenMes(x, y, m, opts);
+        return {
+            mes: { y, m, salio: mes.salio, entro: mes.entro },
+            tarjetas: x.tarjetas.map((t) => {
+                const info = M.tarjetaInfo(x, t, null, opts);
+                return { id: t.id, nombre: t.nombre, debe: info.debeHoy !== null ? info.debeHoy : info.debeTotal };
+            }),
+            libre: M.calcular(x, opts).libre,
+        };
+    }
+    /**
+     * v2.7 (DATOS-4, Parte D): la primera vez que esta versión abre datos ya configurados de una anterior, se calculan los
+     * números antes y después de actualizar. Lo que cambió (porque estaba mal) va en el cuadrito de novedades.
+     */
+    function prepararNovedades(u, crudo) {
+        if (!u.st || !u.st.configurado || u.st.persona !== 'uso' || esDeEjemplo(u.st) || !anteriorA27(crudo.version) || (u.novedades && u.novedades['v2.7'])) return;
+        let antes = null;
+        let despues = null;
+        try {
+            antes = numerosVisibles(u.st, true);
+            despues = numerosVisibles(u.st, false);
+        } catch {
+            antes = despues = null;
+        }
+        u.novedades = { ...(u.novedades || {}), 'v2.7': { fecha: new Date().toISOString(), antes, despues, visto: null } };
+    }
+
     let uso = null;
     /** v2.6.1 (QA H-01): otra pestaña (o Safari y la app instalada a la vez) guardó tus datos y aquí todavía no se cargan. */
     let deOtra = false;
     function leerUso() {
-        const crudo = P.almacen.leer(CLAVE_USO, null);
-        // Antes de migrar, se guarda una copia intacta (una sola vez).
-        if (crudo && typeof crudo === 'object' && (!crudo.esquema || crudo.esquema < ESQUEMA) && !P.almacen.leer(CLAVE_RESPALDO, null)) P.almacen.escribir(CLAVE_RESPALDO, crudo);
-        return migrarUso(crudo) || usoVacio();
+        const g = leerGuardado();
+        if (g.estado === 'vacio') {
+            bloqueo = null;
+            return usoVacio();
+        }
+        if (g.estado !== 'ok') {
+            // v2.7 (DATOS-2): no se puede usar; se devuelve uno vacío que NUNCA se escribe (guardarUso y los demás lo revisan).
+            bloqueo = { estado: g.estado, texto: g.texto };
+            return usoVacio();
+        }
+        bloqueo = null;
+        const crudo = g.crudo;
+        // Antes de migrar, se guarda una copia intacta (la del esquema 1, una sola vez; se conserva).
+        if ((!crudo.esquema || crudo.esquema < ESQUEMA) && P.almacen.leerTexto(CLAVE_RESPALDO) === null) P.almacen.escribir(CLAVE_RESPALDO, crudo);
+        // v2.7 (DATOS-1): y una por versión, antes de que esta versión guarde algo encima.
+        if (crudo.version !== VERSION) respaldarVersion(crudo);
+        // DATOS-4: los números antes y después se calculan una vez por cada cosa guardada.
+        if (g.novedades === undefined) {
+            const tmp = structuredClone(g.uso);
+            prepararNovedades(tmp, crudo);
+            g.novedades = tmp.novedades || null;
+        }
+        const u = structuredClone(g.uso);
+        if (g.novedades) u.novedades = structuredClone(g.novedades);
+        return u;
     }
     /** v2.6: lo de «Usarla con mis datos»; desde el modo entrenamiento se lee de lo guardado (los ejemplos no se tocan). */
     const usoGuardado = () => (P.modo === 'uso' && uso ? uso : leerUso());
@@ -133,7 +336,9 @@
             return;
         }
         const u = leerUso();
-        Object.assign(u, cambios);
+        // v2.7 (DATOS-2): lo guardado que no se puede leer no se toca.
+        if (bloqueo) return;
+        Object.assign(u, cambios, { version: VERSION });
         P.almacen.escribir(CLAVE_USO, u);
         if (uso) Object.assign(uso, cambios);
     }
@@ -158,8 +363,9 @@
         P.emitir('error:candado');
     }
     function guardarUso() {
-        // Con datos más nuevos de otra pestaña sin cargar, esta no escribe encima (se cargan primero).
-        if (!uso || deOtra) return;
+        // Con datos más nuevos de otra pestaña sin cargar, esta no escribe encima (se cargan primero). v2.7 (DATOS-2): con
+        // lo guardado que no se puede leer (dañado o de una versión más nueva), tampoco: nunca se empieza de cero.
+        if (!uso || deOtra || bloqueo) return;
         if (P.modo === 'uso' && P.st) {
             // V2-79, candado: un estado de ejemplo NUNCA se escribe en tus datos (ni nada más de esta vez).
             if (P.st.persona !== 'uso') return candado();
@@ -175,6 +381,8 @@
         }
         uso.tema = P.tema;
         uso.actualizado = new Date().toISOString();
+        // v2.7 (DATOS-1, DATOS-2): qué versión lo guardó (para la copia por versión y para no leerlo con una más vieja).
+        uso.version = VERSION;
         P.almacen.escribir(CLAVE_USO, uso);
         // V2-74: con datos reales, una vez por sesión, se pide al navegador que no los borre solo.
         if (!pidioPersistencia && P.modo === 'uso' && P.st && P.st.configurado && P.ayuda && P.ayuda.pedirPersistencia) {
@@ -223,6 +431,8 @@
         if (P.ayuda && P.ayuda.salirDePrueba) P.ayuda.salirDePrueba();
         if (P.practica) P.practica.salir();
         uso = leerUso();
+        // v2.7 (DATOS-2): lo guardado no se puede leer en esta versión: «Tus datos están a salvo», sin escribir nada.
+        if (bloqueo) return entrarBloqueado();
         // V2-79: si lo guardado como tus datos es en realidad un ejemplo, no se muestra como tuyo.
         if (uso.st && esDeEjemplo(uso.st)) apartarEjemplo();
         const st = uso.st || estadoNuevo();
@@ -241,6 +451,26 @@
         guardarUso();
         if (listo && infoRecuperar()) P.ayuda.abrir('recuperar');
         else if (abrirIntro && !uso.introVista) P.ayuda.abrir('introUso');
+        else if (listo) abrirNovedades();
+    }
+    /** v2.7 (Parte D): el cuadrito de novedades (una sola vez). */
+    function abrirNovedades() {}
+    /**
+     * v2.7 (DATOS-2): con lo guardado dañado o de una versión más nueva, la app muestra «Tus datos están a salvo» con
+     * las formas de recuperarlos. `uso` queda vacío y NUNCA se guarda (guardarUso lo revisa); lo de abajo no se ve.
+     */
+    function entrarBloqueado() {
+        uso = null;
+        P.modo = 'uso';
+        const st = estadoNuevo();
+        st.configurado = true;
+        P.guardando = true;
+        P.cargar(st, { tab: 'hoy' });
+        if (P.ayuda && P.ayuda.abierto) P.ayuda.cerrar({ foco: false });
+        pintarAviso();
+        guardarPref({ modo: 'uso' });
+        P.render({ nueva: true });
+        P.emitir('datos:aSalvo:' + bloqueo.estado);
     }
     /**
      * V2-79: solo cambia al modo entrenamiento, sin cargar nada (quien llama carga el ejemplo enseguida). Tus datos se
@@ -312,6 +542,8 @@
         if (!deOtra || P.modo !== 'uso') return;
         deOtra = false;
         uso = leerUso();
+        // v2.7 (DATOS-2): otra pestaña con una versión más nueva guardó tus datos (o quedaron dañados): no se pisa nada.
+        if (bloqueo) return entrarBloqueado();
         // V2-79: otra pestaña con una versión vieja pudo guardar un ejemplo como tus datos: tampoco se muestra como tuyo.
         if (uso.st && esDeEjemplo(uso.st)) {
             apartarEjemplo();
@@ -485,6 +717,10 @@
     function tarjetasHoy() {
         if (P.modo !== 'uso' || !uso || !P.st.configurado) return [];
         const out = [];
+        // v2.7 (DATOS-1): no hubo espacio para la copia interna de antes de actualizar: se avisa (no falla).
+        if (copiaFallo && !(P.almacen.fallo || !P.almacen.disponible)) {
+            out.push(`<section class="card card--aviso" aria-labelledby="cf-t"><div class="aviso-cab">${P.caja('🛟')}<div><h2 class="card-t" id="cf-t">Guarda una copia de tus datos</h2><p class="txt">Tu teléfono tiene poco espacio y no pudimos guardar la nuestra. Tus datos están bien.</p></div></div><div class="acciones-2"><button type="button" class="btn btn--prim" data-a="ayIr" data-v="datos" data-fk="cf-copia">Guardar una copia</button></div></section>`);
+        }
         // v2.6.1 (QA H-02): si el teléfono no deja guardar (sin espacio, modo privado o bloqueado), se dice siempre arriba.
         if (P.almacen.fallo || !P.almacen.disponible) {
             out.push(`<section class="card card--aviso aviso-guardar" role="alert" aria-labelledby="ag-t"><div class="aviso-cab">${P.caja('⚠️')}<div><h2 class="card-t" id="ag-t">No se están guardando tus datos</h2><p class="txt">Este teléfono no deja guardar: puede estar sin espacio o en modo privado. Lo que anotes se pierde al cerrar.</p></div></div><div class="acciones-2"><button type="button" class="btn btn--prim" data-a="ayIr" data-v="datos" data-fk="ag-copia">Guardar una copia</button></div></section>`);
@@ -722,26 +958,44 @@
             return { error: 'El archivo no es una copia de PamPlanea (no se pudo leer).' };
         }
         if (!obj || obj.app !== 'pamplanea-prototipo' || obj.tipo !== 'copia-uso') return { error: 'Ese archivo no es una copia de PamPlanea.' };
-        if (typeof obj.esquema !== 'number' || obj.esquema > ESQUEMA) return { error: 'Esa copia es de una versión más nueva de la app. Actualiza la app y vuelve a intentarlo.' };
-        const datos = migrarUso(obj.datos);
-        if (!datos || !datos.st || !Array.isArray(datos.st.lugares) || !Array.isArray(datos.st.registros)) return { error: 'La copia está incompleta o dañada.' };
+        if (typeof obj.esquema !== 'number' || obj.esquema > ESQUEMA || versionMasNueva(obj.version) || (obj.datos && versionMasNueva(obj.datos.version))) return { error: 'Esa copia es de una versión más nueva de la app. Actualiza la app y vuelve a intentarlo.' };
+        return validarDatos(obj.datos, obj.fecha);
+    }
+    /**
+     * v2.7 (DATOS-2, F20): una copia (de un archivo o de las internas) se revisa entera ANTES de escribir nada: su forma,
+     * sus montos, sus fechas, que lo que nombra exista y que se pueda calcular.
+     */
+    function validarDatos(crudo, fecha = null) {
+        let datos = null;
+        try {
+            datos = migrarUso(crudo);
+        } catch {
+            datos = null;
+        }
+        if (!datos || !datos.st || problemaDatos(datos.st, { estricto: true })) return { error: 'La copia está incompleta o dañada.' };
         // V2-79: una copia guardada después del error trae los datos de ejemplo, no los tuyos.
         if (esDeEjemplo(datos.st)) return { error: 'Esa copia tiene datos de ejemplo, no los tuyos. Busca una copia de antes.' };
-        return { datos, fecha: obj.fecha, resumen: `${datos.st.lugares.length} lugares · ${datos.st.pagos.length} pagos · ${datos.st.registros.length} movimientos` };
+        return { datos, fecha, resumen: `${datos.st.lugares.length} lugares · ${datos.st.pagos.length} pagos · ${datos.st.registros.length} movimientos` };
     }
     function restaurar(datos) {
-        // V2-79: nunca se escribe un ejemplo como tus datos (validarCopia ya lo rechaza).
-        if (!datos || !datos.st || esDeEjemplo(datos.st)) return;
+        // V2-79: nunca se escribe un ejemplo como tus datos. v2.7 (DATOS-2): ni algo que no pase la revisión completa.
+        if (!datos || !datos.st || esDeEjemplo(datos.st) || problemaDatos(datos.st, { estricto: true })) return false;
+        // v2.7 (DATOS-1): lo que había queda en una copia interna antes de reemplazarlo.
+        respaldarAntesDeReemplazar();
         uso = datos;
         uso.introVista = true;
+        uso.version = VERSION;
+        bloqueo = null;
         P.almacen.escribir(CLAVE_USO, uso);
         resolverEjemplo();
         entrarUso();
         P.emitir('datos:restaurado');
+        return true;
     }
     function borrarTodo() {
         P.almacen.borrar(CLAVE_USO);
         P.almacen.borrar(CLAVE_RESPALDO);
+        for (const k of P.almacen.claves(PREFIJO_RESPALDO)) P.almacen.borrar(k);
         P.almacen.borrar(CLAVE_EJEMPLO);
         uso = null;
         // v2.6: «Tus datos» también está en el modo entrenamiento; desde ahí, se queda con los ejemplos.
@@ -779,6 +1033,11 @@
     /** «Tus datos» (v2.6: también desde el modo entrenamiento, sobre lo guardado). */
     function vistaDatos() {
         const u = usoGuardado();
+        // v2.7 (DATOS-2): con lo guardado que no se puede leer, aquí solo se recupera (nada se guarda encima ni se borra).
+        if (bloqueo) {
+            return `<section class="ay-card ay-card--prim" aria-labelledby="dt-c"><h3 class="ay-h3" id="dt-c">${icon('circle-check', 'ico-s')}Tus datos están a salvo</h3><p class="txt">No pudimos abrirlos en esta versión. No borramos ni cambiamos nada. Desde «Usarla con mis datos» puedes recuperarlos.</p><div class="ay-acc"><button type="button" class="btn btn--48" data-a="aSalvoDescargar" data-fk="dt-guardado">Guardar en un archivo</button></div></section>
+                <p class="ay-version">${esc(VERSION)} · Tus datos solo están en este teléfono</p>`;
+        }
         const hay = !!u.st;
         const copia = u.ultimaCopia ? `Tu última copia: ${fechaCorta(u.ultimaCopia.slice(0, 10))}.` : 'Todavía no has guardado una copia.';
         const r = restaurando;
@@ -829,6 +1088,94 @@
         }
         return `${intro}${cuerpo}<p class="fila-s">Los datos de ejemplo quedaron guardados aparte, por si Victor o Pam los necesitan.</p><p class="ay-version">${esc(VERSION)}</p>`;
     }
+    /** v2.7 (DATOS-2): las copias internas que se pueden recuperar (ya revisadas), la más nueva primero. */
+    function copiasInternas() {
+        const out = [];
+        for (const k of [...P.almacen.claves(PREFIJO_RESPALDO), CLAVE_RESPALDO]) {
+            const c = P.almacen.leer(k, null);
+            if (!c || typeof c !== 'object') continue;
+            const crudo = k === CLAVE_RESPALDO ? c : c.datos;
+            if (!crudo || versionMasNueva(crudo.version)) continue;
+            const v = validarDatos(crudo, (k === CLAVE_RESPALDO ? c.actualizado || c.creado : c.fecha) || null);
+            if (v.datos) out.push({ clave: k, fecha: String(v.fecha || '').slice(0, 10), resumen: v.resumen });
+        }
+        return out.sort((a, b) => (a.fecha < b.fecha ? 1 : a.fecha > b.fecha ? -1 : 0));
+    }
+    const descargarTexto = (texto, nombre) => {
+        const url = URL.createObjectURL(new Blob([texto], { type: 'text/plain' }));
+        const a = Object.assign(document.createElement('a'), { href: url, download: nombre });
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 2000);
+    };
+    /**
+     * v2.7 (DATOS-2, A04, F20): «Tus datos están a salvo». Sale cuando lo guardado no se puede leer o lo guardó una versión
+     * más nueva. No se escribe nada y nunca se empieza de cero: actualizar, recuperar una copia (revisada antes de escribir),
+     * guardar lo guardado en un archivo o ver los ejemplos mientras tanto.
+     */
+    function vistaASalvo() {
+        const nueva = bloqueo && bloqueo.estado === 'nueva';
+        const r = restaurando;
+        const copias = copiasInternas().slice(0, 3);
+        const confirmar = r && r.datos
+            ? `<div class="nota nota--atencion" role="alertdialog" aria-labelledby="as-c">${icon('triangle-alert')}<div><p id="as-c"><strong>¿Recuperar tus datos con esta copia?</strong> Copia del ${esc(fechaCorta((r.fecha || '').slice(0, 10) || hoy()))}: ${esc(r.resumen)}. Lo que está guardado ahora también queda en una copia.</p><div class="ay-acc"><button type="button" class="btn" data-a="aSalvoNo" data-fk="as-no">Cancelar</button><button type="button" class="btn btn--prim" data-a="aSalvoSi" data-fk="as-si">Sí, recuperar</button></div></div></div>`
+            : '';
+        return `<div class="pg pg--flujo a-salvo">
+            <header class="pg-head"><h1 class="h1" tabindex="-1">${icon('circle-check', 'ico-s')}Tus datos están a salvo</h1>
+            <p class="sub">${nueva ? 'Se guardaron con una versión más nueva de la app. No borramos ni cambiamos nada.' : 'No pudimos abrirlos en esta versión. No borramos ni cambiamos nada.'}</p></header>
+            ${nueva ? `<button type="button" class="btn btn--prim btn--48 btn--full" data-a="aSalvoActualizar" data-fk="as-actualizar">Actualizar la app</button><p class="fila-s">Si no cambia, cierra la app y vuelve a abrirla.</p>` : ''}
+            <section class="card a-salvo-card" aria-labelledby="as-rec"><h2 class="card-t" id="as-rec">Recuperar una copia</h2>
+                ${copias.length ? `<p class="txt">Guardamos ${copias.length === 1 ? 'una copia' : 'copias'} en este teléfono. Lo que anotaste después de ese día no está en la copia.</p><div class="a-salvo-copias">${copias.map((c) => `<button type="button" class="btn btn--48 btn--full" data-a="aSalvoCopia" data-id="${esc(c.clave)}" data-fk="as-copia-${esc(c.fecha)}">Recuperar la copia del ${esc(fechaCorta(c.fecha || hoy()))}</button>`).join('')}</div>` : '<p class="txt">No encontramos una copia en este teléfono.</p>'}
+                ${r && r.error ? `<p class="campo-error">${icon('triangle-alert')}<span>${esc(r.error)}</span></p>` : ''}${confirmar}
+                <label class="btn btn--48 btn--full" for="as-archivo" data-fk="as-elegir">Elegir un archivo de copia</label><input id="as-archivo" class="sr-only" type="file" accept="application/json,.json,text/plain,.txt" data-copia>
+            </section>
+            <section class="card a-salvo-card" aria-labelledby="as-guardar"><h2 class="card-t" id="as-guardar">Guárdalos en un archivo</h2>
+                <p class="txt">Así los tienes tal como están. Si algo no se arregla, mándaselo a Victor o a Pam.</p>
+                <button type="button" class="btn btn--48 btn--full" data-a="aSalvoDescargar" data-fk="as-descargar">Guardar en un archivo</button>
+            </section>
+            <button type="button" class="link centro" data-a="aSalvoEjemplos" data-fk="as-ejemplos">Mientras tanto, ver los ejemplos</button>
+            <p class="ay-version">${esc(VERSION)}</p>
+        </div>`;
+    }
+    P.pantallas.aSalvo = vistaASalvo;
+    acc.aSalvoActualizar = () => {
+        P.emitir('datos:aSalvo:actualizar');
+        if (P.ayuda && P.ayuda.buscarVersion) P.ayuda.buscarVersion();
+        else location.reload();
+    };
+    acc.aSalvoCopia = (d) => {
+        const c = P.almacen.leer(d.id, null);
+        const crudo = c && (d.id === CLAVE_RESPALDO ? c : c.datos);
+        restaurando = crudo ? validarDatos(crudo, (d.id === CLAVE_RESPALDO ? c.actualizado || c.creado : c.fecha) || null) : { error: 'No pudimos leer esa copia.' };
+        P.render({ foco: restaurando.error ? '[data-fk="as-elegir"]' : '[data-fk="as-no"]' });
+    };
+    acc.aSalvoNo = () => {
+        restaurando = null;
+        P.render({ foco: '[data-fk="as-elegir"]' });
+    };
+    acc.aSalvoSi = () => {
+        const datos = restaurando && restaurando.datos;
+        restaurando = null;
+        if (datos && restaurar(datos)) P.avisar('Listo: recuperamos tu copia');
+        else {
+            restaurando = { error: 'Esa copia está incompleta o dañada. No cambiamos nada.' };
+            P.render({ foco: '[data-fk="as-elegir"]' });
+        }
+    };
+    acc.aSalvoDescargar = () => {
+        const texto = (bloqueo && bloqueo.texto) || P.almacen.leerTexto(CLAVE_USO) || '';
+        descargarTexto(texto, `pamplanea-datos-guardados-${hoy()}.txt`);
+        P.avisar('Listo: lo guardé en Descargas');
+        P.emitir('datos:aSalvo:descargar');
+    };
+    acc.aSalvoEjemplos = () => {
+        restaurando = null;
+        entrarEntrenamiento();
+        P.avisar('Modo entrenamiento: datos de ejemplo. Tus datos siguen guardados.', { check: false });
+        P.emitir('modo:cambio:entrenamiento');
+    };
+
     /**
      * v2.6 (V2-62): «Cuéntale a Victor o a Pam cómo vas». Antes del texto, las dos listas: «Esto se manda» sale de
      * las mismas partes que arman el texto (partesContar) y «Esto NO se manda» es lo que se tapa siempre.
@@ -878,9 +1225,8 @@
         resolverEjemplo();
         P.ayuda.cerrar({ foco: false });
         if (d.v === 'respaldo') {
-            const datos = migrarUso(P.almacen.leer(CLAVE_RESPALDO, null));
-            if (datos && datos.st && !esDeEjemplo(datos.st)) {
-                restaurar(datos);
+            const v = validarDatos(P.almacen.leer(CLAVE_RESPALDO, null));
+            if (v.datos && restaurar(v.datos)) {
                 P.avisar('Listo: recuperamos tu copia');
                 P.emitir('datos:recuperado');
                 return;
@@ -905,8 +1251,8 @@
         const datos = restaurando.datos;
         restaurando = null;
         P.ayuda.cerrar({ foco: false });
-        restaurar(datos);
-        P.avisar('Listo: restauramos tu copia');
+        if (restaurar(datos)) P.avisar('Listo: restauramos tu copia');
+        else P.avisar('Esa copia está incompleta o dañada. No cambiamos nada.', { check: false });
     };
     acc.modoBorrar = (d) => {
         borrar = Number(d.v);
@@ -924,7 +1270,9 @@
         const lector = new FileReader();
         lector.onload = () => {
             restaurando = validarCopia(String(lector.result));
-            P.ayuda.pintar({ foco: restaurando.error ? '[data-fk="dt-elegir"]' : '[data-fk="dt-r-no"]' });
+            // v2.7 (DATOS-2): desde «Tus datos están a salvo» (la pantalla, no un panel de Ayuda).
+            if (bloqueo && P.modo === 'uso' && !(P.ayuda && P.ayuda.abierto)) P.render({ foco: restaurando.error ? '[data-fk="as-elegir"]' : '[data-fk="as-no"]' });
+            else P.ayuda.pintar({ foco: restaurando.error ? '[data-fk="dt-elegir"]' : '[data-fk="dt-r-no"]' });
         };
         lector.readAsText(el.files[0]);
     });
@@ -1005,7 +1353,16 @@
         partesContar,
         CLAVE_USO,
         CLAVE_RESPALDO,
+        PREFIJO_RESPALDO,
         ESQUEMA,
+        // v2.7 (DATOS-1 a DATOS-4): para la app y para las pruebas.
+        bloqueado: () => !!bloqueo,
+        estadoGuardado: () => leerGuardado().estado,
+        problemaDatos,
+        validarDatos,
+        copiasInternas,
+        numerosVisibles,
+        congelar,
         iniciar() {
             const pintarApp = P.render;
             P.render = (...args) => {
