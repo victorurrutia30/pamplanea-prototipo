@@ -45,11 +45,13 @@ Versión visible en la app y en la guía: **«Prototipo v2.8.0 · 2026-10-22»**
 - **Pendiente 4, opción para la v2.8: APROBADO por Victor («Bloque validado — v2.7», 2026-10-21)**: el día del Primer día, lo anotado toma «Después» y lo muestra con «¿Fue antes? Cambiar».
 - **«recibí 50 en efectivo» llega a Efectivo: APROBADO por Victor («Bloque validado — v2.7», 2026-10-21)**, frase literal: «Anota para la v2.8: «recibí 50 en efectivo» debe llegar a Efectivo.»
 - **Datos (DATOS-1 a DATOS-5): siguen vigentes igual que en la v2.7** (APROBADO por Victor, 2026-10-21, frase literal: «me refería a que ya no perdieran nada de sus datos en estas actualizaciones»). Los ahorros de la v2.7 pasan a «dentro de [su cuenta]» (C-1): como ya se restaban de Libre, su Libre no cambia por eso.
+- **«No asumir» también para los ahorros de antes: APROBADO por Victor (2026-10-22)**, al pegar el prompt «v2.8 — TERMINAR ANTES DE VALIDAR» (frase literal: «"no asumir" también para los ahorros de antes»). En las preguntas de una sola vez, por cada ahorro de antes: «Tu ahorro [nombre], ¿en qué cuenta está?», con sus cuentas y «Aparte (no está en una cuenta)». Mientras no conteste, queda como hoy (dentro del banco con más dinero) y Libre no cambia. Si elige «Aparte», Libre sube por ese monto y la pregunta lo dice antes de confirmar: «Tu libre sube $X porque ese dinero no está en tus cuentas». **Reemplaza la decisión técnica 1.**
+- **D-10 y D-12 (Victor, 2026-10-22):** D-10 = C-1 a C-10 (hechas); D-12 = no reescribir el prototipo (cumplida: se cambió sobre el mismo código, sin dependencias nuevas).
 
 ### E1 — el cálculo y los datos
 
 - **Tus datos a salvo (DATOS-1 a 5).** Al abrir la v2.8 con lo guardado por otra versión, queda una copia intacta en `pamplanea-uso:respaldo:antes-de-v2.8.0`. El esquema sigue en 2: solo se agrega lo nuevo.
-  - Tus ahorros de antes quedan «dentro de» una cuenta (`donde`): la que tiene más dinero de tus bancos (si no hay banco, la cuenta con más). Ya se restaban de Libre: no cambia.
+  - Tus ahorros de antes quedan «dentro de» una cuenta (`donde`): la que tiene más dinero de tus bancos (si no hay banco, la cuenta con más). Ya se restaban de Libre: no cambia. Esa cuenta queda como supuesta (`donde.supuesto`) hasta que contestes la pregunta de una vez («no asumir»).
   - Nada cambia de tipo ni de nombre solo: un gasto fijo pasa a variable solo si tú lo dices (E2), y una tarjeta conserva su fecha.
   - Los números de antes y después (Libre, el gasto del mes y lo que debes de cada tarjeta) se calculan con las reglas de la versión que los guardó (v2.7 o v2.6.7) y con las de ahora; si cambió alguno, el cuadrito lo dice en una línea.
 - **D-3 · Libre** = dinero en tus cuentas − tus ahorros dentro de ellas − lo que falta de tu plan hasta tu próximo ingreso (gastos fijos sin pagar + lo que falta de los variables + ahorro programado + pagos de deudas). Un ingreso que esperas no suma hasta que llega. El ejemplo de 01 §23.2 da $385, $365 y $385 (`invariantes` V2).
@@ -87,7 +89,7 @@ Versión visible en la app y en la guía: **«Prototipo v2.8.0 · 2026-10-22»**
 - **C-10 / C-7 · la ficha de la tarjeta:** su **apodo** (editable en «Editar»: «¿Cómo le dices?»), **«Se cobra en esta tarjeta»** («Netflix $10.00, se cobra el 24 · va dentro del pago de la tarjeta: no resta aparte») y, si dos quincenas llegan antes de que venza, la sugerencia «Puedes repartir este pago entre dos quincenas: $X y $Y. Tú decides.» (repartir es «Cambiar o repartir», nunca solo).
 - **C-1 · Ahorros en Mi dinero:** el total dice cuánto hay dentro de tus cuentas y cuánto aparte; cada ahorro dice «Dentro de Banco Agrícola» o «Aparte». Botones «Guardé en un ahorro» y «Cada quincena». En la ficha: «Guardé más», **«Usé de mi ahorro»** (vuelve a tu libre; el de aparte llega a la cuenta que digas), «Pagué algo con él» (solo los de dentro), «Mover a otro» (entre los del mismo lugar), **«¿Dónde está?» · Cambiar** y «Cada quincena» con **«Ya lo guardé»**. Un ahorro nuevo pregunta «¿Dónde está?».
 - **C-2:** ninguna pantalla, ayuda, glosario ni entrenamiento dice «apartar», «apartado», «reservar» ni «Pagos» como pestaña (`herramientas/palabras-v28.mjs` revisa 565 textos con tus datos y con Ana, Carlos y Rosa; sobre la v2.7 encuentra 65). «Reservar $51» es «Dejar listos $51»; «Reservado de lo que tienes» es «Ya contado de lo que tienes». La reserva se explica solo en «¿De dónde sale?». El intérprete sigue aceptando «aparté».
-- **Preguntas de una sola vez** (a quien viene de la v2.7 o de antes, con sus datos, en Hoy): por cada gasto fijo que parece variable (súper, gasolina, comida, mercado) «¿«Súper» cambia cada quincena?» (**Pasarlo a gasto variable** / **No, queda fijo**), y por cada tarjeta «¿Qué día vence tu próximo pago de [tarjeta]?» con dos fechas y «Es otro día». Nada cambia sin respuesta; «Ahora no» las guarda para la próxima vez.
+- **Preguntas de una sola vez** (a quien viene de la v2.7 o de antes, con sus datos, en Hoy): por cada gasto fijo que parece variable (súper, gasolina, comida, mercado) «¿«Súper» cambia cada quincena?» (**Pasarlo a gasto variable** / **No, queda fijo**), por cada tarjeta «¿Qué día vence tu próximo pago de [tarjeta]?» con dos fechas y «Es otro día», y **por cada ahorro de antes «Tu ahorro [nombre], ¿en qué cuenta está?»** («no asumir»): sus cuentas (la de hoy resaltada) y «Aparte (no está en una cuenta)». Una cuenta: queda dentro de esa y Libre igual. «Aparte»: primero «Tu libre sube $300.00 porque ese dinero no está en tus cuentas.» con «No, volver» / «Sí, está aparte»; al confirmar, Libre sube ese monto y tus cuentas no cambian (no se mueve dinero). Nada cambia sin respuesta; «Ahora no» las guarda para la próxima vez (`invariantes` V11).
 - **Primer día (pendiente 4):** lo que anotas el día de tu Primer día cuenta como **después** de contar y lo dice: «Cuenta como después de contar tu dinero: tu Efectivo baja.» con **«¿Fue antes? Cambiar»**.
 - **Entrenamiento, ayuda, glosario y consejos** con el mapa nuevo: «Mi plan», «Lo que viene», «Ya lo pagué», «Guardé en un ahorro», «Usé de mi ahorro» y tres términos nuevos (Ahorro programado, Gastos variables y Mi plan). Frases de 20 palabras o menos.
 - **D-11:** en «Herramientas de Victor» (`?victor=1`), «Preguntas de comprensión (prueba familiar)» con las tres preguntas y lo que se espera oír.
@@ -96,16 +98,49 @@ Versión visible en la app y en la guía: **«Prototipo v2.8.0 · 2026-10-22»**
 - **Quien no cobra por quincena** (ingresos que varían, o cada semana o cada mes) nunca lee «quincena»: los gastos variables y el ahorro programado dicen «cada mes», «esta semana», etc.
 - **El cuadrito de la v2.8:** «¡PamPlanea está más clara! ✨», hasta 4 líneas de lo que le toca a cada persona (Mi plan, ahorros, gastos variables y, si cambió algún número, antes y después), «Tus datos están completos y a salvo.» y «¡Entendido!».
 
+### Decisión por decisión
+
+| Decisión | Hecha | Prueba que la cubre |
+|---|---|---|
+| D-1 · mapa y verbos | Sí | `entrega2-v23`, `v263`, QUÉ DEBO PROBAR |
+| D-2 · fijos y variables; «Pago» solo para deudas | Sí | `v263`, `v267-editar`, `v262` («− Gasto»), `palabras-v28` |
+| D-3 · Libre ($385 / $365 / $385) | Sí | `invariantes` V2, QUÉ DEBO PROBAR |
+| D-4 · la tarjeta, una sola regla | Sí | `invariantes` V5, `probar-motor`, `v25`, `v26` |
+| D-5 · «¿Qué día vence tu próximo pago?» | Sí | `invariantes` V6, `v231`, `v241`, `v266`, `v267` |
+| D-6, D-7, D-8 | Sí (v2.7, se conservan) | `invariantes` I01 a I08 |
+| D-9 · la cuota termina sola, «Me prestaron», usar parte de un ahorro | Sí | `invariantes` V3 y V7 (con la línea de Mes) |
+| D-10 · C-1 a C-10 | Sí (todas, abajo) | — |
+| D-11 · preguntas de comprensión | Sí | `v26` (herramientas de Victor) |
+| D-12 · no reescribir el prototipo | Cumplida | el mismo código, sin dependencias nuevas |
+| C-1 · ahorros dentro / aparte | Sí | `invariantes` V3, `entrega2-v23`, QUÉ DEBO PROBAR |
+| C-2 · palabras que no se dicen | Sí | `palabras-v28` |
+| C-3 · gastos variables | Sí | `invariantes` V4, QUÉ DEBO PROBAR |
+| C-4 / P-1 · «¿Es tu pago de…?» | Sí | `invariantes` V9, `qa-v261` C-07, `v265` A3 |
+| C-5 · ±10 % / ±3 días y efectivo | Sí | `invariantes` V8, `qa-v261` C-09, `v265` B2 y B3, `recorrer-v2` |
+| C-6 → A · montos con el teclado del teléfono | Sí (v2.7, se conserva) | `montos` |
+| C-7 · cobros con tarjeta | Sí | `invariantes` V5, `qa-v261` C-03 |
+| C-8 · Hoy simple | Sí | `aceptacion-v23`, `viaje-v23`, `v25` |
+| C-9 · Mi plan | Sí | `entrega2-v23`, `v231`, `v262` |
+| C-10 · la ficha de la tarjeta | Sí | QUÉ DEBO PROBAR, `capturas-v28` |
+| P-3 y pendiente 4 · Primer día «Después» | Sí | `viaje-v23`, `v266`, `invariantes` P3 |
+| DATOS-1 a 5 | Sí | `invariantes` V10 e I12, `actualizar` (c640e4e y d702de0) |
+| «No asumir» · ahorros de antes | Sí | `invariantes` V11, `novedades`, `actualizar` |
+
 ### Pruebas de E2 y al terminar
 
 - **Durante E2, una a la vez:** las 37 pruebas por archivo, `palabras-v28` y `actualizar --ref=c640e4e` y `--ref=d702de0`: código 0 y sin fallos. Después se ajustaron textos (quien no cobra por quincena nunca lee «quincena»), la línea de Mes de lo que te prestaron y las marcas «− Gasto»/«− Pago» del calendario; `v25` (la que lo encontró) volvió a pasar completa con esos cambios.
-- **Batería final (código de 5429cbb, una a la vez):** 22 en verde — `probar-motor`, `humo`, `humo-v23`, `teclado`, `contraste`, `contraste-v21`, `contraste-v23`, `instalar-ua`, `verificar-guia`, `invariantes` (29 de 29), `montos`, `novedades`, `palabras-v28`, `numeros-entrenamiento`, `probar-pwa`, `recuperar-v263`, `recorrer-v2`, `recorrer-sets`, `recorrer-modos`, `aceptacion-v23`, `entrega2-v23` y `viaje-v23` — más `v25` (arriba).
-- **QUÉ DEBO PROBAR, verificado antes de escribirlo:** un guion hizo el Primer día en la v2.7 (copia de d702de0) y cada paso en la v2.8, con la fecha del 22 y del 26 de octubre: $685 → $585 → $435 → $385 → $385 → $385 → $365 → $365 → $365 → $465, sin fallos.
-- **DETENIDO (no es un fallo de la app):** Claude Code detuvo la batería final cuando la computadora se quedó con poca memoria, mientras corría `v231`. No se volvió a lanzar sola. Falta correr, en este orden y una a la vez: `v231`, `v24`, `v241`, `v26` (con la comprobación nueva de D-11), `v261`, `v262` (marcas «− Gasto»), `v263`, `v264`, `v265`, `v266`, `v267`, `v267-editar`, `qa-v261`, `atras`, `formularios-v265`, `actualizar --ref=c640e4e`, `actualizar --ref=d702de0` y `capturas-v28` (las de `capturas/v28` son de antes de los últimos textos: dicen «pagos ~$240» donde ahora dice «gastos»). Todas pasaron durante E2.
+- **Batería final, primera parte (código de 5429cbb, una a la vez):** 22 en verde: `probar-motor`, `humo`, `humo-v23`, `teclado`, `contraste`, `contraste-v21`, `contraste-v23`, `instalar-ua`, `verificar-guia`, `invariantes`, `montos`, `novedades`, `palabras-v28`, `numeros-entrenamiento`, `probar-pwa`, `recuperar-v263`, `recorrer-v2`, `recorrer-sets`, `recorrer-modos`, `aceptacion-v23`, `entrega2-v23` y `viaje-v23`, más `v25`. Claude Code la detuvo en `v231` porque la computadora se quedó con poca memoria (no fue un fallo de la app).
+- **Batería final, segunda parte (con «no asumir», 2026-10-22):** con la memoria primero: antes de cada prueba se cerraron los Chrome de pruebas anteriores y solo se lanzó con 4 GB libres o más (hubo entre 4.6 y 5.3 GB). Una a la vez; `v266` y `v267` en dos partes. Todas con código 0 y sin fallos:
+  - `actualizar --ref=c640e4e` (48 comprobaciones) y `--ref=d702de0` (45), primero;
+  - `v231`, `v24`, `v241`, `v26` (con D-11), `v261`, `v262`, `v263`, `v264`, `v265`, `v266` (abcd y efg), `v267` (abc y def), `v267-editar`, `qa-v261`, `atras` y `formularios-v265`;
+  - otra vez por «no asumir»: `invariantes` (**30 de 30** filas, con V11), `palabras-v28` (571 textos, 0) y `novedades`; y también `aceptacion-v23`, `recuperar-v263`, `viaje-v23` y `probar-pwa`, que cargan datos de versiones anteriores;
+  - `capturas-v28` a 390×844 y 1440×900 con el código final (revisadas como imágenes; ahora incluyen la pregunta de un ahorro y «Aparte»).
+- **Ninguna baja frente a la línea base** (37 de 37 en d702de0).
+- **QUÉ DEBO PROBAR, verificado antes de escribirlo:** un guion hizo el Primer día en la v2.7 (copia de d702de0) y cada paso en la v2.8, con la fecha del 22 y del 26 de octubre: $685 → $585 → (Emergencias: «Aparte» dice «Tu libre sube $300.00…», «No, volver», «Banco Agrícola») $585 → $435 → $385 → $385 → $385 → $365 → $365 → $365 → $465, sin fallos.
 
 ### Decisiones técnicas — REVISAR (v2.8)
 
-1. **Ahorros de antes: en qué cuenta.** En el banco con más dinero (si no hay banco, en la cuenta con más). Solo se ve como «dentro de Banco Agrícola»; se cambia en el ahorro. *(Se ve: QUÉ DEBO PROBAR.)*
+1. ~~**Ahorros de antes: en qué cuenta.** En el banco con más dinero (si no hay banco, en la cuenta con más). Solo se ve como «dentro de Banco Agrícola»; se cambia en el ahorro.~~ **REEMPLAZADA (2026-10-22) por la pregunta de una vez «Tu ahorro [nombre], ¿en qué cuenta está?» («no asumir», APROBADO por Victor).** Ese banco solo se usa mientras no contestes. *(Se ve: QUÉ DEBO PROBAR.)*
 2. **Un ahorro aparte no paga un gasto directo.** Primero «Usé de mi ahorro» (llega a una cuenta) y después el gasto. Así nunca se resta dos veces.
 3. **Cerrar o eliminar un ahorro aparte con dinero:** el dinero llega a tu efectivo (o la cuenta que elijas) y vuelve a tu libre.
 4. **La quincena del plan:** del último ingreso que ya tienes al día antes del siguiente; sin ingreso fijo, el mes (o del 1 al 15 y del 16 al fin de mes con «los próximos 15 días»). Un gasto variable nuevo cuenta desde el inicio de esta quincena (lo que ya gastaste de ese tipo también cuenta).
