@@ -1,7 +1,7 @@
 // CAPTURAS v2.8 «Más claro», a 390×844 (teléfono) y 1440×900 (computadora), con datos propios («Marta», 21 oct):
 // Hoy (el número, lo que viene y Anotar), Mi plan (sus 5 secciones), Anotar con verbos (y «súper 20» de un gasto
 // variable), la ficha de la tarjeta (sus cobros, apodo y la sugerencia de repartir), Ahorros (dentro y aparte), la ficha de
-// un ahorro, las preguntas de una vez (a quien viene de la v2.7) y el cuadrito de novedades.
+// un ahorro, las preguntas de una vez (a quien viene de la v2.7; con la de cada ahorro de antes, «no asumir») y el cuadrito.
 // Uso: node herramientas/capturas-v28.mjs [--base=http://…/] [--puerto=9959] [--tema=serena-claro]
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
@@ -71,6 +71,13 @@ for (const ancho of [390, 1440]) {
         await esperar(300);
         await subir('#p28-t');
         await foto('2-preguntas-de-una-vez', ancho);
+        // «No asumir»: la pregunta de un ahorro de antes y, con «Aparte», lo que sube su libre antes de confirmar.
+        await subir('.p28-cuentas');
+        await foto('2b-pregunta-ahorro', ancho);
+        await ev(`document.querySelector('[data-fk^="p28-ah-"][data-fk$="-aparte"]')?.click(); true`);
+        await esperar(300);
+        await subir('.p28-sube');
+        await foto('2c-ahorro-aparte', ancho);
         // 2. Hoy: el número, lo que viene y Anotar.
         await armar({ ancho });
         await foto('3-hoy', ancho);
