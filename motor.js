@@ -1324,7 +1324,7 @@
             d.emoji = frecuente ? frecuente.emoji : D.EMOJI_NOMBRE[palabras[0]] || '🧾';
             d.categoria = frecuente ? frecuente.categoria : 'otros';
             d.frecuencia = frecuente && frecuente.semanal ? 'semanal' : null;
-            if (!d.medio) d.medio = medioUsual(st, d.categoria).id;
+            // v2.8 (Victor, 2026-10-22): un gasto fijo nunca recibe una cuenta que la persona no eligió (ni por su tipo).
         }
         if (d.tipo === 'gasto') {
             const k = D.CATEGORIAS.find((x) => palabras.some((w) => x.palabras.includes(w))) || D.CATEGORIAS.find((x) => x.id === 'otros');
@@ -1533,6 +1533,13 @@
         );
     }
 
+    /** v2.8 (Victor, 2026-10-22): un banco o una tarjeta pueden cobrar solos un gasto fijo; el efectivo y una billetera, no. */
+    function puedeCobrarSolo(st, id) {
+        const m = id ? medio(st, id) : null;
+        const l = m && m.lugar ? lugar(st, m.lugar) : null;
+        return !!m && (!!m.tarjeta || (!!l && l.tipo === 'banco'));
+    }
+
     /** Lo que todavía falta para guardar un borrador. */
     function faltan(st, d) {
         const f = [];
@@ -1559,6 +1566,9 @@
             if (!d.nombre) f.push('nombre');
             if (!d.frecuencia) f.push('frecuencia');
             if (d.frecuencia !== 'semanal' && d.dia === null && !(d.frecuencia === 'unico' && d.fechaPago)) f.push('dia');
+            // v2.8 (Victor, 2026-10-22): «¿Con qué lo pagas?» y, con un banco o una tarjeta, «¿Se cobra solo?».
+            if (!d.medio) f.push('medio');
+            else if (puedeCobrarSolo(st, d.medio) && !d.solo) f.push('solo');
         }
         if (d.tipo === 'ingreso' && !d.lugar) f.push('lugar');
         // v2.7 (P-3): del mismo día que el último cuadre de esa cuenta: ¿antes o después de contar? No se asume.
@@ -1577,7 +1587,7 @@
         MESES, MESES_CORTOS, DIAS, DIAS_CORTOS, pad, sumarDias, diasEntre, diaSemana, partes, diasDelMes, fechaDe, mesMas, fechaCorta, fechaLarga, conDia, diaCorto, relativa, haceDias, ultimoDia, proximoDia,
         dinero, leerMonto, montoExcede, montoCampo, suma, lugar, medio, tarjeta, pago, ingreso, apartado, categoria, principal, sinVS,
         despues, despuesCuadre, cuadreAnotar, lugarGasto, saldoLugar, anteriorAlCuadre, lugaresDe, tienes, explicadoPorCuadre, sinDetalle, apartadoTotal, ultimaActividad, fechasRegla, ocurrenciasPago, ocurrenciasIngreso, tarjetaInfo, ocurrenciasTarjeta,
-        horizonte, calcular, resumenMes, pagosDelMes, medioUsual, normalizar, entender, faltan, capital, porDiaDe, apartadosVencidos, esDiaDeIngreso, coincide,
+        horizonte, calcular, resumenMes, pagosDelMes, medioUsual, normalizar, entender, faltan, puedeCobrarSolo, capital, porDiaDe, apartadosVencidos, esDiaDeIngreso, coincide,
         inicioDe, cortes, corteAntes, corteDespues, fundado, esFundado, periodoDe, fuentesPara, asignacion, reglaPago, recurrentes, descuentosDe, proyectar, claveVigente, reservasDe,
         esUnico, ingresoDeClave, llegoUnico, unicosPara,
         porPagar, porRecibir, ingresoEsperado, aplicarEsperado, pagoParecido,

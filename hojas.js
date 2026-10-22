@@ -517,8 +517,8 @@
         const c = M.leerMonto(el.value);
         if (c !== null) el.value = M.montoCampo(c);
     });
-    function campoTexto(h, { campo, label, valor = '', placeholder = '', errorTexto = '' }) {
-        return `<div class="campo-g"><label class="campo-l" for="f-${campo}">${label}</label><div class="campo"><input id="f-${campo}" data-campo="${campo}" type="text" autocomplete="off" placeholder="${esc(placeholder)}" value="${esc(valor)}" ${inv(h, campo)}></div>${error(h, campo, errorTexto)}</div>`;
+    function campoTexto(h, { campo, label, valor = '', placeholder = '', errorTexto = '', ayuda = '' }) {
+        return `<div class="campo-g"><label class="campo-l" for="f-${campo}">${label}</label><div class="campo"><input id="f-${campo}" data-campo="${campo}" type="text" autocomplete="off" placeholder="${esc(placeholder)}" value="${esc(valor)}" ${inv(h, campo)}></div>${ayuda ? `<p class="campo-ayuda">${ayuda}</p>` : ''}${error(h, campo, errorTexto)}</div>`;
     }
     /** Grupo de opciones (botones con aria-pressed): un solo patrón para medios, lugares, días… */
     function opciones(h, { campo, label, lista, valor, errorTexto = '', accion = 'valor', columnas = false }) {
@@ -662,6 +662,51 @@
     P.campoFecha = campoFecha;
     const medios = (st) => st.medios.filter((m) => !m.oculto).map((m) => ({ v: m.id, t: m.nombre, e: m.emoji }));
     const lugares = (st) => st.lugares.map((l) => ({ v: l.id, t: l.nombre, e: l.emoji, s: dinero(M.saldoLugar(st, l.id)) }));
+    // v2.8 (Victor, 2026-10-22): «¿De qué banco o cooperativa?» + «Alias (opcional)», en tarjetas y cuentas de banco, igual
+    // al crear y al editar (V2-88). Reemplaza «¿Cómo se llama?» y «¿Cómo le dices?». Nada guardado cambia de nombre solo.
+    const bancosLista = () => [...D.BANCOS.map((b) => ({ v: b, t: b })), { v: 'Otro', t: 'Otro' }];
+    /** El banco de la lista que corresponde a un nombre guardado («Crédito BAC 2» → BAC, «Banco Agrícola» → Agrícola); si no, null. */
+    function bancoDeNombre(nombre) {
+        const n = M.normalizar(nombre || '').replace(/^(banco|credito|debito|tarjeta|cooperativa)\s+/, '').replace(/\s+\d+$/, '');
+        return D.BANCOS.find((b) => M.normalizar(b) === n) || null;
+    }
+    /** Al editar: el banco de la lista si su nombre coincide; si no, «Otro» con su nombre. */
+    function bancoInicial(nombre, banco) {
+        const b = banco ? (D.BANCOS.includes(banco) ? banco : null) : bancoDeNombre(nombre);
+        const x = b ? { banco: b, otroNombre: '' } : { banco: 'Otro', otroNombre: banco || nombre || '' };
+        return { ...x, bancoAntes: x.banco, otroAntes: x.otroNombre };
+    }
+    /** El nombre al guardar: el de antes si no cambió el banco; si no, el del banco elegido («Crédito BAC», «Banco BAC»). */
+    function nombreDeBanco(h, prefijo) {
+        const otro = (h.otroNombre || '').trim();
+        if (!h.banco) return '';
+        if (h.editar && h.banco === h.bancoAntes && otro === (h.otroAntes || '').trim()) return h.nombreAntes;
+        return h.banco === 'Otro' ? otro : prefijo + h.banco;
+    }
+    /** La tarjeta se llama como su banco («Crédito BAC», y «Crédito BAC 2» si ya tienes una) o como dijiste en «Otro». */
+    function nombreTarjetaForm(st, h) {
+        const base = nombreDeBanco(h, 'Crédito ');
+        if (!base || (h.editar && base === h.nombreAntes)) return base;
+        const otras = st.tarjetas.filter((t) => t.id !== h.tarjetaId).map((t) => t.nombre);
+        let final = base;
+        for (let n = 2; otras.includes(final); n++) final = `${base} ${n}`;
+        return final;
+    }
+    function camposBanco(h, { tienda = false } = {}) {
+        return `${opciones(h, { campo: 'banco', label: '¿De qué banco o cooperativa?', lista: bancosLista(), valor: h.banco || '', errorTexto: 'Elige el banco o cooperativa' })}
+            ${h.banco === 'Otro' ? campoTexto(h, { campo: 'otroNombre', label: tienda ? '¿Cuál banco, cooperativa o tienda?' : '¿Cuál banco o cooperativa?', valor: h.otroNombre || '', placeholder: tienda ? 'Ej. Tarjeta de la tienda' : 'Ej. Cooperativa de mi trabajo', errorTexto: 'Escribe cuál es' }) : ''}
+            ${campoTexto(h, { campo: 'apodo', label: 'Alias <span class="opcional">(opcional)</span>', valor: h.apodo || '', placeholder: 'Ej. La de la casa', ayuda: 'Así la verás en la app.' })}`;
+    }
+    const faltaBanco = (h) => (!h.banco ? ['banco'] : h.banco === 'Otro' && !(h.otroNombre || '').trim() ? ['otroNombre'] : []);
+    /** Una cuenta de banco al editarla: su banco (o «Otro» con su nombre) y su alias, si se llama distinto. */
+    function bancoLugar(l) {
+        if (l.tipo !== 'banco') return { banco: null, otroNombre: '', apodo: '' };
+        const x = bancoInicial(l.nombre, l.banco);
+        const base = l.banco ? (x.banco === 'Otro' ? x.otroNombre : 'Banco ' + x.banco) : l.nombre;
+        return { ...x, apodo: l.banco && l.nombre !== base ? l.nombre : '', nombreAntes: base };
+    }
+    // v2.8 (Victor, 2026-10-22): «¿Con qué lo pagas?» y, solo con un banco o una tarjeta, «¿Se cobra solo?».
+    const SOLO = [{ v: 'si', t: 'Sí, se cobra solo' }, { v: 'no', t: 'No, yo lo pago' }];
     function fechasCortas(st, extra = null) {
         const lista = [{ v: st.hoy, t: 'Hoy' }, { v: M.sumarDias(st.hoy, -1), t: 'Ayer' }, { v: M.sumarDias(st.hoy, -2), t: 'Antier' }];
         if (extra && !lista.some((x) => x.v === extra)) lista.push({ v: extra, t: 'El ' + M.fechaCorta(extra) });
@@ -778,7 +823,8 @@
             d.nombre = d.nombre || 'Ingreso';
         }
         if (tipo === 'pago') {
-            d.medio = st.medios[0] && st.medios[0].id;
+            // v2.8 (Victor, 2026-10-22): «¿Con qué lo pagas?» lo contestas tú (nunca se elige por ti).
+            d.medio = base.medio || null;
             d.emoji = '🧾';
             d.categoria = 'otros';
         }
@@ -820,7 +866,7 @@
         const fechaChip = () => chip('fecha', `${icon('calendar-days', 'ico-xs')}${esc(M.capital(M.relativa(d.fecha, st.hoy)))}${d.fecha > st.hoy ? ' <span class="chip-s">futuro</span>' : ''}`, { abierto: h.editando === 'fecha', etiqueta: 'Cuándo' });
         const medioChip = () => {
             const m = M.medio(st, d.medio);
-            return chip('medio', m ? `${emo(m.emoji, 16)} ${esc(m.nombre)}` : '¿Con qué pagaste?', { falta: !m, abierto: h.editando === 'medio', etiqueta: 'Pagado con' });
+            return chip('medio', m ? `${emo(m.emoji, 16)} ${esc(m.nombre)}` : d.tipo === 'pago' ? '¿Con qué lo pagas?' : '¿Con qué pagaste?', { falta: !m, abierto: h.editando === 'medio', etiqueta: 'Pagado con' });
         };
         if (d.tipo === 'gasto') {
             out.push(montoChip());
@@ -888,7 +934,7 @@
             return campoMonto(h, { label, valor: d.monto !== null ? M.montoCampo(d.monto) : '', errorTexto: d.tipo === 'cuadre' ? 'Escribe cuánto tienes, aunque sea $0' : 'Escribe cuánto fue', id: 'f-monto', ayuda: dudoso || (d.tipo === 'cuadre' ? 'Más o menos. Desde aquí sigue la cuenta.' : '') });
         }
         if (campo === 'tarjeta') return opciones(h, { campo: 'tarjeta', label: '¿Qué tarjeta pagaste?', accion: 'anotarValor', valor: d.tarjeta, lista: st.tarjetas.map((t) => ({ v: t.id, t: t.nombre, e: t.emoji })), errorTexto: 'Elige la tarjeta' });
-        if (campo === 'medio') return opciones(h, { campo: 'medio', label: d.tipo === 'pago' ? '¿Con qué lo pagas?' : '¿Con qué pagaste?', accion: 'anotarValor', valor: d.medio, lista: medios(st), errorTexto: 'Elige con qué pagaste' });
+        if (campo === 'medio') return opciones(h, { campo: 'medio', label: d.tipo === 'pago' ? '¿Con qué lo pagas?' : '¿Con qué pagaste?', accion: 'anotarValor', valor: d.medio, lista: medios(st), errorTexto: d.tipo === 'pago' ? 'Elige con qué lo pagas' : 'Elige con qué pagaste' });
         if (campo === 'fecha') return campoFecha(h, 'fecha', d.fecha, { label: '¿Cuándo?', futuro: d.tipo === 'gasto' || d.tipo === 'ingreso', extra: d.ocurrencia && d.ocurrencia <= st.hoy ? d.ocurrencia : null, ayuda: d.tipo === 'gasto' || d.tipo === 'ingreso' ? 'Si eliges una fecha que todavía no llega, lo pongo en Mi plan.' : '' });
         if (campo === 'lugar') return opciones(h, { campo: 'lugar', label: d.tipo === 'ingreso' || d.tipo === 'prestamo' ? '¿Dónde llegó?' : d.tipo === 'pagoTarjeta' ? '¿Desde dónde?' : '¿Dónde?', accion: 'anotarValor', valor: d.lugar, lista: lugares(st), errorTexto: 'Elige dónde' });
         if (campo === 'frecuencia') return opciones(h, { campo: 'frecuencia', label: '¿Se repite?', accion: 'anotarValor', valor: d.frecuencia, lista: [{ v: 'mensual', t: 'Cada mes' }, { v: 'semanal', t: 'Cada semana' }, { v: 'unico', t: 'Solo esta vez' }], errorTexto: 'Dinos si se repite' });
@@ -942,6 +988,8 @@
             out.push(`<div class="pregunta">${opciones(h, { campo: 'tarjeta', label: '¿Qué tarjeta pagaste?', accion: 'anotarValor', valor: null, lista: lista.map((t) => ({ v: t.id, t: t.nombre, e: t.emoji })), errorTexto: 'Elige la tarjeta' })}</div>`);
         }
         if (d.tipo === 'pago' && !d.frecuencia) out.push(`<div class="pregunta">${opciones(h, { campo: 'frecuencia', label: '¿Se repite?', accion: 'anotarValor', valor: d.frecuencia, lista: [{ v: 'mensual', t: 'Cada mes' }, { v: 'semanal', t: 'Cada semana' }, { v: 'unico', t: 'Solo esta vez' }], errorTexto: 'Dinos si se repite' })}</div>`);
+        // v2.8 (Victor, 2026-10-22): con un banco o una tarjeta, «¿Se cobra solo?».
+        if (d.tipo === 'pago' && M.puedeCobrarSolo(st, d.medio)) out.push(`<div class="pregunta">${opciones(h, { campo: 'solo', label: '¿Se cobra solo?', accion: 'anotarValor', valor: d.solo || '', lista: SOLO, errorTexto: 'Elige si se cobra solo' })}</div>`);
         // V2-82: el gasto se llama como un pago ya pagado: si hay uno siguiente, se ofrece marcar ese (por adelantado).
         if (d.tipo === 'gasto' && d.pagoSiguiente && !d.cualPago) {
             const pg = M.pago(st, d.pagoSiguiente.pago);
@@ -1498,7 +1546,8 @@
                         siguiente = { tipo: 'reparte', id: d.ingresoRef.id, fecha: d.ingresoRef.fecha, monto: d.monto };
                     } else conOrden(P.registrar(s, { tipo: 'ingreso', fecha: d.fecha, monto: d.monto, nombre: d.nombre, categoria: d.categoria, emoji: d.emoji, lugar: d.lugar, anotado: true, nuevo: true }));
                 } else if (d.tipo === 'pago') {
-                    P.crearPago(s, { nombre: d.nombre, emoji: d.emoji, categoria: d.categoria, monto: d.monto, frecuencia: d.frecuencia, dia: d.dia, diaSemana: d.diaSemana, medio: d.medio, fecha: d.frecuencia === 'unico' ? d.fechaPago || M.proximoDia(s.hoy, d.dia || 1) : undefined, antes: antes && d.antesDebe === antes.fecha ? 'no' : 'si' });
+                    const pc = P.crearPago(s, { nombre: d.nombre, emoji: d.emoji, categoria: d.categoria, monto: d.monto, frecuencia: d.frecuencia, dia: d.dia, diaSemana: d.diaSemana, medio: d.medio, fecha: d.frecuencia === 'unico' ? d.fechaPago || M.proximoDia(s.hoy, d.dia || 1) : undefined, antes: antes && d.antesDebe === antes.fecha ? 'no' : 'si' });
+                    if (d.solo === 'si' && M.puedeCobrarSolo(s, d.medio)) pc.automatico = true;
                 } else if (d.tipo === 'apartar') {
                     let id = d.apartado;
                     if (!id) {
@@ -2896,7 +2945,7 @@
                 // la pagas y (V2-87) con qué ingreso.
                 const info = M.tarjetaInfo(st, t);
                 const ult = info.ult;
-                Object.assign(h, { editar: true, tipoDeuda: 'tarjeta', nombre: t.nombre, apodo: t.apodo || '', corte: t.corte ? String(t.corte) : '', sinCorte: !t.corte, pagoDia: String(t.pagoDia), cupo: t.cupo ? M.montoCampo(t.cupo) : '', inicial: !!ult.inicial, usualNueva: ult.inicial && t.pagoUsual ? M.montoCampo(t.pagoUsual) : '', debeHoy: ult.inicial && t.debeInicial !== null && t.debeInicial !== undefined ? M.montoCampo(t.debeInicial) : '', ecTotal: ult.inicial ? '' : M.montoCampo(ult.total), ecMinimo: ult.inicial ? '' : M.montoCampo(ult.minimo), medio: t.medio && M.medio(st, t.medio) ? t.medio : medioDef });
+                Object.assign(h, { editar: true, tipoDeuda: 'tarjeta', nombre: t.nombre, nombreAntes: t.nombre, ...bancoInicial(t.nombre), apodo: t.apodo || '', corte: t.corte ? String(t.corte) : '', sinCorte: !t.corte, pagoDia: String(t.pagoDia), cupo: t.cupo ? M.montoCampo(t.cupo) : '', inicial: !!ult.inicial, usualNueva: ult.inicial && t.pagoUsual ? M.montoCampo(t.pagoUsual) : '', debeHoy: ult.inicial && t.debeInicial !== null && t.debeInicial !== undefined ? M.montoCampo(t.debeInicial) : '', ecTotal: ult.inicial ? '' : M.montoCampo(ult.total), ecMinimo: ult.inicial ? '' : M.montoCampo(ult.minimo), medio: t.medio && M.medio(st, t.medio) ? t.medio : medioDef });
                 // v2.8 (D-5): si dijo que su próximo pago es el del mes siguiente, el formulario lo trae así.
                 if (ult.inicial && t.corte) {
                     const base = t.desde && t.desde <= st.hoy ? t.desde : st.hoy;
@@ -2908,9 +2957,9 @@
                     h.fuenteTAntes = h.fuenteT;
                 }
             }
-            else Object.assign(h, { tipoDeuda: h.tipoInicial || null, nombre: '', corte: '', pagoDia: '', cupo: '', cuota: '', dia: '', debe: '', usualNueva: '', debeHoy: '', medio: medioDef });
+            else Object.assign(h, { tipoDeuda: h.tipoInicial || null, nombre: '', banco: null, otroNombre: '', apodo: '', corte: '', pagoDia: '', cupo: '', cuota: '', dia: '', debe: '', usualNueva: '', debeHoy: '', medio: medioDef });
         },
-        foco: (h) => (h.tipoDeuda ? '#f-nombre' : '#hoja-t'),
+        foco: (h) => (h.tipoDeuda === 'tarjeta' && !h.cuotaTarjeta ? (h.editar ? '#hoja-t' : '[data-campo="banco"]') : h.tipoDeuda ? '#f-nombre' : '#hoja-t'),
         html(h) {
             const st = P.st;
             const tipo = D.TIPOS_DEUDA.find((x) => x.id === h.tipoDeuda);
@@ -2921,9 +2970,8 @@
                 : `<div class="campo-g"><p class="campo-l" id="l-tipoDeuda">¿Qué es?</p><div class="opciones-grandes opciones-grandes--2" role="radiogroup" aria-labelledby="l-tipoDeuda">${tiposLista.map((x) => `<button type="button" class="opcion-g" role="radio" aria-checked="${h.tipoDeuda === x.id}" data-a="valor" data-campo="tipoDeuda" data-v="${x.id}" data-fk="td-${x.id}">${caja(x.emoji)}<span class="opcion-g-txt"><span class="opcion-g-t">${esc(x.nombre)}</span><span class="fila-s">${esc(x.s)}</span></span>${h.tipoDeuda === x.id ? icon('circle-check', 'ico-ok') : ''}</button>`).join('')}</div>${error(h, 'tipoDeuda', 'Elige qué es')}</div>`;
             let campos = '';
             if (h.tipoDeuda === 'tarjeta' && !h.cuotaTarjeta) {
-                // v2.8 (C-7): la tarjeta puede tener apodo («la de la casa»).
-                campos = `${campoTexto(h, { campo: 'nombre', label: '¿Cómo se llama?', valor: h.nombre, placeholder: EJ_DEUDA.tarjeta, errorTexto: 'Ponle un nombre' })}
-                    ${campoTexto(h, { campo: 'apodo', label: '¿Cómo le dices? <span class="opcional">(opcional)</span>', valor: h.apodo || '', placeholder: 'Ej. La de la casa' })}
+                // v2.8 (C-7; Victor, 2026-10-22): «¿De qué banco o cooperativa?» y su alias («La de la casa»), igual al crear y al editar.
+                campos = `${camposBanco(h, { tienda: true })}
                     <div class="ob-2">${campoDia(h, 'corte', h.sinCorte ? '¿Qué día es el corte? <span class="opcional">(opcional)</span>' : '¿Qué día es el corte?')}${campoDia(h, 'pagoDia', '¿Qué día vence tu próximo pago?')}</div>
                     <div id="vence-linea">${venceLinea(st, h)}</div>
                     <p class="fila-s">${h.sinCorte ? 'Si no sabes el día de corte, déjalo vacío: te lo pido con tu estado de cuenta.' : 'Los dos están en tu estado de cuenta.'}</p>
@@ -3080,12 +3128,15 @@
     P.acciones.nuevaDeudaOk = () => {
         const h = P.ui.hoja;
         const st = P.st;
-        const nombre = (h.nombre || '').trim();
+        const esTarjeta = h.tipoDeuda === 'tarjeta' && !h.cuotaTarjeta;
+        // v2.8 (Victor, 2026-10-22): la tarjeta se llama como su banco («Crédito BAC») o como dijiste en «Otro».
+        const nombre = esTarjeta ? nombreTarjetaForm(st, h) : (h.nombre || '').trim();
         const faltan = [];
         if (!h.tipoDeuda) faltan.push('tipoDeuda');
         else {
-            if (!nombre) faltan.push('nombre');
-            if (h.tipoDeuda === 'tarjeta' && !h.cuotaTarjeta) {
+            if (esTarjeta) faltan.push(...faltaBanco(h));
+            else if (!nombre) faltan.push('nombre');
+            if (esTarjeta) {
                 if (!diaValido(h.corte) && !(h.sinCorte && !String(h.corte || '').trim())) faltan.push('corte');
                 if (!diaValido(h.pagoDia)) faltan.push('pagoDia');
                 // v2.7 (F14): un pago de contado de $0 vale (vacío no). (F13): el mínimo no puede ser mayor que el total.
@@ -3542,7 +3593,7 @@
             const l = h.id ? M.lugar(st, h.id) : null;
             // V2-88: al editar, lo mismo que al agregarla (cuánto tienes hoy queda como un cuadre de hoy si lo cambias).
             const debito = l ? st.medios.some((m) => m.lugar === l.id && m.tarjetaDebito && !m.oculto) : true;
-            Object.assign(h, l ? { editar: true, clase: l.tipo, nombre: l.nombre, monto: M.montoCampo(M.saldoLugar(st, l.id)), montoAntes: M.saldoLugar(st, l.id), debito, debitoAntes: debito } : { clase: 'banco', nombre: '', monto: '', debito: true });
+            Object.assign(h, l ? { editar: true, clase: l.tipo, nombre: l.nombre, ...bancoLugar(l), monto: M.montoCampo(M.saldoLugar(st, l.id)), montoAntes: M.saldoLugar(st, l.id), debito, debitoAntes: debito } : { clase: 'banco', nombre: '', banco: null, otroNombre: '', apodo: '', monto: '', debito: true });
             h.confirmarEliminar = false;
         },
         html(h) {
@@ -3551,7 +3602,7 @@
             return {
                 titulo: h.editar ? `Editar ${esc(l.nombre)}` : 'Nuevo lugar',
                 cuerpo: `${opciones(h, { campo: 'clase', label: '¿Qué es?', lista: TIPOS_LUGAR, valor: h.clase })}
-                    ${campoTexto(h, { campo: 'nombre', label: '¿Cómo se llama?', valor: h.nombre, placeholder: h.clase === 'banco' ? 'Ej. Banco Cuscatlán' : h.clase === 'billetera' ? 'Ej. Billetera del celular' : 'Ej. Alcancía', errorTexto: 'Ponle un nombre' })}
+                    ${h.clase === 'banco' ? camposBanco(h) : campoTexto(h, { campo: 'nombre', label: '¿Cómo se llama?', valor: h.nombre, placeholder: h.clase === 'billetera' ? 'Ej. Billetera del celular' : 'Ej. Alcancía', errorTexto: 'Ponle un nombre' })}
                     ${campoMonto(h, { label: '¿Cuánto tienes ahí hoy?', valor: h.monto, ayuda: h.editar ? 'Si lo cambias, queda como un cuadre de hoy (lo de antes no se toca).' : 'Más o menos. Es su primer cuadre.', errorTexto: 'Escribe cuánto tienes, aunque sea $0' })}
                     ${h.clase === 'banco' ? `<div class="chips"><button type="button" class="chip" aria-pressed="${!!(h.debito)}" data-a="valor" data-campo="debito" data-v="${!h.debito}" data-fk="lugar-debito">${h.debito ? icon('check', 'ico-xs') : ''}Tengo tarjeta de débito de este banco</button></div>` : ''}
                     ${h.editar ? (st.lugares.length < 2 ? '<p class="fila-s">Es tu único lugar: no se puede eliminar.</p>' : h.confirmarEliminar ? reasignarHtml(h, st, ligLugar(st, l.id), { fueraMedios: mediosDeLugar(st, l.id), fueraLugar: l.id }) + confirmarHtml(`¿Eliminar ${esc(l.nombre)}?`, `Sus ${dinero(M.saldoLugar(st, l.id))} dejan de contar en «Tienes». Lo que anotaste se queda en tu historial.`, 'lugarEliminar', 'lugar-eliminar') : `<button type="button" class="link link--peligro" data-a="valor" data-campo="confirmarEliminar" data-v="si" data-fk="lugar-eliminar">${icon('trash-2', 'ico-s')}Eliminar lugar</button>`) : ''}`,
@@ -3571,15 +3622,22 @@
     };
     P.acciones.lugarOk = () => {
         const h = P.ui.hoja;
-        const nombre = (h.nombre || '').trim();
+        const esBanco = h.clase === 'banco';
+        // v2.8 (Victor, 2026-10-22): una cuenta de banco se llama como su banco, o como su alias si le pusiste uno.
+        const alias = esBanco ? (h.apodo || '').trim() : '';
+        const nombre = esBanco ? alias || nombreDeBanco(h, 'Banco ') : (h.nombre || '').trim();
+        const banco = esBanco && h.banco ? (h.banco === 'Otro' ? (h.otroNombre || '').trim() : h.banco) : '';
         const monto = M.leerMonto(h.monto);
-        if (!validar(h, [...(nombre ? [] : ['nombre']), ...(monto !== null ? [] : ['monto'])])) return;
+        if (!validar(h, [...(esBanco ? faltaBanco(h) : nombre ? [] : ['nombre']), ...(monto !== null ? [] : ['monto'])])) return;
         P.ui.hoja = null;
         if (h.editar) {
             P.cambiar((s) => {
                 const l = M.lugar(s, h.id);
                 // V2-88: qué es, cómo se llama, cuánto tienes hoy (un cuadre de hoy) y su tarjeta de débito.
                 l.nombre = nombre;
+                // Con alias, se guarda de qué banco es (para volver a mostrarlo al editar).
+                if (alias) l.banco = banco;
+                else delete l.banco;
                 if (h.clase !== l.tipo) Object.assign(l, { tipo: h.clase, emoji: TIPOS_LUGAR.find((x) => x.v === h.clase).e });
                 if (monto !== h.montoAntes) {
                     const r = P.registrar(s, { tipo: 'cuadre', fecha: s.hoy, lugar: l.id, monto, esperado: M.saldoLugar(s, l.id) });
@@ -3588,7 +3646,7 @@
                 const debitos = s.medios.filter((m) => m.lugar === l.id && m.tarjetaDebito);
                 if (h.clase === 'banco' && h.debito && !h.debitoAntes) {
                     if (debitos.length) for (const m of debitos) delete m.oculto;
-                    else s.medios.push({ id: 'm' + s.seq++, nombre: 'Débito ' + nombre.replace(/^banco\s+/i, ''), emoji: '🏦', lugar: l.id, tarjetaDebito: true });
+                    else s.medios.push({ id: 'm' + s.seq++, nombre: 'Débito ' + (banco || nombre).replace(/^banco\s+/i, ''), emoji: '🏦', lugar: l.id, tarjetaDebito: true });
                 } else if ((!h.debito || h.clase !== 'banco') && h.debitoAntes) {
                     // Si un pago la usa, se queda (se cambia en «Con qué pagas»).
                     for (const m of debitos) if (!s.pagos.some((p) => p.activo !== false && p.medio === m.id)) m.oculto = true;
@@ -3599,10 +3657,10 @@
         P.cambiar(
             (s) => {
                 const id = 'l' + s.seq++;
-                s.lugares.push({ id, tipo: h.clase, nombre, emoji: TIPOS_LUGAR.find((x) => x.v === h.clase).e });
+                s.lugares.push({ id, tipo: h.clase, nombre, ...(alias ? { banco } : {}), emoji: TIPOS_LUGAR.find((x) => x.v === h.clase).e });
                 const r = P.registrar(s, { tipo: 'cuadre', fecha: s.hoy, lugar: id, monto, esperado: monto, primero: true });
                 M.lugar(s, id).cuadre = { fecha: s.hoy, seq: r.seq, monto };
-                if (h.clase === 'banco' && h.debito) s.medios.push({ id: 'm' + s.seq++, nombre: 'Débito ' + nombre.replace(/^banco\s+/i, ''), emoji: '🏦', lugar: id, tarjetaDebito: true });
+                if (h.clase === 'banco' && h.debito) s.medios.push({ id: 'm' + s.seq++, nombre: 'Débito ' + (banco || nombre).replace(/^banco\s+/i, ''), emoji: '🏦', lugar: id, tarjetaDebito: true });
                 if (h.clase === 'billetera') s.medios.push({ id: 'm' + s.seq++, nombre, emoji: '📱', lugar: id });
             },
             { aviso: `${nombre}: guardado`, claves: ['guardado:lugar'] },
@@ -3846,12 +3904,12 @@
                 const p = M.pago(st, h.id);
                 // V2-88: lo mismo que al crearlo: también el turno del cuchubal y si se cobra solo.
                 const turno = P.esCuchubal(p) ? P.turnoCuchubal(st, p) : null;
-                Object.assign(h, { nombre: p.nombre, emoji: p.emoji, categoria: p.categoria, monto: M.montoCampo(p.monto), estimado: p.estimado, medio: p.medio, hasta: p.hasta || '', tipoPago: p.tipoPago || null, automatico: !!p.automatico, turno: turno ? turno.fecha : '', turnoMonto: turno ? M.montoCampo(turno.monto) : '', turnoId: turno ? turno.id : null, editar: true, mismoMonto: 'si', ...formFrecuencia(p) });
+                Object.assign(h, { nombre: p.nombre, emoji: p.emoji, categoria: p.categoria, monto: M.montoCampo(p.monto), estimado: p.estimado, medio: p.medio, hasta: p.hasta || '', tipoPago: p.tipoPago || null, solo: p.automatico ? 'si' : 'no', turno: turno ? turno.fecha : '', turnoMonto: turno ? M.montoCampo(turno.monto) : '', turnoId: turno ? turno.id : null, editar: true, mismoMonto: 'si', ...formFrecuencia(p) });
             } else {
                 // v2.8 (D-2): «¿Siempre es el mismo monto?»: Sí = gasto fijo; No = gasto variable con un tope. Desde «+ Gasto
                 // variable» llega contestado que no.
                 const variable = h.fecha === 'variable';
-                Object.assign(h, { nombre: '', emoji: variable ? '🛒' : '🧾', categoria: 'otros', monto: '', estimado: false, frecuencia: 'mensual', qModo: '15-30', d1: '', d2: '', dia: null, diaSemana: 5, fecha: '', fechas: [], hasta: '', turno: '', turnoMonto: '', automatico: false, medio: st.medios[0] ? st.medios[0].id : null, mismoMonto: variable ? 'no' : 'si' });
+                Object.assign(h, { nombre: '', emoji: variable ? '🛒' : '🧾', categoria: 'otros', monto: '', estimado: false, frecuencia: 'mensual', qModo: '15-30', d1: '', d2: '', dia: null, diaSemana: 5, fecha: '', fechas: [], hasta: '', turno: '', turnoMonto: '', solo: null, medio: variable && st.medios[0] ? st.medios[0].id : null, medioDef: variable, mismoMonto: variable ? 'no' : 'si' });
             }
         },
         html(h) {
@@ -3884,8 +3942,8 @@
                     ${bloqueFrecuencia(h, { solo: suscripcion ? ['mensual', 'anual'] : null })}
                     ${suscripcion && credito ? `<p class="fila-s">Con tarjeta de crédito, el cobro baja tu libre el día que se hace (V2-07).</p>` : ''}
                     ${cuchubal ? `${calendario(h, 'hasta', h.hasta || null, { label: '¿Hasta cuándo aportas? <span class="opcional">(opcional)</span>', min: st.hoy })}${calendario(h, 'turno', h.turno || null, { label: '¿Cuándo te toca recibir? <span class="opcional">(opcional)</span>', min: st.hoy, ayuda: 'Tu turno aparece como ingreso esperado.' })}${h.turno ? campoMonto(h, { campo: 'turnoMonto', label: '¿Cuánto recibes ese día?', valor: h.turnoMonto, id: 'f-turnoMonto' }) : ''}` : ''}
-                    ${opciones(h, { campo: 'medio', label: '¿Con qué lo pagas?', lista: medios(st), valor: h.medio })}
-                    <div class="chips"><button type="button" class="chip" aria-pressed="${!!h.automatico}" data-a="valor" data-campo="automatico" data-v="${!h.automatico}" data-fk="np-automatico">${h.automatico ? icon('check', 'ico-xs') : ''}Se cobra solo en esa tarjeta o cuenta</button></div>
+                    ${opciones(h, { campo: 'medio', label: '¿Con qué lo pagas?', lista: medios(st), valor: h.medio || '', errorTexto: 'Elige con qué lo pagas' })}
+                    ${M.puedeCobrarSolo(st, h.medio) ? opciones(h, { campo: 'solo', label: '¿Se cobra solo?', lista: SOLO, valor: h.solo || '', errorTexto: 'Elige si se cobra solo' }) : ''}
                     ${h.duplicado && M.pago(st, h.duplicado) ? preguntaDuplicado(h, M.pago(st, h.duplicado), 'nuevoPagoDup') : ''}`,
                 pie: pie2('nuevoPagoOk', h.editar ? 'Guardar cambios' : 'Guardar gasto fijo'),
             };
@@ -3895,6 +3953,9 @@
             h.duplicado = null;
             if (campo === 'mismoMonto') {
                 h.mismoMonto = v;
+                // El gasto variable trae, como antes, el primer medio; el gasto fijo nuevo, ninguno (Victor, 2026-10-22).
+                if (!h.editar && v === 'no' && !h.medio) Object.assign(h, { medio: P.st.medios[0] ? P.st.medios[0].id : null, medioDef: true });
+                if (!h.editar && v === 'si' && h.medioDef) Object.assign(h, { medio: null, medioDef: false });
                 h.intento = false;
                 h.errores = [];
                 return;
@@ -3924,18 +3985,17 @@
                 // V2-36: el cuchubal puede ser de cualquier frecuencia; se sugiere quincenal. V2-83: el elegido se ve marcado.
                 Object.assign(h, { frecuente: v, nombre: f.nombre, emoji: f.emoji, categoria: f.categoria, estimado: !!f.variable, frecuencia: f.id === 'cuchubal' ? 'quincenal' : f.semanal ? 'semanal' : 'mensual' });
             } else if (campo === 'tipoPago') {
-                // V2-47: una suscripción es mensual o anual y se paga, si tienes, con tu tarjeta de crédito.
+                // V2-47: una suscripción es mensual o anual. v2.8 (Victor, 2026-10-22): con qué la pagas lo eliges tú (nunca
+                // se elige la cuenta por el tipo de gasto).
                 h.tipoPago = v || null;
                 if (h.tipoPago) h.caja = null;
-                if (v) {
-                    const credito = P.st.medios.find((m) => m.tarjeta && !m.oculto);
-                    Object.assign(h, { frecuencia: 'mensual', categoria: 'suscripciones', emoji: '📺', estimado: false, medio: credito ? credito.id : h.medio });
-                } else Object.assign(h, { categoria: 'otros', emoji: '🧾' });
+                if (v) Object.assign(h, { frecuencia: 'mensual', categoria: 'suscripciones', emoji: '📺', estimado: false });
+                else Object.assign(h, { categoria: 'otros', emoji: '🧾' });
             } else if (campo === 'servicio') {
                 const x = D.SUSCRIPCIONES.find((y) => y.id === v);
                 Object.assign(h, { servicio: v, nombre: v === 'otra' ? '' : x.nombre, emoji: x.emoji });
             } else if (campo === 'estimado') h.estimado = v === 'true';
-            else if (campo === 'automatico') h.automatico = v === 'true';
+            else if (campo === 'medio') Object.assign(h, { medio: v, medioDef: false });
             else if (campo === 'fechas') alternarFecha(h, v);
             else if (campo === 'hasta' || campo === 'turno') h[campo] = h[campo] === v ? '' : v;
             else h[campo] = v;
@@ -4002,7 +4062,9 @@
             return;
         }
         const turnoMonto = M.leerMonto(h.turnoMonto);
-        const faltan = [...(h.nombre.trim() ? [] : ['nombre']), ...(monto ? [] : ['monto']), ...faltanFrecuencia(h), ...(h.turno && !turnoMonto ? ['turnoMonto'] : [])];
+        // v2.8 (Victor, 2026-10-22): sin «¿Con qué lo pagas?» no se guarda; con un banco o una tarjeta, también «¿Se cobra solo?».
+        const solo = M.puedeCobrarSolo(P.st, h.medio);
+        const faltan = [...(h.nombre.trim() ? [] : ['nombre']), ...(monto ? [] : ['monto']), ...faltanFrecuencia(h), ...(h.turno && !turnoMonto ? ['turnoMonto'] : []), ...(h.medio ? [] : ['medio']), ...(solo && !h.solo ? ['solo'] : [])];
         if (!validar(h, faltan)) return;
         const regla = reglaForm(h);
         // Una factura con nombre propio dentro de «Facturas de servicios» es de esa categoría.
@@ -4033,7 +4095,7 @@
                 if (esCuchubal(h) && h.hasta) p.hasta = h.hasta;
                 else delete p.hasta;
                 // V2-88: lo mismo que al crearlo.
-                if (h.automatico) p.automatico = true;
+                if (solo && h.solo === 'si') p.automatico = true;
                 else delete p.automatico;
                 if (esCuchubal(h)) guardarTurno(s, p, h.turno, turnoMonto, h.turnoId);
                 P.reubicarHechos(s, p);
@@ -4049,7 +4111,7 @@
         P.cambiar(
             (s) => {
                 const pc = P.crearPago(s, { nombre: h.nombre.trim(), emoji: h.emoji, categoria: h.categoria, monto, estimado: h.estimado, medio: h.medio, hasta: esCuchubal(h) && h.hasta ? h.hasta : null, tipoPago: h.tipoPago || undefined, ...regla, antes: debe ? 'no' : 'si' });
-                if (h.automatico) pc.automatico = true;
+                if (solo && h.solo === 'si') pc.automatico = true;
                 // El turno del cuchubal = un ingreso esperado de una vez.
                 if (esCuchubal(h)) guardarTurno(s, pc, h.turno, turnoMonto, null);
             },
@@ -4802,7 +4864,7 @@
 
     // ================================================================== PANTALLA: PRIMER DÍA
     // v2.6.2 (V2-68, feedback de Pam): ingreso → cuánto tienes → TODAS las deudas → tarjetas de crédito (lo que debes
-    // hoy, corte y pago) → gastos fijos («¿se cobra solo en una tarjeta o cuenta? ¿cuál?»). «Paso N de 5»; todo se
+    // hoy, corte y pago) → gastos fijos («¿Con qué lo pagas?» y «¿Se cobra solo?», v2.8). «Paso N de 5»; todo se
     // salta menos cuánto tienes; lo agregado se edita o se quita sin salir del paso; si se cierra la app, se retoma
     // donde iba. Ya configurada, «Completar tu Primer día» abre solo deudas, tarjetas y gastos fijos y SUMA a lo que hay.
     const OB_INGRESOS = [['quincena', '💼', 'Cada quincena', 'Dos veces al mes'], ['mes', '🗓️', 'Cada mes', 'Un día fijo'], ['semana', '🧰', 'Cada semana', 'Obra, maquila, reparto…'], ['catorcena', '📅', 'Cada 14 días', 'Catorcena'], ['varia', '🏪', 'Varía', 'Negocio, ventas o trabajos por día'], ['remesa', '🌎', 'Recibo remesa', 'De familia afuera']];
@@ -4810,25 +4872,43 @@
     const lugaresOb = [{ v: 'banco', t: 'En el banco', e: '🏦' }, { v: 'efectivo', t: 'En efectivo', e: '💵' }];
     /** Lo que se va llenando en el Primer día (y en «Completar tu Primer día»). */
     P.obVacio = () => ({ ingresos: {}, bancosMas: [], billeteras: [], efectivo: '', deudas: [], tarjetas: [], pagos: [] });
-    /** Los bancos del paso 2, con el id que tendrán como lugar (banco, banco2…). */
+    /**
+     * Los bancos del paso 2, con el id que tendrán como lugar (banco, banco2…). v2.8 (Victor, 2026-10-22): «Otro» con su
+     * nombre y un alias opcional; la cuenta se llama como su alias, si tiene.
+     */
     function bancosOb(d) {
-        return [...(d.bancoNombre ? [{ nombre: d.bancoNombre, monto: d.bancoMonto }] : []), ...(d.bancosMas || []).filter((b) => b.nombre)].map((b, i) => ({ ...b, id: i ? 'banco' + (i + 1) : 'banco', sufijo: i ? String(i + 1) : '', etiqueta: b.nombre === 'Otro' ? 'tu banco' : 'Banco ' + b.nombre }));
+        return [...(d.bancoNombre ? [{ nombre: d.bancoNombre, monto: d.bancoMonto, otro: d.bancoOtro, alias: d.bancoAlias }] : []), ...(d.bancosMas || []).filter((b) => b.nombre)].map((b, i) => {
+            const banco = b.nombre === 'Otro' ? (b.otro || '').trim() : b.nombre;
+            const base = b.nombre === 'Otro' ? banco || 'Tu banco' : 'Banco ' + b.nombre;
+            return { ...b, id: i ? 'banco' + (i + 1) : 'banco', sufijo: i ? String(i + 1) : '', etiqueta: b.nombre === 'Otro' ? banco || 'tu banco' : 'Banco ' + b.nombre, banco, cuenta: (b.alias || '').trim() || base };
+        });
     }
-    /** «¿Se cobra solo en una tarjeta o cuenta?»: las tarjetas y las cuentas que hay (o que se acaban de agregar). */
-    function fuentesCobro(ob) {
+    const billeterasOb = (d) => (d.billeteras || []).filter((b) => (b.nombre || '').trim()).map((b, i) => ({ ...b, id: 'billetera' + (i + 1) }));
+    /** En «Completar tu Primer día», el medio con que se paga desde una cuenta (su débito, si tiene). */
+    const medioDeLugarOb = (st, id) => st.medios.find((m) => m.tarjetaDebito && !m.oculto && m.lugar === id) || st.medios.find((m) => m.lugar === id && !m.tarjeta && !m.oculto) || null;
+    /**
+     * v2.8 (Victor, 2026-10-22): «¿Con qué lo pagas?»: tus cuentas y tus tarjetas (las que hay o las que acabas de agregar).
+     * Reemplaza «¿Se cobra solo en una tarjeta o cuenta?» y «No, lo pago yo». `solo`: con un banco o una tarjeta se
+     * pregunta también «¿Se cobra solo?».
+     */
+    function conQueOb(ob) {
         const st = P.st;
         const d = ob.datos;
-        const lista = [{ v: 'no', t: 'No, lo pago yo' }];
+        const lista = [];
         if (ob.completar) {
-            for (const t of st.tarjetas) lista.push({ v: 'T:' + t.id, t: 'En ' + t.nombre });
-            for (const t of d.tarjetas) lista.push({ v: 't:' + t.clave, t: 'En ' + t.nombre });
-            for (const l of st.lugares.filter((x) => x.tipo === 'banco')) lista.push({ v: 'b:' + l.id, t: 'En ' + l.nombre });
+            for (const l of st.lugares) if (medioDeLugarOb(st, l.id)) lista.push({ v: 'L:' + l.id, t: l.nombre, e: l.emoji, solo: l.tipo === 'banco' });
+            for (const t of st.tarjetas) lista.push({ v: 'T:' + t.id, t: P.nombreTarjeta(t), e: '💳', solo: true });
         } else {
-            for (const t of d.tarjetas) lista.push({ v: 't:' + t.clave, t: 'En ' + t.nombre });
-            for (const b of bancosOb(d)) lista.push({ v: 'b:' + b.id, t: 'En ' + (b.nombre === 'Otro' ? 'tu banco' : 'Banco ' + b.nombre) });
+            lista.push({ v: 'efectivo', t: 'Efectivo', e: '💵', solo: false });
+            for (const b of bancosOb(d)) lista.push({ v: 'b:' + b.id, t: b.cuenta, e: '🏦', solo: true });
+            for (const b of billeterasOb(d)) lista.push({ v: 'w:' + b.id, t: b.nombre.trim(), e: '📱', solo: false });
         }
+        for (const t of d.tarjetas) lista.push({ v: 't:' + t.clave, t: t.alias || t.nombre, e: '💳', solo: true });
         return lista;
     }
+    /** Lo que contestó (un Primer día empezado antes de la v2.8 trae «cobro»: «Se cobra solo en …» o «No, lo pago yo»). */
+    const pagaDe = (p) => (p.paga !== undefined ? p.paga : p.cobro && p.cobro !== 'no' ? p.cobro : null);
+    const soloDe = (p) => (p.paga !== undefined ? p.solo : p.cobro && p.cobro !== 'no' ? 'si' : null);
     S.onboarding = function () {
         const ob = P.ui.ob;
         const d = ob.datos;
@@ -4893,12 +4973,14 @@
         }
         if (ob.paso === 2) {
             // V2-45: varios bancos y billeteras, cada uno con su nombre y lo que tiene.
-            const bancoExtra = (b, i) => `<div class="ob-lugar ob-lugar--banco">${caja('🏦')}<div class="ob-lugar-c">${opcionesOb(`banco${i + 1}`, 'Otro banco o cooperativa', [...D.BANCOS.map((x) => ({ v: x, t: x })), { v: 'Otro', t: 'Otro' }], b.nombre)}${b.nombre ? monto(`banco${i + 1}-monto`, `¿Cuánto tienes en ${b.nombre === 'Otro' ? 'ese banco' : 'Banco ' + b.nombre}?`, b.monto) : ''}<button type="button" class="link link--peligro" data-a="obQuitarLugar" data-v="banco:${i}" data-fk="ob-banco${i + 1}-quitar">${icon('x', 'ico-s')}Quitar</button></div></div>`;
+            // v2.8 (Victor, 2026-10-22): «Otro» pide el nombre; el alias es opcional («Así la verás en la app»).
+            const camposBancoOb = (pre, nombre, otro, alias) => `${nombre === 'Otro' ? obTexto(pre + '-otro', '¿Cuál banco o cooperativa?', otro, 'Ej. Cooperativa de mi trabajo') + err(pre + '-otro', 'Escribe cuál es') : ''}${obTexto(pre + '-alias', 'Alias <span class="opcional">(opcional)</span>', alias, 'Ej. La de la casa', 'Así la verás en la app.')}`;
+            const bancoExtra = (b, i) => `<div class="ob-lugar ob-lugar--banco">${caja('🏦')}<div class="ob-lugar-c">${opcionesOb(`banco${i + 1}`, 'Otro banco o cooperativa', bancosLista(), b.nombre)}${b.nombre ? camposBancoOb(`banco${i + 1}`, b.nombre, b.otro, b.alias) + monto(`banco${i + 1}-monto`, `¿Cuánto tienes en ${b.nombre === 'Otro' ? 'ese banco' : 'Banco ' + b.nombre}?`, b.monto) : ''}<button type="button" class="link link--peligro" data-a="obQuitarLugar" data-v="banco:${i}" data-fk="ob-banco${i + 1}-quitar">${icon('x', 'ico-s')}Quitar</button></div></div>`;
             const billetera = (b, i) => `<div class="ob-lugar">${caja('📱')}<div class="ob-lugar-c"><div class="campo-g"><label class="campo-l" for="ob-bill${i}-nombre">Billetera en el celular</label><div class="campo"><input id="ob-bill${i}-nombre" data-campo="bill${i}-nombre" type="text" autocomplete="off" placeholder="Ej. Tigo Money" value="${esc(b.nombre || '')}"></div></div>${monto(`bill${i}-monto`, '¿Cuánto tienes ahí?', b.monto)}<button type="button" class="link link--peligro" data-a="obQuitarLugar" data-v="billetera:${i}" data-fk="ob-bill${i}-quitar">${icon('x', 'ico-s')}Quitar</button></div></div>`;
             return `<div class="pg pg--flujo ob">${cab(2, '¿Cuánto tienes ahora y dónde?', 'Más o menos. Es tu primer cuadre: desde aquí partimos.')}
                 <div class="card ob-card">
                     <div class="ob-lugar">${caja('💵')}${monto('efectivo', '¿Cuánto tienes en efectivo?', d.efectivo, ob.errores && ob.errores.includes('dinero') ? 'aria-invalid="true" aria-describedby="ob-err-dinero"' : '')}</div>
-                    <div class="ob-lugar ob-lugar--banco">${caja('🏦')}<div class="ob-lugar-c">${opcionesOb('banco', '¿Tienes cuenta en un banco o cooperativa?', [...D.BANCOS.map((b) => ({ v: b, t: b })), { v: 'Otro', t: 'Otro' }], d.bancoNombre)}${d.bancoNombre ? monto('banco-monto', `¿Cuánto tienes en ${d.bancoNombre === 'Otro' ? 'tu banco' : 'Banco ' + d.bancoNombre}?`, d.bancoMonto) : ''}</div></div>
+                    <div class="ob-lugar ob-lugar--banco">${caja('🏦')}<div class="ob-lugar-c">${opcionesOb('banco', '¿Tienes cuenta en un banco o cooperativa?', bancosLista(), d.bancoNombre)}${d.bancoNombre ? camposBancoOb('banco', d.bancoNombre, d.bancoOtro, d.bancoAlias) + monto('banco-monto', `¿Cuánto tienes en ${d.bancoNombre === 'Otro' ? 'tu banco' : 'Banco ' + d.bancoNombre}?`, d.bancoMonto) : ''}</div></div>
                     ${(d.bancosMas || []).map(bancoExtra).join('')}
                     ${(d.billeteras || []).map(billetera).join('')}
                     ${err('dinero', 'Escribe cuánto tienes, aunque sea $0')}
@@ -4937,8 +5019,9 @@
             const ed = ob.editando && ob.editando.tipo === 'tarjeta' ? ob.editando : null;
             const editor = ed
                 ? `<div class="card ob-card ob-editor" role="group" aria-labelledby="ob-ed-t"><p class="fila-t" id="ob-ed-t">${emo('💳', 18)} ${ed.clave ? 'Editar tarjeta' : 'Tarjeta de crédito'}</p>
-                    ${opcionesOb('t-banco', '¿De qué banco?', [...D.BANCOS.slice(0, 5).map((b) => ({ v: b, t: b })), { v: 'Otro', t: 'Otro' }], ed.banco)}
-                    ${ed.banco === 'Otro' ? `<div class="campo-g"><label class="campo-l" for="ob-t-nombre">¿Cómo se llama?</label><div class="campo"><input id="ob-t-nombre" data-campo="t-nombre" type="text" autocomplete="off" value="${esc(ed.nombre)}" placeholder="Ej. Tarjeta de la tienda"></div></div>` : ''}
+                    ${opcionesOb('t-banco', '¿De qué banco o cooperativa?', bancosLista(), ed.banco)}
+                    ${ed.banco === 'Otro' ? obTexto('t-nombre', '¿Cuál banco, cooperativa o tienda?', ed.nombre, 'Ej. Tarjeta de la tienda') : ''}
+                    ${obTexto('t-alias', 'Alias <span class="opcional">(opcional)</span>', ed.alias, 'Ej. La de la casa', 'Así la verás en la app.')}
                     ${monto('t-debe', '¿Cuánto debes hoy? <span class="opcional">(opcional)</span>', ed.debe)}
                     <div class="ob-2">${obDiaCorto('t-corte', '¿Qué día es el corte?', ed.corte)}${obDiaCorto('t-pago', '¿Qué día vence tu próximo pago?', ed.pago)}</div>
                     <div id="vence-linea-ob">${proximoPagoTarjeta(ed, st.hoy, ed.corte, ed.pago, { campo: 't-otroMes', accion: 'obValor' })}</div>
@@ -4949,7 +5032,7 @@
                     ${botonesEditor('obTarjetaGuardar', 'ob-t-guardar', 'Agregar tarjeta', !!ed.clave)}</div>`
                 : '';
             const agregar = ed ? '' : `<button type="button" class="btn btn--48 btn--full" data-a="obTarjetaNueva" data-fk="ob-tn">${icon('plus', 'ico-s')}${d.tarjetas.length ? 'Agregar otra tarjeta' : 'Agregar una tarjeta de crédito'}</button>`;
-            const lista = d.tarjetas.length ? `<ul class="lista card" aria-label="Tus tarjetas de crédito">${d.tarjetas.map((x) => filaQuieta('💳', x.nombre, [x.debe !== null ? 'Debes ' + dinero(x.debe) : '', x.corte ? 'corte el ' + x.corte : '', 'pagas el ' + x.pago, x.usual ? 'normalmente ' + dinero(x.usual) : ''].filter(Boolean).join(' · '), x.clave, 'obTarjetaEditar', 'obTarjetaQuitar', x.nombre)).join('')}</ul>` : '';
+            const lista = d.tarjetas.length ? `<ul class="lista card" aria-label="Tus tarjetas de crédito">${d.tarjetas.map((x) => filaQuieta('💳', x.alias || x.nombre, [x.alias ? x.nombre : '', x.debe !== null ? 'Debes ' + dinero(x.debe) : '', x.corte ? 'corte el ' + x.corte : '', 'pagas el ' + x.pago, x.usual ? 'normalmente ' + dinero(x.usual) : ''].filter(Boolean).join(' · '), x.clave, 'obTarjetaEditar', 'obTarjetaQuitar', x.nombre)).join('')}</ul>` : '';
             return `<div class="pg pg--flujo ob">${cab(4, 'Tus tarjetas de crédito', 'Cuánto debes hoy, su día de corte y su día de pago. Están en tu estado de cuenta.')}
                 ${lista}${editor}${agregar}
                 <p class="fila-s">El límite de crédito nunca suma a tu libre: es dinero prestado.</p>
@@ -4958,8 +5041,11 @@
         }
         if (ob.paso === 5) {
             const ed = ob.editando && ob.editando.tipo !== 'deuda' && ob.editando.tipo !== 'tarjeta' ? ob.editando : null;
-            const fuentes = fuentesCobro(ob);
-            const cobro = (e) => (fuentes.length > 1 ? `${opcionesOb('p-cobro', '¿Se cobra solo en una tarjeta o cuenta?', fuentes, e.cobro || 'no')}<p class="fila-s">Si se cobra solo, ahí lo verás. Igual lo marcas «Pagado» cuando lo veas en tu estado de cuenta.</p>` : '');
+            const conQue = conQueOb(ob);
+            const cobro = (e) => {
+                const x = conQue.find((y) => y.v === e.paga);
+                return `${opcionesOb('p-paga', '¿Con qué lo pagas?', conQue, e.paga || '')}${err('paga', 'Elige con qué lo pagas')}${x && x.solo ? `${opcionesOb('p-solo', '¿Se cobra solo?', SOLO, e.solo || '')}${err('solo', 'Elige si se cobra solo')}<p class="fila-s">Si se cobra solo, ahí lo verás. Igual lo marcas «Pagado» cuando lo veas en tu estado de cuenta.</p>` : ''}`;
+            };
             const pagoChip = (x) => {
                 const ya = d.pagos.find((p) => p.id === x.id);
                 // V2-82: en «Completar tu Primer día», lo que ya está en Pagos se ve y no se vuelve a agregar.
@@ -4981,7 +5067,10 @@
                 editor = `<div class="card ob-card ob-editor"><p class="fila-t">${emo(f.emoji, 18)} ${esc(f.nombre)}</p>${monto('p-monto', f.variable ? '¿Cuánto pagas más o menos?' : cuchubal ? '¿Cuánto aportas cada vez?' : '¿Cuánto pagas?', ed.monto)}${cuchubal ? opcionesOb('p-frec', '¿Cada cuánto aportas?', [{ v: 'semanal', t: 'Cada semana' }, { v: 'quincenal', t: 'Cada quincena' }, { v: 'mensual', t: 'Cada mes' }], ed.frecuencia) : ''}${cuando}${preguntaOb(st, ed)}${turno}${cobro(ed)}${err('pago', 'Escribe el monto y elige el día')}<div class="acciones-2"><button type="button" class="btn" data-a="obPagoCancelar" data-fk="ob-p-cancelar">Cancelar</button><button type="button" class="btn btn--prim" data-a="obPagoAgregar" data-fk="ob-p-agregar">Agregar</button></div></div>`;
             }
             const cuandoLista = (p) => (p.frecuencia === 'semanal' ? 'cada ' + M.DIAS[p.diaSemana] : p.frecuencia === 'quincenal' ? `el ${p.dias[0]} y el ${p.dias[1]}` : p.anual ? `cada año, el ${p.dia}` : 'el ' + p.dia);
-            const nombreCobro = (p) => (p.cobro && p.cobro !== 'no' ? ' · se cobra en ' + (fuentes.find((x) => x.v === p.cobro)?.t.replace(/^En /, '') || 'tu tarjeta') : '');
+            const nombreCobro = (p) => {
+                const x = conQue.find((y) => y.v === pagaDe(p));
+                return x ? (x.solo && soloDe(p) === 'si' ? ' · se cobra solo en ' : ' · con ') + x.t : ' · falta con qué lo pagas';
+            };
             const servicios = D.PAGOS_FRECUENTES.filter((x) => !x.deuda && x.categoria === 'servicios' || x.id === 'telefono');
             const casa = D.PAGOS_FRECUENTES.filter((x) => !x.deuda && !servicios.includes(x));
             return `<div class="pg pg--flujo ob">${cab(5, 'Tus gastos fijos', 'Toca los que tengas. Te aviso antes de que venzan.')}
@@ -5085,6 +5174,9 @@
     function obDias(campo, valor, label = '¿Qué día del mes?') {
         return `<div class="campo-g" role="group" aria-labelledby="ob-l-${campo}"><p class="campo-l" id="ob-l-${campo}">${label}</p><div class="dias">${Array.from({ length: 31 }, (_, i) => i + 1).map((n) => `<button type="button" class="dia" aria-pressed="${Number(valor) === n}" data-a="obValor" data-campo="${campo}" data-v="${n}" data-fk="ob-${campo}-${n}" aria-label="Día ${n}">${n}${Number(valor) === n ? icon('check', 'ico-dia') : ''}</button>`).join('')}</div></div>`;
     }
+    function obTexto(campo, label, valor, placeholder, ayuda = '') {
+        return `<div class="campo-g"><label class="campo-l" for="ob-${campo}">${label}</label><div class="campo"><input id="ob-${campo}" data-campo="${campo}" type="text" autocomplete="off" value="${esc(valor || '')}" placeholder="${esc(placeholder)}"></div>${ayuda ? `<p class="campo-ayuda">${ayuda}</p>` : ''}</div>`;
+    }
     function obDiaCorto(campo, label, valor) {
         return `<div class="campo-g"><label class="campo-l" for="ob-${campo}">${label}</label><div class="campo campo--dia"><input id="ob-${campo}" data-campo="${campo}" type="text" inputmode="numeric" maxlength="2" value="${esc(valor)}" aria-describedby="ob-${campo}-a"></div><p class="fila-s" id="ob-${campo}-a">Del 1 al 31</p></div>`;
     }
@@ -5099,12 +5191,15 @@
         else if (c === 'efectivo') d.efectivo = v;
         else if (c === 'banco-monto') d.bancoMonto = v;
         else if ((m = /^banco(\d+)-monto$/.exec(c))) d.bancosMas[Number(m[1]) - 1].monto = v;
+        else if (c === 'banco-otro') d.bancoOtro = v;
+        else if (c === 'banco-alias') d.bancoAlias = v;
+        else if ((m = /^banco(\d+)-(otro|alias)$/.exec(c))) d.bancosMas[Number(m[1]) - 1][m[2]] = v;
         else if ((m = /^bill(\d+)-(nombre|monto)$/.exec(c))) d.billeteras[Number(m[1])][m[2]] = v;
         else if (/^[qmsrc]-/.test(c)) {
             const g = { q: 'quincena', m: 'mes', s: 'semana', r: 'remesa', c: 'catorcena' }[c[0]];
             if (d.ingresos[g]) d.ingresos[g][c.slice(2)] = /^d[12]$/.test(c.slice(2)) ? soloDigitos(v) : v;
         } else if (c.startsWith('x-') && d.extras && d.extras[c.slice(2)]) d.extras[c.slice(2)].monto = v;
-        else if (/^d-(nombre|monto|debe)$/.test(c) || /^t-(nombre|debe|usual)$/.test(c)) ob.editando[c.slice(2)] = v;
+        else if (/^d-(nombre|monto|debe)$/.test(c) || /^t-(nombre|debe|usual|alias)$/.test(c)) ob.editando[c.slice(2)] = v;
         else if (c === 't-corte' || c === 't-pago') {
             ob.editando[c.slice(2)] = soloDigitos(v);
             // v2.8 (D-5): la fecha completa de tu próximo pago se ve mientras escribes.
@@ -5139,7 +5234,10 @@
         else if (d.campo === 't-banco') ob.editando.banco = v;
         else if (d.campo === 't-otroMes') ob.editando['t-otroMes'] = v === 'si';
         else if (d.campo === 'd-dia') ob.editando.dia = Number(v);
-        else if (d.campo === 'p-cobro') ob.editando.cobro = v;
+        else if (d.campo === 'p-paga' || d.campo === 'p-solo') {
+            ob.editando[d.campo.slice(2)] = v;
+            ob.errores = (ob.errores || []).filter((e) => e !== d.campo.slice(2));
+        }
         else if (d.campo === 'p-turno') ob.editando.turno = v;
         else if (d.campo === 'p-servicio') {
             const s = D.SUSCRIPCIONES.find((y) => y.id === v);
@@ -5228,22 +5326,23 @@
         if (guardarDeudaOb()) P.render({ foco: '[data-fk="ob-dn-prestamo"]' });
     };
     P.acciones.obTarjetaNueva = () => {
-        P.ui.ob.editando = { tipo: 'tarjeta', clave: null, banco: null, nombre: '', debe: '', corte: '', pago: '', usual: '' };
+        P.ui.ob.editando = { tipo: 'tarjeta', clave: null, banco: null, nombre: '', alias: '', debe: '', corte: '', pago: '', usual: '' };
         P.ui.ob.errores = [];
         P.render({ foco: '[data-fk="ob-t-banco-BAC"]' });
     };
     P.acciones.obTarjetaEditar = (d) => {
         const x = P.ui.ob.datos.tarjetas.find((y) => y.clave === d.v);
         if (!x) return;
-        P.ui.ob.editando = { tipo: 'tarjeta', clave: x.clave, banco: x.banco, nombre: x.nombre, debe: x.debe !== null ? M.montoCampo(x.debe) : '', corte: x.corte ? String(x.corte) : '', pago: String(x.pago), usual: x.usual ? M.montoCampo(x.usual) : '', antesDebe: x.antesDebe || null, 't-otroMes': !!x.otroMes };
+        P.ui.ob.editando = { tipo: 'tarjeta', clave: x.clave, banco: x.banco, nombre: x.nombre, alias: x.alias || '', debe: x.debe !== null ? M.montoCampo(x.debe) : '', corte: x.corte ? String(x.corte) : '', pago: String(x.pago), usual: x.usual ? M.montoCampo(x.usual) : '', antesDebe: x.antesDebe || null, 't-otroMes': !!x.otroMes };
         P.ui.ob.errores = [];
         P.render({ foco: '#ob-t-debe' });
     };
     P.acciones.obTarjetaQuitar = (d) => {
         const ob = P.ui.ob;
         ob.datos.tarjetas = ob.datos.tarjetas.filter((x) => x.clave !== d.v);
-        // Un gasto fijo que se cobraba en esa tarjeta vuelve a «lo pago yo» (nada queda apuntando a una tarjeta que no existe).
-        for (const p of ob.datos.pagos) if (p.cobro === 't:' + d.v) p.cobro = 'no';
+        // Un gasto fijo que se pagaba con esa tarjeta vuelve a preguntar «¿Con qué lo pagas?» (nada apunta a una tarjeta que no existe).
+        for (const p of ob.datos.pagos) if (pagaDe(p) === 't:' + d.v) Object.assign(p, { paga: null, solo: null });
+        if (ob.editando && ob.editando.paga === 't:' + d.v) Object.assign(ob.editando, { paga: null, solo: null });
         if (ob.editando && ob.editando.clave === d.v) ob.editando = null;
         P.render({ foco: '[data-fk="ob-tn"]' });
         P.emitir('onboarding:tarjeta:quitar');
@@ -5265,7 +5364,7 @@
         const otros = [...ob.datos.tarjetas.filter((y) => y.clave !== ed.clave).map((y) => y.nombre), ...(ob.completar ? P.st.tarjetas.map((t) => t.nombre) : [])];
         let final = nombre;
         for (let n = 2; otros.includes(final); n++) final = `${nombre} ${n}`;
-        const x = { clave: ed.clave || 'ob' + ++claveOb, banco: ed.banco, nombre: final, debe: M.leerMonto(ed.debe), corte, pago, usual: M.leerMonto(ed.usual), antesDebe: ed.antesDebe || null, otroMes: !!ed['t-otroMes'] };
+        const x = { clave: ed.clave || 'ob' + ++claveOb, banco: ed.banco, nombre: final, alias: (ed.alias || '').trim() || null, debe: M.leerMonto(ed.debe), corte, pago, usual: M.leerMonto(ed.usual), antesDebe: ed.antesDebe || null, otroMes: !!ed['t-otroMes'] };
         const i = ob.datos.tarjetas.findIndex((y) => y.clave === x.clave);
         if (i >= 0) ob.datos.tarjetas[i] = x;
         else ob.datos.tarjetas.push(x);
@@ -5303,16 +5402,23 @@
     P.acciones.obPago = (d) => {
         const ob = P.ui.ob;
         const ya = ob.datos.pagos.find((p) => p.id === d.v);
-        if (ya) {
-            ob.editando = { id: d.v, monto: M.montoCampo(ya.monto), dia: ya.dia, diaSemana: ya.diaSemana, frecuencia: ya.frecuencia, d1: ya.dias ? String(ya.dias[0]) : '', d2: ya.dias ? String(ya.dias[1]) : '', cobro: ya.cobro || 'no', turno: ya.turno || null, recibes: ya.recibes ? M.montoCampo(ya.recibes) : '', antesDebe: ya.antesDebe || null };
-            ob.datos.pagos = ob.datos.pagos.filter((p) => p.id !== d.v);
-        } else ob.editando = { id: d.v, monto: '', dia: null, diaSemana: 5, frecuencia: d.v === 'cuchubal' ? 'semanal' : null, cobro: 'no', turno: null, recibes: '' };
+        if (ya) abrirPagoOb(ya);
+        else ob.editando = { id: d.v, monto: '', dia: null, diaSemana: 5, frecuencia: d.v === 'cuchubal' ? 'semanal' : null, paga: null, solo: null, turno: null, recibes: '' };
         ob.errores = [];
         P.render({ foco: '#ob-p-monto' });
     };
+    /** Vuelve a abrir en el editor un gasto fijo ya agregado (sale de la lista mientras se edita). */
+    function abrirPagoOb(p) {
+        const ob = P.ui.ob;
+        ob.datos.pagos = ob.datos.pagos.filter((x) => x.clave !== p.clave);
+        const base = { monto: M.montoCampo(p.monto), dia: p.dia, paga: pagaDe(p), solo: soloDe(p), antesDebe: p.antesDebe || null };
+        ob.editando = p.suscripcion
+            ? { suscripcion: true, servicio: (D.SUSCRIPCIONES.find((s) => s.nombre === p.nombre) || { id: 'otra' }).id, nombre: p.nombre, emoji: p.emoji, anual: !!p.anual, ...base }
+            : { id: p.id, diaSemana: p.diaSemana, frecuencia: p.frecuencia, d1: p.dias ? String(p.dias[0]) : '', d2: p.dias ? String(p.dias[1]) : '', turno: p.turno || null, recibes: p.recibes ? M.montoCampo(p.recibes) : '', ...base };
+    }
     P.acciones.obSuscripcion = () => {
-        const t = P.ui.ob.completar ? null : P.ui.ob.datos.tarjetas[0];
-        P.ui.ob.editando = { suscripcion: true, servicio: null, nombre: '', emoji: '📺', monto: '', dia: null, anual: false, cobro: t ? 't:' + t.clave : 'no' };
+        // v2.8 (Victor, 2026-10-22): ya no viene elegida tu primera tarjeta: «¿Con qué lo pagas?» lo contestas tú.
+        P.ui.ob.editando = { suscripcion: true, servicio: null, nombre: '', emoji: '📺', monto: '', dia: null, anual: false, paga: null, solo: null };
         P.ui.ob.errores = [];
         P.render({ foco: '[data-fk="ob-p-servicio-netflix"]' });
     };
@@ -5329,10 +5435,15 @@
         const ed = ob.editando;
         const monto = M.leerMonto(ed.monto);
         const clave = 'ob' + ++claveOb;
+        // v2.8 (Victor, 2026-10-22): sin «¿Con qué lo pagas?» no se agrega; con un banco o una tarjeta, también «¿Se cobra solo?».
+        const conQue = conQueOb(ob).find((x) => x.v === ed.paga);
+        const faltaQue = () => (!conQue ? obFalta('paga') : conQue.solo && !ed.solo ? obFalta('solo') : false);
+        const paga = { paga: ed.paga, solo: conQue && conQue.solo ? ed.solo : null };
         if (ed.suscripcion) {
             if (!monto || !ed.dia || !ed.servicio || !(ed.nombre || '').trim()) return obFalta();
+            if (faltaQue() !== false) return;
             if (faltaVerAntesOb(P.st, ed)) return;
-            ob.datos.pagos.push({ clave, id: clave, suscripcion: true, nombre: ed.nombre.trim(), emoji: ed.emoji, categoria: 'suscripciones', monto, frecuencia: 'mensual', anual: ed.anual, dia: ed.dia, cobro: ed.cobro || 'no', antesDebe: ed.antesDebe || null });
+            ob.datos.pagos.push({ clave, id: clave, suscripcion: true, nombre: ed.nombre.trim(), emoji: ed.emoji, categoria: 'suscripciones', monto, frecuencia: 'mensual', anual: ed.anual, dia: ed.dia, ...paga, antesDebe: ed.antesDebe || null });
             P.emitir('onboarding:suscripcion');
         } else {
             const f = D.PAGOS_FRECUENTES.find((x) => x.id === ed.id);
@@ -5340,8 +5451,9 @@
             const dias = frecuencia === 'quincenal' ? [Number(ed.d1), Number(ed.d2)].sort((a, b) => a - b) : null;
             const okDia = frecuencia === 'semanal' || (frecuencia === 'quincenal' ? dias.every((n) => n >= 1 && n <= 31) && dias[0] !== dias[1] : !!ed.dia);
             if (!monto || !okDia) return obFalta();
+            if (faltaQue() !== false) return;
             if (faltaVerAntesOb(P.st, ed)) return;
-            ob.datos.pagos.push({ clave, id: f.id, nombre: f.nombre, emoji: f.emoji, categoria: f.categoria, monto, variable: !!f.variable, frecuencia, dia: ed.dia, diaSemana: ed.diaSemana, dias, cobro: ed.cobro || 'no', turno: f.id === 'cuchubal' && ed.turno ? ed.turno : null, recibes: f.id === 'cuchubal' && ed.turno ? M.leerMonto(ed.recibes) : null, antesDebe: ed.antesDebe || null });
+            ob.datos.pagos.push({ clave, id: f.id, nombre: f.nombre, emoji: f.emoji, categoria: f.categoria, monto, variable: !!f.variable, frecuencia, dia: ed.dia, diaSemana: ed.diaSemana, dias, ...paga, turno: f.id === 'cuchubal' && ed.turno ? ed.turno : null, recibes: f.id === 'cuchubal' && ed.turno ? M.leerMonto(ed.recibes) : null, antesDebe: ed.antesDebe || null });
             P.emitir('onboarding:pago:' + f.id);
         }
         const foco = ed.suscripcion ? '[data-fk="ob-s-nueva"]' : `[data-fk="ob-p-${ed.id}"]`;
@@ -5349,9 +5461,10 @@
         ob.errores = [];
         P.render({ foco });
     };
-    function obFalta() {
-        P.ui.ob.errores = ['pago'];
-        P.render({ foco: '#ob-p-monto' });
+    function obFalta(campo = 'pago') {
+        P.ui.ob.errores = [campo];
+        P.render({ foco: campo === 'pago' ? '#ob-p-monto' : `[data-campo="p-${campo}"]` });
+        return true;
     }
     P.acciones.obAtras = () => {
         P.ui.ob.paso = Math.max(0, P.ui.ob.paso - 1);
@@ -5375,6 +5488,13 @@
                 P.render({ foco: '#ob-efectivo' });
                 return;
             }
+            // v2.8 (Victor, 2026-10-22): «Otro» pide el nombre de tu banco o cooperativa.
+            const sinNombre = d.bancoNombre === 'Otro' && !(d.bancoOtro || '').trim() ? 'banco' : (d.bancosMas || []).map((b, i) => (b.nombre === 'Otro' && !(b.otro || '').trim() ? 'banco' + (i + 1) : null)).find(Boolean);
+            if (sinNombre) {
+                ob.errores = [sinNombre + '-otro'];
+                P.render({ foco: `#ob-${sinNombre}-otro` });
+                return;
+            }
         }
         // Lo que quedó escrito en el editor abierto se agrega antes de seguir (si falta algo, se dice y no se avanza).
         const ed = ob.editando;
@@ -5382,6 +5502,16 @@
         if (ed && ed.tipo === 'tarjeta' && !guardarTarjetaOb()) return;
         if (ed && ob.paso === 5) ob.editando = null;
         if (ob.paso === 5) {
+            // v2.8 (Victor, 2026-10-22): cada gasto fijo dice con qué lo pagas; si falta (o esa cuenta ya no está), se pregunta.
+            const lista = conQueOb(ob);
+            const falta = d.pagos.find((p) => !lista.some((x) => x.v === pagaDe(p)) || (lista.find((x) => x.v === pagaDe(p)).solo && !soloDe(p)));
+            if (falta) {
+                abrirPagoOb(falta);
+                const campo = lista.some((x) => x.v === pagaDe(falta)) ? 'solo' : 'paga';
+                if (campo === 'paga') ob.editando.paga = null;
+                obFalta(campo);
+                return;
+            }
             terminarOnboarding();
             return;
         }
@@ -5405,7 +5535,7 @@
             const antes = antesTarjetaOb(st, t);
             if (antes) estado.antes = t.antesDebe === antes ? 'debe' : 'pagado';
             // v2.7 (D-7): lo que debes hoy, con su fecha (las compras de antes ya están en ese saldo).
-            st.tarjetas.push({ id, nombre: t.nombre, emoji: '💳', tipo: 'tarjeta', corte: t.corte || null, pagoDia, ...(t.corte ? { desfase: desfaseTarjeta(st.hoy, t.corte, pagoDia, !!t.otroMes) } : {}), cupo: null, pagoUsual: t.usual || null, debeInicial: t.debe, ...(t.debe !== null && t.debe !== undefined ? { debeDesde: { fecha: st.hoy, seq: st.seq++ } } : {}), desde: st.hoy, interesesAnio: 0, estados: [estado] });
+            st.tarjetas.push({ id, nombre: t.nombre, ...(t.alias ? { apodo: t.alias } : {}), emoji: '💳', tipo: 'tarjeta', corte: t.corte || null, pagoDia, ...(t.corte ? { desfase: desfaseTarjeta(st.hoy, t.corte, pagoDia, !!t.otroMes) } : {}), cupo: null, pagoUsual: t.usual || null, debeInicial: t.debe, ...(t.debe !== null && t.debe !== undefined ? { debeDesde: { fecha: st.hoy, seq: st.seq++ } } : {}), desde: st.hoy, interesesAnio: 0, estados: [estado] });
             st.medios.push({ id, nombre: t.nombre, emoji: '💳', tarjeta: id });
             idTarjeta[t.clave] = id;
         }
@@ -5414,18 +5544,20 @@
             const p = P.crearPago(st, { nombre: x.nombre, emoji: tipo.emoji, categoria: 'cuotas', monto: x.monto, frecuencia: 'mensual', dia: x.dia, medio: medioCuota, antesDebe: x.antesDebe || null });
             Object.assign(p, { tipoDeuda: x.tipoDeuda === 'otra' ? 'prestamo' : x.tipoDeuda, deuda: x.debe !== null ? { debe: x.debe } : null });
         }
-        const credito = st.medios.find((m) => m.tarjeta);
         for (const p of d.pagos) {
             // V2-82: «Completar tu Primer día» no repite un pago que ya tienes (mismo nombre).
             if (st.pagos.some((x) => x.activo !== false && M.normalizar(x.nombre) === M.normalizar(p.nombre || ''))) continue;
-            // «¿Se cobra solo en una tarjeta o cuenta? ¿Cuál?» decide de dónde sale (V2-68); si no, como siempre.
-            const c = p.cobro || 'no';
+            // v2.8 (Victor, 2026-10-22): «¿Con qué lo pagas?» decide de dónde sale; nunca se elige la cuenta por el tipo de
+            // gasto. «¿Se cobra solo?» (solo con un banco o una tarjeta) lo deja como cobro automático.
+            const c = pagaDe(p) || '';
             let medioId = null;
-            if (c.startsWith('t:')) medioId = idTarjeta[c.slice(2)] || null;
+            if (c === 'efectivo') medioId = 'efectivo';
+            else if (c.startsWith('t:')) medioId = idTarjeta[c.slice(2)] || null;
             else if (c.startsWith('T:')) medioId = (st.medios.find((m) => m.tarjeta === c.slice(2)) || {}).id || null;
             else if (c.startsWith('b:')) medioId = bancoDebito(c.slice(2));
-            const automatico = !!medioId;
-            if (!medioId) medioId = p.suscripcion ? (credito && !ob.completar ? credito.id : bancoDebito(null) || 'efectivo') : p.categoria === 'servicios' ? bancoDebito(null) || 'efectivo' : 'efectivo';
+            else if (c.startsWith('w:')) medioId = 'm' + c.slice(2);
+            else if (c.startsWith('L:')) medioId = (medioDeLugarOb(st, c.slice(2)) || {}).id || null;
+            const automatico = soloDe(p) === 'si' && M.puedeCobrarSolo(st, medioId);
             const fecha = p.anual ? M.proximoDia(st.hoy, p.dia) : null;
             const x = P.crearPago(st, { nombre: p.nombre, emoji: p.emoji, categoria: p.categoria, monto: p.monto, estimado: p.variable, frecuencia: p.anual ? 'meses' : p.frecuencia, cadaMeses: p.anual ? 12 : undefined, fecha, dia: p.dia, diaSemana: p.diaSemana, dias: p.dias, medio: medioId, tipoPago: p.suscripcion ? 'suscripcion' : undefined, antesDebe: p.antesDebe || null });
             if (automatico) x.automatico = true;
@@ -5446,13 +5578,14 @@
         st.espacio = st.nombre ? 'Hogar de ' + st.nombre : 'Tu hogar';
         // V2-45: cada banco y cada billetera es un lugar; cada banco trae su débito.
         const bancos = bancosOb(d);
-        const billeteras = (d.billeteras || []).filter((b) => (b.nombre || '').trim()).map((b, i) => ({ ...b, id: 'billetera' + (i + 1) }));
+        const billeteras = billeterasOb(d);
         const bancoId = bancos[0] ? bancos[0].id : null;
         st.lugares = [{ id: 'efectivo', tipo: 'efectivo', nombre: 'Efectivo', emoji: '💵' }];
         st.medios = [{ id: 'efectivo', nombre: 'Efectivo', emoji: '💵', lugar: 'efectivo' }];
         for (const b of bancos) {
-            st.lugares.push({ id: b.id, tipo: 'banco', nombre: b.nombre === 'Otro' ? 'Tu banco' : 'Banco ' + b.nombre, emoji: '🏦' });
-            st.medios.push({ id: 'debito' + b.sufijo, nombre: 'Débito ' + (b.nombre === 'Otro' ? 'del banco' : b.nombre), emoji: '🏦', lugar: b.id, tarjetaDebito: true });
+            // v2.8 (Victor, 2026-10-22): con alias, la cuenta se llama así y guarda de qué banco es.
+            st.lugares.push({ id: b.id, tipo: 'banco', nombre: b.cuenta, ...((b.alias || '').trim() ? { banco: b.banco || 'Tu banco' } : {}), emoji: '🏦' });
+            st.medios.push({ id: 'debito' + b.sufijo, nombre: 'Débito ' + (b.nombre === 'Otro' ? b.banco || 'del banco' : b.nombre), emoji: '🏦', lugar: b.id, tarjetaDebito: true });
         }
         for (const b of billeteras) {
             st.lugares.push({ id: b.id, tipo: 'billetera', nombre: b.nombre.trim(), emoji: '📱' });
