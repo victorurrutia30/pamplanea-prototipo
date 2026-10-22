@@ -220,6 +220,8 @@ try {
         check('?victor=1: los 13 casos', await ev('document.querySelectorAll(".ay-caso").length'), 13);
         check('?victor=1: explorar con Ana, Carlos y Rosa', [await hay('[data-fk="ay-ana"]'), await hay('[data-fk="ay-carlos"]'), await hay('[data-fk="ay-rosa"]')], [true, true, true]);
         check('?victor=1: reiniciar los ejemplos, notas y moderador', [await hay('[data-fk="ay-reiniciar"]'), await hay('#ay-nota'), await hay('[data-fk="ay-moderador"]')], [true, true, true]);
+        // v2.8 (D-11): las preguntas de comprensión de la prueba familiar, solo en las herramientas de Victor.
+        check('?victor=1: preguntas de comprensión (D-11)', await ev(`document.querySelector('#ay-d11')?.textContent.replace(/\\s+/g, ' ') ?? null`), contiene('Preguntas de comprensión (prueba familiar)', 'Si hoy gastas $20, ¿qué cambia?', 'Si pagas $50 de una cuota de $100, ¿cuánto falta?', 'Si gastas $20 en el súper, ¿baja tu libre?'));
         await ev('document.querySelector(".ay-c").scrollTop = 99999; true');
         await foto('B-victor-herramientas');
         await clic('[data-fk="ay-moderador"]');
