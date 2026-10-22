@@ -18,6 +18,36 @@ Versión visible en la app y en la guía: **«Prototipo v2.7.0 · 2026-10-21»**
 
 ---
 
+## Prototipo v2.8 · Más claro (2026-10-22)
+
+**Base:** `main` en `d702de0` (v2.7.0 publicada + LEEME). Rama `v2-8`; `main` no se toca hasta que Victor escriba «Bloque validado» (un push a `main` les actualiza la app a Pam y Majo). Trabajo de noche sin supervisión: **APROBADO por Victor (2026-10-22)**, frase literal: «para esperar y dejar trabajando todo 2.8». Dos entregas seguidas: E1 (el cálculo y los datos) y E2 (las pantallas).
+
+### Decisiones que se implementan (registradas antes del código)
+
+- **D-1 a D-12 y C-1 a C-10: APROBADO por Victor (2026-10-21)**, frase literal: «Las apruebo». Texto completo en el brief de la v2.8:
+  - **D-1 Mapa:** abajo, Hoy · Mi plan · (+) · Mi dinero · Mes. Anotar con verbos: Gasté · Me llegó dinero · Pagué una deuda · Guardé en un ahorro · Moví dinero · Cuadré. Lo que ya pasó se dice con verbo; lo que viene tiene nombre.
+  - **D-2:** Gastos fijos y Gastos variables. «Pago» se dice solo para deudas. Al crear, una pregunta: «¿Siempre es el mismo monto?» (Sí = fijo; No = pones un tope).
+  - **D-3:** Libre = dinero en tus cuentas − tus ahorros dentro de las cuentas − lo que falta de tu plan hasta tu próximo ingreso. Lo que falta = gastos fijos sin pagar + lo que falta de los variables + ahorro programado + pagos de deudas. Los ingresos variables cuentan solo cuando llegan. Ejemplo: $1,000 en cuentas con $300 de ahorro dentro → $700; falta luz 30 + internet 25 + súper 110 de 150 + ahorro 50 + tarjeta 100 → **$385**; pupusas $20 → **$365**; súper $20 → **sigue en $385**.
+  - **D-4 (U01):** la tarjeta tiene una sola regla: antes del primer estado de cuenta, su pago es «lo que pagas normalmente»; después, el monto del estado. Se cubre con el ingreso anterior al vencimiento y se puede cambiar de quincena (V2-87).
+  - **D-5 (F09):** se pregunta «¿Qué día vence tu próximo pago?»; no se infiere como corte + 1 mes.
+  - **D-9:** la cuota termina sola cuando la deuda llega a $0, con aviso (U05); «Me prestaron» registra la deuda y la entrada en un solo paso (U06); usar parte de un ahorro deja el resto (U16).
+  - **D-11:** la prueba familiar usa preguntas de comprensión: «Si hoy gastas $20, ¿qué cambia?», «Si pagas $50 de una cuota de $100, ¿cuánto falta?» y «Si gastas $20 en el súper, ¿baja tu libre?».
+  - **C-1** (reemplaza V2-41): ahorros fuera de Libre; al crearlo, «¿Dónde está?» (dentro de una cuenta se resta; aparte, solo se registra). Ahorro programado con «Ya lo guardé». «Usé de mi ahorro» devuelve el dinero a Libre.
+  - **C-2:** ninguna pantalla dice «apartar», «apartado», «reservar» ni «Pagos» como pestaña; la reserva se explica solo en «¿De dónde sale?».
+  - **C-3:** gastos variables por quincena. Antes del siguiente ingreso: «Ibas a gastar $X y anotaste $Y. ¿Ya terminaste?» (Sí / Me falta / Se me olvidó anotar).
+  - **C-4:** el gasto fijo trae «Avísame»; «Ya lo pagué» lo vuelve gasto; si se anota uno parecido, «¿Es tu pago de [nombre]?».
+  - **C-5:** la quincena se confirma con «Ya llegó»; «Me llegó dinero» es para extras; a ±10 % y ±3 días de un ingreso esperado, «¿Es tu quincena?».
+  - **C-7:** los cobros automáticos con tarjeta no restan aparte; la app sugiere repartir el pago entre quincenas; la tarjeta puede tener apodo.
+  - **C-8:** Hoy muestra el número, lo que viene (máximo 3) y Anotar.
+  - **C-9:** el lugar central es Mi plan; cada fila dice de dónde sale.
+  - **C-10:** la ficha de la tarjeta muestra sus cobros recurrentes.
+- **P-1: APROBADO por Victor (2026-10-21)**, frase literal: «creo que cuando anotas un pago, tiene que ser para un pago o gasto registrado, a menos que sea un pago nuevo».
+- **Pendiente 4, opción para la v2.8: APROBADO por Victor («Bloque validado — v2.7», 2026-10-21)**: el día del Primer día, lo anotado toma «Después» y lo muestra con «¿Fue antes? Cambiar».
+- **«recibí 50 en efectivo» llega a Efectivo: APROBADO por Victor («Bloque validado — v2.7», 2026-10-21)**, frase literal: «Anota para la v2.8: «recibí 50 en efectivo» debe llegar a Efectivo.»
+- **Datos (DATOS-1 a DATOS-5): siguen vigentes igual que en la v2.7** (APROBADO por Victor, 2026-10-21, frase literal: «me refería a que ya no perdieran nada de sus datos en estas actualizaciones»). Los ahorros de la v2.7 pasan a «dentro de [su cuenta]» (C-1): como ya se restaban de Libre, su Libre no cambia por eso.
+
+---
+
 ## Prototipo v2.7 · Tus números bien (2026-10-21)
 
 **Base:** `main` en `c640e4e` (v2.6.7). Rama `v2-7`; `main` no se toca hasta que Victor escriba «Bloque validado» (un push a `main` les actualiza la app a Pam y Majo). Fuente: el informe de Codex «Analisis_PamPlanea_Prototipo_v2.6.7.md» (50 hallazgos: F01–F23, U01–U19, A01–A08) y el brief del chat auditor.
