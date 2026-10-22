@@ -18,6 +18,25 @@ Versión visible en la app y en la guía: **«Prototipo v2.6.7 · 2026-10-19»**
 
 ---
 
+## Prototipo v2.7 (2026-10-21): Tus números bien — EN CURSO
+
+**Base:** `main` en `c640e4e` (v2.6.7). Rama `v2-7`; `main` no se toca hasta que Victor escriba «Bloque validado» (un push a `main` les actualiza la app a Pam y Majo). Fuente: el informe de Codex «Analisis_PamPlanea_Prototipo_v2.6.7.md» (50 hallazgos: F01–F23, U01–U19, A01–A08) y el brief del chat auditor.
+
+### Decisiones (registradas antes del código)
+
+- **D-1 a D-12 y C-1 a C-10: APROBADO por Victor (2026-10-21)**, frase literal: «Las apruebo». El texto completo llega con el brief de la v2.8. En esta versión solo se implementan:
+  - **D-6:** un pago parcial deja pendiente lo que falta (pendiente / parcial / pagado). Se puede pagar menos del mínimo con el aviso «Te faltan $X para el mínimo».
+  - **D-7:** «lo que debo hoy» de una tarjeta es un saldo con fecha. Los abonos lo bajan; las compras anteriores a esa fecha no lo suben.
+  - **D-8:** detallar después de cuadrar explica la diferencia del cuadre, no la suma.
+  - **C-6:** teclado propio con punto, donde «25» = $25.00. Se adelanta a la v2.7. **APROBADO por Victor (2026-10-21)**, frase literal: «vamos arreglar todo lo de como ingresar numeros tambien».
+- **Protección de datos (DATOS-1 a DATOS-5): APROBADO por Victor (2026-10-21)**, frase literal: «me refería a que ya no perdieran nada de sus datos en estas actualizaciones».
+- **Cuadrito de novedades: APROBADO por Victor (2026-10-21)**, frase literal: «les saldrá un cuadrito de una vez nada más explicando súper friendly el update, solo lo importante que deban saber, nada techy».
+- **Cambio de roadmap: APROBADO por Victor (2026-10-21)**, frase literal: «Me urgen los cambios a prototipo primero, asap, para que la sigan usando, modifiquemos el road map». Mi plan, ahorros aparte, gastos variables y el Hoy nuevo van en la v2.8.
+
+**Orden obligatorio:** A (proteger sus datos) → B (arreglos del dinero) → C (escribir montos y anotar) → D (cuadrito de novedades). Sin la Parte D no se publica.
+
+---
+
 ## Prototipo v2.6.7 (2026-10-19): lo que pagas normalmente de una tarjeta se paga como cualquier otro pago (V2-87) y editar = crear (V2-88)
 
 **Decisiones APROBADAS por Victor (2026-10-19)**, recomendación del chat auditor.
