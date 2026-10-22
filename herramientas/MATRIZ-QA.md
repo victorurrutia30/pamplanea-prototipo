@@ -170,7 +170,8 @@ Plan de pruebas de la revisión total pedida por Victor (V2-64: «me gustaria qu
 | N-B6 | Corregir un ingreso o un gasto de un ahorro | Un solo monto; el ahorro cambia con el gasto (F15, F16) | P1 | 🔧 | invariantes I02, I10 |
 | N-B7 | Tarjeta en Pongámonos al día | Nunca un abono de $0 (F17) | P1 | 🔧 | invariantes F17 |
 | N-B8 | Avisos, privacidad y aria | Sin promesas falsas; apagar apaga; «true»/«false» (F21, F22, F23) | P2 | 🔧 | invariantes F21–F23 |
-| N-C1 | Teclado de montos en todos los campos | «25» = $25.00, 9 dígitos, 2 decimales, Escape, lector (C-6) | P1 | 🔧 | montos B, C |
+| N-C1 | Montos con el teclado del teléfono en todos los campos (A, reemplaza a C-6) | inputmode «decimal»; nada tapa el campo ni su mensaje; «25», «2.5», «1,200», «25,50» | P1 | 🔧 | montos B, C |
 | N-C2 | Un solo lector de montos | El mismo resultado en formularios, teclado y Anotar | P1 | 🔧 | montos A, D |
 | N-C3 | Anotar no adivina | Miles, fechas, la tarjeta nombrada, sin tarjeta, «tengo 0», dos montos (F05–F08, F18, F19) | P1 | 🔧 | montos E |
+| N-C4 | La nota del cuadre en Anotar (P-3) | Antes del cuadre: no cambia, con «Fue después de contar»; mismo día: pregunta; después: baja | P1 | 🔧 | invariantes P3 |
 | N-D1 | El cuadrito de novedades | Una vez, solo con datos de antes, líneas según los datos, accesible; atrás lo cierra | P2 | ✅ | novedades |

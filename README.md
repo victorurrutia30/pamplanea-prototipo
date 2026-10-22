@@ -16,7 +16,8 @@ Lo de tus datos y lo de los ejemplos se guarda por separado: nada de lo que haga
 ## Lo nuevo en la v2.7 · Tus números bien
 
 - **Tus datos, a salvo en cada actualización.** Antes de cambiar algo, la app guarda una copia de lo que tenías. Si alguna vez no puede abrir tus datos, no empieza de cero: te muestra **«Tus datos están a salvo»** con cómo recuperarlos.
-- **Escribir montos es más fácil.** En el teléfono, los montos tienen su propio teclado con punto: escribe 25 y son $25, 2.5 son $2.50 y 1200 son $1,200. El monto se ve grande mientras lo escribes.
+- **Montos con el teclado de tu teléfono.** Escribe 25 y son $25, 2.5 son $2.50 y 1,200 son $1,200 (25,50 también son $25.50). Si un número no se entiende, te lo dice justo debajo.
+- **Lo de antes de contar tu dinero.** Si anotas algo de antes de cuadrar, te avisa que ya está en lo que contaste. Si es del mismo día, te pregunta si fue antes o después.
 - **Anotar ya no adivina.** «1,200» son $1,200 (antes eran $1.20). Entiende «hoy», «ayer» y «mañana», y si «el 22» ya pasó te pregunta cuál. «Pagué la tarjeta Cuscatlán 25» va a Cuscatlán, y si escribes dos cosas («pupusas 6 y bus 2») te ofrece anotar las dos.
 - **Pagos a medias.** Si pagas $50 de una cuota de $100, queda «Parcial · faltan $50» y los $50 siguen contando en tu libre. Con la tarjeta puedes pagar menos del mínimo y te dice cuánto te falta.
 - **Tu tarjeta, bien.** Lo que dijiste que debes hoy baja con cada abono, y las compras de antes no lo suben otra vez. Un estado de cuenta nuevo no marca el anterior como pagado si no lo pagaste.

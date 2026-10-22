@@ -99,16 +99,19 @@ Versión visible en la app y en la guía: **«Prototipo v2.7.0 · 2026-10-21»**
 
 ### Parte C — escribir montos y anotar
 
-- **C-6 · el teclado de montos** (`montos.js`). En el teléfono, cada campo de monto usa un teclado propio grande: dígitos, punto, borrar y «Listo». No usa el del sistema, así que el punto siempre está, también en iPhone.
-  - «25» = $25.00, «2.5» = $2.50, «1200» = $1,200.00. Hasta 2 decimales y 9 dígitos.
-  - El monto se ve en vivo y grande («$1,200.00»).
-  - Teclas de 56 px («Listo», 48). El foco se queda en el campo y el lector de pantalla anuncia el monto.
-  - Funciona con teclado físico; Escape cierra el teclado (no la hoja).
-  - Es el mismo componente en TODOS los campos de monto: hojas, Pongámonos al día, Reparte y el Primer día.
-  - En la computadora se escribe normal y se lee con las mismas reglas: un solo lector de montos (`MOTOR.leerMonto`) para formularios y Anotar.
+- **A (reemplaza a C-6) · los montos con el teclado del teléfono.** Se quitó el teclado propio (`montos.js`), sus estilos y `?teclado=1`: Victor vio que se abría solo, tapaba el formulario y escondía «No entendí…».
+  - Todos los campos de monto (hojas, Pongámonos al día, Reparte y el Primer día) piden el teclado numérico del teléfono con punto (`inputmode="decimal"`).
+  - Un solo lector de montos (`MOTOR.leerMonto`) para formularios y Anotar: «25» = $25.00, «2.5» = $2.50, «1,200» = $1,200.00 y «25,50» = $25.50 (por si el teléfono muestra coma).
+  - Nada se abre solo encima del formulario. Al escribir, el campo **y su mensaje** («No entendí…», el error) suben arriba del teclado del teléfono.
+  - «No entendí «1,2345». Escríbelo con números, como 1,200 o 25.50.» va justo debajo del campo del monto.
+- **P-3 · la nota del cuadre en Anotar, antes de guardar** (gastos e ingresos, también en sus formularios «Gasto» y «Recibí»):
+  - Fecha **anterior** al último cuadre de esa cuenta: «Esto fue antes de que contaras tu Efectivo hoy. Ya está dentro de lo que contaste: tu Efectivo no cambia.» (o «…el 18 de octubre…»). Con «Fue después de contar»: entonces dice «Cuenta como después de contar: tu Efectivo baja.» y sí baja (o sube, si es un ingreso).
+  - **Mismo día** que el cuadre: «¿Fue antes o después de contar tu dinero?» (Antes / Después). Sin respuesta no se guarda. «Antes»: «Ya está dentro de lo que contaste: tu Efectivo no cambia.»; «Después»: «Tu Efectivo baja con esto.».
+  - Después del último cuadre: nada nuevo (baja o sube, como siempre).
+  - Lo que dijo queda con la anotación (`trasCuadre` o `antesCuadre`: la cuenta y el cuadre). El saldo, «anterior al cuadre» y lo que explica un cuadre en Mes (D-8) lo respetan (`MOTOR.despuesCuadre`).
 - **Anotar no adivina:**
   - **F05:** «1,200» = $1,200.00 y «1,234.50» = $1,234.50. Si un número no se lee completo («1,2345», «1.200»), pregunta y dice cuál no entendió.
-  - **F06:** reconoce hoy, ayer, antier y mañana («en la mañana» es la hora). «el 22» es el próximo 22 si no ha pasado este mes; si ya pasó, pregunta cuál. Lo futuro se dice antes de guardar («Es para el 22 de octubre…» y «Guardar para el 22»).
+  - **F06:** reconoce hoy, ayer, antier y mañana («en la mañana» es la hora). «el 22» es el próximo 22 si no ha pasado este mes; si ya pasó, pregunta cuál. Lo futuro se dice antes de guardar («Es para el 22 de octubre…» y «Guardar para el 22»). Un gasto para mañana **sí baja tu libre de hoy** (es un pago antes de tu próximo ingreso); lo que tienes no baja hasta que lo pagues.
   - **F07:** «pagué la tarjeta Cuscatlán 25» va a Cuscatlán; si pueden ser dos, pregunta. La tarjeta destino se ve antes de guardar.
   - **F08:** sin tarjeta, «pagué la tarjeta» ofrece «Agregar mi tarjeta» o «Es un gasto». Nunca una excepción.
   - **F18:** «tengo 0» funciona igual que en Cuadrar.
@@ -119,7 +122,7 @@ Versión visible en la app y en la guía: **«Prototipo v2.7.0 · 2026-10-21»**
 - Sale **una vez**, al abrir la v2.7 con sus datos de una versión anterior. Al cerrarlo no vuelve, ni al recargar: queda guardado con sus datos (`novedades`).
 - No sale a quien empieza de cero ni en el modo de ejemplos.
 - Título «¡PamPlanea se puso al día! ✨» y hasta 4 líneas, solo las que le tocan a esa persona:
-  - los montos: «Escribir montos es más fácil: escribe 25 y son $25. Y ya puedes anotar 1,200.» (las dos líneas del borrador en una, para que todo quepa en 5);
+  - los montos: «Ya puedes anotar montos grandes, como 1,200.» (sin la línea del teclado: A);
   - la cuota, si tiene pagos: «Si pagas parte de una cuota, te mostramos cuánto falta.»;
   - la tarjeta, si tiene tarjeta: «Tus abonos a la tarjeta ahora bajan lo que debes.»;
   - si DATOS-4 detectó un cambio, una sola línea, sin culpa: «Corregimos tu gasto de octubre: ahora es $X.» o «Corregimos unos números: tu gasto de octubre es $X y lo que debes de BAC es $Y.».
@@ -129,13 +132,24 @@ Versión visible en la app y en la guía: **«Prototipo v2.7.0 · 2026-10-21»**
 
 ### Pruebas y calidad
 
-**Línea base (c640e4e, la v2.6.7 sacada de git a una carpeta aparte, una prueba a la vez):** las 33 pruebas por archivo con código 0. v266 y v267 necesitan la carpeta `.git` (`GIT_DIR`); con ella, código 0. Servidas (`--base=http://…`): 24 pruebas, todas con código 0 (las `recorrer-*` con su ronda `final`).
+**Segunda vuelta (correcciones antes de validar, 2026-10-21).** Todas las `herramientas/*.mjs`, una por una (un solo Chrome a la vez), comparadas con la línea base de abajo. **Ninguna baja.**
+- Por archivo: las 36 (las 33 de la base + `invariantes`, `montos` y `novedades`), todas con código 0 y sin fallos. `actualizar --ref=c640e4e`: 0 fallos.
+- Servidas: las 24 de la base (también las 11 que faltaron en la primera vuelta) + `invariantes`, `montos` y `novedades`: todas sin fallos. `v25` se corrió en dos partes (a–f y g–k) para no pasar de 10 minutos.
+- Pruebas que esperaban lo de antes, actualizadas citando su F (no se borró ninguna):
+  - `montos` (partes B, C y D): del teclado propio al teclado del teléfono, el lector y que nada tape el campo ni su mensaje (A).
+  - `formularios-v265`: vuelve a pedir `inputmode="decimal"` (A).
+  - `novedades`: la línea nueva de los montos (A).
+  - `v266`, `viaje-v23` y `v241`: anotan el mismo día de un cuadre (su Primer día); ahora contestan «Después» (P-3).
+- Nueva: `invariantes` fila **P3** (antes del cuadre; el mismo día con «Antes», con «Después» y sin respuesta; un ingreso; y después del cuadre). Ahora son 20 filas, todas bien.
+- Capturas a 390×844 en `capturas/v27/`: `1-monto-ilegible`, `4a-nota-cuadre-antes`, `4b-nota-cuadre-mismo-dia`, `4c-mismo-dia-antes` y `5-novedades` (se revisaron como imágenes).
+
+**Primera vuelta.** **Línea base (c640e4e, la v2.6.7 sacada de git a una carpeta aparte, una prueba a la vez):** las 33 pruebas por archivo con código 0. v266 y v267 necesitan la carpeta `.git` (`GIT_DIR`); con ella, código 0. Servidas (`--base=http://…`): 24 pruebas, todas con código 0 (las `recorrer-*` con su ronda `final`).
 
 **v2.7, por archivo:** 36 pruebas (las 33 + `invariantes`, `montos` y `novedades`).
 - Primera vuelta: 32 igual que la base y 4 bajaron. Las 4 esperaban el comportamiento de antes y se actualizaron citando su F (no se borró ninguna):
   - `aceptacion-v23`: corregir un pago de $25 a $20 ahora queda «Parcial · faltan $5» (F12, D-6).
   - `atras` y `v264`: siembran datos de antes de la v2.7, así que sale una vez el cuadrito; la prueba lo cierra y sigue (Parte D).
-  - `formularios-v265`: en el teléfono los montos usan el teclado de la app, `inputmode="none"` (C-6).
+  - `formularios-v265`: en el teléfono los montos usan el teclado de la app, `inputmode="none"` (C-6; en la segunda vuelta, A lo devolvió a `decimal`).
   - `v267`: la versión que abre ya es la v2.7, y lo único nuevo guardado es `version` (DATOS-1) y `novedades` (Parte D).
 - Después, todas con código 0.
 - La vuelta servida se cortó por poca memoria en el equipo, con 13 de 24 hechas. Las 13 igual que la base, salvo las mismas 3 de arriba (ya arregladas). No se volvió a correr completa.
@@ -153,7 +167,7 @@ Versión visible en la app y en la guía: **«Prototipo v2.7.0 · 2026-10-21»**
 - **Capturas:** el texto de «Tus datos están a salvo» salía corrido a la derecha.
 - **Revisión:** el botón atrás del teléfono no cerraba el cuadrito de novedades. En Android salía de la app y el cuadrito volvía a salir. Ahora lo cierra, como «¡Entendido!».
 
-**Capturas:** `capturas/v27/` (390×844 y 1440×900): teclado, Anotar («1,200», «mañana pupusas 10», «pagué la tarjeta Cuscatlán», dos montos), tarjeta, parcial en Pagos, Mes, el cuadrito y «Tus datos están a salvo». Las genera `herramientas/capturas-v27.mjs`.
+**Capturas:** `capturas/v27/` (390×844 y 1440×900): Anotar con un monto que no se lee, Anotar («1,200», «mañana pupusas 10», «pagué la tarjeta Cuscatlán», dos montos), tarjeta, parcial en Pagos, la nota del cuadre (antes, mismo día), Mes, el cuadrito y «Tus datos están a salvo». Las genera `herramientas/capturas-v27.mjs`.
 
 ### Decisiones técnicas — REVISAR
 
@@ -164,22 +178,28 @@ Versión visible en la app y en la guía: **«Prototipo v2.7.0 · 2026-10-21»**
 5. **F10:** solo los estados de cuenta nuevos saben en qué orden se anotaron. Los de antes siguen como antes: un abono del día del corte no cuenta para ellos.
 6. **F06:** «mañana» en un pago, un abono o un movimiento pregunta «Es de hoy» (eso se anota el día que pasa). En «Recordarme un pago», «mañana» es un recordatorio de una vez.
 7. **F19:** «Anotar las 2» es solo para gastos y pagos; si se mezclan tipos, una cosa a la vez.
-8. **C-6:** el teclado no se abre solo al abrir una hoja (como el del sistema, V2-50): sale al tocar el campo, al llegar con Tab o al escribir. 9 dígitos en total; el tope de $1,000,000.00 sigue y se dice.
+8. ~~**C-6:** el teclado no se abre solo al abrir una hoja…~~ **REEMPLAZADA por A** (ya no hay teclado propio).
 9. **F21:** lo vencido («¿Ya lo pagaste?») se sigue preguntando aunque apagues «El día que vence»: no es un aviso, es lo que mantiene bien tu número.
 10. **«Borrar todos mis datos»** también borra las copias internas: es lo que la persona pide, con dos confirmaciones.
 11. **Recuperar una copia de una versión anterior** se trata como una actualización: se guarda con la versión que la hizo y, si es de antes de la v2.7, sale el cuadrito una vez.
 12. **El botón atrás del teléfono** cierra el cuadrito de novedades y cuenta como visto (igual que Escape o «¡Entendido!»).
-13. **`?teclado=1`** en el enlace muestra el teclado de montos en la computadora, para probarlo sin teléfono.
+13. ~~**`?teclado=1`**~~ **REEMPLAZADA por A** (se quitó con el teclado propio).
+14. **P-3 y el Primer día:** lo que dijiste en tu Primer día («¿Cuánto tienes ahora?») cuenta como tu primer cuadre. Así, lo de antes de empezar dice que ya está en lo que contaste, y lo del mismo día pregunta antes o después. (Ver la pendiente 4.)
+15. **P-3, el día:** si contaste hoy, la nota dice «…tu Efectivo hoy»; si no, «…el 18 de octubre».
+16. **P-3, dónde:** en Anotar (lo que escribes y sus formularios «Gasto» y «Recibí»). «Pagado» de un pago conserva su nota de antes («Como cuadraste el X, este pago ya estaba en tu saldo»); «Ya llegó» de un ingreso esperado y corregir un movimiento no preguntan.
+17. **P-3, «Fue después de contar»:** queda guardado con la anotación (la cuenta y ese cuadre). Si después cuadras otra vez, cuenta como siempre: antes de ese cuadre nuevo.
 
 ### DECISIONES PENDIENTES PARA VICTOR (v2.7)
 
 1. **«el 22» que ya pasó: ¿preguntar o tomar el de este mes?** Hoy pregunta (lo pide el brief). *Recomendación:* dejarlo. *Tradeoff:* quien anota tarde lo de la semana toca un botón más.
 2. **Lo detallado después de un «Listo» de Reparte** cuenta como explicación de ese cuadre, aunque la persona no haya contado su dinero. *Recomendación:* dejarlo (Mes y el saldo cuadran). *Tradeoff:* en Mes puede verse «entró sin detalle» si el gasto era de antes.
 3. **Las copias internas** se guardan una por versión; con muchas versiones ocupan espacio. *Recomendación:* dejarlo así hasta que falte espacio (ya se limpian solas). *Tradeoff:* ninguno visible.
+4. **P-3 el día del Primer día:** como el Primer día cuenta como cuadre, ese día cada gasto o ingreso de esa cuenta pregunta «¿Fue antes o después de contar tu dinero?». *Recomendación:* dejarlo así (no se asume, como pide P-3). *Tradeoff:* el primer día, un toque más por cada anotación; la alternativa es no preguntar el día del Primer día y tomarlo como «Después».
 
 ### Limitaciones
 
-- El teclado de montos no se ha probado en un iPhone real. En los iPhone con iOS anterior a 12.2 podría salir también el teclado del sistema.
+- El teclado del teléfono con `inputmode="decimal"` muestra punto o coma según el teléfono; los dos se leen bien («25,50» = $25.50). No se ha probado en un iPhone real.
+- Anotar todavía lleva «recibí 50 en efectivo» a tu banco (es de antes de la v2.7): se cambia con el dato «¿Dónde llegó?» antes de guardar. Queda para la v2.8.
 - Lo que la v2.6.7 dejó con dos montos (un ingreso corregido, un ahorro sin corregir) no se arregla solo: se congela como estaba (DATOS-3) y se arregla al corregirlo otra vez.
 - Un pago de $50 de $100 marcado «pagado» en la v2.6.7 sigue «pagado» (no se cambia solo).
 
