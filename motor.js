@@ -1495,7 +1495,7 @@
                 // La que falta: una que ya pasó y no marcaste o, si no, la próxima. Si la próxima ya llegó, se avisa.
                 const xs = ocurrenciasIngreso(st, ing, sumarDias(st.hoy, -31), sumarDias(st.hoy, 31)).filter((x) => x.estado !== 'noLlego');
                 const proxima = xs.find((x) => x.fecha >= st.hoy);
-                const falta = xs.find((x) => x.fecha < st.hoy && x.estado !== 'llego') || (proxima && proxima.estado !== 'llego' ? proxima : null);
+                const falta = pendienteDe(st, ing);
                 const llego = proxima && proxima.estado === 'llego' ? proxima : xs.filter((x) => x.estado === 'llego').at(-1);
                 if (falta && (!o || falta.fecha < o.fecha)) o = falta;
                 else if (!falta && llego && (!ya || llego.fecha > ya.fecha)) ya = llego;
@@ -1510,6 +1510,25 @@
             }
         }
         return { o, ya: o ? null : ya };
+    }
+    /**
+     * v2.8 (ajustes 2 y 3): la de un ingreso que falta marcar: una que ya pasó sin marcar o, si no, la próxima (si la
+     * próxima ya llegó, ninguna).
+     */
+    function pendienteDe(st, ing) {
+        const xs = ocurrenciasIngreso(st, ing, sumarDias(st.hoy, -31), sumarDias(st.hoy, 31)).filter((x) => x.estado !== 'noLlego');
+        const proxima = xs.find((x) => x.fecha >= st.hoy);
+        return xs.find((x) => x.fecha < st.hoy && x.estado !== 'llego') || (proxima && proxima.estado !== 'llego' ? proxima : null);
+    }
+    /** v2.8 ajuste 3 (FM-3): la de tu ingreso principal que falta marcar («Es mi quincena del 30 → Ya llegó»). */
+    function principalPendiente(st) {
+        const p = principal(st);
+        return p ? pendienteDe(st, p) : null;
+    }
+    /** v2.8 ajuste 3 (FM-1): ¿ya hay algo en tu plan con ese nombre (sin mayúsculas ni tildes)? */
+    function nombreEnPlan(st, nombre) {
+        const n = normalizar(nombre || '');
+        return !!n && [...st.pagos, ...(st.variables || []), ...st.ingresos].some((x) => x && x.activo !== false && normalizar(x.nombre || '') === n);
     }
     /** V2-81: aplica a un borrador de ingreso lo que se encontró (y si hay que preguntar o avisar). */
     function aplicarEsperado(st, d, resto = '') {
@@ -1588,6 +1607,8 @@
             // v2.8 (Victor, 2026-10-22): «¿Con qué lo pagas?» y, con un banco o una tarjeta, «¿Se cobra solo?».
             if (!d.medio) f.push('medio');
             else if (puedeCobrarSolo(st, d.medio) && !d.solo) f.push('solo');
+            // v2.8 ajuste 3 (FM-1): «Es otro distinto» pide un nombre que no esté ya en tu plan.
+            if (d.pedirAlias && nombreEnPlan(st, d.nombre)) f.push('nombre');
         }
         if (d.tipo === 'ingreso' && !d.lugar) f.push('lugar');
         // v2.7 (P-3): del mismo día que el último cuadre de esa cuenta: ¿antes o después de contar? No se asume.
@@ -1606,7 +1627,7 @@
         MESES, MESES_CORTOS, DIAS, DIAS_CORTOS, pad, sumarDias, diasEntre, diaSemana, partes, diasDelMes, fechaDe, mesMas, fechaCorta, fechaLarga, conDia, diaCorto, relativa, haceDias, ultimoDia, proximoDia,
         dinero, leerMonto, montoExcede, montoCampo, suma, lugar, medio, tarjeta, pago, ingreso, apartado, categoria, principal, sinVS,
         despues, despuesCuadre, cuadreAnotar, lugarGasto, saldoLugar, anteriorAlCuadre, lugaresDe, tienes, explicadoPorCuadre, sinDetalle, apartadoTotal, ultimaActividad, fechasRegla, ocurrenciasPago, ocurrenciasIngreso, tarjetaInfo, ocurrenciasTarjeta,
-        horizonte, calcular, resumenMes, pagosDelMes, medioUsual, normalizar, entender, faltan, puedeCobrarSolo, capital, porDiaDe, apartadosVencidos, esDiaDeIngreso, coincide,
+        horizonte, calcular, resumenMes, pagosDelMes, medioUsual, normalizar, entender, faltan, puedeCobrarSolo, principalPendiente, nombreEnPlan, capital, porDiaDe, apartadosVencidos, esDiaDeIngreso, coincide,
         inicioDe, cortes, corteAntes, corteDespues, fundado, esFundado, periodoDe, fuentesPara, asignacion, reglaPago, recurrentes, descuentosDe, proyectar, claveVigente, reservasDe,
         esUnico, ingresoDeClave, llegoUnico, unicosPara,
         porPagar, porRecibir, ingresoEsperado, aplicarEsperado, pagoParecido,

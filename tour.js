@@ -366,7 +366,7 @@
                     pausa: (a, d) => ({ titulo: 'Mira tu próxima quincena', filas: [filaLibre(a, d), ...(a.quedan !== null ? [{ l: 'Te quedarían', a: a.quedan, d: d.quedan, aprox: true }] : [])], texto: cambioLibre(a, d, `pasaste ${corto(a.libre - d.libre)} a tu próxima quincena`) }),
                 },
             },
-            { que: 'Aquí cambias o repartes un pago', g: 'repartir', ejemplo: 'El colegio puede salir una parte de esta quincena y otra de la próxima.', antes: abrirEn('pagos', 'pago', 'colegio'), sel: seccion('Lo pagas con') },
+            { que: 'Aquí cambias o repartes un gasto', g: 'repartir', ejemplo: 'El colegio puede salir una parte de esta quincena y otra de la próxima.', antes: abrirEn('pagos', 'pago', 'colegio'), sel: seccion('Lo pagas con') },
         ],
         pregunta: { p: 'Ves «~» antes de un monto. ¿Qué quiere decir?', ops: ['Que es exacto', 'Que es más o menos', 'Que ya llegó'], bien: 1, si: '¡Así es! ~ es «más o menos». Cuenta de verdad cuando llega.', casi: 'Casi: ~ quiere decir «más o menos». Cuenta de verdad cuando llega.', repaso: 1 },
     };

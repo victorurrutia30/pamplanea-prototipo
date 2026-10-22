@@ -999,6 +999,16 @@ button.fila-main:active {
     font-size: 12px;
     font-weight: 500;
 }
+/* v2.8 ajuste 3 (FM-5): el ícono de una categoría tuya, con el mismo dibujo de emoji (44 px). */
+.chips--emo .chip--emo {
+    min-width: 44px;
+    justify-content: center;
+    padding: 8px;
+}
+.mp-categorias {
+    margin: 4px 0 0;
+    text-align: center;
+}
 .chips--col .chip {
     border-radius: 14px;
 }

@@ -531,8 +531,9 @@
      * pago?» [Ver el que tengo] [Sí, es otro]. La usan Anotar («Recordarme un pago»), «+ Pago» y «Editar».
      */
     function preguntaDuplicado(h, p, accion) {
+        // v2.8 ajuste 3 (APROBADO por Victor, 2026-10-22), FM-1: «Ya tienes «Luz» (el 12, ~$35)» → «Editar el que tengo» / «Es otro distinto».
         const cuando = p.frecuencia === 'mensual' ? `el ${p.dia}` : p.frecuencia === 'semanal' ? `cada ${M.DIAS[p.diaSemana]}` : P.textoFrecuencia(p, { corto: true }).toLowerCase();
-        return `<div class="pregunta pregunta--dup" role="group" aria-labelledby="dup-t"><p class="campo-l" id="dup-t" tabindex="-1">Ya tienes «${esc(p.nombre)}» ${esc(cuando)} por ${dinero(p.monto, { aprox: p.estimado })}. ¿Es otro pago?</p><div class="chips"><button type="button" class="chip" aria-pressed="false" data-a="${accion}" data-campo="dup" data-v="ver" data-fk="dup-ver">Ver el que tengo</button><button type="button" class="chip" aria-pressed="false" data-a="${accion}" data-campo="dup" data-v="otro" data-fk="dup-otro">Sí, es otro</button></div>${error(h, 'duplicado', 'Dinos si es otro pago')}</div>`;
+        return `<div class="pregunta pregunta--dup" role="group" aria-labelledby="dup-t"><p class="campo-l" id="dup-t" tabindex="-1">Ya tienes «${esc(p.nombre)}» (${esc(cuando)}, ${dinero(p.monto, { aprox: p.estimado })}).</p><div class="chips"><button type="button" class="chip" aria-pressed="false" data-a="${accion}" data-campo="dup" data-v="editar" data-fk="dup-editar">Editar el que tengo</button><button type="button" class="chip" aria-pressed="false" data-a="${accion}" data-campo="dup" data-v="otro" data-fk="dup-otro">Es otro distinto</button></div>${error(h, 'duplicado', 'Elige una opción')}</div>`;
     }
     /**
      * v2.6.6 (V2-85): lo de este periodo que ya pasó (o vence hoy) se pregunta una vez, en el mismo formulario: «El de
@@ -888,7 +889,7 @@
             out.push(chip('lugar', l ? `${emo(l.emoji, 16)} ${esc(l.nombre)}` : '¿Dónde?', { falta: !l, abierto: h.editando === 'lugar', etiqueta: 'Dónde llegó' }));
             out.push(fechaChip());
         } else if (d.tipo === 'pago') {
-            out.push(chip('nombre', d.nombre ? `${emo(d.emoji, 16)} ${esc(d.nombre)}` : '¿Qué pago?', { falta: !d.nombre, abierto: h.editando === 'nombre', etiqueta: 'Pago' }));
+            out.push(chip('nombre', d.nombre ? `${emo(d.emoji, 16)} ${esc(d.nombre)}` : '¿Qué es?', { falta: !d.nombre, abierto: h.editando === 'nombre', etiqueta: 'Gasto fijo' }));
             out.push(montoChip());
             const cuando = d.frecuencia === 'semanal' ? `cada ${M.DIAS[d.diaSemana ?? 5]}` : d.frecuencia === 'unico' && d.fechaPago ? `el ${M.fechaCorta(d.fechaPago)}` : d.dia ? `el ${d.dia}` : '¿Qué día?';
             out.push(chip('dia', esc(cuando), { falta: d.frecuencia !== 'semanal' && !d.dia && !d.fechaPago, abierto: h.editando === 'dia', etiqueta: 'Cuándo' }));
@@ -937,20 +938,31 @@
         }
         if (campo === 'tarjeta') return opciones(h, { campo: 'tarjeta', label: '¿Qué tarjeta pagaste?', accion: 'anotarValor', valor: d.tarjeta, lista: st.tarjetas.map((t) => ({ v: t.id, t: t.nombre, e: t.emoji })), errorTexto: 'Elige la tarjeta' });
         if (campo === 'medio') return opciones(h, { campo: 'medio', label: d.tipo === 'pago' ? '¿Con qué lo pagas?' : '¿Con qué pagaste?', accion: 'anotarValor', valor: d.medio, lista: medios(st), errorTexto: d.tipo === 'pago' ? 'Elige con qué lo pagas' : 'Elige con qué pagaste' });
-        if (campo === 'fecha') return campoFecha(h, 'fecha', d.fecha, { label: '¿Cuándo?', futuro: d.tipo === 'gasto' || d.tipo === 'ingreso', extra: d.ocurrencia && d.ocurrencia <= st.hoy ? d.ocurrencia : null, ayuda: d.tipo === 'gasto' || d.tipo === 'ingreso' ? 'Si eliges una fecha que todavía no llega, lo pongo en Mi plan.' : '' });
-        if (campo === 'lugar') return opciones(h, { campo: 'lugar', label: d.tipo === 'ingreso' || d.tipo === 'prestamo' ? '¿Dónde llegó?' : d.tipo === 'pagoTarjeta' ? (d.soloDeudas ? '¿Con qué pagaste?' : '¿Desde dónde?') : '¿Dónde?', accion: 'anotarValor', valor: d.lugar, lista: lugares(st), errorTexto: 'Elige dónde' });
+        if (campo === 'fecha') return campoFecha(h, 'fecha', d.fecha, { label: d.tipo === 'ingreso' ? '¿Cuándo llegó?' : '¿Cuándo?', futuro: d.tipo === 'gasto' || d.tipo === 'ingreso', extra: d.ocurrencia && d.ocurrencia <= st.hoy ? d.ocurrencia : null, ayuda: d.tipo === 'gasto' || d.tipo === 'ingreso' ? 'Si eliges una fecha que todavía no llega, lo pongo en Mi plan.' : '' });
+        if (campo === 'lugar') return opciones(h, { campo: 'lugar', label: d.tipo === 'ingreso' || d.tipo === 'prestamo' ? '¿A dónde llegó?' : d.tipo === 'pagoTarjeta' ? (d.soloDeudas ? '¿Con qué pagaste?' : '¿Desde dónde?') : '¿Dónde?', accion: 'anotarValor', valor: d.lugar, lista: lugares(st), errorTexto: 'Elige dónde' });
         if (campo === 'frecuencia') return opciones(h, { campo: 'frecuencia', label: '¿Se repite?', accion: 'anotarValor', valor: d.frecuencia, lista: [{ v: 'mensual', t: 'Cada mes' }, { v: 'semanal', t: 'Cada semana' }, { v: 'unico', t: 'Solo esta vez' }], errorTexto: 'Dinos si se repite' });
         if (campo === 'dia') return d.frecuencia === 'semanal' ? opciones(h, { campo: 'diaSemana', label: '¿Qué día de la semana?', accion: 'anotarValor', valor: d.diaSemana ?? 5, lista: [1, 2, 3, 4, 5, 6, 0].map((n) => ({ v: n, t: M.capital(M.DIAS[n]) })) }) : d.frecuencia === 'unico' ? calendario(h, 'fechaPago', d.fechaPago || (d.dia ? M.proximoDia(st.hoy, d.dia) : null), { label: '¿Qué día vence?' }) : selectorDia(h, 'dia', d.dia);
         if (campo === 'apartado') return opciones(h, { campo: 'apartado', label: '¿En cuál ahorro?', accion: 'anotarValor', valor: d.apartado, lista: st.apartados.map((a) => ({ v: a.id, t: a.nombre, e: a.emoji, s: dinero(a.monto) })), errorTexto: 'Elige un ahorro' }) + (d.tipo === 'apartar' ? campoTexto(h, { campo: 'nuevoApartado', label: '¿O es un ahorro nuevo?', valor: d.apartado ? '' : d.nombre || '', placeholder: 'Ej. Regalo de mamá' }) : '');
         if (campo === 'nombre') {
             // v2.8 (D-9): «Me prestaron» también se elige aquí (es una deuda, no un ingreso).
-            if (d.tipo === 'ingreso') return opciones(h, { campo: 'categoriaIngreso', label: '¿De qué?', accion: 'anotarValor', valor: d.ingresoRef ? 'esperado' : d.categoria, lista: [...(d.ingresoRef ? [{ v: 'esperado', t: d.nombre, e: d.emoji }] : []), ...D.INGRESO_CATEGORIAS.map((k) => ({ v: k.id, t: k.nombre, e: k.emoji })), { v: 'prestamo', t: 'Me prestaron', e: '🤝' }] });
+            // v2.8 ajuste 3 (APROBADO por Victor, 2026-10-22), FM-3: las mismas opciones que «+ Ingreso» (sin Salario: tu ingreso principal se
+            // marca con «Es mi quincena del 30 → Ya llegó»).
+            if (d.tipo === 'ingreso') return opciones(h, { campo: 'categoriaIngreso', label: '¿Qué es?', accion: 'anotarValor', valor: d.ingresoRef ? 'esperado' : d.tipoIng ? 'tipo:' + d.tipoIng : null, lista: [...(d.ingresoRef ? [{ v: 'esperado', t: d.nombre, e: d.emoji }] : []), ...D.TIPOS_INGRESO.filter((x) => !x.principal).map((x) => ({ v: 'tipo:' + x.id, t: x.nombre, e: x.emoji })), { v: 'prestamo', t: 'Me prestaron', e: '🤝' }] });
+            // FM-7: «¿En qué?»: primero tus gastos variables con lo que queda; después los tipos de gasto, tus categorías y «Otra» (FM-5).
+            if (d.tipo === 'gasto' && !d.soloDeudas) {
+                const vars = M.variablesInfo(st).map((x) => ({ v: 'var:' + x.v.id, t: x.v.nombre, e: x.v.emoji, s: x.pasado ? `te pasaste ${dinero(x.pasado)}` : `te quedan ${dinero(x.falta)}` }));
+                const cats = [...D.CATEGORIAS.filter((k) => !['servicios', 'cuotas'].includes(k.id)).map((k) => ({ v: k.id, t: k.nombre, e: k.emoji })), ...P.categoriasDe(st, 'variable').map((c) => ({ v: 'p:' + c.id, t: c.nombre, e: c.emoji })), { v: 'otra', t: 'Otra', e: '🧾' }];
+                const valor = d.variableElegido ? 'var:' + d.variableElegido : d.propia ? 'p:' + d.propia : d.otraCat ? 'otra' : d.categoria;
+                return opciones(h, { campo: 'enQue', label: '¿En qué?', accion: 'anotarValor', valor, lista: [...vars, ...cats] }) + (d.otraCat ? P.nuevaCategoriaHtml(h, 'variable', { accion: 'anotarValor', catNombre: d.catNombre, catEmoji: d.catEmoji, catDup: d.catDup }) : '') + campoTexto(h, { campo: 'nombre', label: '¿Qué fue?', valor: d.nombre || '', placeholder: 'Ej. Pupusas', errorTexto: 'Escribe en qué fue' });
+            }
             if (d.tipo === 'prestamo') return campoTexto(h, { campo: 'nombre', label: '¿Cómo se llama esta deuda?', valor: d.nombre || '', placeholder: 'Ej. Préstamo de mi mamá', errorTexto: 'Ponle un nombre' });
-            const cats = d.tipo === 'gasto' && !d.soloDeudas ? opciones(h, { campo: 'categoria', label: '¿Qué tipo de gasto?', accion: 'anotarValor', valor: d.categoria, lista: D.CATEGORIAS.filter((k) => !['servicios', 'cuotas'].includes(k.id)).map((k) => ({ v: k.id, t: k.nombre, e: k.emoji })) }) : d.tipo === 'pago' ? opciones(h, { campo: 'frecuente', label: '¿Cuál pago?', accion: 'anotarValor', valor: d.frecuente || '', lista: D.PAGOS_FRECUENTES.map((f) => ({ v: f.id, t: f.nombre, e: f.emoji })) }) : '';
-            return campoTexto(h, { campo: 'nombre', label: d.tipo === 'pago' ? '¿Qué pago?' : d.soloDeudas ? '¿Qué deuda pagaste?' : '¿En qué?', valor: d.nombre || '', placeholder: d.tipo === 'pago' ? 'Ej. Colegio' : 'Ej. Pupusas', errorTexto: 'Escribe en qué fue' }) + cats;
+            // FM-8: «pago» como sustantivo, solo para deudas («¿Cuál pago?» → «¿Cuál?», «¿Qué pago?» → «¿Qué es?»).
+            const cats = d.tipo === 'pago' ? opciones(h, { campo: 'frecuente', label: '¿Cuál?', accion: 'anotarValor', valor: d.frecuente || '', lista: D.PAGOS_FRECUENTES.filter((f) => !f.deuda).map((f) => ({ v: f.id, t: f.etiqueta || f.nombre, e: f.emoji })) }) : '';
+            const alias = d.tipo === 'pago' && d.pedirAlias;
+            return campoTexto(h, { campo: 'nombre', label: alias ? '¿Cómo le llamas a este?' : d.tipo === 'pago' ? '¿Qué es?' : d.soloDeudas ? '¿Qué deuda pagaste?' : '¿En qué?', valor: d.nombre || '', placeholder: d.tipo === 'pago' ? 'Ej. Colegio' : 'Ej. Pupusas', errorTexto: alias ? 'Ponle un nombre distinto' : 'Escribe en qué fue' }) + cats;
         }
         if (campo === 'mover') return opciones(h, { campo: 'de', label: '¿De dónde?', accion: 'anotarValor', valor: d.de, lista: lugares(st) }) + opciones(h, { campo: 'a', label: '¿A dónde?', accion: 'anotarValor', valor: d.a, lista: [...lugares(st), ...st.tarjetas.map((t) => ({ v: 'tarjeta:' + t.id, t: 'Pagar ' + t.nombre, e: t.emoji }))].filter((o) => o.v !== d.de) });
-        if (campo === 'pago') return `<p class="txt">Este es tu pago de ${esc(d.nombre)} en Mi plan. Para cambiarlo, ábrelo desde Mi plan.</p>`;
+        if (campo === 'pago') return `<p class="txt">Es tu ${esc(d.nombre)} de Mi plan. Para cambiarlo, ábrelo desde Mi plan.</p>`;
         return '';
     }
     /** V2-85: en «Recordarme un pago», la fecha de este periodo que ya pasó (cada mes o cada semana; «Solo esta vez» no). */
@@ -998,6 +1010,8 @@
             const ch = (v, t) => `<button type="button" class="chip" aria-pressed="false" data-a="anotarValor" data-campo="cualPago" data-v="${v}" data-fk="cual-pago-${v}">${t}</button>`;
             out.push(`<div class="pregunta" role="group" aria-labelledby="l-cualPago"><p class="campo-l" id="l-cualPago">¿Es el pago de ${esc(pg.nombre)} del ${esc(P.diaMes(d.pagoSiguiente.fecha))}?</p>${d.yaPagado ? `<p class="fila-s">Ya marcaste el del ${esc(P.diaMes(d.yaPagado.fecha))}.${d.pagoSiguiente.fecha > st.hoy ? ' Este todavía no vence: lo marcas pagado por adelantado.' : ''}</p>` : ''}<div class="chips">${ch('si', 'Sí, ya lo pagué')}${ch('no', 'No, es otro gasto')}</div>${error(h, 'cualPago', 'Elige una opción')}</div>`);
         } else if (d.tipo === 'gasto' && d.yaPagado) out.push(`<div class="nota nota--info" role="note">${icon('info')}<p>Ya marcaste el pago «${esc(d.yaPagado.nombre)}» del ${esc(M.fechaCorta(d.yaPagado.fecha))}. Esto se guarda como un gasto aparte.</p></div>`);
+        // v2.8 ajuste 3 (APROBADO por Victor, 2026-10-22), FM-3: lo que se repite (una remesa) se puede agregar a tu plan.
+        if (d.tipo === 'ingreso' && !d.ingresoRef && d.tipoIng === 'remesa' && !st.ingresos.some((i) => i.activo !== false && i.categoria === 'remesa')) out.push(`<div class="pregunta"><div class="chips"><button type="button" class="chip" aria-pressed="${!!d.agregarPlan}" data-a="anotarValor" data-campo="agregarPlan" data-v="${!d.agregarPlan}" data-fk="ing-agregar-plan">${d.agregarPlan ? icon('check', 'ico-xs') : ''}Llega cada mes: agregarlo a Mi plan</button></div></div>`);
         // v2.8 (C-4, P-1): lo que anotas como pago se conecta con tu plan, pero se pregunta (con «Es nuevo»).
         const planHtml = preguntaPlan(st, d, h);
         if (planHtml) out.push(planHtml);
@@ -1125,11 +1139,11 @@
             if (d.planOpciones) {
                 const lista = d.planOpciones.map((id) => M.pago(st, id)).filter(Boolean);
                 const deudas = lista.every((p) => p.tipoDeuda);
-                return `<div class="pregunta" role="group" aria-labelledby="l-cualPlan"><p class="campo-l" id="l-cualPlan" tabindex="-1">${deudas ? '¿De cuál de tus préstamos?' : '¿Cuál de tus pagos es?'}</p><div class="chips">${lista.map((p) => ch('p:' + p.id, esc(p.nombre), 'plan-p-' + p.id, p.emoji)).join('')}${ch('nuevo', 'Es nuevo', 'plan-nuevo')}</div>${err}</div>`;
+                return `<div class="pregunta" role="group" aria-labelledby="l-cualPlan"><p class="campo-l" id="l-cualPlan" tabindex="-1">${deudas ? '¿De cuál de tus préstamos?' : '¿Cuál es?'}</p><div class="chips">${lista.map((p) => ch('p:' + p.id, esc(p.nombre), 'plan-p-' + p.id, p.emoji)).join('')}${ch('nuevo', 'Es nuevo', 'plan-nuevo')}</div>${err}</div>`;
             }
             const p = M.pago(st, d.pago);
             const cuando = d.ocurrencia ? ` del ${esc(P.diaMes(d.ocurrencia))}` : '';
-            return `<div class="pregunta" role="group" aria-labelledby="l-cualPlan"><p class="campo-l" id="l-cualPlan" tabindex="-1">¿Es tu pago de ${esc(p ? p.nombre : d.nombre)}${cuando}?</p><div class="chips">${ch('si', 'Sí, es ese', 'plan-si')}${ch('nuevo', 'No, es un gasto nuevo', 'plan-nuevo')}</div>${err}</div>`;
+            return `<div class="pregunta" role="group" aria-labelledby="l-cualPlan"><p class="campo-l" id="l-cualPlan" tabindex="-1">¿Es tu ${p && p.tipoDeuda ? 'pago de ' : ''}${esc(p ? p.nombre : d.nombre)}${cuando}?</p><div class="chips">${ch('si', 'Sí, es ese', 'plan-si')}${ch('nuevo', 'No, es un gasto nuevo', 'plan-nuevo')}</div>${err}</div>`;
         }
         if (d.tipo === 'gasto' && d.planPreguntar) {
             const lista = M.opcionesPlan(st, { soloDeudas: !!d.soloDeudas });
@@ -1144,7 +1158,7 @@
      */
     function notaVariable(st, d) {
         if (d.tipo !== 'gasto' || d.fecha > st.hoy || (d.usarApartado && d.usarApartado !== 'no')) return '';
-        const prueba = { tipo: 'gasto', nombre: d.nombre, categoria: d.categoria, fecha: d.fecha, variable: d.variableNo ? null : undefined };
+        const prueba = { tipo: 'gasto', nombre: d.nombre, categoria: d.categoria, fecha: d.fecha, variable: d.variableNo ? null : d.variableElegido || undefined };
         const v = M.variableDe(st, prueba);
         if (!v) {
             if (!d.variableNo) return '';
@@ -1168,10 +1182,11 @@
         const faltan = M.faltan(st, h.d).filter((f) => f !== 'frecuencia');
         // v2.7: las preguntas nuevas (varios, fecha, tarjeta) se contestan en su recuadro, no en un editor aparte.
         // v2.8 (C-4, P-1): «¿Es tu pago de…?» también se contesta en su recuadro.
-        const enPregunta = (f) => f === 'comoEs' || f === 'varios' || f === 'ordenCuadre' || f === 'fechaFutura' || f === 'cualPlan' || (f === 'fecha' && h.d.fechaDudosa) || (f === 'tarjeta' && !h.d.tarjeta);
+        const enPregunta = (f) => f === 'catNombre' || f === 'comoEs' || f === 'varios' || f === 'ordenCuadre' || f === 'fechaFutura' || f === 'cualPlan' || (f === 'fecha' && h.d.fechaDudosa) || (f === 'tarjeta' && !h.d.tarjeta);
         const abiertos = h.modo === 'form' ? camposAnotar(h.d) : [...new Set([...(h.editando ? [h.editando] : []), ...(h.d.montoDudoso ? ['monto'] : []), ...(h.intento ? faltan.filter((f) => !enPregunta(f)) : [])])];
         return `<p class="campo-l campo-l--sec" id="anotar-entendi">${h.modo === 'form' ? 'Completa los datos' : 'Entendí esto. Toca cualquier dato para cambiarlo.'}</p>
             ${h.modo === 'form' ? '' : `<div class="chips chips--datos" id="anotar-chips" role="group" aria-labelledby="anotar-entendi">${chipsDe(st, h)}</div>`}
+            ${h.d.tipo === 'ingreso' ? botonYaLlego(st, h.d) : ''}
             <div id="anotar-editor">${abiertos.map((c) => `<div class="editor${h.modo === 'form' ? ' editor--form' : ''}">${editorAnotar(st, h, c)}</div>`).join('')}</div>
             <div id="anotar-preg">${preguntasAnotar(st, h)}</div>`;
     }
@@ -1183,6 +1198,14 @@
         if (!d.soloDeudas) return camposDe(d.tipo);
         if (!d.cualPlan) return [];
         return d.tipo === 'pagoTarjeta' ? ['monto', 'lugar', 'fecha'] : d.tipo === 'pagado' ? ['monto', 'medio', 'fecha'] : ['monto', 'nombre', 'medio', 'fecha'];
+    }
+    /** v2.8 ajuste 3 (APROBADO por Victor, 2026-10-22), FM-3: si tu ingreso principal está pendiente, arriba: «Es mi quincena del 30 → Ya llegó». */
+    function botonYaLlego(st, d) {
+        if (d.ingresoRef) return '';
+        const o = M.principalPendiente(st);
+        if (!o) return '';
+        const { cual, dia } = cualIngreso(o.ingreso, o.fecha);
+        return `<button type="button" class="btn btn--48 btn--full btn-ya-llego" data-a="anotarValor" data-campo="esPrincipal" data-v="${esc(o.ingreso.id + '|' + o.fecha)}" data-fk="ing-ya-llego">${emo(o.ingreso.emoji, 18)}Es mi ${esc(cual)} del ${esc(dia)} → Ya llegó</button>`;
     }
     function camposDe(tipo) {
         return { gasto: ['monto', 'nombre', 'medio', 'fecha'], pagado: ['monto', 'medio', 'fecha'], ingreso: ['monto', 'nombre', 'lugar', 'fecha'], pago: ['nombre', 'monto', 'frecuencia', 'dia', 'medio'], apartar: ['monto', 'apartado'], liberar: ['monto', 'apartado'], cuadre: ['lugar', 'monto'], mover: ['monto', 'mover'], pagoTarjeta: ['monto', 'tarjeta', 'lugar'], prestamo: ['monto', 'nombre', 'lugar', 'fecha'] }[tipo] || [];
@@ -1281,6 +1304,10 @@
                 h.d.apartado = null;
                 h.d.nombre = el.value.trim() || null;
                 region('anotar-chips', chipsDe(st, h));
+            } else if (campo === 'catNombre') {
+                // FM-5: «Otra»: el nombre de la categoría nueva también es el del gasto (si no escribiste otro).
+                h.d.catNombre = el.value;
+                if (!h.manual.nombre) h.d.nombre = el.value.trim() || null;
             }
         },
         alValor(h, campo, v) {
@@ -1349,6 +1376,37 @@
             x.emoji = D.EMOJI_NOMBRE[claveNombre(x.nombre)] || M.categoria(v).emoji;
             if (!x.nombre) x.nombre = M.categoria(v).nombre;
             if (!x.medioExplicito && !h.manual.medio) x.medio = M.medioUsual(st, v).id;
+        } else if (d.campo === 'esPrincipal') {
+            // FM-3: «Es mi quincena del 30 → Ya llegó»: la marca con el monto real (sin crear otro ingreso).
+            const [id, fecha] = String(v).split('|');
+            const ing = M.ingreso(st, id);
+            const o = ing ? M.ocurrenciasIngreso(st, ing, fecha, fecha)[0] : null;
+            if (ing) Object.assign(x, { ingresoRef: { id, fecha }, refGuardada: null, preguntarIngreso: false, cualIngreso: 'esperado', tipoIng: null, adelanto: false, agregarPlan: false, nombre: ing.nombre, emoji: ing.emoji, categoria: ing.categoria, lugar: x.lugarDicho ? x.lugar : ing.lugar, monto: x.monto !== null && x.monto !== undefined ? x.monto : o ? o.monto : ing.monto });
+        } else if (d.campo === 'agregarPlan') {
+            x.agregarPlan = v === 'true';
+        } else if (d.campo === 'categoriaIngreso' && String(v).startsWith('tipo:')) {
+            // FM-3: un extra de «+ Ingreso» (la regla de ±10 % y ±3 días y la del nombre siguen: C-5 y ajuste 2).
+            const t = D.TIPOS_INGRESO.find((y) => y.id === String(v).slice(5));
+            Object.assign(x, { ingresoRef: null, refGuardada: null, tipoIng: t.id, categoria: t.categoria, emoji: t.emoji, nombre: t.sugerido || 'Ingreso extra', adelanto: t.id === 'adelanto', agregarPlan: false });
+            M.aplicarEsperado(st, x);
+            if (!x.ingresoRef) Object.assign(x, { emoji: t.emoji, nombre: t.sugerido || 'Ingreso extra' });
+        } else if (d.campo === 'enQue') {
+            // FM-7: un gasto variable lo consume (como «súper 40»); un tipo de gasto, una categoría tuya o «Otra» (FM-5).
+            Object.assign(x, { variableElegido: null, propia: null, otraCat: false });
+            if (String(v).startsWith('var:')) {
+                const vv = (st.variables || []).find((y) => y.id === v.slice(4));
+                if (vv) Object.assign(x, { variableElegido: vv.id, variableNo: false, categoria: vv.categoria, emoji: vv.emoji, ...(h.manual.nombre ? {} : { nombre: vv.nombre }) });
+                if (vv && vv.medio && M.medio(st, vv.medio) && !x.medioExplicito && !h.manual.medio) x.medio = vv.medio;
+            } else if (String(v).startsWith('p:')) {
+                const c = (st.categoriasPropias || []).find((y) => y.id === v.slice(2));
+                if (c) Object.assign(x, { propia: c.id, categoria: 'otros', emoji: c.emoji, ...(h.manual.nombre ? {} : { nombre: c.nombre }) });
+            } else if (v === 'otra') Object.assign(x, { otraCat: true, categoria: 'otros', emoji: '🧾', ...(h.manual.nombre ? {} : { nombre: x.catNombre || null }) });
+            else {
+                x.categoria = v;
+                if (!h.manual.nombre) x.nombre = M.categoria(v).nombre;
+                x.emoji = D.EMOJI_NOMBRE[claveNombre(x.nombre)] || M.categoria(v).emoji;
+                if (!x.medioExplicito && !h.manual.medio) x.medio = M.medioUsual(st, v).id;
+            }
         } else if (d.campo === 'categoriaIngreso') {
             if (v === 'esperado') return P.render();
             // v2.8 (D-9): «Me prestaron» es otra cosa: la deuda y el dinero que llega, en un paso.
@@ -1377,15 +1435,17 @@
             x.frecuente = v;
             if (f.semanal) x.frecuencia = 'semanal';
         } else if (d.campo === 'dup') {
-            // V2-82: «Ver el que tengo» abre su ficha (no se crea nada); «Sí, es otro» deja guardarlo.
-            if (v === 'ver') {
+            // FM-1 (antes V2-82): «Editar el que tengo» abre su formulario (no se crea nada); «Es otro distinto» pide un nombre distinto.
+            if (v === 'editar' || v === 'ver') {
                 const p = M.pagoParecido(st, x);
                 P.cerrarHoja({ sinFoco: true });
-                if (p) P.abrir('pago', p.id);
-                P.emitir('anotar:duplicado:ver');
+                if (p) P.abrirHoja('editarPago', { id: p.id });
+                P.emitir('anotar:duplicado:editar');
                 return;
             }
             x.dupOk = true;
+            x.pedirAlias = true;
+            h.editando = 'nombre';
         } else if (d.campo === 'cualPago') {
             // V2-82: el gasto era el pago siguiente (por adelantado) o un gasto aparte.
             x.cualPago = v;
@@ -1495,10 +1555,16 @@
         const d = h.d;
         if (d.tipo === 'apartar' && !d.apartado && d.nombre) d.nuevoApartado = d.nombre;
         const faltan = M.faltan(st, d).filter((f) => !(f === 'apartado' && d.nuevoApartado));
+        // FM-5: «Otra» necesita el nombre de la categoría nueva (que no esté ya en «¿En qué?»).
+        if (d.tipo === 'gasto' && d.otraCat) {
+            const n = M.normalizar(d.catNombre || '');
+            d.catDup = n ? [...D.CATEGORIAS.map((k) => k.nombre), ...P.categoriasDe(st, 'variable').map((c) => c.nombre)].find((y) => M.normalizar(y) === n) || null : null;
+            if (!n || d.catDup) faltan.unshift('catNombre');
+        }
         if (faltan.length) {
             h.intento = true;
             h.errores = faltan;
-            h.editando = null;
+            h.editando = faltan[0] === 'catNombre' && h.modo !== 'form' ? 'nombre' : null;
             P.render();
             const el = document.querySelector(`#anotar-editor #f-${faltan[0]}, #anotar-editor [data-campo="${faltan[0]}"], #anotar-preg [data-campo="${faltan[0]}"]`) || document.querySelector('#anotar-editor input, #anotar-editor button, #anotar-preg button');
             if (el) el.focus();
@@ -1547,7 +1613,9 @@
                     conOrden(registro, { ...d, tipo: 'ingreso' });
                     texto = `Anotamos tu préstamo: debes ${dinero(d.monto)}`;
                 } else if (d.tipo === 'gasto') {
-                    const r = conOrden(P.registrar(s, { tipo: 'gasto', fecha: d.fecha, monto: d.monto, nombre: d.nombre, categoria: d.categoria, emoji: d.emoji, medio: d.medio, anotado: true, nuevo: true, ...(d.variableNo ? { variable: null } : {}) }));
+                    // FM-5: «Otra» guarda la categoría nueva; FM-7: el gasto variable que elegiste lo consume.
+                    const cat = d.otraCat ? P.crearCategoria(s, { grupo: 'variable', nombre: d.catNombre.trim(), emoji: d.catEmoji || '🏷️' }) : null;
+                    const r = conOrden(P.registrar(s, { tipo: 'gasto', fecha: d.fecha, monto: d.monto, nombre: d.nombre, categoria: d.categoria, emoji: cat ? cat.emoji : d.emoji, medio: d.medio, anotado: true, nuevo: true, ...(d.variableNo ? { variable: null } : d.variableElegido ? { variable: d.variableElegido } : {}), ...(cat || d.propia ? { propia: cat ? cat.id : d.propia } : {}) }));
                     if (d.usarApartado && d.usarApartado !== 'no') {
                         const u = P.usarApartado(s, d.usarApartado, r);
                         if (u && u.reserva) texto = `Guardado · ${dinero(u.usado)} quedan para pagar tu tarjeta`;
@@ -1589,6 +1657,12 @@
             { aviso: () => texto, cambiar: () => cambiar, claves },
         );
         clearInterval(rotador);
+        // FM-3: «Llega cada mes: agregarlo a Mi plan»: su formulario de ingreso, ya lleno (lo de hoy ya llegó: no se cuenta otra vez).
+        if (d.tipo === 'ingreso' && d.agregarPlan && !d.ingresoRef) {
+            P.abrirHoja('nuevoIngreso', { tipoInicial: d.tipoIng || 'otro', pre: { nombre: d.nombre || '', monto: M.montoCampo(d.monto), lugar: d.lugar, dia: Number(d.fecha.slice(8)) } });
+            P.emitir('anotar:agregarPlan');
+            return;
+        }
         // v2.8 (D-2 corregida, APROBADO por Victor 2026-10-22): «Llega con fecha» o «Lo voy gastando»: se agrega a tu plan con su
         // formulario, ya lleno con lo que anotaste (tú lo completas; si lo cierras, queda solo el gasto).
         if (d.tipo === 'gasto' && d.comoEs && d.comoEs !== 'unaVez') {
@@ -2710,7 +2784,7 @@
             const st = P.st;
             return {
                 titulo: `Editar ${esc(h.nombre)}`,
-                cuerpo: `${campoTexto(h, { campo: 'nombre', label: '¿En qué gastas?', valor: h.nombre, errorTexto: 'Ponle un nombre' })}${campoMonto(h, { label: `¿Cuánto es lo máximo ${esc(P.cadaPlan(st))}?`, valor: h.monto })}${opciones(h, { campo: 'medio', label: '¿Con qué pagas normalmente?', lista: medios(st), valor: h.medio })}<p class="fila-s np-clase"><button type="button" class="link link--inline" data-a="variableAFijo" data-fk="clase-fijo">Pasar a gasto fijo</button></p>`,
+                cuerpo: `${campoTexto(h, { campo: 'nombre', label: '¿En qué gastas?', valor: h.nombre, errorTexto: 'Ponle un nombre' })}${error(h, 'nombreDup', 'Ya tienes uno con ese nombre. Ponle otro.')}${campoMonto(h, { label: `¿Cuánto es lo máximo ${esc(P.cadaPlan(st))}?`, valor: h.monto })}${opciones(h, { campo: 'medio', label: '¿Con qué pagas normalmente?', lista: medios(st), valor: h.medio })}<p class="fila-s np-clase"><button type="button" class="link link--inline" data-a="variableAFijo" data-fk="clase-fijo">Pasar a gasto fijo</button></p>`,
                 pie: pie2('editarVariableOk', 'Guardar cambios'),
             };
         },
@@ -2725,7 +2799,8 @@
     P.acciones.editarVariableOk = () => {
         const h = P.ui.hoja;
         const monto = M.leerMonto(h.monto);
-        if (!validar(h, [...((h.nombre || '').trim() ? [] : ['nombre']), ...(monto ? [] : ['monto'])])) return;
+        // FM-1 (ajuste 3): nunca dos con el mismo nombre.
+        if (!validar(h, [...((h.nombre || '').trim() ? [] : ['nombre']), ...P.nombreSinDuplicar(h, (h.nombre || '').trim(), h.id).faltan, ...(monto ? [] : ['monto'])])) return;
         P.ui.hoja = null;
         P.cambiar((s) => {
             const v = (s.variables || []).find((y) => y.id === h.id);
@@ -3399,7 +3474,7 @@
             const st = P.st;
             const ing = h.id ? M.ingreso(st, h.id) : null;
             if (ing) {
-                Object.assign(h, { editar: true, nombre: ing.nombre, monto: M.montoCampo(ing.monto), lugar: ing.lugar, principal: !!ing.principal, tipoIng: tipoDeIngreso(ing), ...formFrecuencia(ing) });
+                Object.assign(h, { editar: true, nombre: ing.nombre, monto: M.montoCampo(ing.monto), lugar: ing.lugar, principal: !!ing.principal, modoPrincipal: !!ing.principal, tipoIng: tipoDeIngreso(ing), ...formFrecuencia(ing) });
                 h.tipoIngAntes = h.tipoIng;
                 h.adPartes = Object.fromEntries(((ing.adelanto && ing.adelanto.descuentos) || []).map((d) => [d.ingreso + '|' + d.fecha, M.montoCampo(d.monto)]));
                 h.adAuto = !Object.keys(h.adPartes).length;
@@ -3407,8 +3482,9 @@
                 // «Los mismos días que yo» para la pareja: se parte de los días del ingreso principal.
                 const p = M.principal(st);
                 const base = p && p.frecuencia === 'quincenal' ? { frecuencia: 'quincenal', dias: p.dias } : { frecuencia: 'unico' };
-                Object.assign(h, { nombre: '', monto: '', lugar: p ? p.lugar : st.lugares[0] ? st.lugares[0].id : null, principal: false, tipoIng: null, adPartes: {}, adAuto: true, ...formFrecuencia(base) });
+                Object.assign(h, { nombre: '', monto: '', lugar: p ? p.lugar : st.lugares[0] ? st.lugares[0].id : null, principal: false, modoPrincipal: false, tipoIng: null, adPartes: {}, adAuto: true, ...formFrecuencia(base) }, h.pre || {});
                 if (h.tipoInicial) H.nuevoIngreso.alValor(h, 'tipoIng', h.tipoInicial);
+                if (h.principalNuevo) H.nuevoIngreso.alValor(h, 'modoPrincipal', 'si');
             }
             h.descuento = false;
             h.dNombre = 'Préstamo por planilla';
@@ -3428,18 +3504,23 @@
                     ${h.descuento ? `<div class="ob-det">${campoTexto(h, { campo: 'dNombre', label: '¿Qué te descuentan?', valor: h.dNombre, errorTexto: 'Ponle un nombre' })}${campoMonto(h, { campo: 'dCuota', label: '¿Cuánto cada vez que te pagan?', valor: h.dCuota, id: 'f-dCuota', errorTexto: 'Escribe cuánto te descuentan' })}${campoMonto(h, { campo: 'dDebe', label: '¿Cuánto debes? <span class="opcional">(opcional)</span>', valor: h.dDebe, id: 'f-dDebe' })}<p class="fila-s">Lo que esperas arriba ya es lo que recibes, sin el descuento. Al confirmar tu ingreso, la cuota queda pagada sola: no baja tu libre otra vez y sí baja lo que debes.</p></div>` : ''}</div>`
                 : '';
             // V2-56: primero «¿Qué es?»; cada tipo trae su frecuencia. «Adelanto» pregunta aquí mismo de qué quincena se descuenta.
-            const tipos = opciones(h, { campo: 'tipoIng', label: '¿Qué es?', lista: D.TIPOS_INGRESO.map((x) => ({ v: x.id, t: x.nombre, e: x.emoji })), valor: h.tipoIng });
+            // (FM-2, ajuste 3, APROBADO por Victor 2026-10-22): «+ Ingreso» ofrece solo extras (sin Salario). El ingreso principal se crea y
+            // se edita en «Mi ingreso principal»; sin él, primero «Configurar mi ingreso principal».
+            const tipos = h.modoPrincipal ? '' : opciones(h, { campo: 'tipoIng', label: '¿Qué es?', lista: D.TIPOS_INGRESO.filter((x) => !x.principal).map((x) => ({ v: x.id, t: x.nombre, e: x.emoji })), valor: h.tipoIng });
+            const configurar = !principal && !h.editar && !h.modoPrincipal ? `<div class="card ob-card"><p class="txt">Todavía no tienes tu ingreso principal: tu salario o tu quincena.</p><button type="button" class="btn btn--prim btn--48 btn--full" data-a="valor" data-campo="modoPrincipal" data-v="si" data-fk="ing-configurar-principal">Configurar mi ingreso principal</button></div>` : '';
+            const dupBox = h.editar ? '' : `<div id="dup-box">${P.avisoYaTienes(h, P.yaEnPlan(st, h.nombre))}</div>`;
             const adelanto = h.tipoIng === 'adelanto' && f === 'unico' ? bloqueAdelantoForm(st, h) : '';
             return {
-                titulo: h.editar ? `Editar ${esc(h.nombre)}` : 'Ingreso esperado',
-                cuerpo: `${h.editar ? '' : '<p class="txt">No suma a tu libre hasta que llegue. Cuando llegue, te ayudo a repartirlo.</p>'}
+                titulo: h.modoPrincipal ? 'Mi ingreso principal' : h.editar ? `Editar ${esc(h.nombre)}` : 'Ingreso esperado',
+                cuerpo: `${configurar}${h.editar ? '' : h.modoPrincipal ? '<p class="txt">Tu salario o tu quincena: tu libre se calcula hasta que llegue.</p>' : '<p class="txt">No suma a tu libre hasta que llegue. Cuando llegue, te ayudo a repartirlo.</p>'}
                     ${tipos}
-                    ${campoTexto(h, { campo: 'nombre', label: '¿Cómo se llama?', valor: h.nombre, placeholder: 'Ej. Salario de Luis', errorTexto: 'Ponle un nombre' })}
+                    ${campoTexto(h, { campo: 'nombre', label: '¿Cómo se llama?', valor: h.nombre, placeholder: h.modoPrincipal ? 'Ej. Quincena' : 'Ej. Remesa de mi hijo', errorTexto: 'Ponle un nombre' })}${error(h, 'nombreDup', 'Ya tienes uno con ese nombre. Ponle otro.')}
+                    ${dupBox}
                     ${campoMonto(h, { label: h.tipoIng === 'adelanto' ? '¿Cuánto te adelantan?' : '¿Cuánto recibes más o menos?', valor: h.monto, ayuda: h.tipoIng === 'adelanto' ? '' : 'Lo que te llega de verdad, ya con descuentos.' })}
-                    ${adelanto ? calendario(h, 'fecha', h.fecha, { label: '¿Qué día te lo dan?' }) : bloqueFrecuencia(h, { esIngreso: true })}
+                    ${adelanto ? calendario(h, 'fecha', h.fecha, { label: '¿Qué día te lo dan?' }) : bloqueFrecuencia(h, { esIngreso: true, solo: h.modoPrincipal ? ['semanal', 'catorcenal', 'quincenal', 'mensual'] : null })}
                     ${adelanto}
                     ${opciones(h, { campo: 'lugar', label: '¿Dónde lo recibes?', lista: lugares(st), valor: h.lugar })}
-                    ${repetido ? `<div class="chips"><button type="button" class="chip" aria-pressed="${!!(h.principal)}" data-a="valor" data-campo="principal" data-v="${!h.principal}" data-fk="ing-principal">${h.principal ? icon('check', 'ico-xs') : ''}Es mi ingreso principal</button></div><p class="fila-s">${h.principal ? 'Tu libre se calcula hasta que llegue este.' : principal && principal.id !== h.id ? `Tu ingreso principal es «${esc(principal.nombre)}». Este cuenta como estimado para tus próximos pagos.` : 'Sin ingreso principal, ves tu libre hasta fin de mes.'}</p>` : ''}
+                    ${repetido && !h.modoPrincipal ? `<p class="fila-s">${principal && principal.id !== h.id ? `Tu ingreso principal es «${esc(principal.nombre)}». Este cuenta como estimado para lo que viene.` : 'Sin ingreso principal, ves tu libre hasta fin de mes.'}</p>` : ''}
                     ${bloqueDescuento}
                     ${h.editar ? (h.confirmarEliminar ? confirmarHtml(`¿Ya no esperas «${esc(h.nombre)}»?`, 'Deja de aparecer en Mi plan. Lo que ya llegó se queda en tu historial.', 'ingresoEliminar', 'ing-eliminar') : `<button type="button" class="link link--peligro" data-a="valor" data-campo="confirmarEliminar" data-v="si" data-fk="ing-eliminar">${icon('trash-2', 'ico-s')}Ya no lo espero</button>`) : ''}`,
                 pie: pie2('nuevoIngresoOk', h.editar ? 'Guardar cambios' : 'Guardar ingreso'),
@@ -3471,6 +3552,14 @@
                 } else if (!t.mes && h.fechaAuto) Object.assign(h, { fecha: '', fechaAuto: false });
                 return;
             }
+            if (campo === 'modoPrincipal') {
+                // (FM-2, ajuste 3, APROBADO por Victor 2026-10-22): el mismo formulario, como «Mi ingreso principal».
+                const t = D.TIPOS_INGRESO.find((x) => x.principal);
+                Object.assign(h, { modoPrincipal: true, principal: true, tipoIng: t.id, nombre: (h.nombre || '').trim() && !h.nombreAuto ? h.nombre : 'Quincena', nombreAuto: true, ...formFrecuencia({ frecuencia: 'quincenal', dias: [15, 30] }) });
+                h.intento = false;
+                h.errores = [];
+                return;
+            }
             if (campo === 'adElegir') {
                 elegirQuincenaAdelanto(h.adPartes, v, M.leerMonto(h.monto));
                 h.adAuto = false;
@@ -3490,7 +3579,11 @@
                 return;
             }
             h[campo] = el.value;
-            if (campo === 'nombre') h.nombreAuto = false;
+            if (campo === 'nombre') {
+                h.nombreAuto = false;
+                // FM-1: el aviso «Ya tienes…» sigue a lo que escribes.
+                if (!h.editar) region('dup-box', P.avisoYaTienes(h, P.yaEnPlan(P.st, h.nombre)));
+            }
             // Mientras la persona no toque «¿Cuánto te descuentan?», sigue al monto del adelanto.
             if (campo === 'monto' && h.adAuto) {
                 const claves = Object.keys(h.adPartes || {});
@@ -3519,9 +3612,13 @@
         const opsAd = h.tipoIng === 'adelanto' && f === 'unico' ? sincronizarAdelanto(st, h) : [];
         const adElegidas = opsAd.filter((o) => h.adPartes[o.clave] !== undefined);
         const adVacia = adElegidas.find((o) => !M.leerMonto(h.adPartes[o.clave]));
-        const faltan = [...(h.nombre.trim() ? [] : ['nombre']), ...(monto ? [] : ['monto']), ...faltanFrecuencia(h), ...(opsAd.length && !adElegidas.length ? ['adElegir'] : []), ...(adVacia ? ['adMontos'] : []), ...(conDescuento && !(h.dNombre || '').trim() ? ['dNombre'] : []), ...(conDescuento && !dCuota ? ['dCuota'] : [])];
+        // FM-1 (ajuste 3): nunca dos con el mismo nombre; «Es otro distinto» pide uno distinto.
+        const sd = P.nombreSinDuplicar(h, h.nombre.trim(), h.editar ? h.id : null);
+        const faltan = [...(h.nombre.trim() ? [] : ['nombre']), ...sd.faltan, ...(monto ? [] : ['monto']), ...faltanFrecuencia(h), ...(opsAd.length && !adElegidas.length ? ['adElegir'] : []), ...(adVacia ? ['adMontos'] : []), ...(conDescuento && !(h.dNombre || '').trim() ? ['dNombre'] : []), ...(conDescuento && !dCuota ? ['dCuota'] : [])];
         if (!validar(h, faltan)) {
             if (faltan[0] === 'adMontos') document.getElementById('f-ad-' + adVacia.fecha)?.focus();
+            if (faltan[0] === 'duplicado' || faltan[0] === 'alias') P.verPreguntaDup();
+            if (faltan[0] === 'nombreDup') document.getElementById('f-nombre')?.focus();
             return;
         }
         // V2-85: si su fecha de este periodo ya pasó (o es hoy), «¿ya te llegó?» se ve antes de guardar.
@@ -3532,7 +3629,8 @@
         const n = M.normalizar(h.nombre);
         const { primera, ...regla } = reglaForm(h);
         if (regla.frecuencia === 'ingreso') Object.assign(regla, { frecuencia: 'quincenal', dias: M.principal(st).dias });
-        const datos = { nombre: h.nombre.trim(), monto, ...P.reglaDe(regla), lugar: h.lugar, principal: f !== 'unico' && f !== 'fechas' && !!h.principal };
+        // FM-2 (ajuste 3): solo «Mi ingreso principal» guarda el ingreso principal.
+        const datos = { nombre: sd.nombre, monto, ...P.reglaDe(regla), lugar: h.lugar, principal: f !== 'unico' && f !== 'fechas' && !!h.modoPrincipal };
         datos.extra = !datos.principal;
         const dDebe = M.leerMonto(h.dDebe);
         // V2-56: el tipo se guarda; el adelanto, con de qué quincena(s) te lo descuentan.
@@ -3866,7 +3964,6 @@
     // ================================================================== NUEVO PAGO Y EDITAR PAGO
     const esCuchubal = (h) => /cuchubal/i.test(h.nombre || '');
     /** V2-66: las facturas de servicios (su cuadro en «+ Pago»): luz, agua, internet, teléfono y cable. */
-    const esServicio = (f) => f.categoria === 'servicios' || f.categoria === 'telefono';
     P.esCuchubal = (p) => !!p && (esCuchubal(p) || p.categoria === 'cuchubal');
     /** El turno de un cuchubal: el ingreso ligado o, en lo guardado antes de la v2.6.2, el próximo «turno del cuchubal». */
     P.turnoCuchubal = (st, p) => {
@@ -3929,6 +4026,177 @@
             { aviso: 'Tu turno quedó anotado', claves: ['guardado:turnoCuchubal'] },
         );
     };
+    // ================================================================== v2.8 AJUSTE 3 «Formularios claros» (APROBADO por Victor, 2026-10-22)
+    /** FM-5: los grupos donde se crean categorías propias, con la categoría de base de lo que se guarda. */
+    const GRUPOS_CAT = { suscripcion: { t: 'Suscripciones', categoria: 'suscripciones' }, servicio: { t: 'Facturas y servicios', categoria: 'servicios' }, otro: { t: 'Otros gastos fijos', categoria: 'otros' }, variable: { t: 'Gastos variables', categoria: 'otros' } };
+    P.GRUPOS_CAT = GRUPOS_CAT;
+    /** FM-5: los íconos que se pueden elegir (los mismos dibujos de emoji de la app). */
+    const ICONOS_CAT = ['🧾', '💡', '💧', '🔥', '📱', '🌐', '📺', '📡', '🗑️', '🏠', '🔑', '🛡️', '🎓', '📚', '💪', '🎬', '🎵', '🎮', '🐾', '🍼', '🧸', '🚗', '⛽', '🛒', '🍽️', '🧺', '💊', '🩺', '🎁', '🤝', '✂️', '🧩'];
+    /** FM-6: lo frecuente de un gasto variable. */
+    const VARIABLES_FRECUENTES = [{ id: 'super', nombre: 'Súper', emoji: '🛒', categoria: 'super' }, { id: 'gasolina', nombre: 'Gasolina', emoji: '⛽', categoria: 'transporte' }, { id: 'comida', nombre: 'Comida', emoji: '🍽️', categoria: 'comida' }, { id: 'mercado', nombre: 'Mercado', emoji: '🧺', categoria: 'mercado' }, { id: 'transporte', nombre: 'Transporte', emoji: '🚌', categoria: 'transporte' }];
+    /** FM-5: tus categorías de un grupo (las archivadas no salen al crear). */
+    P.categoriasDe = (st, grupo, { archivadas = false } = {}) => (st.categoriasPropias || []).filter((c) => c.grupo === grupo && (archivadas || !c.archivada));
+    P.crearCategoria = function (st, { grupo, nombre, emoji }) {
+        const c = { id: 'c' + st.seq++, grupo, nombre, emoji, creado: st.hoy };
+        st.categoriasPropias = [...(st.categoriasPropias || []), c];
+        return c;
+    };
+    /** FM-5: los nombres que ya salen en «¿Cuál?» de un grupo (para no repetir una categoría). */
+    function nombresDelGrupo(st, grupo) {
+        const fijos = grupo === 'suscripcion' ? D.SUSCRIPCIONES.filter((x) => x.id !== 'otra').map((x) => x.nombre) : grupo === 'variable' ? VARIABLES_FRECUENTES.map((x) => x.nombre) : D.PAGOS_FRECUENTES.filter((f) => !f.deuda && f.grupo === grupo).flatMap((f) => [f.nombre, f.etiqueta].filter(Boolean));
+        return [...fijos, ...P.categoriasDe(st, grupo).map((c) => c.nombre)];
+    }
+    /** FM-5: «Otra»: la categoría nueva necesita un nombre que no esté ya en «¿Cuál?». */
+    function faltaCategoria(st, h, grupo) {
+        if (!h.otraCat) return [];
+        const n = M.normalizar(h.catNombre || '');
+        h.catDup = n ? nombresDelGrupo(st, grupo).find((x) => M.normalizar(x) === n) || null : null;
+        return !n || h.catDup ? ['catNombre'] : [];
+    }
+    /** FM-5: el ícono, con el mismo dibujo de emoji de la app (botones de 44 px). */
+    function elegirIcono({ campo = 'catEmoji', accion = 'valor', valor = '' } = {}) {
+        return `<div class="campo-g" role="group" aria-labelledby="l-${campo}"><p class="campo-l" id="l-${campo}">¿Qué ícono le pones?</p><div class="chips chips--emo">${ICONOS_CAT.map((e, i) => `<button type="button" class="chip chip--emo" aria-pressed="${valor === e}" aria-label="${e}" data-a="${accion}" data-campo="${campo}" data-v="${e}" data-fk="op-${campo}-${i}">${emo(e, 22)}</button>`).join('')}</div></div>`;
+    }
+    P.elegirIcono = elegirIcono;
+    /** FM-5: «Otra»: el nombre y el ícono de la categoría nueva (se guarda con lo que estás agregando). */
+    function nuevaCategoriaHtml(h, grupo, { accion = 'valor', catNombre = h.catNombre, catEmoji = h.catEmoji, catDup = h.catDup } = {}) {
+        return `<div class="ob-det cat-nueva">${campoTexto(h, { campo: 'catNombre', label: '¿Cómo se llama la categoría nueva?', valor: catNombre || '', placeholder: grupo === 'suscripcion' ? 'Ej. Crunchyroll' : grupo === 'variable' ? 'Ej. Farmacia' : 'Ej. Clases de inglés', errorTexto: catDup ? `Ya tienes «${catDup}»: elígela arriba` : 'Ponle un nombre' })}${elegirIcono({ accion, valor: catEmoji || '' })}<p class="fila-s">La guardo en ${esc(GRUPOS_CAT[grupo].t)}: la verás en «¿Cuál?» la próxima vez.</p></div>`;
+    }
+    P.nuevaCategoriaHtml = nuevaCategoriaHtml;
+    /** FM-1: lo que ya está en tu plan con ese nombre (sin mayúsculas ni tildes): gasto fijo, gasto variable o ingreso. */
+    function yaEnPlan(st, nombre, excluir = null) {
+        const n = M.normalizar(nombre || '');
+        if (!n) return null;
+        const igual = (x) => x && x.activo !== false && x.id !== excluir && M.normalizar(x.nombre || '') === n;
+        const p = st.pagos.find(igual);
+        if (p) return dupDePago(p);
+        const v = (st.variables || []).find(igual);
+        if (v) return { tipo: 'variable', x: v, detalle: `tope ${dinero(v.tope)} ${P.cadaPlan(st)}` };
+        const i = st.ingresos.find(igual);
+        if (i) return { tipo: 'ingreso', x: i, detalle: `${P.textoFrecuencia(i, { corto: true }).toLowerCase()}, ${dinero(i.monto, { aprox: i.aprox })}` };
+        return null;
+    }
+    const dupDePago = (p) => ({ tipo: 'pago', x: p, detalle: `${p.frecuencia === 'mensual' ? `el ${p.dia}` : P.textoFrecuencia(p, { corto: true }).toLowerCase()}, ${dinero(p.monto, { aprox: p.estimado })}` });
+    P.yaEnPlan = yaEnPlan;
+    /**
+     * FM-1 (reemplaza V2-82): «Ya tienes «Luz» (el 28, ~$30)» → «Editar el que tengo» / «Es otro distinto». «Es otro distinto»
+     * pide un nombre distinto, obligatorio. Nunca dos con el mismo nombre; lo guardado no se fusiona ni cambia solo.
+     */
+    function avisoYaTienes(h, dup, accion = 'yaTienes') {
+        h.dupRef = dup ? { tipo: dup.tipo, id: dup.x.id } : null;
+        if (!dup) return '';
+        const ej = /cuchubal/i.test(dup.x.nombre) ? 'Ej. Cuchubal del trabajo' : `Ej. ${dup.x.nombre} de la casa de mamá`;
+        return `<div class="pregunta pregunta--dup" role="group" aria-labelledby="dup-t"><p class="campo-l" id="dup-t" tabindex="-1">Ya tienes «${esc(dup.x.nombre)}» (${esc(dup.detalle)}).</p><div class="chips"><button type="button" class="chip" aria-pressed="false" data-a="${accion}" data-v="editar" data-fk="dup-editar">Editar el que tengo</button><button type="button" class="chip" aria-pressed="${!!h.dupOtro}" data-a="${accion}" data-v="otro" data-fk="dup-otro">${h.dupOtro ? icon('check', 'ico-xs') : ''}Es otro distinto</button></div>${h.dupOtro ? campoTexto(h, { campo: 'alias', label: '¿Cómo le llamas a este?', valor: h.alias || '', placeholder: ej, errorTexto: 'Ponle un nombre distinto' }) : error(h, 'duplicado', 'Elige una opción')}</div>`;
+    }
+    P.acciones.yaTienes = (d) => {
+        const h = P.ui.hoja;
+        if (!h || !h.dupRef) return;
+        if (d.v === 'editar') {
+            const { tipo, id } = h.dupRef;
+            const p = tipo === 'pago' ? M.pago(P.st, id) : null;
+            P.ui.hoja = null;
+            if (tipo === 'variable') P.abrirHoja('editarVariable', { id });
+            else if (tipo === 'ingreso') P.abrirHoja('nuevoIngreso', { id });
+            else P.abrirHoja(p && p.tipoDeuda ? 'nuevaDeuda' : 'editarPago', { id });
+            P.emitir('yaTienes:editar');
+            return;
+        }
+        h.dupOtro = true;
+        // Si solo se parece (no es el mismo nombre), el nombre que escribió ya sirve.
+        if (!h.alias && h.nombre && !yaEnPlan(P.st, h.nombre)) h.alias = h.nombre.trim();
+        h.errores = (h.errores || []).filter((e) => e !== 'duplicado');
+        P.render({ foco: '#f-alias' });
+        P.emitir('yaTienes:otro');
+    };
+    /** FM-1: con qué nombre se guarda (el escrito o, con «Es otro distinto», el distinto) y qué falta. */
+    function nombreSinDuplicar(h, nombre, excluir = null) {
+        const dup = yaEnPlan(P.st, nombre, excluir) || (!h.editar && h.parecido && M.pago(P.st, h.parecido) ? dupDePago(M.pago(P.st, h.parecido)) : null);
+        if (!dup) return { nombre, faltan: [] };
+        // Al editar, solo si cambias el nombre por uno que ya está (lo guardado antes con nombre repetido no se bloquea).
+        if (h.editar) {
+            const yo = [...P.st.pagos, ...(P.st.variables || []), ...P.st.ingresos].find((x) => x && x.id === excluir);
+            return { nombre, faltan: yo && M.normalizar(yo.nombre || '') === M.normalizar(nombre || '') ? [] : ['nombreDup'] };
+        }
+        if (!h.dupOtro) return { nombre, faltan: ['duplicado'] };
+        const alias = (h.alias || '').trim();
+        return { nombre: alias, faltan: alias && !yaEnPlan(P.st, alias, excluir) ? [] : ['alias'] };
+    }
+    P.nombreSinDuplicar = nombreSinDuplicar;
+    P.avisoYaTienes = avisoYaTienes;
+    /** El nombre que lleva el formulario (el escrito o, con «Otra», el de la categoría nueva). */
+    const nombreForm = (h) => (h.nombre || '').trim() || (h.otraCat ? (h.catNombre || '').trim() : '');
+    /** FM-1: el aviso se actualiza mientras escribes el nombre (y, al editar, «ya tienes uno con ese nombre» se ve al guardar). */
+    function revisarDup(h) {
+        if (h.editar) return;
+        region('dup-box', avisoYaTienes(h, yaEnPlan(P.st, nombreForm(h), h.deVariable || null) || (h.parecido && M.pago(P.st, h.parecido) ? dupDePago(M.pago(P.st, h.parecido)) : null)));
+    }
+    P.revisarDup = revisarDup;
+    /** FM-5: cuántas cosas usan una categoría tuya (gastos fijos, gastos variables y lo anotado). */
+    const usosCategoria = (st, id) => st.pagos.filter((p) => p.propia === id).length + (st.variables || []).filter((v) => v.propia === id).length + st.registros.filter((r) => r.propia === id).length;
+    /**
+     * FM-5: «Mis categorías» (Mi plan): las que creaste con «Otra». Se renombran, cambian de ícono o se archivan; nunca se
+     * borran. Archivada no sale al crear y lo que ya anotaste con ella no cambia.
+     */
+    H.categorias = {
+        html() {
+            const st = P.st;
+            const todas = st.categoriasPropias || [];
+            const grupos = Object.entries(GRUPOS_CAT).map(([g, x]) => {
+                const cs = todas.filter((c) => c.grupo === g);
+                if (!cs.length) return '';
+                return `<p class="campo-l campo-l--sec">${esc(x.t)}</p><ul class="lista card">${cs.map((c) => `<li class="fila"><button type="button" class="fila-main" data-a="hoja" data-hoja="categoria" data-id="${c.id}" data-fk="cat-${c.id}">${caja(c.emoji)}<span class="fila-txt"><span class="fila-t">${esc(c.nombre)}</span><span class="fila-s">${c.archivada ? 'Archivada: no sale al crear' : usosCategoria(st, c.id) ? 'En uso' : 'Sin usar todavía'}</span></span>${icon('chevron-right', 'ico-s')}</button></li>`).join('')}</ul>`;
+            }).join('');
+            return {
+                titulo: 'Mis categorías',
+                cuerpo: grupos || '<p class="txt">Todavía no tienes categorías tuyas. Se crean con «Otra» al agregar un gasto fijo o variable, o al anotar un gasto.</p>',
+                pie: pie1('cerrarHoja', 'Listo', 'cat-listo'),
+            };
+        },
+    };
+    H.categoria = {
+        iniciar(h) {
+            const c = (P.st.categoriasPropias || []).find((x) => x.id === h.id);
+            Object.assign(h, { catNombre: c.nombre, catEmoji: c.emoji, archivada: !!c.archivada });
+        },
+        foco: () => '#f-catNombre',
+        html(h) {
+            const c = (P.st.categoriasPropias || []).find((x) => x.id === h.id);
+            return {
+                titulo: `Editar ${esc(c.nombre)}`,
+                cuerpo: `${campoTexto(h, { campo: 'catNombre', label: '¿Cómo se llama?', valor: h.catNombre, errorTexto: h.catDup ? `Ya tienes «${h.catDup}» en ${GRUPOS_CAT[c.grupo].t}` : 'Ponle un nombre' })}
+                    ${elegirIcono({ valor: h.catEmoji })}
+                    <div class="chips"><button type="button" class="chip" aria-pressed="${!!h.archivada}" data-a="valor" data-campo="archivada" data-v="${!h.archivada}" data-fk="cat-archivar">${h.archivada ? icon('check', 'ico-xs') : ''}Archivarla</button></div>
+                    <p class="fila-s">Archivada no sale al crear. Lo que ya anotaste con ella no cambia.</p>`,
+                pie: `<button type="button" class="btn btn--48" data-a="hoja" data-hoja="categorias" data-fk="cat-volver">Volver</button><button type="button" class="btn btn--48 btn--prim" data-a="categoriaOk" data-fk="cat-ok">Guardar cambios</button>`,
+            };
+        },
+        alValor(h, campo, v) {
+            if (campo === 'archivada') h.archivada = v === 'true';
+            else h[campo] = v;
+        },
+        alCampo(h, campo, el) {
+            h[campo] = el.value;
+        },
+    };
+    P.acciones.categoriaOk = () => {
+        const h = P.ui.hoja;
+        const st = P.st;
+        const c = (st.categoriasPropias || []).find((x) => x.id === h.id);
+        const n = M.normalizar(h.catNombre || '');
+        h.catDup = n && n !== M.normalizar(c.nombre) ? nombresDelGrupo(st, c.grupo).find((x) => M.normalizar(x) === n) || null : null;
+        if (!validar(h, !n || h.catDup ? ['catNombre'] : [])) return;
+        P.ui.hoja = null;
+        P.cambiar(
+            (s) => {
+                const x = s.categoriasPropias.find((y) => y.id === h.id);
+                Object.assign(x, { nombre: h.catNombre.trim(), emoji: h.catEmoji || x.emoji });
+                if (h.archivada) x.archivada = true;
+                else delete x.archivada;
+            },
+            { aviso: h.archivada && !c.archivada ? `Archivaste ${h.catNombre.trim()}` : `${h.catNombre.trim()}: cambios guardados`, claves: ['guardado:categoria:editar', ...(h.archivada && !c.archivada ? ['guardado:categoria:archivar'] : [])] },
+        );
+        P.abrirHoja('categorias');
+    };
     H.nuevoPago = {
         iniciar(h) {
             const st = P.st;
@@ -3953,23 +4221,42 @@
             // v2.8 (D-2 corregida, APROBADO por Victor 2026-10-22): fijo o variable no se decide por el monto. «+ Gasto fijo» y «+ Gasto
             // variable» ya deciden; al final de cada formulario, un enlace para cambiar (al editar, «Pasar a gasto …»).
             const cambiarClase = (a) => `<p class="fila-s np-clase">${h.editar ? '' : a === 'variable' ? '¿Lo vas gastando en varias compras? ' : '¿Llega un cobro con fecha? '}<button type="button" class="link link--inline" data-a="valor" data-campo="clase" data-v="${a}" data-fk="clase-${a}">${h.editar ? (a === 'variable' ? 'Pasar a gasto variable' : 'Pasar a gasto fijo') : a === 'variable' ? 'Pásalo a gasto variable' : 'Pásalo a gasto fijo'}</button></p>`;
+            // FM-1: lo que ya está en tu plan con ese nombre (o, al guardar, uno muy parecido).
+            // («Pasar a gasto fijo» no cuenta como duplicado el gasto variable que se está pasando.)
+            const dupBox = h.editar ? '' : `<div id="dup-box">${avisoYaTienes(h, yaEnPlan(st, nombreForm(h), h.deVariable || null) || (h.parecido && M.pago(st, h.parecido) ? dupDePago(M.pago(st, h.parecido)) : null))}</div>`;
+            const nombreDup = error(h, 'nombreDup', 'Ya tienes uno con ese nombre. Ponle otro.');
+            const otra = { v: 'otra', t: 'Otra', e: '🧾' };
             if (h.clase === 'variable') {
-                const frecuentes = [['super', 'Súper', '🛒', 'super'], ['gasolina', 'Gasolina', '⛽', 'transporte'], ['comida', 'Comida', '🍽️', 'comida'], ['mercado', 'Mercado', '🧺', 'mercado'], ['transporte', 'Transporte', '🚌', 'transporte']];
+                // FM-6: «¿Cuál?» con lo frecuente, tus categorías y «Otra» (FM-5).
+                const lista = [...VARIABLES_FRECUENTES.map((x) => ({ v: x.id, t: x.nombre, e: x.emoji })), ...P.categoriasDe(st, 'variable').map((c) => ({ v: 'p:' + c.id, t: c.nombre, e: c.emoji })), otra];
                 return {
                     titulo: h.editar ? `Pasar ${esc(h.nombre)} a gasto variable` : 'Gasto variable',
-                    cuerpo: `${h.editar ? '' : opciones(h, { campo: 'frecuenteVar', label: '¿Cuál?', lista: frecuentes.map(([v, t, e]) => ({ v, t, e })), valor: h.frecuenteVar || '' })}
-                        ${campoTexto(h, { campo: 'nombre', label: '¿En qué gastas?', valor: h.nombre, placeholder: 'Ej. Súper', errorTexto: 'Ponle un nombre' })}
+                    cuerpo: `${h.editar ? '' : opciones(h, { campo: 'frecuenteVar', label: '¿Cuál?', lista, valor: h.frecuenteVar || '' })}
+                        ${h.otraCat && !h.editar ? nuevaCategoriaHtml(h, 'variable') : ''}
+                        ${campoTexto(h, { campo: 'nombre', label: '¿En qué gastas?', valor: h.nombre, placeholder: 'Ej. Súper', errorTexto: 'Ponle un nombre' })}${nombreDup}
+                        ${dupBox}
                         ${campoMonto(h, { label: `¿Cuánto es lo máximo ${esc(P.cadaPlan(st))}?`, valor: h.monto, ayuda: 'Cada gasto de esto lo va consumiendo. Se renueva con tu próximo ingreso.' })}
                         ${opciones(h, { campo: 'medio', label: '¿Con qué pagas normalmente?', lista: medios(st), valor: h.medio || '', errorTexto: 'Elige con qué lo pagas' })}
                         ${cambiarClase('fijo')}`,
                     pie: pie2('nuevoPagoOk', h.editar ? 'Pasarlo a gasto variable' : 'Guardar gasto variable'),
                 };
             }
+            // FM-4: primero el grupo; «¿Cuál?» sale solo después, con lo de ese grupo, tus categorías y «Otra» (FM-5).
+            const grupo = suscripcion ? 'suscripcion' : h.caja || null;
+            const propias = grupo ? P.categoriasDe(st, grupo).map((c) => ({ v: 'p:' + c.id, t: c.nombre, e: c.emoji })) : [];
+            const cual = !grupo || h.editar || h.deVariable
+                ? ''
+                : suscripcion
+                  ? opciones(h, { campo: 'servicio', label: '¿Cuál?', lista: [...D.SUSCRIPCIONES.filter((x) => x.id !== 'otra').map((x) => ({ v: x.id, t: x.nombre, e: x.emoji })), ...propias, otra], valor: h.servicio || '' })
+                  : opciones(h, { campo: 'frecuente', label: '¿Cuál?', lista: [...D.PAGOS_FRECUENTES.filter((f) => !f.deuda && f.grupo === grupo).map((f) => ({ v: f.id, t: f.etiqueta || f.nombre, e: f.emoji })), ...propias, otra], valor: h.frecuente || '' });
+            const grande = (fk, a, campo, v, e, t, s, activo) => `<button type="button" class="opcion-g" aria-pressed="${!!activo}" data-a="${a}" data-campo="${campo}" data-v="${v}" data-fk="${fk}">${caja(e)}<span class="opcion-g-txt"><span class="opcion-g-t">${t}</span><span class="fila-s">${s}</span></span>${activo ? icon('circle-check', 'ico-ok') : ''}</button>`;
             return {
                 titulo: h.editar ? `Editar ${esc(h.nombre)}` : h.deVariable ? 'Pasar a gasto fijo' : 'Gasto fijo',
-                cuerpo: `${h.editar || h.deVariable ? '' : `<div class="opciones-grandes opciones-grandes--2"><button type="button" class="opcion-g" data-a="valor" data-campo="frecuente" data-v="prestamo" data-fk="np-cuota">${caja('🏦')}<span class="opcion-g-txt"><span class="opcion-g-t">Cuota de un préstamo</span><span class="fila-s">Casa comercial, préstamo o vivienda</span></span></button><button type="button" class="opcion-g" aria-pressed="${!!(suscripcion)}" data-a="valor" data-campo="tipoPago" data-v="${suscripcion ? '' : 'suscripcion'}" data-fk="np-suscripcion">${caja('📺')}<span class="opcion-g-txt"><span class="opcion-g-t">Suscripción</span><span class="fila-s">Netflix, Spotify, celular, gimnasio…</span></span>${suscripcion ? icon('circle-check', 'ico-ok') : ''}</button><button type="button" class="opcion-g" aria-pressed="${h.caja === 'servicio'}" data-a="valor" data-campo="caja" data-v="servicio" data-fk="np-servicios">${caja('💡')}<span class="opcion-g-txt"><span class="opcion-g-t">Facturas de servicios</span><span class="fila-s">Luz, agua, internet, teléfono, cable</span></span>${h.caja === 'servicio' ? icon('circle-check', 'ico-ok') : ''}</button><button type="button" class="opcion-g" aria-pressed="${h.caja === 'otro'}" data-a="valor" data-campo="caja" data-v="otro" data-fk="np-otro">${caja('🧾')}<span class="opcion-g-txt"><span class="opcion-g-t">Otro pago</span><span class="fila-s">Alquiler, colegio, cuchubal u otro</span></span>${h.caja === 'otro' ? icon('circle-check', 'ico-ok') : ''}</button></div>`}
-                    ${h.editar || h.deVariable ? '' : suscripcion ? opciones(h, { campo: 'servicio', label: '¿Cuál?', lista: D.SUSCRIPCIONES.map((x) => ({ v: x.id, t: x.nombre, e: x.emoji })), valor: h.servicio || '' }) : opciones(h, { campo: 'frecuente', label: h.caja === 'servicio' ? '¿Cuál factura?' : '¿Cuál pago?', lista: D.PAGOS_FRECUENTES.filter((f) => !f.deuda && (h.caja === 'servicio' ? esServicio(f) : h.caja === 'otro' ? !esServicio(f) : true)).map((f) => ({ v: f.id, t: f.nombre, e: f.emoji })), valor: h.frecuente || '' })}
-                    ${campoTexto(h, { campo: 'nombre', label: '¿Qué pagas?', valor: h.nombre, placeholder: h.caja === 'servicio' ? 'Ej. Luz' : 'Ej. Colegio', errorTexto: 'Ponle un nombre' })}
+                cuerpo: `${h.editar || h.deVariable ? '' : `<div class="opciones-grandes opciones-grandes--2">${grande('np-cuota', 'valor', 'frecuente', 'prestamo', '🏦', 'Cuota de un préstamo', 'Casa comercial, préstamo o vivienda', false)}${grande('np-suscripcion', 'valor', 'tipoPago', suscripcion ? '' : 'suscripcion', '📺', 'Suscripción', 'Netflix, Spotify, gimnasio…', suscripcion)}${grande('np-servicios', 'valor', 'caja', 'servicio', '💡', 'Facturas y servicios', 'Luz, agua, internet, celular, cable', h.caja === 'servicio')}${grande('np-otro', 'valor', 'caja', 'otro', '🧾', 'Otro', 'Alquiler, colegio, cuchubal, seguro', h.caja === 'otro')}</div>`}
+                    ${cual}
+                    ${h.otraCat && grupo && !h.editar ? nuevaCategoriaHtml(h, grupo) : ''}
+                    ${campoTexto(h, { campo: 'nombre', label: '¿Qué pagas?', valor: h.nombre, placeholder: h.caja === 'servicio' ? 'Ej. Luz' : 'Ej. Colegio', errorTexto: 'Ponle un nombre' })}${nombreDup}
+                    ${dupBox}
                     ${campoMonto(h, { label: cuchubal ? '¿Cuánto aportas cada vez?' : '¿Cuánto pagas?', valor: h.monto })}
                     <div class="chips"><button type="button" class="chip" aria-pressed="${!!(h.estimado)}" data-a="valor" data-campo="estimado" data-v="${!h.estimado}" data-fk="estimado">${h.estimado ? icon('check', 'ico-xs') : ''}El monto cambia cada mes</button></div><p class="campo-ayuda">Pon un aproximado; cuando llegue, anotas el real.</p>
                     ${bloqueFrecuencia(h, { solo: suscripcion ? ['mensual', 'anual'] : null })}
@@ -3977,33 +4264,50 @@
                     ${cuchubal ? `${calendario(h, 'hasta', h.hasta || null, { label: '¿Hasta cuándo aportas? <span class="opcional">(opcional)</span>', min: st.hoy })}${calendario(h, 'turno', h.turno || null, { label: '¿Cuándo te toca recibir? <span class="opcional">(opcional)</span>', min: st.hoy, ayuda: 'Tu turno aparece como ingreso esperado.' })}${h.turno ? campoMonto(h, { campo: 'turnoMonto', label: '¿Cuánto recibes ese día?', valor: h.turnoMonto, id: 'f-turnoMonto' }) : ''}` : ''}
                     ${opciones(h, { campo: 'medio', label: '¿Con qué lo pagas?', lista: medios(st), valor: h.medio || '', errorTexto: 'Elige con qué lo pagas' })}
                     ${M.puedeCobrarSolo(st, h.medio) ? opciones(h, { campo: 'solo', label: '¿Se cobra solo?', lista: SOLO, valor: h.solo || '', errorTexto: 'Elige si se cobra solo' }) : ''}
-                    ${h.deVariable ? '' : cambiarClase('variable')}
-                    ${h.duplicado && M.pago(st, h.duplicado) ? preguntaDuplicado(h, M.pago(st, h.duplicado), 'nuevoPagoDup') : ''}`,
+                    ${h.deVariable ? '' : cambiarClase('variable')}`,
                 pie: pie2('nuevoPagoOk', h.editar ? 'Guardar cambios' : h.deVariable ? 'Pasarlo a gasto fijo' : 'Guardar gasto fijo'),
             };
         },
         alValor(h, campo, v) {
-            // V2-82: si cambia algo, se vuelve a revisar al guardar.
-            h.duplicado = null;
+            const st = P.st;
+            // FM-1: si cambia el nombre, se vuelve a revisar.
+            h.parecido = null;
             if (campo === 'clase') {
                 h.clase = v;
                 h.intento = false;
                 h.errores = [];
                 return;
             }
-            if (campo === 'frecuenteVar') {
-                const f = { super: ['Súper', '🛒', 'super'], gasolina: ['Gasolina', '⛽', 'transporte'], comida: ['Comida', '🍽️', 'comida'], mercado: ['Mercado', '🧺', 'mercado'], transporte: ['Transporte', '🚌', 'transporte'] }[v];
-                if (f) Object.assign(h, { frecuenteVar: v, nombre: f[0], emoji: f[1], categoria: f[2] });
+            if (campo === 'catEmoji') {
+                h.catEmoji = v;
                 return;
             }
             if (campo === 'caja') {
                 h.caja = h.caja === v ? null : v;
                 if (h.caja) h.tipoPago = null;
+                Object.assign(h, { frecuente: null, servicio: null, otraCat: false, propia: null });
+                return;
+            }
+            if ((campo === 'frecuente' || campo === 'servicio' || campo === 'frecuenteVar') && (v === 'otra' || String(v).startsWith('p:'))) {
+                // FM-5: «Otra» crea una categoría propia; una tuya se elige como las demás.
+                if (v === 'otra') {
+                    if (h.propia || h.frecuente || h.servicio || h.frecuenteVar) h.nombre = '';
+                    Object.assign(h, { [campo]: 'otra', otraCat: true, propia: null, emoji: '🧾' });
+                    return;
+                }
+                const c = (st.categoriasPropias || []).find((x) => x.id === v.slice(2));
+                if (c) Object.assign(h, { [campo]: v, otraCat: false, propia: c.id, nombre: c.nombre, emoji: c.emoji, categoria: GRUPOS_CAT[c.grupo].categoria });
+                return;
+            }
+            if (campo === 'frecuente' || campo === 'servicio' || campo === 'frecuenteVar') Object.assign(h, { otraCat: false, propia: null });
+            if (campo === 'frecuenteVar') {
+                const f = VARIABLES_FRECUENTES.find((x) => x.id === v);
+                if (f) Object.assign(h, { frecuenteVar: v, nombre: f.nombre, emoji: f.emoji, categoria: f.categoria });
                 return;
             }
             if (campo === 'frecuente') {
                 const f = D.PAGOS_FRECUENTES.find((y) => y.id === v);
-                if (f && !f.deuda) h.caja = esServicio(f) ? 'servicio' : 'otro';
+                if (f && !f.deuda) h.caja = f.grupo;
                 // V2-24: la cuota de un préstamo abre el MISMO formulario que Mi dinero.
                 if (f.deuda) {
                     setTimeout(() => {
@@ -4013,18 +4317,20 @@
                     });
                     return;
                 }
-                // V2-36: el cuchubal puede ser de cualquier frecuencia; se sugiere quincenal. V2-83: el elegido se ve marcado.
+                // V2-36: el cuchubal puede ser de cualquier frecuencia; se sugiere quincenal. V2-83: el elegido se ve marcado. FM-4: luz y
+                // agua traen marcado «El monto cambia cada mes».
                 Object.assign(h, { frecuente: v, nombre: f.nombre, emoji: f.emoji, categoria: f.categoria, estimado: !!f.variable, frecuencia: f.id === 'cuchubal' ? 'quincenal' : f.semanal ? 'semanal' : 'mensual' });
             } else if (campo === 'tipoPago') {
                 // V2-47: una suscripción es mensual o anual. v2.8 (Victor, 2026-10-22): con qué la pagas lo eliges tú (nunca
                 // se elige la cuenta por el tipo de gasto).
                 h.tipoPago = v || null;
                 if (h.tipoPago) h.caja = null;
+                Object.assign(h, { frecuente: null, servicio: null, otraCat: false, propia: null });
                 if (v) Object.assign(h, { frecuencia: 'mensual', categoria: 'suscripciones', emoji: '📺', estimado: false });
                 else Object.assign(h, { categoria: 'otros', emoji: '🧾' });
             } else if (campo === 'servicio') {
                 const x = D.SUSCRIPCIONES.find((y) => y.id === v);
-                Object.assign(h, { servicio: v, nombre: v === 'otra' ? '' : x.nombre, emoji: x.emoji });
+                Object.assign(h, { servicio: v, nombre: x.nombre, emoji: x.emoji });
             } else if (campo === 'estimado') h.estimado = v === 'true';
             else if (campo === 'medio') h.medio = v;
             else if (campo === 'fechas') alternarFecha(h, v);
@@ -4033,11 +4339,10 @@
         },
         alCampo(h, campo, el) {
             h[campo] = el.value;
-            // V2-82: lo que se escribe se revisa de nuevo al guardar; V2-83: otro nombre deja de marcar el frecuente.
-            if (h.duplicado) {
-                h.duplicado = null;
-                const q = document.querySelector('.pregunta--dup');
-                if (q) q.remove();
+            // FM-1: el aviso «Ya tienes…» sigue a lo que escribes. V2-83: otro nombre deja de marcar el frecuente.
+            if (campo === 'nombre' || campo === 'catNombre') {
+                h.parecido = null;
+                revisarDup(h);
             }
             if (campo === 'nombre' && h.frecuente) {
                 const f = D.PAGOS_FRECUENTES.find((y) => y.id === h.frecuente);
@@ -4053,63 +4358,73 @@
         },
     };
     H.editarPago = { ...H.nuevoPago };
-    /** V2-82: «Ver el que tengo» (su ficha, sin crear nada) o «Sí, es otro» (se guarda). */
-    P.acciones.nuevoPagoDup = (d) => {
-        const h = P.ui.hoja;
-        if (!h) return;
-        if (d.v === 'ver') {
-            const id = h.duplicado;
-            P.ui.hoja = null;
-            P.render();
-            if (id) P.abrir('pago', id);
-            P.emitir('pago:duplicado:ver');
-            return;
-        }
-        h.dupOk = true;
-        P.acciones.nuevoPagoOk();
-    };
+    /** FM-1: la pregunta se lleva a la vista dentro de la hoja (el marco de la app no se mueve). */
+    function verPreguntaDup() {
+        const q = document.querySelector('.pregunta--dup');
+        const c = q && q.closest('.hoja-c');
+        if (c) c.scrollTop += q.getBoundingClientRect().top - c.getBoundingClientRect().top - 16;
+    }
+    P.verPreguntaDup = verPreguntaDup;
     P.acciones.nuevoPagoOk = () => {
         const h = P.ui.hoja;
+        const st = P.st;
         const monto = M.leerMonto(h.monto);
+        const nombreBase = nombreForm(h);
         // v2.8 (D-2 corregida, APROBADO por Victor 2026-10-22): al editar, «Pasar a gasto variable» (el fijo queda en tu historia, sin
         // salir en tu plan). Decisión 24: sin «¿Con qué pagas normalmente?» no se guarda.
         if (h.editar && h.clase === 'variable') {
-            if (!validar(h, [...(h.nombre.trim() ? [] : ['nombre']), ...(monto ? [] : ['monto']), ...(h.medio ? [] : ['medio'])])) return;
+            const sd = nombreSinDuplicar(h, nombreBase, h.id);
+            if (!validar(h, [...(nombreBase ? [] : ['nombre']), ...sd.faltan, ...(monto ? [] : ['monto']), ...(h.medio ? [] : ['medio'])])) return;
             P.ui.hoja = null;
             P.cambiar((s) => {
                 const v = P.fijoAVariable(s, h.id, { tope: monto });
-                if (v) Object.assign(v, { nombre: h.nombre.trim(), medio: h.medio });
-            }, { aviso: `${h.nombre.trim()} ahora es gasto variable`, claves: ['guardado:variable', 'guardado:aVariable'] });
+                if (v) Object.assign(v, { nombre: nombreBase, medio: h.medio });
+            }, { aviso: `${nombreBase} ahora es gasto variable`, claves: ['guardado:variable', 'guardado:aVariable'] });
             if (P.ui.stack.at(-1)?.tipo === 'pago') P.atras();
             return;
         }
-        // v2.8 (D-2, C-3): «+ Gasto variable» (o «Pásalo a gasto variable»): un gasto variable con su tope.
+        // v2.8 (D-2, C-3): «+ Gasto variable» (o «Pásalo a gasto variable»): un gasto variable con su tope. FM-1 y FM-5.
         if (!h.editar && h.clase === 'variable') {
-            if (!validar(h, [...(h.nombre.trim() ? [] : ['nombre']), ...(monto ? [] : ['monto']), ...(h.medio ? [] : ['medio'])])) return;
-            const nombre = h.nombre.trim();
+            const sd = nombreSinDuplicar(h, nombreBase);
+            if (!validar(h, [...faltaCategoria(st, h, 'variable'), ...(nombreBase ? [] : ['nombre']), ...sd.faltan, ...(monto ? [] : ['monto']), ...(h.medio ? [] : ['medio'])])) {
+                if (sd.faltan[0] === 'duplicado' || sd.faltan[0] === 'alias') verPreguntaDup();
+                return;
+            }
+            const nombre = sd.nombre;
             const w = claveNombre(nombre);
             const k = h.categoria && h.categoria !== 'otros' ? M.categoria(h.categoria) : D.CATEGORIAS.find((x) => x.palabras.includes(w)) || D.CATEGORIAS.find((x) => M.normalizar(x.nombre) === M.normalizar(nombre)) || M.categoria('otros');
             P.ui.hoja = null;
-            P.cambiar((s) => P.crearVariable(s, { nombre, emoji: h.emoji && h.emoji !== '🧾' ? h.emoji : D.EMOJI_NOMBRE[w] || k.emoji, categoria: k.id, tope: monto, medio: h.medio }), { aviso: `${nombre}: tope de ${dinero(monto)} ${P.cadaPlan()}`, claves: ['guardado:variable'] });
+            P.cambiar((s) => {
+                const cat = h.otraCat ? P.crearCategoria(s, { grupo: 'variable', nombre: h.catNombre.trim(), emoji: h.catEmoji || '🏷️' }) : null;
+                const v = P.crearVariable(s, { nombre, emoji: cat ? cat.emoji : h.emoji && h.emoji !== '🧾' ? h.emoji : D.EMOJI_NOMBRE[w] || k.emoji, categoria: cat ? 'otros' : k.id, tope: monto, medio: h.medio });
+                if (cat || h.propia) v.propia = cat ? cat.id : h.propia;
+            }, { aviso: `${nombre}: tope de ${dinero(monto)} ${P.cadaPlan()}`, claves: ['guardado:variable', ...(h.otraCat ? ['guardado:categoria'] : [])] });
             return;
         }
         const turnoMonto = M.leerMonto(h.turnoMonto);
         // v2.8 (Victor, 2026-10-22): sin «¿Con qué lo pagas?» no se guarda; con un banco o una tarjeta, también «¿Se cobra solo?».
-        const solo = M.puedeCobrarSolo(P.st, h.medio);
-        const faltan = [...(h.nombre.trim() ? [] : ['nombre']), ...(monto ? [] : ['monto']), ...faltanFrecuencia(h), ...(h.turno && !turnoMonto ? ['turnoMonto'] : []), ...(h.medio ? [] : ['medio']), ...(solo && !h.solo ? ['solo'] : [])];
-        if (!validar(h, faltan)) return;
+        const solo = M.puedeCobrarSolo(st, h.medio);
+        const grupo = h.tipoPago === 'suscripcion' ? 'suscripcion' : h.caja || null;
+        const sd = nombreSinDuplicar(h, nombreBase, h.editar ? h.id : h.deVariable || null);
+        const faltan = [...(grupo && !h.editar ? faltaCategoria(st, h, grupo) : []), ...(nombreBase ? [] : ['nombre']), ...sd.faltan, ...(monto ? [] : ['monto']), ...faltanFrecuencia(h), ...(h.turno && !turnoMonto ? ['turnoMonto'] : []), ...(h.medio ? [] : ['medio']), ...(solo && !h.solo ? ['solo'] : [])];
+        if (!validar(h, faltan)) {
+            if (faltan[0] === 'duplicado') document.getElementById('dup-t')?.focus({ preventScroll: true });
+            if (faltan[0] === 'duplicado' || faltan[0] === 'alias') verPreguntaDup();
+            if (faltan[0] === 'nombreDup') document.getElementById('f-nombre')?.focus();
+            return;
+        }
+        const nombre = sd.nombre;
         const regla = reglaForm(h);
-        // Una factura con nombre propio dentro de «Facturas de servicios» es de esa categoría.
+        // Una factura con nombre propio dentro de «Facturas y servicios» es de esa categoría.
         if (h.caja === 'servicio' && (!h.categoria || h.categoria === 'otros')) h.categoria = 'servicios';
-        // V2-82: antes de crear (o de cambiar) un pago parecido a otro que ya tienes, se pregunta.
-        const parecido = h.dupOk ? null : M.pagoParecido(P.st, { nombre: h.nombre.trim(), categoria: h.categoria, dia: regla.dia, monto }, h.editar ? h.id : null);
+        // FM-1 (antes V2-82): uno muy parecido (la misma categoría, el día o el monto) también se pregunta antes de crear.
+        const parecido = h.editar || h.dupOtro ? null : M.pagoParecido(st, { nombre, categoria: h.categoria, dia: regla.dia, monto });
         if (parecido) {
-            h.duplicado = parecido.id;
+            h.parecido = parecido.id;
+            h.intento = true;
+            h.errores = ['duplicado'];
             P.render({ foco: '#dup-t' });
-            // La pregunta se lleva a la vista dentro de la hoja (el marco de la app no se mueve).
-            const q = document.querySelector('.pregunta--dup');
-            const c = q && q.closest('.hoja-c');
-            if (c) c.scrollTop += q.getBoundingClientRect().top - c.getBoundingClientRect().top - 16;
+            verPreguntaDup();
             P.emitir('pago:duplicado');
             return;
         }
@@ -4123,7 +4438,7 @@
                 const p = M.pago(s, h.id);
                 const nuevas = nuevasPasadas(s, p, regla);
                 for (const k of ['fecha', 'dias', 'dia', 'diaSemana', 'cadaMeses', 'fechas', 'conIngreso']) delete p[k];
-                Object.assign(p, { nombre: h.nombre.trim(), monto, estimado: h.estimado, medio: h.medio, ...P.reglaDe(regla) });
+                Object.assign(p, { nombre, monto, estimado: h.estimado, medio: h.medio, ...P.reglaDe(regla) });
                 if (esCuchubal(h) && h.hasta) p.hasta = h.hasta;
                 else delete p.hasta;
                 // V2-88: lo mismo que al crearlo.
@@ -4142,7 +4457,10 @@
         }
         P.cambiar(
             (s) => {
-                const pc = P.crearPago(s, { nombre: h.nombre.trim(), emoji: h.emoji, categoria: h.categoria, monto, estimado: h.estimado, medio: h.medio, hasta: esCuchubal(h) && h.hasta ? h.hasta : null, tipoPago: h.tipoPago || undefined, ...regla, antes: debe ? 'no' : 'si' });
+                // FM-5: «Otra» guarda la categoría nueva en su grupo.
+                const cat = h.otraCat && grupo ? P.crearCategoria(s, { grupo, nombre: h.catNombre.trim(), emoji: h.catEmoji || '🏷️' }) : null;
+                const pc = P.crearPago(s, { nombre, emoji: cat ? cat.emoji : h.emoji, categoria: cat ? GRUPOS_CAT[grupo].categoria : h.categoria, monto, estimado: h.estimado, medio: h.medio, hasta: esCuchubal(h) && h.hasta ? h.hasta : null, tipoPago: h.tipoPago || undefined, ...regla, antes: debe ? 'no' : 'si' });
+                if (cat || h.propia) pc.propia = cat ? cat.id : h.propia;
                 if (solo && h.solo === 'si') pc.automatico = true;
                 // v2.8 (D-2 corregida, APROBADO por Victor 2026-10-22): «Pasar a gasto fijo» desde un gasto variable: el variable deja de salir en tu plan desde hoy.
                 const v = h.deVariable ? (s.variables || []).find((y) => y.id === h.deVariable) : null;
@@ -4150,7 +4468,7 @@
                 // El turno del cuchubal = un ingreso esperado de una vez.
                 if (esCuchubal(h)) guardarTurno(s, pc, h.turno, turnoMonto, null);
             },
-            { aviso: h.deVariable ? `${h.nombre.trim()} ahora es gasto fijo` : `${h.nombre.trim()}: guardado en Mi plan`, claves: ['guardado:pago', 'guardado:pago:' + claveNombre(h.nombre), ...(h.deVariable ? ['guardado:aFijo'] : [])] },
+            { aviso: h.deVariable ? `${nombre} ahora es gasto fijo` : `${nombre}: guardado en Mi plan`, claves: ['guardado:pago', 'guardado:pago:' + claveNombre(nombre), ...(h.deVariable ? ['guardado:aFijo'] : []), ...(h.otraCat ? ['guardado:categoria'] : [])] },
         );
         if (h.deVariable && P.ui.stack.at(-1)?.tipo === 'variable') P.atras();
     };
@@ -4541,7 +4859,7 @@
         top.hechas = top.hechas || {};
         const k = P.calc();
         const hz = k.hz;
-        const quePalabra = ing.principal ? (ing.frecuencia === 'quincenal' ? 'tu quincena' : ing.frecuencia === 'semanal' ? 'tu pago de la semana' : 'tu ' + ing.nombre.toLowerCase()) : 'lo ' + P.deQuien(ing);
+        const quePalabra = ing.principal ? (ing.frecuencia === 'quincenal' ? 'tu quincena' : ing.frecuencia === 'semanal' ? 'tu ingreso de la semana' : 'tu ' + ing.nombre.toLowerCase()) : 'lo ' + P.deQuien(ing);
         // Revisión v2.3: si llegó antes de su quincena (otro ingreso), se dice y se puede usar desde ya.
         const adelanto = k.reservasProxima.find((r) => r.adelanto && r.adelanto.ingreso.id === ing.id && r.adelanto.fecha === top.fecha);
         // ¿Hoy también esperabas otro ingreso (la pareja, la remesa)? Se confirma aquí mismo.
@@ -4764,8 +5082,8 @@
                           return `<li class="ad-item">${caja(o.tarjeta ? o.tarjeta.emoji : o.pago.emoji)}<div class="ad-txt"><p class="fila-t">${esc(nombre)} · ${dinero(o.monto, { aprox: o.estimado })}</p><p class="fila-s">Venció el ${esc(M.fechaLarga(o.fecha))}${o.parcial ? ` · ya pagaste ${dinero(o.parcial.pagado)}` : ''}</p><div class="chips">${ch('pagado', 'Pagado')}${ch('aun', 'Aún no')}${o.tarjeta ? '' : ch('saltar', 'Saltar')}</div>${montoT}</div></li>`;
                       })
                       .join('')
-                : '<li class="ad-item"><p class="txt">No hay pagos por confirmar.</p></li>';
-            return `<div class="pg pg--flujo">${cab(2, 'Tus pagos', 'Ya pasó su fecha. ¿Los pagaste?')}
+                : '<li class="ad-item"><p class="txt">No hay nada por confirmar.</p></li>';
+            return `<div class="pg pg--flujo">${cab(2, 'Lo que ya venció', 'Ya pasó su fecha. ¿Los pagaste?')}
                 ${vencidos.length > 1 ? `<button type="button" class="link" data-a="aldiaTodos" data-fk="ad-todos">Marcar todos como pagados</button>` : ''}
                 <ul class="lista-ad card">${filas}</ul>
                 <p class="fila-s">Los marcamos con su fecha. Si algo no cuadra, el paso siguiente lo explica.</p>
@@ -5086,9 +5404,9 @@
                 const ya = d.pagos.find((p) => p.id === x.id);
                 // V2-82: en «Completar tu Primer día», lo que ya está en Pagos se ve y no se vuelve a agregar.
                 if (ob.completar && P.st.pagos.some((p) => p.activo !== false && M.normalizar(p.nombre) === M.normalizar(x.nombre))) {
-                    return `<button type="button" class="chip chip--tienes" data-a="obPagoTienes" data-v="${x.id}" data-fk="ob-p-${x.id}" aria-label="${esc(x.nombre)}: ya está en Mi plan">${emo(x.emoji, 18)}${esc(x.nombre)}<span class="chip-s">Ya está en Mi plan</span></button>`;
+                    return `<button type="button" class="chip chip--tienes" data-a="obPagoTienes" data-v="${x.id}" data-fk="ob-p-${x.id}" aria-label="${esc(x.etiqueta || x.nombre)}: ya está en Mi plan">${emo(x.emoji, 18)}${esc(x.etiqueta || x.nombre)}<span class="chip-s">Ya está en Mi plan</span></button>`;
                 }
-                return `<button type="button" class="chip" aria-pressed="${!!(ya || (ed && ed.id === x.id))}" data-a="obPago" data-v="${x.id}" data-fk="ob-p-${x.id}">${ya || (ed && ed.id === x.id) ? icon('check', 'ico-xs') : ''}${emo(x.emoji, 18)}${esc(x.nombre)}</button>`;
+                return `<button type="button" class="chip" aria-pressed="${!!(ya || (ed && ed.id === x.id))}" data-a="obPago" data-v="${x.id}" data-fk="ob-p-${x.id}">${ya || (ed && ed.id === x.id) ? icon('check', 'ico-xs') : ''}${emo(x.emoji, 18)}${esc(x.etiqueta || x.nombre)}</button>`;
             };
             const nSus = d.pagos.filter((p) => p.suscripcion).length;
             let editor = '';
@@ -5107,10 +5425,11 @@
                 const x = conQue.find((y) => y.v === pagaDe(p));
                 return x ? (x.solo && soloDe(p) === 'si' ? ' · se cobra solo en ' : ' · con ') + x.t : ' · falta con qué lo pagas';
             };
-            const servicios = D.PAGOS_FRECUENTES.filter((x) => !x.deuda && x.categoria === 'servicios' || x.id === 'telefono');
-            const casa = D.PAGOS_FRECUENTES.filter((x) => !x.deuda && !servicios.includes(x));
+            // v2.8 ajuste 3 (FM-4): los mismos grupos que «+ Gasto fijo».
+            const servicios = D.PAGOS_FRECUENTES.filter((x) => !x.deuda && x.grupo === 'servicio');
+            const casa = D.PAGOS_FRECUENTES.filter((x) => !x.deuda && x.grupo === 'otro');
             return `<div class="pg pg--flujo ob">${cab(5, 'Tus gastos fijos', 'Toca los que tengas. Te aviso antes de que venzan.')}
-                <p class="campo-l campo-l--sec">Facturas de servicios</p>
+                <p class="campo-l campo-l--sec">Facturas y servicios</p>
                 <div class="chips ob-pagos">${servicios.map(pagoChip).join('')}</div>
                 <p class="campo-l campo-l--sec">Casa y familia</p>
                 <div class="chips ob-pagos">${casa.map(pagoChip).join('')}</div>

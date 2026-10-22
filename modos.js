@@ -786,7 +786,7 @@
         const cambio = revision.contestadas ? `<div class="nota nota--ok antes-cambio" role="status">${icon('check')}<p><strong>${libreTxt}</strong> ${revision.contestadas === 1 ? 'Guardamos tu respuesta.' : `Guardamos tus ${revision.contestadas} respuestas.`}</p><button type="button" class="btn btn--sm" data-a="antesDeshacer" data-fk="antes-deshacer">Deshacer</button></div>` : '';
         if (!casos.length) {
             if (!revision.contestadas || revision.listo) return '';
-            return `<section class="card card--aviso aviso-antes" aria-labelledby="ra-t"><div class="aviso-cab">${P.caja('✅')}<div><h2 class="card-t" id="ra-t" tabindex="-1">Listo, revisamos tus pagos de antes</h2><p class="txt">Lo que ya pagaste dejó de contar en tu libre. Lo que debes sigue en tus pagos.</p></div></div>${cambio}<button type="button" class="btn btn--48 btn--full" data-a="antesListo" data-fk="antes-listo">Entendido</button></section>`;
+            return `<section class="card card--aviso aviso-antes" aria-labelledby="ra-t"><div class="aviso-cab">${P.caja('✅')}<div><h2 class="card-t" id="ra-t" tabindex="-1">Listo, revisamos lo de antes</h2><p class="txt">Lo que ya pagaste dejó de contar en tu libre. Lo que debes sigue en tu plan.</p></div></div>${cambio}<button type="button" class="btn btn--48 btn--full" data-a="antesListo" data-fk="antes-listo">Entendido</button></section>`;
         }
         if (revision.oculta) return '';
         const hayPagos = casos.some((c) => c.tipo !== 'ingreso');
@@ -1139,7 +1139,7 @@
         const d = /T/.test(s) ? new Date(s) : null;
         return d && !isNaN(d) ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` : s.slice(0, 10);
     };
-    const NOMBRE_PANTALLA = { hoy: 'Hoy', pagos: 'Pagos', midinero: 'Mi dinero', mes: 'Mes', anotar: 'Anotar', desglose: 'Detalle del libre', pago: 'Ficha de pago', tarjeta: 'Ficha de tarjeta', apartado: 'Ficha de ahorro', lugar: 'Ficha de lugar', lugares: 'Cuentas', cuentas: 'Cuentas', ahorros: 'Ahorros', deudas: 'Deudas', atencion: 'Necesitan atención', pagarCon: 'Lo pagas con', reservar: 'Reservar', pasarProxima: 'Pasar a la próxima', ingreso: 'Ficha de ingreso', reparte: 'Reparte', aldia: 'Pongámonos al día', menu: 'Menú', cuadrar: 'Cuadrar', pagado: 'Pagado', apartar: 'Ahorrar', pagarYa: 'Pagar ya', mover: 'Mover dinero', moverApartado: 'Mover ahorro', usar: 'Usar ahorro', liberar: 'Sacar de ahorro', meta: 'Editar ahorro', nuevoIngreso: 'Ingreso nuevo o editado', ingresoLlego: 'Ya llegó', nuevoPago: 'Pago nuevo', editarPago: 'Editar pago', decidirPago: 'Decidir pago', nuevaDeuda: 'Tarjeta o préstamo', deuda: 'Abonar deuda', estadoCuenta: 'Estado de cuenta', editarRegistro: 'Editar anotación', yaLoUse: 'Ya lo usé', yaNoAplica: 'Ya no aplica', medio: 'Medio de pago', apariencia: 'Apariencia', avisos: 'Avisos', aprende: 'Aprende', espacio: 'Espacio', invitar: 'Invitar' };
+    const NOMBRE_PANTALLA = { hoy: 'Hoy', pagos: 'Mi plan', midinero: 'Mi dinero', mes: 'Mes', anotar: 'Anotar', desglose: 'Detalle del libre', pago: 'Ficha de gasto fijo', tarjeta: 'Ficha de tarjeta', apartado: 'Ficha de ahorro', lugar: 'Ficha de lugar', lugares: 'Cuentas', cuentas: 'Cuentas', ahorros: 'Ahorros', deudas: 'Deudas', atencion: 'Necesitan atención', pagarCon: 'Lo pagas con', reservar: 'Reservar', pasarProxima: 'Pasar a la próxima', ingreso: 'Ficha de ingreso', reparte: 'Reparte', aldia: 'Pongámonos al día', menu: 'Menú', cuadrar: 'Cuadrar', pagado: 'Pagado', apartar: 'Ahorrar', pagarYa: 'Pagar ya', mover: 'Mover dinero', moverApartado: 'Mover ahorro', usar: 'Usar ahorro', liberar: 'Sacar de ahorro', meta: 'Editar ahorro', nuevoIngreso: 'Ingreso nuevo o editado', ingresoLlego: 'Ya llegó', nuevoPago: 'Gasto fijo nuevo', editarPago: 'Editar gasto fijo', decidirPago: 'Decidir pago', nuevaDeuda: 'Tarjeta o préstamo', deuda: 'Abonar deuda', estadoCuenta: 'Estado de cuenta', editarRegistro: 'Editar anotación', yaLoUse: 'Ya lo usé', yaNoAplica: 'Ya no aplica', medio: 'Medio de pago', apariencia: 'Apariencia', avisos: 'Avisos', aprende: 'Aprende', espacio: 'Espacio', invitar: 'Invitar' };
     /** El nombre o apodo que va en el texto: el de «Cuéntale…», si no el de la prueba guiada, si no el del primer día. */
     const nombreContar = (u) => (u.nombre || (P.ayuda && P.ayuda.datos().nombre) || (u.st && u.st.nombre) || '').trim();
     /**
@@ -1358,7 +1358,7 @@
                 ${r && r.error ? `<p class="campo-error">${icon('triangle-alert')}<span>${esc(r.error)}</span></p>` : ''}${elegir}</section>`;
         } else {
             cuerpo = `<section class="ay-card ay-card--prim" aria-labelledby="rec-t"><h3 class="ay-h3" id="rec-t">${icon('list-checks', 'ico-s')}No encontramos una copia de tus datos en este teléfono</h3>
-                <p class="txt">Puedes empezar tu Primer día: tu ingreso, lo que tienes, tus deudas y tus pagos. Son unos minutos.</p>${deNuevo(true)}</section>`;
+                <p class="txt">Puedes empezar tu Primer día: tu ingreso, lo que tienes, tus deudas y tus gastos fijos. Son unos minutos.</p>${deNuevo(true)}</section>`;
         }
         return `${intro}${cuerpo}<p class="fila-s">Los datos de ejemplo quedaron guardados aparte, por si Victor o Pam los necesitan.</p><p class="ay-version">${esc(VERSION)}</p>`;
     }

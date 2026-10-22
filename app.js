@@ -1072,7 +1072,8 @@
             ${seccion('Gastos fijos', 'mp-gastos-fijos', fijos, 'Agrega la luz, el alquiler o el colegio.', btn('Gasto fijo', 'data-a="hoja" data-hoja="nuevoPago"', 'nuevo-pago'))}
             ${seccion('Gastos variables', 'mp-gastos-variables', variables, `El súper o la gasolina: les pones un tope y se renueva ${P.cadaVez()}.`, btn('Gasto variable', 'data-a="hoja" data-hoja="nuevoPago" data-id="" data-fecha="variable"', 'nuevo-variable'))}
             ${seccion('Ahorro programado', 'mp-ahorro-programado', programado, `Lo que guardas ${P.cadaVez()} en un ahorro.`, btn('Ahorro programado', 'data-a="hoja" data-hoja="programar"', 'nuevo-programado'))}
-            ${seccion('Pagos de deudas', 'mp-pagos-de-deudas', [...deudas, ...tarjetas], 'Tus cuotas, préstamos y tarjetas.', btn('Deuda o tarjeta', 'data-a="hoja" data-hoja="nuevaDeuda"', 'nuevo-deuda'))}`;
+            ${seccion('Pagos de deudas', 'mp-pagos-de-deudas', [...deudas, ...tarjetas], 'Tus cuotas, préstamos y tarjetas.', btn('Deuda o tarjeta', 'data-a="hoja" data-hoja="nuevaDeuda"', 'nuevo-deuda'))}
+            <p class="mp-categorias"><button type="button" class="link" data-a="hoja" data-hoja="categorias" data-fk="mp-categorias">${icon('list-checks', 'ico-s')}Mis categorías</button></p>`;
     }
     /** V2-39 (antes de la v2.8): la lista completa de lo que pagas y te pagan. */
     function misPagosV27() {

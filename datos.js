@@ -22,14 +22,16 @@ const CATEGORIAS = [
 ];
 
 /** V2-56: «¿Qué es?» al agregar un ingreso esperado. Cada tipo trae su frecuencia sugerida (adelanto, aguinaldo y Quincena 25: una vez). */
+// v2.8 ajuste 3 (FM-2, APROBADO por Victor 2026-10-22): «+ Ingreso» ofrece solo extras; «Salario» queda para el ingreso
+// principal («Mi ingreso principal») y para leer lo que ya tienes guardado.
 const TIPOS_INGRESO = [
-    { id: 'salario', nombre: 'Salario', emoji: '💼', categoria: 'salario', frecuencia: 'quincenal', sugerido: 'Salario' },
-    { id: 'adelanto', nombre: 'Adelanto', emoji: '💵', categoria: 'otro', frecuencia: 'unico', sugerido: 'Adelanto de salario' },
+    { id: 'salario', nombre: 'Salario', emoji: '💼', categoria: 'salario', frecuencia: 'quincenal', sugerido: 'Salario', principal: true },
     { id: 'remesa', nombre: 'Remesa', emoji: '🌎', categoria: 'remesa', frecuencia: 'mensual', sugerido: 'Remesa' },
     { id: 'aguinaldo', nombre: 'Aguinaldo', emoji: '🎁', categoria: 'aguinaldo', frecuencia: 'unico', sugerido: 'Aguinaldo', mes: 12, dia: 12 },
     { id: 'q25', nombre: 'Quincena 25', emoji: '🎁', categoria: 'aguinaldo', frecuencia: 'unico', sugerido: 'Quincena 25', mes: 1, dia: 25 },
     { id: 'bono', nombre: 'Bono o comisión', emoji: '📈', categoria: 'extra', frecuencia: 'unico', sugerido: 'Bono' },
     { id: 'venta', nombre: 'Venta', emoji: '🏪', categoria: 'venta', frecuencia: 'unico', sugerido: 'Venta' },
+    { id: 'adelanto', nombre: 'Adelanto de salario', emoji: '💵', categoria: 'otro', frecuencia: 'unico', sugerido: 'Adelanto de salario' },
     { id: 'otro', nombre: 'Otro', emoji: '💵', categoria: 'otro', frecuencia: null, sugerido: '' },
 ];
 const INGRESO_CATEGORIAS = [
@@ -52,29 +54,36 @@ const EMOJI_NOMBRE = {
 };
 
 /** V2-47: suscripciones frecuentes (sin logos: solo el nombre). Se pagan, si tienes, con tarjeta de crédito (V2-07). */
+// v2.8 ajuste 3 (FM-4): el plan de celular pasa a «Facturas y servicios»; YouTube, iCloud y Apple TV+ van en «Otra».
 const SUSCRIPCIONES = [
     { id: 'netflix', nombre: 'Netflix', emoji: '🎬' },
-    { id: 'spotify', nombre: 'Spotify', emoji: '🎵' },
     { id: 'disney', nombre: 'Disney+', emoji: '📺' },
-    { id: 'youtube', nombre: 'YouTube', emoji: '🎬' },
-    { id: 'nube', nombre: 'iCloud o Google', emoji: '🖥️' },
-    { id: 'celular', nombre: 'Plan del celular', emoji: '📱' },
+    { id: 'max', nombre: 'Max', emoji: '🎬' },
+    { id: 'prime', nombre: 'Prime Video', emoji: '🎬' },
+    { id: 'spotify', nombre: 'Spotify', emoji: '🎵' },
     { id: 'gimnasio', nombre: 'Gimnasio', emoji: '💪' },
     { id: 'otra', nombre: 'Otra', emoji: '🧾' },
 ];
 
 /** Pagos fijos frecuentes para el primer día y para entender «acuérdame…». */
+// v2.8 ajuste 3 (FM-4, APROBADO por Victor 2026-10-22): cada uno en su grupo (`grupo`), en el orden en que se ve. `etiqueta`: lo
+// que dice el botón cuando es más largo que el nombre con que se guarda.
 const PAGOS_FRECUENTES = [
-    { id: 'alquiler', nombre: 'Alquiler', emoji: '🏠', categoria: 'casa' },
-    { id: 'luz', nombre: 'Luz', emoji: '💡', categoria: 'servicios', variable: true },
-    { id: 'agua', nombre: 'Agua', emoji: '💧', categoria: 'servicios', variable: true },
-    { id: 'internet', nombre: 'Internet', emoji: '🌐', categoria: 'servicios' },
-    { id: 'telefono', nombre: 'Teléfono', emoji: '📱', categoria: 'telefono' },
-    { id: 'colegio', nombre: 'Colegio', emoji: '🎓', categoria: 'educacion' },
+    { id: 'luz', nombre: 'Luz', emoji: '💡', categoria: 'servicios', variable: true, grupo: 'servicio' },
+    { id: 'agua', nombre: 'Agua', emoji: '💧', categoria: 'servicios', variable: true, grupo: 'servicio' },
+    { id: 'internet', nombre: 'Internet', emoji: '🌐', categoria: 'servicios', grupo: 'servicio' },
+    { id: 'cable', nombre: 'Cable', emoji: '📺', categoria: 'servicios', grupo: 'servicio' },
+    { id: 'telefono', nombre: 'Plan de celular', emoji: '📱', categoria: 'telefono', grupo: 'servicio' },
+    { id: 'gas', nombre: 'Gas', etiqueta: 'Gas (cilindro)', emoji: '🔥', categoria: 'casa', grupo: 'servicio' },
+    { id: 'tasas', nombre: 'Tasas municipales', etiqueta: 'Tasas municipales (basura)', emoji: '🗑️', categoria: 'servicios', grupo: 'servicio' },
+    { id: 'vigilancia', nombre: 'Vigilancia', etiqueta: 'Vigilancia o cuota de colonia', emoji: '🛡️', categoria: 'servicios', grupo: 'servicio' },
+    { id: 'alquiler', nombre: 'Alquiler', emoji: '🏠', categoria: 'casa', grupo: 'otro' },
+    { id: 'colegio', nombre: 'Colegio', etiqueta: 'Colegio o universidad', emoji: '🎓', categoria: 'educacion', grupo: 'otro' },
+    { id: 'cuchubal', nombre: 'Cuchubal', emoji: '🤝', categoria: 'cuotas', semanal: true, grupo: 'otro' },
+    { id: 'seguro', nombre: 'Seguro', emoji: '🛡️', categoria: 'otros', grupo: 'otro' },
+    { id: 'familia', nombre: 'Ayuda a la familia', emoji: '🤝', categoria: 'otros', grupo: 'otro' },
     { id: 'casacomercial', nombre: 'Cuota de casa comercial', emoji: '🛍️', categoria: 'cuotas', deuda: 'casacomercial' },
     { id: 'prestamo', nombre: 'Préstamo', emoji: '🏦', categoria: 'cuotas', deuda: 'prestamo' },
-    { id: 'cuchubal', nombre: 'Cuchubal', emoji: '🤝', categoria: 'cuotas', semanal: true },
-    { id: 'cable', nombre: 'Cable', emoji: '📺', categoria: 'servicios' },
 ];
 
 /** «+ Tarjeta o préstamo» (V2-24): un solo formulario para los cuatro tipos. */
