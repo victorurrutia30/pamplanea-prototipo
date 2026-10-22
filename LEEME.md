@@ -110,6 +110,27 @@ Versión visible en la app y en la guía: **«Prototipo v2.8.0 · 2026-10-22»**
   - **FM-8 · La palabra «pago»:**
     - Como sustantivo, solo para deudas. En gastos fijos: «Otro pago» → «Otro», «¿Cuál pago?» → «¿Cuál?», «¿Qué pago?» → «¿Qué es?».
     - En toda la app: chips, títulos, avisos, ayuda y entrenamiento. Los verbos se quedan («¿Cuánto pagas?», «¿Con qué lo pagas?»).
+- **Ajuste 4 antes de validar: APROBADO por Victor (2026-10-22)**, al pegar el prompt «v2.8 — AJUSTE 4». Las 8 pruebas de `ccd5b5a` pasaron («lo demás funcionó»). La versión sigue siendo v2.8.0. Frases literales:
+  - «Quitemos tasa municipal»
+  - «siento que la vista calendario de mi plan, debe tener los botones gasto fijo, variable e ingreso a la vista»
+  - «me salen 2 super en gasté»
+  - «la palabra qué pasó? al darle tap en anotar sigue ahí, no me gusta»
+  - «las categorías abajo de "en qué" deberían salir primero los gastos variables registrados y otras opciones potenciales no registradas, máximo de 4 lines de chips»
+- Lo que se decidió con esas frases (el punto 6 lo vio el auditor en una captura):
+  1. **Facturas y servicios:** sale «Tasas municipales (basura)». Lo ya guardado con ese nombre no cambia.
+  2. **Mi plan → Calendario:** «+ Gasto fijo», «+ Gasto variable» y «+ Ingreso» a la vista, igual que en las secciones (los mismos formularios).
+  3. **«¿En qué?» sin duplicados:** si un gasto variable se llama como una categoría (sin importar mayúsculas ni tildes), la categoría suelta no aparece. Queda solo el gasto variable con «te quedan $X», en Gasté, en Anotar con texto y en cualquier lista de categorías de gasto.
+  4. **«¿Qué pasó?»:**
+     - En Anotar, sin tipo elegido, el campo dice «¿Qué quieres anotar?», con el ejemplo «Ej. pupusas 6».
+     - Al tocar un botón (Gasté, Me llegó dinero, Pagué una deuda, Guardé en un ahorro, Moví dinero, Cuadré), el campo de texto y su nota del micrófono desaparecen. El título es el del botón y solo quedan sus datos. Para volver al texto, «Atrás».
+     - Si escribió algo antes de tocar el botón, lo que se entendió se conserva en los datos.
+     - «¿Qué pasó?» sale de toda la app.
+  5. **«¿En qué?» con máximo 4 líneas de chips** (en 390 px de ancho), en este orden:
+     - a) tus gastos variables con «te quedan $X»;
+     - b) las categorías que más usaste (por cantidad de gastos, últimos 60 días);
+     - c) las sugeridas que no has usado.
+     - Al final, siempre a la vista: «Más…» (despliega todas) y «Otra» (crea categoría, FM-5). Si a) sola ocupa las 4 líneas, «Más…» trae el resto.
+  6. **No asumir:** en Gasté, «¿En qué?» viene sin nada elegido (antes venía «Otros»). Si guardas sin elegir: «Elige en qué». Si el texto escrito permitió entenderlo («súper 40»), sí viene elegido.
 
 ### E1 — el cálculo y los datos
 
@@ -201,6 +222,11 @@ Versión visible en la app y en la guía: **«Prototipo v2.8.0 · 2026-10-22»**
 | Ajuste 3 · FM-6 gastos variables | Sí | `invariantes` V17, QUÉ DEBO PROBAR 6 |
 | Ajuste 3 · FM-7 «Gasté» con tus gastos variables | Sí | `invariantes` V21, `formularios-v265`, QUÉ DEBO PROBAR 7 |
 | Ajuste 3 · FM-8 la palabra «pago» | Sí | `palabras-v28`, `invariantes` V9, `v266`, QUÉ DEBO PROBAR 8 |
+| Ajuste 4 · sin «Tasas municipales» | Sí | `palabras-v28`, `v263`, QUÉ DEBO PROBAR 5 |
+| Ajuste 4 · Calendario con los tres botones | Sí | QUÉ DEBO PROBAR 4, captura |
+| Ajuste 4 · «¿En qué?» sin duplicados, en 4 líneas | Sí | `invariantes` V22, QUÉ DEBO PROBAR 2 |
+| Ajuste 4 · sin «¿Qué pasó?»; con un botón, solo sus datos | Sí | `invariantes` V23, `palabras-v28`, `numeros-entrenamiento`, QUÉ DEBO PROBAR 1 |
+| Ajuste 4 · no asumir en «Gasté» | Sí | `invariantes` V23 (también I10 y V3), QUÉ DEBO PROBAR 2 y 3 |
 
 ### Pruebas de E2 y al terminar
 
@@ -298,6 +324,31 @@ Versión visible en la app y en la guía: **«Prototipo v2.8.0 · 2026-10-22»**
   - «Gasté» $20 en Súper: $868;
   - «Otro» y «¿Cuál?»: $868.
 
+### Ajuste 4 antes de validar (2026-10-22)
+
+- **Lo que cambió** (los puntos 1 a 6 de arriba, APROBADO por Victor 2026-10-22). La versión sigue siendo v2.8.0.
+  - Sale «Tasas municipales (basura)».
+  - Mi plan → Calendario tiene «+ Gasto fijo», «+ Gasto variable» y «+ Ingreso».
+  - «¿En qué?» nunca repite un nombre: tus gastos variables primero, con lo que les queda; después las categorías que más usaste y las sugeridas. Ocupa 4 líneas, con «Más…» y «Otra» al final, y en «Gasté» viene sin nada elegido («Elige en qué»).
+  - Anotar dice «¿Qué quieres anotar?» («Ej. pupusas 6»). Al tocar un botón queda solo lo de ese botón, con su título y «Atrás».
+- **Pruebas** (una a la vez, con la memoria primero: entre 4.0 y 4.5 GB libres; dos veces esperó a tener 4 GB):
+  - `actualizar --ref=c640e4e` (48 comprobaciones) y `--ref=d702de0` (45): 0 fallos;
+  - `invariantes`: **42 de 42**. Las filas nuevas V22 y V23 dan 0 de 2 sobre `ccd5b5a`;
+  - `palabras-v28`: 605 textos, 0. Ahora tampoco deja «¿Qué pasó?» ni «Tasas municipales»; sobre `ccd5b5a` encuentra 40;
+  - las 37 por archivo, en verde: `novedades`, `v25` en tres partes, `v266` y `v267` en dos;
+  - **ninguna baja frente a la línea base**;
+  - las 3 capturas a 390×844, revisadas como imágenes: Anotar sin tipo, «Gasté» con «¿En qué?» y Mi plan → Calendario.
+- **Pruebas que esperaban lo de antes**, actualizadas citando su punto (no se borró ninguna):
+  - `v263` (punto 1);
+  - `invariantes` I10 y V3 (punto 6: «cuadernos», «mochila» y «mouse» no dicen en qué fue, así que ahora se elige);
+  - el «Hazlo por mí» del entrenamiento (punto 6: elige «Otros» cuando no se entendió).
+- **QUÉ DEBO PROBAR, verificado antes de escribirlo.** Un guion repitió tu preparación (hasta las 8 del ajuste 3 en ccd5b5a) y después hizo las 5 nuevas con el código final, el 22 y el 26 de octubre, sin fallos:
+  - $868 → Anotar y «Gasté»: $868;
+  - Mercado $10: $868;
+  - «pupusas 12»: $856;
+  - Calendario: $856;
+  - «Facturas y servicios»: $856.
+
 ### Decisiones técnicas — REVISAR (v2.8)
 
 1. ~~**Ahorros de antes: en qué cuenta.** En el banco con más dinero (si no hay banco, en la cuenta con más). Solo se ve como «dentro de Banco Agrícola»; se cambia en el ahorro.~~ **REEMPLAZADA (2026-10-22) por la pregunta de una vez «Tu ahorro [nombre], ¿en qué cuenta está?» («no asumir», APROBADO por Victor).** Ese banco solo se usa mientras no contestes. *(Se ve: QUÉ DEBO PROBAR.)*
@@ -347,6 +398,15 @@ Versión visible en la app y en la guía: **«Prototipo v2.8.0 · 2026-10-22»**
 36. **FM-7:** «¿En qué?» es la lista y el nombre se escribe en «¿Qué fue?». En Anotar, «Otra» crea la categoría en «Gastos variables».
 37. **FM-8:** «pago» se queda en deudas y tarjetas, en «Ya lo pagué» y en los nombres ya guardados (por ejemplo, «Pago de la semana»).
 38. **Primer día:** «Facturas y servicios» y «Casa y familia» usan los grupos de FM-4, con sus opciones nuevas.
+39. **Ajuste 4, punto 4:**
+    - Con un botón, el título es lo que anotas («Gasté», «Me llegó dinero»…) y «Completa los datos» se queda.
+    - «Atrás» vuelve al texto y lo entiende otra vez.
+    - Si el texto ya se entendió, Anotar lo arma solo y no salen los botones (como antes).
+40. **Punto 5:**
+    - Las 4 líneas se cuentan en la pantalla: se esconden las últimas antes de «Más…» y «Otra», y lo elegido nunca se esconde.
+    - «Más…» pasa a «Menos». «Otros» cuenta como una categoría más.
+41. **Punto 6:** al elegir una categoría, el nombre escrito o entendido se queda; el de la categoría solo se pone si estaba vacío.
+42. **Punto 3:** «Corregir» un gasto muestra la misma lista, sin «Otra». Elegir ahí un gasto variable pasa el gasto a ese gasto variable.
 
 ### PENDIENTE (lo vi y no lo toqué)
 
