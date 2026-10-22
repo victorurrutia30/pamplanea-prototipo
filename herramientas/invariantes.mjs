@@ -14,6 +14,7 @@
 //  I11 mover entre cuentas: el total se conserva
 //  I12 sin espacio para la copia por versión: quedan la original y las 2 más recientes, y se avisa (DATOS-1)
 // Y una fila por cada arreglo de la Parte B que no está arriba: F13, F14, F17, F21, F22, F23.
+// Y P3: la nota del cuadre en Anotar (P-3): antes, el mismo día (con cada respuesta) y después.
 // Uso: node herramientas/invariantes.mjs [--base=http://…/] [--puerto=9961] [--solo=I01,F13] [--raiz=<otra copia>]
 //      (--raiz: las mismas filas sobre otra copia, por ejemplo la v2.6.7 sacada de git, para ver cuáles fallaban antes)
 import { mkdir } from 'node:fs/promises';
@@ -538,6 +539,83 @@ await filaDe('I12', 'Sin espacio para la copia por versión: quedan la original 
     await b.enviar('Page.removeScriptToEvaluateOnNewDocument', { identifier: cuotaId });
     await ev(`P.sinGuardar = true; window.__cuota = undefined; localStorage.clear(); true`);
     await abrirApp();
+});
+
+// ------------------------------------------------------------------ P3 (la nota del cuadre, antes de guardar)
+await filaDe('P3', 'La nota del cuadre en Anotar (P-3): antes del cuadre no cambia; el mismo día pregunta; después baja', async () => {
+    const abrirAnotar = async (frase) => {
+        await ev(`(() => { P.ui.hoja && P.cerrarHoja({ sinFoco: true }); P.acciones.anotar(); const q = document.getElementById('anotar-q'); q.value = ${js(frase)}; q.dispatchEvent(new Event('input', { bubbles: true })); return true; })()`);
+        await esperar(100);
+    };
+    const guardar = async () => {
+        await ev(`P.acciones.anotarGuardar(); true`);
+        await esperar(150);
+        return ev(`!!(P.ui.hoja && P.ui.hoja.tipo === 'anotar')`);
+    };
+    const palabras = (t) => String(t || '').split(/(?<=[.?!])\s+/).filter(Boolean).every((f) => f.split(/\s+/).length <= 20);
+    await ev(`__armar(); true`);
+    // Como la prueba de Victor: cuadrar el Efectivo hoy a $20 menos de lo anotado ($100 → $80).
+    await ev(`P.cambiar((s) => P.cuadrar(s, 'efectivo', MOTOR.saldoLugar(s, 'efectivo') - 2000), { aviso: null }); true`);
+    const e0 = await ev(`__saldo('efectivo')`);
+    check('(el cuadre: Efectivo en $80.00)', e0, 8000);
+    const m0 = await ev(`__mes()`);
+
+    // 1) De ANTES del cuadre: la nota, antes de guardar; tu Efectivo no cambia y Mes cuenta los $20 una vez.
+    await abrirAnotar('ayer pupusas 20 efectivo');
+    check('antes: la nota', await texto('#nota-cuadre p'), 'Esto fue antes de que contaras tu Efectivo hoy. Ya está dentro de lo que contaste: tu Efectivo no cambia.');
+    check('antes: con «Fue después de contar»', [await texto('[data-fk="tras-cuadre"]'), await ev(`document.querySelector('[data-fk="tras-cuadre"]').getAttribute('aria-pressed')`)], ['Fue después de contar', 'false']);
+    check('antes: cada frase con 20 palabras o menos', palabras(await texto('#nota-cuadre p')), true);
+    check('antes: no pregunta nada más', await ev(`!!document.getElementById('l-orden')`), false);
+    await foto('P3-antes');
+    check('antes: se guarda', await guardar(), false);
+    check('antes: tu Efectivo no cambia ($80.00)', await ev(`__saldo('efectivo')`), e0);
+    const m1 = await ev(`__mes()`);
+    check('antes: Mes cuenta los $20 una sola vez (explican el cuadre)', [m1.salio - m0.salio, m0.sinDetalleSalio - m1.sinDetalleSalio], [0, 2000]);
+
+    // 2) De antes, pero «Fue después de contar»: cuenta después del cuadre y sí baja.
+    await abrirAnotar('ayer bus 5 efectivo');
+    await ev(`document.querySelector('[data-fk="tras-cuadre"]').click(); true`);
+    await esperar(100);
+    check('«Fue después de contar»: la nota lo dice', [await texto('#nota-cuadre p'), await ev(`document.querySelector('[data-fk="tras-cuadre"]').getAttribute('aria-pressed')`)], ['Cuenta como después de contar: tu Efectivo baja.', 'true']);
+    check('«Fue después de contar»: se guarda', await guardar(), false);
+    check('«Fue después de contar»: tu Efectivo baja $5 ($75.00)', await ev(`__saldo('efectivo')`), e0 - 500);
+    check('(queda con la anotación)', await ev(`P.st.registros.at(-1).trasCuadre && P.st.registros.at(-1).trasCuadre.lugar`), 'efectivo');
+
+    // 3) Del MISMO día: pregunta; sin respuesta no se guarda (no se asume).
+    await abrirAnotar('pupusas 6 efectivo');
+    check('mismo día: pregunta', await texto('#l-orden'), '¿Fue antes o después de contar tu dinero?');
+    check('mismo día: con «Antes» y «Después»', await ev(`[...document.querySelectorAll('[data-campo="ordenCuadre"]')].map((x) => x.textContent.trim())`), ['Antes', 'Después']);
+    await foto('P3-mismo-dia');
+    check('mismo día: sin respuesta, no se guarda', [await guardar(), await ev(`P.ui.hoja.errores.includes('ordenCuadre')`), await texto('#anotar-preg .campo-error')], [true, true, 'Elige una opción']);
+    await ev(`document.querySelector('[data-fk="orden-antes"]').click(); true`);
+    await esperar(100);
+    check('mismo día «Antes»: lo dice', await texto('#orden-nota'), 'Ya está dentro de lo que contaste: tu Efectivo no cambia.');
+    check('mismo día «Antes»: se guarda', await guardar(), false);
+    check('mismo día «Antes»: tu Efectivo no cambia ($75.00)', await ev(`__saldo('efectivo')`), e0 - 500);
+    await abrirAnotar('pan 3 efectivo');
+    await ev(`document.querySelector('[data-fk="orden-despues"]').click(); true`);
+    await esperar(100);
+    check('mismo día «Después»: lo dice', await texto('#orden-nota'), 'Tu Efectivo baja con esto.');
+    check('mismo día «Después»: se guarda', await guardar(), false);
+    check('mismo día «Después»: tu Efectivo baja $3 ($72.00)', await ev(`__saldo('efectivo')`), e0 - 800);
+    // Un ingreso del mismo día también pregunta (y «Después» lo suma).
+    // (Anotar todavía lleva «recibí 50 en efectivo» a tu banco: se elige el Efectivo, como lo haría la persona.)
+    await abrirAnotar('recibí 50 en efectivo');
+    await ev(`P.acciones.anotarValor({ campo: 'lugar', v: 'efectivo' }); true`);
+    await esperar(100);
+    check('ingreso del mismo día: también pregunta', await texto('#l-orden'), '¿Fue antes o después de contar tu dinero?');
+    await ev(`document.querySelector('[data-fk="orden-despues"]').click(); true`);
+    await esperar(100);
+    check('ingreso «Después»: tu Efectivo sube $50 ($122.00)', [await guardar(), await ev(`__saldo('efectivo')`)], [false, e0 - 800 + 5000]);
+
+    // 4) DESPUÉS del último cuadre (el Banco Agrícola se cuadró el 1 de octubre): ni nota ni pregunta, y baja.
+    const b0 = await ev(`__saldo('banco')`);
+    await abrirAnotar('súper 10');
+    await ev(`P.acciones.anotarValor({ campo: 'medio', v: 'debito' }); true`);
+    await esperar(100);
+    check('después: ni nota ni pregunta', [await ev(`!!document.getElementById('nota-cuadre')`), await ev(`!!document.getElementById('l-orden')`)], [false, false]);
+    check('después: se guarda y tu Banco Agrícola baja $10', [await guardar(), await ev(`__saldo('banco')`)], [false, b0 - 1000]);
+    check('centavos enteros', [await ev(`__saldo('efectivo')`), await ev(`__saldo('banco')`)].every(entero), true);
 });
 
 const resultado = { version: await ev('window.VERSION_PROTOTIPO').catch(() => null), filas: filas.map((f) => ({ id: f.id, ok: f.ok, nombre: f.nombre, checks: f.checks.length, malas: f.checks.filter((c) => !c.ok) })), resumen: `${filas.filter((f) => f.ok).length} de ${filas.length} filas bien`, fallos, errores: b.errores, fallidas: b.fallidas };

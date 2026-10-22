@@ -130,6 +130,18 @@
     // ------------------------------------------------------------------ saldo con la regla del cuadre
     const despues = (r, cu) => r.fecha > cu.fecha || (r.fecha === cu.fecha && r.seq > cu.seq);
     /**
+     * v2.7 (P-3): ¿cuenta después de este cuadre de `lugarId`? Por su fecha y su orden, salvo lo que dijo la persona al
+     * anotarlo: «Fue después de contar» (`trasCuadre`: después de ese cuadre y de los de antes) o, el mismo día, «Antes»
+     * (`antesCuadre`: antes de ese cuadre y de los de después). Solo para la cuenta de ese cuadre.
+     */
+    function despuesCuadre(r, cu, lugarId) {
+        const tras = r.trasCuadre && r.trasCuadre.lugar === lugarId ? r.trasCuadre : null;
+        if (tras && !despues(cu, tras)) return true;
+        const antes = r.antesCuadre && r.antesCuadre.lugar === lugarId ? r.antesCuadre : null;
+        if (antes && !despues(antes, cu)) return false;
+        return despues(r, cu);
+    }
+    /**
      * v2.7 (F04, DATOS-3): la cuenta de donde salió un gasto. Desde la v2.7 cada gasto la guarda al anotarse (`r.lugar`;
      * null si fue con crédito): cambiar después la cuenta de un medio solo afecta lo nuevo. Lo anotado con una versión
      * anterior que todavía no la tiene usa la de su medio, como antes.
@@ -146,7 +158,7 @@
     function saldoLugar(st, lugarId) {
         const l = lugar(st, lugarId);
         if (!l || !l.cuadre) return 0;
-        return st.registros.reduce((s, r) => (despues(r, l.cuadre) ? s + efecto(st, r, lugarId) : s), l.cuadre.monto);
+        return st.registros.reduce((s, r) => (despuesCuadre(r, l.cuadre, lugarId) ? s + efecto(st, r, lugarId) : s), l.cuadre.monto);
     }
     /** Lugares que toca un registro (para avisar si es anterior a su último cuadre). */
     function lugaresDe(st, r) {
@@ -159,7 +171,20 @@
         return [];
     }
     function anteriorAlCuadre(st, r) {
-        return lugaresDe(st, r).map((id) => lugar(st, id)).filter((l) => l && l.cuadre && !despues(r, l.cuadre));
+        return lugaresDe(st, r).map((id) => lugar(st, id)).filter((l) => l && l.cuadre && !despuesCuadre(r, l.cuadre, l.id));
+    }
+    /**
+     * v2.7 (P-3): un gasto o ingreso por anotar y el último cuadre de su cuenta: `caso` «antes» (su fecha es anterior: ya
+     * está dentro de lo que contaste) o «mismoDia» (hay que preguntar si fue antes o después de contar). Si no, null.
+     */
+    function cuadreAnotar(st, d) {
+        if (!d || (d.tipo !== 'gasto' && d.tipo !== 'ingreso')) return null;
+        const fecha = d.fecha || st.hoy;
+        if (fecha > st.hoy) return null;
+        const lugarId = d.tipo === 'gasto' ? medio(st, d.medio)?.lugar || null : d.lugar;
+        const l = lugarId ? lugar(st, lugarId) : null;
+        if (!l || !l.cuadre || fecha > l.cuadre.fecha) return null;
+        return { lugar: l, cuadre: l.cuadre, caso: fecha < l.cuadre.fecha ? 'antes' : 'mismoDia' };
     }
     /**
      * v2.7 (D-8, F01): lo anotado DESPUÉS de un cuadre pero con fecha de ANTES explica la diferencia de ese cuadre: no se
@@ -175,7 +200,7 @@
         for (const r of st.registros) {
             if (r.tipo === 'cuadre') continue;
             for (const id of lugaresDe(st, r)) {
-                const c = (cuadres[id] || []).find((x) => !despues(r, x));
+                const c = (cuadres[id] || []).find((x) => !despuesCuadre(r, x, id));
                 if (c && r.seq > c.seq) out[c.id] = (out[c.id] || 0) + efecto(st, r, id);
             }
         }
@@ -1314,6 +1339,9 @@
             if (d.frecuencia !== 'semanal' && d.dia === null && !(d.frecuencia === 'unico' && d.fechaPago)) f.push('dia');
         }
         if (d.tipo === 'ingreso' && !d.lugar) f.push('lugar');
+        // v2.7 (P-3): del mismo día que el último cuadre de esa cuenta: ¿antes o después de contar? No se asume.
+        const cu = cuadreAnotar(st, d);
+        if (cu && cu.caso === 'mismoDia' && !d.ordenCuadre) f.push('ordenCuadre');
         if (d.tipo === 'ingreso' && d.ingresoRef && d.preguntarIngreso && !d.cualIngreso) f.push('cualIngreso');
         if (d.tipo === 'apartar' && d.pagoParecido && d.apartarIgual !== 'si') f.push('apartarIgual');
         if ((d.tipo === 'apartar' || d.tipo === 'liberar') && !d.apartado) f.push('apartado');
@@ -1326,7 +1354,7 @@
         MONTO_MAX, hoyLocal,
         MESES, MESES_CORTOS, DIAS, DIAS_CORTOS, pad, sumarDias, diasEntre, diaSemana, partes, diasDelMes, fechaDe, mesMas, fechaCorta, fechaLarga, conDia, diaCorto, relativa, haceDias, ultimoDia, proximoDia,
         dinero, leerMonto, montoExcede, montoCampo, suma, lugar, medio, tarjeta, pago, ingreso, apartado, categoria, principal, sinVS,
-        despues, lugarGasto, saldoLugar, anteriorAlCuadre, lugaresDe, tienes, explicadoPorCuadre, sinDetalle, apartadoTotal, ultimaActividad, fechasRegla, ocurrenciasPago, ocurrenciasIngreso, tarjetaInfo, ocurrenciasTarjeta,
+        despues, despuesCuadre, cuadreAnotar, lugarGasto, saldoLugar, anteriorAlCuadre, lugaresDe, tienes, explicadoPorCuadre, sinDetalle, apartadoTotal, ultimaActividad, fechasRegla, ocurrenciasPago, ocurrenciasIngreso, tarjetaInfo, ocurrenciasTarjeta,
         horizonte, calcular, resumenMes, pagosDelMes, medioUsual, normalizar, entender, faltan, capital, porDiaDe, apartadosVencidos, esDiaDeIngreso, coincide,
         inicioDe, cortes, corteAntes, corteDespues, fundado, esFundado, periodoDe, fuentesPara, asignacion, reglaPago, recurrentes, descuentosDe, proyectar, claveVigente, reservasDe,
         esUnico, ingresoDeClave, llegoUnico, unicosPara,

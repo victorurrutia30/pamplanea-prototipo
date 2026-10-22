@@ -1,7 +1,7 @@
 // CAPTURAS v2.7 «Tus números bien», a 390×844 (teléfono) y 1440×900 (computadora), con datos propios («Marta», 21 oct):
-// el teclado de montos, Anotar (1,200 · mañana · la tarjeta Cuscatlán · dos montos), la tarjeta (lo que debes tras un abono
-// y un pago parcial), Mes (cuadrar y luego detallar), el cuadrito de novedades y «Tus datos están a salvo».
-// En 1440×900 el teclado de montos se fuerza (como en una tableta): en una computadora con mouse no sale.
+// Anotar con un monto que no se lee (A: el mensaje a la vista, sin teclado propio), Anotar (1,200 · mañana · la tarjeta
+// Cuscatlán · dos montos), la tarjeta (lo que debes tras un abono y un pago parcial), la nota del cuadre (P-3: antes y el
+// mismo día), Mes (cuadrar y luego detallar), el cuadrito de novedades y «Tus datos están a salvo».
 // Uso: node herramientas/capturas-v27.mjs [--base=http://…/] [--puerto=9964] [--tema=serena-claro]
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
@@ -20,9 +20,9 @@ const js = (s) => JSON.stringify(s);
 const ev = (s) => b.evaluar(s);
 const errores = [];
 let scriptId = null;
-async function abrirApp({ teclado = false, ancho = 390 } = {}) {
+async function abrirApp({ ancho = 390 } = {}) {
     if (scriptId) await b.enviar('Page.removeScriptToEvaluateOnNewDocument', { identifier: scriptId });
-    scriptId = (await b.enviar('Page.addScriptToEvaluateOnNewDocument', { source: `window.__fechaPrueba = '2026-10-21'; window.__tecladoMontos = ${teclado};` })).identifier;
+    scriptId = (await b.enviar('Page.addScriptToEvaluateOnNewDocument', { source: `window.__fechaPrueba = '2026-10-21';` })).identifier;
     if (ancho === 390) await b.tamano(390, 844);
     else await b.tamano(1440, 900, { movil: false, toque: false });
     await b.ir('about:blank');
@@ -56,14 +56,12 @@ const anotar = async (frase) => {
 };
 for (const ancho of [390, 1440]) {
     try {
-        // 1. El teclado de montos.
+        // 1. Un monto que no se lee (A): el campo se abre en la hoja y «No entendí…» va justo debajo, sin nada encima.
         await abrirApp({ ancho });
-        await armar({ teclado: true, ancho });
-        await ev(`P.abrirHoja('cuadrar', { id: 'efectivo' }); document.getElementById('f-monto').click(); true`);
-        for (const t of '1200') await ev(`document.querySelector('[data-tecla="${t}"]').click(); true`);
-        await foto('1-teclado-1200', ancho);
-        await ev(`P.teclado.cerrar(); P.cerrarHoja({ sinFoco: true }); true`);
-        await armar({ teclado: false, ancho });
+        await armar({ ancho });
+        await anotar('súper 1,2345');
+        await ev(`document.getElementById('f-monto')?.closest('.campo-g')?.scrollIntoView({ block: 'nearest' }); true`);
+        await foto('1-monto-ilegible', ancho);
         // 2. Anotar.
         await anotar('gasté 1,200 en súper');
         await foto('2a-anotar-1200', ancho);
@@ -81,13 +79,24 @@ for (const ancho of [390, 1440]) {
         await ev(`P.cambiar((s) => P.marcarPagado(s, 'cuota', '2026-10-21', { monto: 5000, medio: 'debito', fecha: '2026-10-21' }), { aviso: null }); P.irTab('pagos'); true`);
         await ev(`(() => { const f = [...document.querySelectorAll('#pantalla .fila--pago')].find((li) => li.innerText.includes('Parcial')); if (f) f.scrollIntoView({ block: 'center' }); return true; })()`);
         await foto('3b-pagos-parcial', ancho);
-        // 4. Mes: cuadrar a $20 menos y después detallar ese gasto.
+        // 4. La nota del cuadre (P-3): cuadrar a $20 menos y después detallar ese gasto («ayer»: antes de contar); y algo
+        //    del mismo día (pregunta antes o después). Luego Mes.
         await ev(`P.cambiar((s) => P.cuadrar(s, 'efectivo', MOTOR.saldoLugar(s, 'efectivo') - 2000), { aviso: null }); true`);
         await anotar('ayer pupusas 20 efectivo');
+        await ev(`document.getElementById('nota-cuadre')?.scrollIntoView({ block: 'nearest' }); true`);
+        await foto('4a-nota-cuadre-antes', ancho);
+        await ev(`P.acciones.anotarGuardar(); true`);
+        await anotar('pan 3 efectivo');
+        await ev(`document.getElementById('l-orden')?.closest('.pregunta')?.scrollIntoView({ block: 'nearest' }); true`);
+        await foto('4b-nota-cuadre-mismo-dia', ancho);
+        await ev(`document.querySelector('[data-fk="orden-antes"]').click(); true`);
+        await esperar(100);
+        await ev(`document.getElementById('l-orden')?.closest('.pregunta')?.scrollIntoView({ block: 'nearest' }); true`);
+        await foto('4c-mismo-dia-antes', ancho);
         await ev(`P.acciones.anotarGuardar(); P.irTab('mes'); true`);
-        await foto('4a-mes', ancho);
+        await foto('4d-mes', ancho);
         await ev(`document.getElementById('mes-hist')?.scrollIntoView({ block: 'start' }); true`);
-        await foto('4b-mes-historial', ancho);
+        await foto('4e-mes-historial', ancho);
         // 5. El cuadrito de novedades (datos de la v2.6.7: esquema 2, sin versión).
         await ev(`(() => { P.sinGuardar = true; localStorage.clear(); const s = DATOS.crearAna(); Object.assign(s, { persona: 'uso', nombre: 'Marta', hoy: '2026-10-21' }); localStorage.setItem('pamplanea-modo', JSON.stringify({ modo: 'uso', notaAvisos: true, ofertaTarjetas: 'no' })); localStorage.setItem('pamplanea-uso:v1', JSON.stringify({ esquema: 2, creado: '2026-10-10T10:00:00.000Z', st: s, introVista: true, nombre: 'Marta', metricas: {}, feedback: [] })); return true; })()`);
         await abrirApp({ ancho });

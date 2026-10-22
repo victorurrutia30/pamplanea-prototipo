@@ -571,6 +571,19 @@
         return `<div class="nota nota--info" role="note">${icon('info')}<p>Como cuadraste el ${dia}, este pago ya estaba en tu saldo: <strong>${contado ? `tu libre sube ${dinero(contado)}` : 'tu saldo no baja otra vez'}.</strong></p></div>`;
     }
     P.notaCuadre = notaCuadre;
+    /**
+     * v2.7 (P-3): lo que se guarda con un gasto o ingreso según lo que dijo del último cuadre de esa cuenta (la marca del
+     * cuadre: cuenta, fecha y orden). Sin respuesta, o si fue después el mismo día, el orden de siempre (nada que guardar).
+     */
+    function ordenCuadre(st, d) {
+        const cu = M.cuadreAnotar(st, d);
+        if (!cu) return {};
+        const marca = { lugar: cu.lugar.id, fecha: cu.cuadre.fecha, seq: cu.cuadre.seq };
+        if (cu.caso === 'antes' && d.trasCuadre) return { trasCuadre: marca };
+        if (cu.caso === 'mismoDia' && d.ordenCuadre === 'antes') return { antesCuadre: marca };
+        return {};
+    }
+    P.ordenCuadre = ordenCuadre;
     /** Lo que una ocurrencia de pago tenía contado en el libre (su estimado o su monto fijo). */
     const contadoDe = (st, pagoId, fecha) => {
         const p = M.pago(st, pagoId);
@@ -892,6 +905,22 @@
             out.push(`<div class="nota nota--info" role="note">${icon('info')}<p>Pagas tu tarjeta <strong>${esc(t.nombre)}</strong>${d.lugar ? ` desde ${esc(M.lugar(st, d.lugar)?.nombre || '')}` : ''}. No es un gasto nuevo: mueve dinero de tu banco a la tarjeta.</p></div>`);
             if (!info.ult.inicial) out.push(notaMinimo(d.monto, info.ult.minimo, info.pagado));
         }
+        // v2.7 (P-3): lo de antes del último cuadre de esa cuenta ya está en lo que contaste; el mismo día, se pregunta.
+        const cu = M.cuadreAnotar(st, d);
+        if (cu) {
+            const cuenta = esc(cu.lugar.nombre);
+            const dia = cu.cuadre.fecha === st.hoy ? 'hoy' : 'el ' + esc(M.fechaLarga(cu.cuadre.fecha));
+            const efecto = d.tipo === 'gasto' ? 'baja' : 'sube';
+            const chipO = (campo, v, t, fk, on) => `<button type="button" class="chip" aria-pressed="${on}" data-a="anotarValor" data-campo="${campo}" data-v="${v}" data-fk="${fk}">${on ? icon('check', 'ico-xs') : ''}${t}</button>`;
+            if (cu.caso === 'antes') {
+                const tras = !!d.trasCuadre;
+                out.push(`<div class="nota nota--info nota-cuadre" role="note" id="nota-cuadre">${icon('scale')}<div><p>${tras ? `Cuenta como después de contar: tu ${cuenta} ${efecto}.` : `Esto fue antes de que contaras tu ${cuenta} ${dia}. Ya está dentro de lo que contaste: tu ${cuenta} no cambia.`}</p><div class="chips">${chipO('trasCuadre', tras ? '' : 'si', 'Fue después de contar', 'tras-cuadre', tras)}</div></div></div>`);
+            } else {
+                const o = d.ordenCuadre;
+                const sigue = o === 'antes' ? `Ya está dentro de lo que contaste: tu ${cuenta} no cambia.` : o === 'despues' ? `Tu ${cuenta} ${efecto} con esto.` : `Contaste tu ${cuenta} ${dia}.`;
+                out.push(`<div class="pregunta" role="group" aria-labelledby="l-orden"><p class="campo-l" id="l-orden" tabindex="-1">¿Fue antes o después de contar tu dinero?</p><div class="chips">${chipO('ordenCuadre', 'antes', 'Antes', 'orden-antes', o === 'antes')}${chipO('ordenCuadre', 'despues', 'Después', 'orden-despues', o === 'despues')}</div><p class="campo-ayuda" id="orden-nota">${sigue}</p>${error(h, 'ordenCuadre', 'Elige una opción')}</div>`);
+            }
+        }
         if ((d.tipo === 'gasto' || d.tipo === 'ingreso') && d.fecha > st.hoy) out.push(`<div class="nota nota--info" role="note">${icon('calendar-days')}<p><strong>Es para el ${esc(M.fechaLarga(d.fecha))}:</strong> ${d.tipo === 'gasto' ? 'lo pongo en Pagos como pago de una vez. No baja tu dinero hasta que lo pagues.' : 'lo pongo como ingreso esperado. No suma a tu libre hasta que llegue.'}${d.adelanto ? ' Después te pregunto de qué quincena te lo descuentan.' : ''}</p></div>`);
         else if (d.tipo === 'ingreso' && d.adelanto && !d.ingresoRef) out.push(`<div class="nota nota--info" role="note">${icon('info')}<p>Es un adelanto de tu salario: suma hoy. Al guardar te pregunto de qué quincena te lo descuentan.</p></div>`);
         if (d.tipo === 'apartar' && d.monto !== null) {
@@ -910,7 +939,7 @@
         }
         const faltan = M.faltan(st, h.d).filter((f) => f !== 'frecuencia');
         // v2.7: las preguntas nuevas (varios, fecha, tarjeta) se contestan en su recuadro, no en un editor aparte.
-        const enPregunta = (f) => f === 'varios' || f === 'fechaFutura' || (f === 'fecha' && h.d.fechaDudosa) || (f === 'tarjeta' && !h.d.tarjeta);
+        const enPregunta = (f) => f === 'varios' || f === 'ordenCuadre' || f === 'fechaFutura' || (f === 'fecha' && h.d.fechaDudosa) || (f === 'tarjeta' && !h.d.tarjeta);
         const abiertos = h.modo === 'form' ? camposDe(h.d.tipo) : [...new Set([...(h.editando ? [h.editando] : []), ...(h.d.montoDudoso ? ['monto'] : []), ...(h.intento ? faltan.filter((f) => !enPregunta(f)) : [])])];
         return `<p class="campo-l campo-l--sec" id="anotar-entendi">${h.modo === 'form' ? 'Completa los datos' : 'Entendí esto. Toca cualquier dato para cambiarlo.'}</p>
             ${h.modo === 'form' ? '' : `<div class="chips chips--datos" id="anotar-chips" role="group" aria-labelledby="anotar-entendi">${chipsDe(st, h)}</div>`}
@@ -1214,12 +1243,14 @@
         let adelantoId = null;
         P.cambiar(
             (s) => {
+                // v2.7 (P-3): «Fue después de contar» o, el mismo día, «Antes»: el orden respecto al cuadre va con lo anotado.
+                const conOrden = (r, x = d) => r && Object.assign(r, ordenCuadre(s, { ...x, trasCuadre: d.trasCuadre, ordenCuadre: d.ordenCuadre }));
                 // v2.7 (F19): «Anotar las 2»: cada parte como si se hubiera anotado sola.
                 if (d.varios && d.variosOk === 'todos' && d.partes) {
                     for (const x of d.partes) {
                         if (x.tipo === 'pagado') P.marcarPagado(s, x.pago, x.ocurrencia, { monto: x.monto, medio: x.medio, fecha: x.fecha });
                         else if (x.fecha > s.hoy) P.crearPago(s, { nombre: x.nombre, emoji: x.emoji, categoria: x.categoria, monto: x.monto, frecuencia: 'unico', fecha: x.fecha, medio: x.medio });
-                        else P.registrar(s, { tipo: 'gasto', fecha: x.fecha, monto: x.monto, nombre: x.nombre, categoria: x.categoria, emoji: x.emoji, medio: x.medio, anotado: true, nuevo: true });
+                        else conOrden(P.registrar(s, { tipo: 'gasto', fecha: x.fecha, monto: x.monto, nombre: x.nombre, categoria: x.categoria, emoji: x.emoji, medio: x.medio, anotado: true, nuevo: true }), { ...x, tipo: 'gasto' });
                     }
                     texto = `Anotamos ${d.partes.length}: ${P.lista(d.partes.map((x) => x.nombre || 'Gasto'))}`;
                     return;
@@ -1228,7 +1259,7 @@
                     // V2-56: un adelanto es un ingreso de una vez; si ya te lo dieron, llegó hoy (o el día que dijiste).
                     const id = 'i' + s.seq++;
                     s.ingresos.push({ id, nombre: d.nombre || 'Adelanto de salario', emoji: '💵', categoria: 'otro', tipoIngreso: 'adelanto', monto: d.monto, aprox: false, frecuencia: 'unico', fecha: d.fecha, lugar: d.lugar, principal: false, extra: true, desde: d.fecha < s.hoy ? d.fecha : s.hoy, llegadas: {} });
-                    if (d.fecha <= s.hoy) P.llegoIngreso(s, id, d.fecha, { monto: d.monto, lugar: d.lugar, fecha: d.fecha });
+                    if (d.fecha <= s.hoy) conOrden(P.llegoIngreso(s, id, d.fecha, { monto: d.monto, lugar: d.lugar, fecha: d.fecha }));
                     adelantoId = id;
                     texto = d.fecha > s.hoy ? `Adelanto esperado el ${M.fechaCorta(d.fecha)}` : 'Adelanto anotado';
                 } else if ((d.tipo === 'gasto' || d.tipo === 'ingreso') && d.fecha > s.hoy) {
@@ -1237,7 +1268,7 @@
                     else s.ingresos.push({ id: 'i' + s.seq++, nombre: d.nombre || 'Ingreso', emoji: d.emoji || '💵', categoria: d.categoria || 'otro', monto: d.monto, aprox: false, frecuencia: 'unico', fecha: d.fecha, lugar: d.lugar, principal: false, extra: true, desde: s.hoy, llegadas: {} });
                     texto = d.tipo === 'gasto' ? `Lo puse en Pagos para el ${M.fechaCorta(d.fecha)}` : `Ingreso esperado el ${M.fechaCorta(d.fecha)}`;
                 } else if (d.tipo === 'gasto') {
-                    const r = P.registrar(s, { tipo: 'gasto', fecha: d.fecha, monto: d.monto, nombre: d.nombre, categoria: d.categoria, emoji: d.emoji, medio: d.medio, anotado: true, nuevo: true });
+                    const r = conOrden(P.registrar(s, { tipo: 'gasto', fecha: d.fecha, monto: d.monto, nombre: d.nombre, categoria: d.categoria, emoji: d.emoji, medio: d.medio, anotado: true, nuevo: true }));
                     if (d.usarApartado && d.usarApartado !== 'no') {
                         const u = P.usarApartado(s, d.usarApartado, r);
                         if (u && u.reserva) texto = `Guardado · ${dinero(u.usado)} quedan para pagar tu tarjeta`;
@@ -1249,9 +1280,9 @@
                     cambiar = r.id;
                 } else if (d.tipo === 'ingreso') {
                     if (d.ingresoRef) {
-                        P.llegoIngreso(s, d.ingresoRef.id, d.ingresoRef.fecha, { monto: d.monto, lugar: d.lugar, fecha: d.fecha });
+                        conOrden(P.llegoIngreso(s, d.ingresoRef.id, d.ingresoRef.fecha, { monto: d.monto, lugar: d.lugar, fecha: d.fecha }));
                         siguiente = { tipo: 'reparte', id: d.ingresoRef.id, fecha: d.ingresoRef.fecha, monto: d.monto };
-                    } else P.registrar(s, { tipo: 'ingreso', fecha: d.fecha, monto: d.monto, nombre: d.nombre, categoria: d.categoria, emoji: d.emoji, lugar: d.lugar, anotado: true, nuevo: true });
+                    } else conOrden(P.registrar(s, { tipo: 'ingreso', fecha: d.fecha, monto: d.monto, nombre: d.nombre, categoria: d.categoria, emoji: d.emoji, lugar: d.lugar, anotado: true, nuevo: true }));
                 } else if (d.tipo === 'pago') {
                     P.crearPago(s, { nombre: d.nombre, emoji: d.emoji, categoria: d.categoria, monto: d.monto, frecuencia: d.frecuencia, dia: d.dia, diaSemana: d.diaSemana, medio: d.medio, fecha: d.frecuencia === 'unico' ? d.fechaPago || M.proximoDia(s.hoy, d.dia || 1) : undefined, antes: antes && d.antesDebe === antes.fecha ? 'no' : 'si' });
                 } else if (d.tipo === 'apartar') {
