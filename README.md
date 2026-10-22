@@ -1,4 +1,4 @@
-# PamPlanea · prototipo v2.7.0
+# PamPlanea · prototipo v2.8.0
 
 Una versión de prueba de **PamPlanea**: saber cuánto te queda libre hasta tu próximo ingreso y que no se te olvide ningún pago.
 
@@ -12,6 +12,17 @@ La primera vez eliges cómo empezar: **«Aprender a usarla»** (recomendado) o *
 - **Instalar la app** (solo si todavía no la instalaste), **Completar tu Primer día** (con tus datos), **Cuéntale a Victor o a Pam cómo vas** y **Tus datos** (copia, restaurar y borrar), la apariencia y la versión.
 
 Lo de tus datos y lo de los ejemplos se guarda por separado: nada de lo que hagas con los ejemplos toca tus datos.
+
+## Lo nuevo en la v2.8 · Más claro
+
+- **Abajo: Hoy · Mi plan · (+) · Mi dinero · Mes.** «Pagos» ahora se llama **Mi plan**: lo que viene, en cinco partes (ingresos, gastos fijos, gastos variables, ahorro programado y pagos de deudas), y cada cosa dice de dónde sale. El calendario de quincenas sigue ahí.
+- **Tu libre, más claro:** lo que tienes en tus cuentas, menos tus ahorros, menos lo que falta de tu plan hasta tu próximo ingreso.
+- **Gastos variables.** Al súper o a la gasolina les pones un tope cada quincena. Si gastas en el súper, tu libre no baja otra vez: ya estaba en tu plan. Antes de tu próximo ingreso te pregunta si ya terminaste.
+- **Tus ahorros, aparte de lo que puedes gastar.** Cada uno dice dónde está: dentro de una cuenta o aparte. «Usé de mi ahorro» devuelve ese dinero a tu libre, y puedes guardar algo cada quincena con «Ya lo guardé».
+- **Anotar con verbos:** Gasté · Me llegó dinero · Pagué una deuda · Guardé en un ahorro · Moví dinero · Cuadré. Si anotas un pago de tu plan, te pregunta si es ese («¿Es tu pago de Internet?»). «Me prestaron 200» guarda la deuda y el dinero que llegó, y «recibí 50 en efectivo» llega a tu efectivo.
+- **Tu tarjeta:** su pago (lo que pagas normalmente o su estado de cuenta) se paga con tu quincena de antes de que venza. Lo que se cobra solo en ella (Netflix) va dentro de su pago. Se le puede poner apodo, y su ficha dice qué se cobra en ella. Al agregarla, «¿Qué día vence tu próximo pago?» muestra la fecha completa.
+- **Hoy, simple:** tu número, lo que viene (hasta 3) y Anotar. Una cuota termina sola cuando ya no debes nada.
+- Si ya usabas la app, un cuadrito te cuenta lo nuevo y Hoy te hace dos o tres preguntas, una sola vez. Nada cambia sin tu respuesta.
 
 ## Lo nuevo en la v2.7 · Tus números bien
 
@@ -168,8 +179,8 @@ Los enlaces `…/pamplanea-prototipo/?set=A` y `…/?set=B` siguen llevando dire
 ## Para el equipo
 
 - Abre `index.html` con doble clic (Chrome o Edge): funciona sin servidor ni internet, con la guía de los 13 casos y los dos sets.
-- Detalle, decisiones y preguntas abiertas: [`LEEME.md`](LEEME.md) (secciones «Prototipo v2.7», «Prototipo v2.6.7», «Prototipo v2.6.6», «Prototipo v2.6.5», «Prototipo v2.6.4», «Prototipo v2.6.3», «Prototipo v2.6.2», «Prototipo v2.6.1», «Prototipo v2.6», «Prototipo v2.5», «Prototipo v2.4.1», «Prototipo v2.4», «Prototipo v2.3.1», «Prototipo v2.3» y «Modos v2.2»). La matriz de QA: [`herramientas/MATRIZ-QA.md`](herramientas/MATRIZ-QA.md).
-- **Pruebas** (`herramientas/`, en el repo desde la v2.6.1; no se publican en la app): Node 22 o más nuevo y **Chrome** (o Edge) instalado en su ruta normal de Windows (`herramientas/cdp.mjs`); sin dependencias ni `npm install`. Por file:// basta `node herramientas/<prueba>.mjs` (por ejemplo `qa-v261.mjs`, `atras.mjs`, `numeros-entrenamiento.mjs`, `v261.mjs`, `v26.mjs`, `v25.mjs`…). Para probarla servida como en Pages: `node herramientas/servidor.mjs 8765` y la prueba con `--base=http://127.0.0.1:8765/pamplanea-prototipo/`. Que los datos sobrevivan a una actualización: `node herramientas/actualizar.mjs --ref=7c0d06e` (desde la v2.5), `--ref=ca97256` (desde la v2.6) o `--ref=7f48ead` (desde la v2.6.3) o `--ref=3974d06` (desde la v2.6.4) o `--ref=c640e4e` (desde la v2.6.7: además prueba DATOS-5 con Ana, Carlos, Rosa y un set sintético). Las invariantes del dinero: `invariantes.mjs`; los montos y Anotar: `montos.mjs`; el cuadrito de novedades: `novedades.mjs`; capturas de la v2.7: `capturas-v27.mjs`. `generar-recursos.mjs` lee la piel del repo de la app (`C:/laragon/www/pamplanea`, solo lectura). `recorrer.mjs` es el recorrido de la v1: queda como historia (sus casos esperan cosas que acuerdos posteriores cambiaron). Para publicar una versión: `VERSION_PROTOTIPO` en `casos.js`, la de `index.html` y `node herramientas/generar-sw.mjs vX-AAAA-MM-DD`.
+- Detalle, decisiones y preguntas abiertas: [`LEEME.md`](LEEME.md) (secciones «Prototipo v2.8», «Prototipo v2.7», «Prototipo v2.6.7», «Prototipo v2.6.6», «Prototipo v2.6.5», «Prototipo v2.6.4», «Prototipo v2.6.3», «Prototipo v2.6.2», «Prototipo v2.6.1», «Prototipo v2.6», «Prototipo v2.5», «Prototipo v2.4.1», «Prototipo v2.4», «Prototipo v2.3.1», «Prototipo v2.3» y «Modos v2.2»). La matriz de QA: [`herramientas/MATRIZ-QA.md`](herramientas/MATRIZ-QA.md).
+- **Pruebas** (`herramientas/`, en el repo desde la v2.6.1; no se publican en la app): Node 22 o más nuevo y **Chrome** (o Edge) instalado en su ruta normal de Windows (`herramientas/cdp.mjs`); sin dependencias ni `npm install`. Por file:// basta `node herramientas/<prueba>.mjs` (por ejemplo `qa-v261.mjs`, `atras.mjs`, `numeros-entrenamiento.mjs`, `v261.mjs`, `v26.mjs`, `v25.mjs`…). Para probarla servida como en Pages: `node herramientas/servidor.mjs 8765` y la prueba con `--base=http://127.0.0.1:8765/pamplanea-prototipo/`. Que los datos sobrevivan a una actualización: `node herramientas/actualizar.mjs --ref=7c0d06e` (desde la v2.5), `--ref=ca97256` (desde la v2.6) o `--ref=7f48ead` (desde la v2.6.3) o `--ref=3974d06` (desde la v2.6.4) o `--ref=c640e4e` (desde la v2.6.7: además prueba DATOS-5 con Ana, Carlos, Rosa y un set sintético) o `--ref=d702de0` (desde la v2.7.0). Las invariantes del dinero: `invariantes.mjs`; los montos y Anotar: `montos.mjs`; el cuadrito de novedades: `novedades.mjs`; capturas de la v2.7: `capturas-v27.mjs`; las palabras que no se dicen (C-2): `palabras-v28.mjs`; capturas de la v2.8: `capturas-v28.mjs`. `generar-recursos.mjs` lee la piel del repo de la app (`C:/laragon/www/pamplanea`, solo lectura). `recorrer.mjs` es el recorrido de la v1: queda como historia (sus casos esperan cosas que acuerdos posteriores cambiaron). Para publicar una versión: `VERSION_PROTOTIPO` en `casos.js`, la de `index.html` y `node herramientas/generar-sw.mjs vX-AAAA-MM-DD`.
 - Licencias de fuentes, emoji e íconos: [`recursos/licencias`](recursos/licencias).
 
-Prototipo v2.7.0 · 2026-10-21
+Prototipo v2.8.0 · 2026-10-22
