@@ -25,6 +25,7 @@
 //  V8 «¿Es tu quincena?» a ±10 % y ±3 días (C-5) y «recibí 50 en efectivo» → Efectivo
 //  V9 anotar un pago se conecta con tu plan (C-4, P-1)
 //  V10 tus datos de la v2.7 en la v2.8 (DATOS-1 a 5, C-1)
+//  V11 «no asumir» (APROBADO por Victor, 2026-10-22): cada ahorro de antes pregunta en qué cuenta está; «Aparte» sube tu libre
 // Uso: node herramientas/invariantes.mjs [--base=http://…/] [--puerto=9961] [--solo=I01,F13] [--raiz=<otra copia>]
 //      (--raiz: las mismas filas sobre otra copia, por ejemplo la v2.6.7 sacada de git, para ver cuáles fallaban antes)
 import { mkdir } from 'node:fs/promises';
@@ -900,10 +901,52 @@ await filaDe('V10', 'Tus datos de la v2.7 en la v2.8: copia intacta «antes-de-v
     await esperar(400);
     const r = await ev(`(() => { const c = JSON.parse(localStorage.getItem('pamplanea-uso:respaldo:antes-de-v2.8.0') || 'null'); const u = JSON.parse(localStorage.getItem('pamplanea-uso:v1')); return { copia: c && JSON.stringify(c.datos), donde: u.st.apartados[0].donde, version: u.version, libre: P.calc().libre, nov: !!document.getElementById('capa-novedades') }; })()`);
     check('la copia intacta por versión', r.copia, guardado);
-    check('tus ahorros quedan «dentro de» tu banco (el que tiene más)', r.donde, { lugar: 'banco' });
+    // «No asumir» (2026-10-22): esa cuenta queda como supuesta hasta que la persona conteste (V11).
+    check('tus ahorros quedan «dentro de» tu banco (el que tiene más), como supuesto', r.donde, { lugar: 'banco', supuesto: true });
     check('tu libre no cambia', r.libre, libreAntes);
     check('lo guardó la v2.8', r.version, (v) => typeof v === 'string' && v.startsWith('Prototipo v2.8.0'));
     check('sale el cuadrito de novedades', r.nov, true);
+    await ev(`P.sinGuardar = true; localStorage.clear(); true`);
+    await abrirApp();
+});
+
+// ------------------------------------------------------------------ V11 («no asumir» con los ahorros de antes)
+await filaDe('V11', '«No asumir»: cada ahorro de antes pregunta «¿en qué cuenta está?»; sin respuesta nada cambia; «Aparte» sube tu libre y lo dice antes', async () => {
+    const hay = (sel) => ev(`!!document.querySelector(${js(sel)})`);
+    await ev(`__armar((st) => st.apartados.push({ id: 'ap1', nombre: 'Emergencias', emoji: '🛟', portada: 'emergencia-paraguas', monto: 30000, meta: null, metaFecha: null, historial: [] }, { id: 'ap2', nombre: 'Viaje', emoji: '✈️', portada: 'viaje-avion', monto: 10000, meta: null, metaFecha: null, historial: [] }))`);
+    const st = await ev(`JSON.stringify(P.st)`);
+    const libreAntes = await libre();
+    const guardado = JSON.stringify({ esquema: 2, creado: '2026-10-01T10:00:00.000Z', st: JSON.parse(st), tab: 'hoy', tema: null, introVista: true, nombre: '', metricas: {}, feedback: [], version: 'Prototipo v2.7.0 · 2026-10-21', novedades: { 'v2.7': { visto: '2026-10-21T10:00:00.000Z' } } });
+    await ev(`P.sinGuardar = true; localStorage.clear(); localStorage.setItem('pamplanea-modo', JSON.stringify({ modo: 'uso', notaAvisos: true })); localStorage.setItem('pamplanea-uso:v1', ${js(guardado)}); true`);
+    await abrirApp();
+    await esperar(400);
+    await ev(`document.querySelector('[data-fk="nov-ok"]')?.click(); true`);
+    await esperar(300);
+    check('una pregunta por cada ahorro de antes', await texto('.p28-lista'), (x) => typeof x === 'string' && x.includes('Tu ahorro Emergencias, ¿en qué cuenta está?') && x.includes('Tu ahorro Viaje, ¿en qué cuenta está?'));
+    check('con sus cuentas y «Aparte (no está en una cuenta)»', await ev(`[...document.querySelectorAll('[data-fk^="p28-ah-ap1-"]')].map((b) => b.textContent.trim())`), ['Efectivo', 'Banco Agrícola', 'Banco Hipotecario', 'Aparte (no está en una cuenta)']);
+    check('sin respuesta: dentro del banco con más dinero y tu libre igual', [await ev(`MOTOR.lugarAhorro(P.st, MOTOR.apartado(P.st, 'ap1'))`), await libre()], ['banco', libreAntes]);
+    await abrirApp();
+    await esperar(400);
+    check('al volver a abrir: la pregunta sigue y nada cambió', [await hay('[data-fk="p28-ah-ap1-aparte"]'), await libre()], [true, libreAntes]);
+    // «Aparte»: primero dice cuánto sube tu libre; no cambia nada hasta «Sí, está aparte».
+    await clic('[data-fk="p28-ah-ap1-aparte"]');
+    check('«Aparte» lo dice antes de confirmar', await texto('#p28-sube-ap1'), 'Tu libre sube $300.00 porque ese dinero no está en tus cuentas.');
+    check('antes de confirmar, tu libre igual', await libre(), libreAntes);
+    await clic('[data-fk="p28-ah-volver-ap1"]');
+    check('«No, volver»: otra vez las cuentas', await hay('[data-fk="p28-ah-ap1-banco"]'), true);
+    await clic('[data-fk="p28-ah-ap1-aparte"]');
+    const saldos = await ev(`P.st.lugares.map((l) => MOTOR.saldoLugar(P.st, l.id))`);
+    await clic('[data-fk="p28-ah-aparte-ok-ap1"]');
+    check('«Sí, está aparte»: tu libre sube $300.00', (await libre()) - libreAntes, 30000);
+    check('queda aparte y tus cuentas no cambian', [await ev(`MOTOR.apartado(P.st, 'ap1').donde`), await ev(`P.st.lugares.map((l) => MOTOR.saldoLugar(P.st, l.id))`)], ['aparte', saldos]);
+    // Una cuenta: queda dentro de esa (la que dijo) y tu libre no cambia.
+    const l1 = await libre();
+    await clic('[data-fk="p28-ah-ap2-banco2"]');
+    check('«Banco Hipotecario»: dentro de esa cuenta y tu libre igual', [await ev(`JSON.stringify(MOTOR.apartado(P.st, 'ap2').donde)`), await libre()], [JSON.stringify({ lugar: 'banco2' }), l1]);
+    check('contestadas: ya no hay preguntas', await hay('.p28-lista'), false);
+    await abrirApp();
+    await esperar(400);
+    check('al volver a abrir no vuelven y queda guardado', [await hay('.p28-lista'), await ev(`MOTOR.apartado(P.st, 'ap1').donde`), (await libre()) - libreAntes], [false, 'aparte', 30000]);
     await ev(`P.sinGuardar = true; localStorage.clear(); true`);
     await abrirApp();
 });
