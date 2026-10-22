@@ -548,7 +548,8 @@ if (partes.includes('f')) {
         await abrirApp();
         await ev(`(() => { P.sinGuardar = true; localStorage.clear(); localStorage.setItem('pamplanea-uso:v1', ${js(datos)}); localStorage.setItem('pamplanea-entrenamiento', ${js(progreso)}); localStorage.setItem('pamplanea-modo', JSON.stringify({ modo: 'uso', notaAvisos: true, ofertaTarjetas: 'no', tips: { hoy: true, pagos: true, midinero: true, mes: true, anotar: true, pago: true, cuentas: true, ahorros: true, deudas: true } })); return true; })()`);
         await abrirApp();
-        check('es la v2.6.7', await ev('window.VERSION_PROTOTIPO'), (v) => /2\.6\.7/.test(v));
+        // v2.7: la versión que abre estos datos ya es la v2.7 (la prueba sigue midiendo lo mismo).
+        check('es la v2.6.7 o más nueva', await ev('window.VERSION_PROTOTIPO'), (v) => /2\.6\.7|2\.7\.\d/.test(v));
         const n = await numeros();
         notas.F1 = { numeros: n, tarjeta: await infoTarjeta('Crédito Agrícola') };
         check('el libre se recalcula: $50.00 − $25.00 del Internet (con lo que tiene) = $25.00', n.libre, 2500);
@@ -561,7 +562,8 @@ if (partes.includes('f')) {
         const antes = JSON.parse(datos);
         const despues = JSON.parse(await guardado());
         const claves = (o, pre = '') => Object.entries(o || {}).flatMap(([k, v]) => (v && typeof v === 'object' && !Array.isArray(v) ? [pre + k, ...claves(v, pre + k + '.')] : [pre + k]));
-        const sinLas = (lista) => lista.filter((c) => !/^metricas|^ultimaCopia|^feedback/.test(c));
+        // v2.7: lo único nuevo es qué versión los guardó (DATOS-1) y lo del cuadrito de novedades (Parte D).
+        const sinLas = (lista) => lista.filter((c) => !/^metricas|^ultimaCopia|^feedback|^novedades|^version$/.test(c));
         check('nada se pierde: las mismas claves guardadas', sinLas(claves(despues)).filter((c) => !sinLas(claves(antes)).includes(c)), []);
         check('ni datos: los mismos pagos, tarjetas, ingresos y registros', ['pagos', 'tarjetas', 'ingresos', 'registros', 'lugares', 'medios'].map((k) => JSON.stringify(despues.st[k]) === JSON.stringify(antes.st[k])), [true, true, true, true, true, true]);
         check('el progreso del entrenamiento sigue', await ev(`localStorage.getItem('pamplanea-entrenamiento')`), progreso);

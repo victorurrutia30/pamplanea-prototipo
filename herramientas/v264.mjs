@@ -73,6 +73,9 @@ async function conDatos({ entrenamiento = {} } = {}) {
         return true;
     })()`);
     await abrirApp();
+    // v2.7 (Parte D): son datos de antes de la v2.7: sale una vez el cuadrito de novedades; se cierra para seguir.
+    await ev(`document.querySelector('[data-fk="nov-ok"]')?.click(); true`);
+    await esperar(150);
     ORIGINAL = await huellaApp();
 }
 /** De vuelta en TUS datos: modo uso, los mismos datos (en pantalla y guardados), sin entrenamiento encima. */

@@ -964,6 +964,12 @@
         const [y, m, d] = iso.split('-').map(Number);
         return `${d} ${M.MESES_CORTOS[m - 1]} ${y}`;
     };
+    /** v2.7: el día en el teléfono de un momento guardado (una copia de las 9 p. m. es de ese día, no del siguiente). */
+    const diaDe = (iso) => {
+        const s = String(iso || '');
+        const d = /T/.test(s) ? new Date(s) : null;
+        return d && !isNaN(d) ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` : s.slice(0, 10);
+    };
     const NOMBRE_PANTALLA = { hoy: 'Hoy', pagos: 'Pagos', midinero: 'Mi dinero', mes: 'Mes', anotar: 'Anotar', desglose: 'Detalle del libre', pago: 'Ficha de pago', tarjeta: 'Ficha de tarjeta', apartado: 'Ficha de ahorro', lugar: 'Ficha de lugar', lugares: 'Cuentas', cuentas: 'Cuentas', ahorros: 'Ahorros', deudas: 'Deudas', atencion: 'Necesitan atención', pagarCon: 'Lo pagas con', reservar: 'Reservar', pasarProxima: 'Pasar a la próxima', ingreso: 'Ficha de ingreso', reparte: 'Reparte', aldia: 'Pongámonos al día', menu: 'Menú', cuadrar: 'Cuadrar', pagado: 'Pagado', apartar: 'Ahorrar', pagarYa: 'Pagar ya', mover: 'Mover dinero', moverApartado: 'Mover ahorro', usar: 'Usar ahorro', liberar: 'Sacar de ahorro', meta: 'Editar ahorro', nuevoIngreso: 'Ingreso nuevo o editado', ingresoLlego: 'Ya llegó', nuevoPago: 'Pago nuevo', editarPago: 'Editar pago', decidirPago: 'Decidir pago', nuevaDeuda: 'Tarjeta o préstamo', deuda: 'Abonar deuda', estadoCuenta: 'Estado de cuenta', editarRegistro: 'Editar anotación', yaLoUse: 'Ya lo usé', yaNoAplica: 'Ya no aplica', medio: 'Medio de pago', apariencia: 'Apariencia', avisos: 'Avisos', aprende: 'Aprende', espacio: 'Espacio', invitar: 'Invitar' };
     /** El nombre o apodo que va en el texto: el de «Cuéntale…», si no el de la prueba guiada, si no el del primer día. */
     const nombreContar = (u) => (u.nombre || (P.ayuda && P.ayuda.datos().nombre) || (u.st && u.st.nombre) || '').trim();
@@ -1082,7 +1088,8 @@
         respaldarAntesDeReemplazar();
         uso = datos;
         uso.introVista = true;
-        uso.version = VERSION;
+        // v2.7: se guarda con la versión que la hizo; al entrar, esta versión la trata como una actualización (copia por
+        // versión y, si es de antes de la v2.7, el cuadrito de novedades).
         bloqueo = null;
         P.almacen.escribir(CLAVE_USO, uso);
         resolverEjemplo();
@@ -1137,7 +1144,7 @@
                 <p class="ay-version">${esc(VERSION)} · Tus datos solo están en este teléfono</p>`;
         }
         const hay = !!u.st;
-        const copia = u.ultimaCopia ? `Tu última copia: ${fechaCorta(u.ultimaCopia.slice(0, 10))}.` : 'Todavía no has guardado una copia.';
+        const copia = u.ultimaCopia ? `Tu última copia: ${fechaCorta(diaDe(u.ultimaCopia))}.` : 'Todavía no has guardado una copia.';
         const r = restaurando;
         const guardarHtml = hay
             ? `<section class="ay-card ay-card--prim" aria-labelledby="dt-c"><h3 class="ay-h3" id="dt-c">${icon('receipt-text', 'ico-s')}Guardar copia de mis datos</h3>
@@ -1152,7 +1159,7 @@
         return `${guardarHtml}
             <section class="ay-card" aria-labelledby="dt-r"><h3 class="ay-h3" id="dt-r">${icon('rotate-ccw', 'ico-s')}Restaurar una copia</h3>
                 ${r && r.error ? `<p class="campo-error">${icon('triangle-alert')}<span>${esc(r.error)}</span></p>` : ''}
-                ${r && r.datos ? `<div class="nota nota--atencion" role="alertdialog" aria-labelledby="dt-r-c">${icon('triangle-alert')}<div><p id="dt-r-c"><strong>¿Reemplazar tus datos con esta copia?</strong> Copia del ${esc(fechaCorta((r.fecha || '').slice(0, 10) || hoy()))}: ${esc(r.resumen)}. ${hay ? 'Lo que tienes ahora se reemplaza.' : 'Después verás tus datos.'}</p><div class="ay-acc"><button type="button" class="btn" data-a="modoRestaurarNo" data-fk="dt-r-no">Cancelar</button><button type="button" class="btn btn--peligro" data-a="modoRestaurarSi" data-fk="dt-r-si">${hay ? 'Sí, reemplazar' : 'Sí, restaurar'}</button></div></div></div>` : `<p class="txt">Elige el archivo «pamplanea-copia-…» (.json o .txt). Antes de reemplazar te pido confirmar.</p><label class="btn btn--48 btn--full" for="dt-archivo" data-fk="dt-elegir">Elegir archivo</label><input id="dt-archivo" class="sr-only" type="file" accept="application/json,.json,text/plain,.txt" data-copia>`}</section>
+                ${r && r.datos ? `<div class="nota nota--atencion" role="alertdialog" aria-labelledby="dt-r-c">${icon('triangle-alert')}<div><p id="dt-r-c"><strong>¿Reemplazar tus datos con esta copia?</strong> Copia del ${esc(fechaCorta(diaDe(r.fecha) || hoy()))}: ${esc(r.resumen)}. ${hay ? 'Lo que tienes ahora se reemplaza.' : 'Después verás tus datos.'}</p><div class="ay-acc"><button type="button" class="btn" data-a="modoRestaurarNo" data-fk="dt-r-no">Cancelar</button><button type="button" class="btn btn--peligro" data-a="modoRestaurarSi" data-fk="dt-r-si">${hay ? 'Sí, reemplazar' : 'Sí, restaurar'}</button></div></div></div>` : `<p class="txt">Elige el archivo «pamplanea-copia-…» (.json o .txt). Antes de reemplazar te pido confirmar.</p><label class="btn btn--48 btn--full" for="dt-archivo" data-fk="dt-elegir">Elegir archivo</label><input id="dt-archivo" class="sr-only" type="file" accept="application/json,.json,text/plain,.txt" data-copia>`}</section>
             ${borrarHtml}
             <p class="ay-version">${esc(VERSION)} · Tus datos solo están en este teléfono</p>`;
     }
@@ -1175,7 +1182,7 @@
                 <div class="ay-acc">${deNuevo()}<button type="button" class="btn btn--prim btn--48" data-a="modoRecuperar" data-v="respaldo" data-fk="rec-recuperar">Recuperar</button></div></section>`;
         } else if (info.copia) {
             const elegir = r && r.datos
-                ? `<div class="nota nota--atencion" role="alertdialog" aria-labelledby="dt-r-c">${icon('triangle-alert')}<div><p id="dt-r-c"><strong>¿Recuperar tus datos con esta copia?</strong> Copia del ${esc(fechaCorta((r.fecha || '').slice(0, 10) || hoy()))}: ${esc(r.resumen)}.</p><div class="ay-acc"><button type="button" class="btn" data-a="modoRestaurarNo" data-fk="dt-r-no">Cancelar</button><button type="button" class="btn btn--prim" data-a="modoRestaurarSi" data-fk="dt-r-si">Sí, recuperar</button></div></div></div>`
+                ? `<div class="nota nota--atencion" role="alertdialog" aria-labelledby="dt-r-c">${icon('triangle-alert')}<div><p id="dt-r-c"><strong>¿Recuperar tus datos con esta copia?</strong> Copia del ${esc(fechaCorta(diaDe(r.fecha) || hoy()))}: ${esc(r.resumen)}.</p><div class="ay-acc"><button type="button" class="btn" data-a="modoRestaurarNo" data-fk="dt-r-no">Cancelar</button><button type="button" class="btn btn--prim" data-a="modoRestaurarSi" data-fk="dt-r-si">Sí, recuperar</button></div></div></div>`
                 : `<div class="ay-acc">${deNuevo()}<label class="btn btn--prim btn--48" for="rec-archivo" data-fk="dt-elegir">Recuperar</label></div><input id="rec-archivo" class="sr-only" type="file" accept="application/json,.json,text/plain,.txt" data-copia>`;
             cuerpo = `<section class="ay-card ay-card--prim" aria-labelledby="rec-t"><h3 class="ay-h3" id="rec-t">${icon('rotate-ccw', 'ico-s')}Guardaste una copia el ${esc(fechaCorta(info.copia))}</h3>
                 <p class="txt">Búscala en tu teléfono (en Descargas o en WhatsApp): se llama <span class="nw">«pamplanea-copia-${esc(info.copia)}»</span>. Toca «Recuperar» y elígela.</p>
@@ -1195,7 +1202,7 @@
             const crudo = k === CLAVE_RESPALDO ? c : c.datos;
             if (!crudo || versionMasNueva(crudo.version)) continue;
             const v = validarDatos(crudo, (k === CLAVE_RESPALDO ? c.actualizado || c.creado : c.fecha) || null);
-            if (v.datos) out.push({ clave: k, fecha: String(v.fecha || '').slice(0, 10), resumen: v.resumen });
+            if (v.datos) out.push({ clave: k, fecha: diaDe(v.fecha), resumen: v.resumen });
         }
         return out.sort((a, b) => (a.fecha < b.fecha ? 1 : a.fecha > b.fecha ? -1 : 0));
     }
@@ -1217,7 +1224,7 @@
         const r = restaurando;
         const copias = copiasInternas().slice(0, 3);
         const confirmar = r && r.datos
-            ? `<div class="nota nota--atencion" role="alertdialog" aria-labelledby="as-c">${icon('triangle-alert')}<div><p id="as-c"><strong>¿Recuperar tus datos con esta copia?</strong> Copia del ${esc(fechaCorta((r.fecha || '').slice(0, 10) || hoy()))}: ${esc(r.resumen)}. Lo que está guardado ahora también queda en una copia.</p><div class="ay-acc"><button type="button" class="btn" data-a="aSalvoNo" data-fk="as-no">Cancelar</button><button type="button" class="btn btn--prim" data-a="aSalvoSi" data-fk="as-si">Sí, recuperar</button></div></div></div>`
+            ? `<div class="nota nota--atencion" role="alertdialog" aria-labelledby="as-c">${icon('triangle-alert')}<div><p id="as-c"><strong>¿Recuperar tus datos con esta copia?</strong> Copia del ${esc(fechaCorta(diaDe(r.fecha) || hoy()))}: ${esc(r.resumen)}. Lo que está guardado ahora también queda en una copia.</p><div class="ay-acc"><button type="button" class="btn" data-a="aSalvoNo" data-fk="as-no">Cancelar</button><button type="button" class="btn btn--prim" data-a="aSalvoSi" data-fk="as-si">Sí, recuperar</button></div></div></div>`
             : '';
         return `<div class="pg pg--flujo a-salvo">
             <header class="pg-head"><h1 class="h1" tabindex="-1">${icon('circle-check', 'ico-s')}Tus datos están a salvo</h1>

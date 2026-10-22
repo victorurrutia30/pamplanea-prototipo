@@ -60,15 +60,26 @@
         },
         escribir(clave, valor) {
             memoria[clave] = valor;
+            const noGuardaba = P.almacen.fallo || !P.almacen.disponible;
+            let ok = true;
             try {
                 localStorage.setItem(clave, JSON.stringify(valor));
                 P.almacen.fallo = false;
-                return true;
+                // v2.7 (DATOS-1): con el teléfono lleno la prueba del arranque falla; si después de limpiar copias viejas sí se
+                // guarda, ya no se dice «No se están guardando tus datos».
+                P.almacen.disponible = true;
             } catch {
                 // v2.6.1 (QA H-02): sin espacio o bloqueado: se recuerda para avisarlo (no se pierde en silencio).
                 P.almacen.fallo = true;
-                return false;
+                ok = false;
             }
+            // v2.7: si cambió si se guarda o no, Hoy lo dice ya (no hasta tocar algo).
+            if (noGuardaba !== (P.almacen.fallo || !P.almacen.disponible)) {
+                setTimeout(() => {
+                    if (P.render && P.st && P.ui && P.ui.tab === 'hoy' && !P.ui.hoja && !P.ui.stack.length) P.render();
+                }, 0);
+            }
+            return ok;
         },
         borrar(clave) {
             delete memoria[clave];

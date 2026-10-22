@@ -205,7 +205,8 @@ try {
     await foto('editar-pagado');
     await escribir('#f-monto', '20');
     await clic('[data-fk="hoja-ok"]');
-    check('monto corregido', await ev(`(() => { const p = window.MOTOR.pago(P.st, ${js(cuchubal)}); const r = P.st.registros.find((x) => x.id === p.hechos["2026-10-23"].registro); return [p.hechos["2026-10-23"].monto, r.monto]; })()`), [2000, 2000]);
+    // v2.7 (F12, D-6): corregir $25 a $20 es haber pagado $20 de $25: queda «Parcial · faltan $5» (antes quedaba pagado).
+    check('monto corregido', await ev(`(() => { const p = window.MOTOR.pago(P.st, ${js(cuchubal)}); const h = p.hechos["2026-10-23"]; const r = P.st.registros.find((x) => x.id === h.pagos.at(-1).registro); return [h.estado, h.pagado, h.debido, r.monto]; })()`), ['parcial', 2000, 2500, 2000]);
     await clic('[data-fk="hist-2026-10-23"]');
     await clic('[data-fk="desmarcar"]');
     await foto('desmarcar-confirmar');

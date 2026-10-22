@@ -18,6 +18,8 @@
     /** ¿Teléfono? Una pantalla táctil como puntero principal. Las pruebas lo fijan con `window.__tecladoMontos`. */
     function activo() {
         if (typeof window.__tecladoMontos === 'boolean') return window.__tecladoMontos;
+        // Para probarlo en la computadora: el enlace con `?teclado=1`.
+        if (/[?&]teclado=1(?:&|$)/.test(location.search)) return true;
         try {
             return window.matchMedia('(pointer: coarse)').matches;
         } catch {

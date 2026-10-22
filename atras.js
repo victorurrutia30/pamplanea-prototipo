@@ -112,8 +112,11 @@
     const conTarea = () => raiz.classList.contains('con-tarea');
     const enPrimerDia = () => !!(P.enPrimerDia && P.enPrimerDia());
     /** Hoy, sin nada abierto y sin entrenamiento, prueba ni ejercicio: atrás es del teléfono. */
+    // v2.7 (Parte D): el cuadrito de novedades va encima de todo; atrás lo cierra (como «¡Entendido!»).
+    const conNovedades = () => !!document.getElementById('capa-novedades');
     function enRaiz() {
         if (!P.ui || !P.st) return true;
+        if (conNovedades()) return false;
         if (D.abierto || (P.tour && P.tour.activo) || (P.ayuda && P.ayuda.abierto) || P.ui.hoja || P.ui.banner) return false;
         // Con una tarea de la prueba (o un ejercicio) en curso, atrás primero pregunta.
         if (conTarea()) return false;
@@ -175,6 +178,10 @@
         return true;
     }
     function retroceder() {
+        if (conNovedades()) {
+            P.acciones.novedadesOk();
+            return true;
+        }
         if (D.abierto) {
             cerrarDlg(false);
             return true;

@@ -164,6 +164,18 @@ await seccion('D accesible', async () => {
     check('y lo de atrás se puede usar otra vez', await ev(`document.getElementById('vista').inert`), false);
 });
 
+// ------------------------------------------------------------------ E) el botón atrás del teléfono
+await seccion('E atrás', async () => {
+    await sembrar();
+    await abrirApp();
+    await esperar(200);
+    check('sale', await hay(), true);
+    await ev(`history.back(); true`);
+    await esperar(500);
+    check('atrás lo cierra (no sale de la app)', [await hay(), await ev(`location.pathname.endsWith('telefono.html')`)], [false, true]);
+    check('y cuenta como visto', await ev(`!!JSON.parse(localStorage.getItem('pamplanea-uso:v1')).novedades['v2.7'].visto`), true);
+});
+
 const resultado = { version: await ev('window.VERSION_PROTOTIPO').catch(() => null), checks, fallos, errores: b.errores, fallidas: b.fallidas };
 console.log(JSON.stringify(resultado, null, 1));
 b.cerrar();

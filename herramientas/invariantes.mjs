@@ -12,6 +12,7 @@
 //  I09 copia dañada o de versión futura: no toca los datos (DATOS-2, A04, F20)
 //  I10 corregir un gasto pagado con ahorro: cambian juntos el gasto y el ahorro (F16)
 //  I11 mover entre cuentas: el total se conserva
+//  I12 sin espacio para la copia por versión: quedan la original y las 2 más recientes, y se avisa (DATOS-1)
 // Y una fila por cada arreglo de la Parte B que no está arriba: F13, F14, F17, F21, F22, F23.
 // Uso: node herramientas/invariantes.mjs [--base=http://…/] [--puerto=9961] [--solo=I01,F13] [--raiz=<otra copia>]
 //      (--raiz: las mismas filas sobre otra copia, por ejemplo la v2.6.7 sacada de git, para ver cuáles fallaban antes)
@@ -487,6 +488,56 @@ await filaDe('F23', 'aria-pressed siempre "true" o "false" (Primer día, gastos 
         await ev(`P.cerrarHoja({ sinFoco: true }); true`);
     }
     check('ningún formulario con aria «null» o «undefined»', Object.entries(out).filter(([, v]) => v.length), []);
+});
+
+// ------------------------------------------------------------------ I12 (DATOS-1: sin espacio)
+await filaDe('I12', 'Sin espacio para la copia por versión: quedan la original y las 2 más recientes, y se avisa (no falla)', async () => {
+    // Un límite de espacio de mentira (como un teléfono lleno): setItem falla si lo guardado pasaría de `__cuota` caracteres.
+    const LIMITE = `(() => { const orig = Storage.prototype.setItem; Storage.prototype.setItem = function (k, v) { if (typeof window.__cuota === 'number') { let total = 0; for (let i = 0; i < this.length; i++) { const kk = this.key(i); if (kk !== k) total += kk.length + (this.getItem(kk) || '').length; } if (total + k.length + String(v).length > window.__cuota) throw new DOMException('lleno', 'QuotaExceededError'); } return orig.call(this, k, v); }; })();`;
+    const limiteId = (await b.enviar('Page.addScriptToEvaluateOnNewDocument', { source: LIMITE })).identifier;
+    const sembrar = (cuotaEnCopias) => ev(`(() => {
+        P.sinGuardar = true;
+        localStorage.clear();
+        const s = DATOS.crearAna();
+        Object.assign(s, { persona: 'uso', nombre: 'Marta', hoy: '2026-10-21' });
+        const u = { esquema: 2, creado: '2026-10-10T10:00:00.000Z', st: s, introVista: true, nombre: 'Marta', metricas: {}, feedback: [] };
+        const texto = JSON.stringify(u);
+        localStorage.setItem('pamplanea-modo', JSON.stringify({ modo: 'uso', notaAvisos: true, ofertaTarjetas: 'no' }));
+        localStorage.setItem('pamplanea-uso:v1', texto);
+        for (const [v, f] of [['v2.4.0', '2026-09-01'], ['v2.5.0', '2026-09-10'], ['v2.6.0', '2026-10-01'], ['v2.6.5', '2026-10-15']]) localStorage.setItem('pamplanea-uso:respaldo:antes-de-' + v, JSON.stringify({ fecha: f + 'T10:00:00.000Z', de: null, para: v, datos: u }));
+        // Lo que ocupa hoy, más ${cuotaEnCopias} copias de tus datos.
+        let total = 0;
+        for (let i = 0; i < localStorage.length; i++) total += localStorage.key(i).length + localStorage.getItem(localStorage.key(i)).length;
+        localStorage.setItem('__cuota', String(total + Math.round(texto.length * ${cuotaEnCopias})));
+        return true;
+    })()`);
+    const leerCuota = `window.__cuota = Number(localStorage.getItem('__cuota')); true`;
+    const cuotaId = (await b.enviar('Page.addScriptToEvaluateOnNewDocument', { source: `try { if (localStorage.getItem('__cuota')) window.__cuota = Number(localStorage.getItem('__cuota')); } catch {}` })).identifier;
+    // Cabe una copia nueva solo si se borra una vieja: queda la original (la más vieja) y las 2 más recientes.
+    await sembrar(0.5);
+    await abrirApp();
+    await ev(leerCuota);
+    await esperar(300);
+    const r = await ev(`({ modo: P.modo, bloq: P.modos.bloqueado(), nombre: P.st.nombre, copias: Object.keys(localStorage).filter((k) => k.startsWith('pamplanea-uso:respaldo:')).sort(), aviso: !!document.getElementById('cf-t') })`);
+    check('abre con tus datos (no falla)', [r.modo, r.bloq, r.nombre], ['uso', false, 'Marta']);
+    check('quedan la original, las 2 más recientes y la nueva', r.copias, ['pamplanea-uso:respaldo:antes-de-v2.4.0', 'pamplanea-uso:respaldo:antes-de-v2.6.0', 'pamplanea-uso:respaldo:antes-de-v2.6.5', 'pamplanea-uso:respaldo:antes-de-v2.7.0']);
+    check('(con espacio después de limpiar, no hace falta avisar)', r.aviso, false);
+    // Ni así cabe: se avisa en Hoy y la app sigue con tus datos.
+    await sembrar(-0.6);
+    await abrirApp();
+    await ev(leerCuota);
+    await esperar(300);
+    const r2 = await ev(`({ modo: P.modo, bloq: P.modos.bloqueado(), nombre: P.st.nombre, copias: Object.keys(localStorage).filter((k) => k.startsWith('pamplanea-uso:respaldo:')).sort(), aviso: document.getElementById('cf-t')?.innerText.trim() || null })`);
+    check('sin espacio ni limpiando: abre con tus datos', [r2.modo, r2.bloq, r2.nombre], ['uso', false, 'Marta']);
+    check('y lo avisa en Hoy', r2.aviso, 'Guarda una copia de tus datos');
+    check('la original sigue', r2.copias.includes('pamplanea-uso:respaldo:antes-de-v2.4.0'), true);
+    // (Aquí el aviso en la consola es lo esperado: no cuenta como error de la página.)
+    for (let i = b.errores.length - 1; i >= 0; i--) if (/no hubo espacio para la copia interna/.test(String(b.errores[i]))) b.errores.splice(i, 1);
+    await foto('I12-sin-espacio');
+    await b.enviar('Page.removeScriptToEvaluateOnNewDocument', { identifier: limiteId });
+    await b.enviar('Page.removeScriptToEvaluateOnNewDocument', { identifier: cuotaId });
+    await ev(`P.sinGuardar = true; window.__cuota = undefined; localStorage.clear(); true`);
+    await abrirApp();
 });
 
 const resultado = { version: await ev('window.VERSION_PROTOTIPO').catch(() => null), filas: filas.map((f) => ({ id: f.id, ok: f.ok, nombre: f.nombre, checks: f.checks.length, malas: f.checks.filter((c) => !c.ok) })), resumen: `${filas.filter((f) => f.ok).length} de ${filas.length} filas bien`, fallos, errores: b.errores, fallidas: b.fallidas };

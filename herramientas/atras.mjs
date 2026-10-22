@@ -64,6 +64,9 @@ async function enUso() {
         return true;
     })()`);
     await abrirApp();
+    // v2.7 (Parte D): son datos de antes de la v2.7: sale una vez el cuadrito de novedades; se cierra para seguir.
+    await ev(`document.querySelector('[data-fk="nov-ok"]')?.click(); true`);
+    await esperar(150);
 }
 
 try {

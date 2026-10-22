@@ -256,7 +256,7 @@ if (partes.includes('e')) {
         check('«hoy» = 21 oct', (await borrador()).fecha, '2026-10-21');
         await anotar('mañana pupusas 10');
         check('«mañana pupusas 10» = 22 oct, $10, Pupusas', await borrador(), (d) => d.fecha === '2026-10-22' && d.monto === 1000 && d.nombre === 'Pupusas');
-        check('antes de guardar dice que es futuro', [await texto('#anotar-preg'), await texto('[data-fk="anotar-guardar"]')], (x) => x[0].includes('Es para el 22 de octubre') && x[1] === 'Guardar para el 22 oct');
+        check('antes de guardar dice que es futuro', [await texto('#anotar-preg'), await texto('[data-fk="anotar-guardar"]')], (x) => x[0].includes('Es para el 22 de octubre') && x[1] === 'Guardar para el 22');
         await foto('E-anotar-manana');
         check('se guarda como pago de una vez para el 22 (no baja tu dinero hoy)', [await guardar(), await ev(`P.st.pagos.filter((p) => p.frecuencia === 'unico' && p.fecha === '2026-10-22').map((p) => p.nombre + ' ' + p.monto)`), await ev(`P.st.registros.some((r) => r.nombre === 'Pupusas' && r.monto === 1000)`)], [false, ['Pupusas 1000'], false]);
         await armar();

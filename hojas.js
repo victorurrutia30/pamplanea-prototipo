@@ -639,7 +639,7 @@
     const EJEMPLOS = ['Ej. pupusas 6', 'Ej. súper 25', 'Ej. me pagaron 600', 'Ej. acuérdame colegio 20 el 5', 'Ej. ahorré 50 emergencias', 'Ej. retiré 100 del cajero', 'Ej. tengo 300', 'Ej. vendí 45'];
     const ATAJOS = [['gasto', 'Gasté', 'receipt-text'], ['ingreso', 'Recibí', 'hand-coins'], ['pago', 'Recordarme un pago', 'bell'], ['apartar', 'Ahorrar', 'circle-plus'], ['mover', 'Mover', 'arrow-left-right'], ['cuadre', 'Cuadrar', 'scale']];
     /** V2-65: el botón de Anotar dice la acción (un solo verbo por tipo, igual que en el resto de la app). */
-    P.textoGuardarAnotar = (d) => (d && d.varios && d.variosOk === 'todos' && d.partes ? `Anotar las ${d.partes.length}` : d && (d.tipo === 'gasto' || d.tipo === 'ingreso') && P.st && d.fecha > P.st.hoy ? `Guardar para el ${M.fechaCorta(d.fecha)}` : textoGuardarTipo(d));
+    P.textoGuardarAnotar = (d) => (d && d.varios && d.variosOk === 'todos' && d.partes ? `Anotar las ${d.partes.length}` : d && (d.tipo === 'gasto' || d.tipo === 'ingreso') && P.st && d.fecha > P.st.hoy ? `Guardar para el ${M.partes(d.fecha)[2]}` : textoGuardarTipo(d));
     const textoGuardarTipo = (d) => ({ gasto: 'Guardar gasto', pagado: 'Marcar pagado', ingreso: 'Guardar ingreso', pago: 'Guardar recordatorio', apartar: 'Ahorrar', liberar: 'Sacar del ahorro', cuadre: 'Cuadrar', mover: 'Mover', pagoTarjeta: 'Pagar tarjeta' })[d && d.tipo] || 'Guardar';
     const TIPO_NOMBRE = { gasto: 'Gasto', pagado: 'Pagado', ingreso: 'Ingreso', pago: 'Recordatorio de pago', apartar: 'Ahorrar', liberar: 'Sacar de ahorros', cuadre: 'Cuadrar', mover: 'Mover', pagoTarjeta: 'Pagar tarjeta' };
     let rotador = null;

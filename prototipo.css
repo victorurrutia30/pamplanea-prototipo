@@ -3981,3 +3981,24 @@ html.con-hazlo .mask {
         transform: scale(0.96);
     }
 }
+
+/* v2.7 (DATOS-2) · «Tus datos están a salvo»: cada recuadro con su aire, como las demás tarjetas. */
+.a-salvo-card {
+    display: grid;
+    gap: 12px;
+    padding: 16px;
+}
+.a-salvo-card .card-t,
+.card.a-salvo-card > .txt {
+    margin: 0;
+    padding: 0;
+}
+.a-salvo-copias {
+    display: grid;
+    gap: 8px;
+}
+.a-salvo .pg-head .h1 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
