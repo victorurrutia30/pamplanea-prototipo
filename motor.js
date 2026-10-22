@@ -97,6 +97,8 @@
         if (/^\d{1,3}(\.\d{3})+,\d{1,2}$/.test(t)) t = t.replace(/\./g, '').replace(',', '.');
         if (/^[.,]\d{1,2}$/.test(t)) t = '0.' + t.slice(1);
         if (/^\d+,\d{1,2}$/.test(t)) t = t.replace(',', '.');
+        // v2.7 (F05): las comas de miles van de 3 en 3 («1,200», «12,345.50»); otra cosa («1,2345») no se adivina.
+        if (t.includes(',') && !/^\d{1,3}(,\d{3})+(\.\d{1,2})?$/.test(t)) return null;
         t = t.replace(/,/g, '');
         if (!/^\d+(\.\d{1,2})?$/.test(t)) return null;
         const [w, f = ''] = t.split('.');
@@ -957,10 +959,22 @@
         return n && (` ${texto} `.includes(` ${n} `) || n.split(' ').some((w) => w.length > 3 && ` ${texto} `.includes(` ${w} `)));
     };
 
-    function entender(st, original) {
+    /** v2.7 (F06): «hoy», «ayer», «antier» y «mañana» en cualquier parte de la frase («en la mañana» es la hora, no el día). */
+    const RELATIVAS = [[/\bpasado manana\b/, 2], [/\bmanana\b/, 1], [/\b(?:antier|anteayer)\b/, -2], [/\bayer\b/, -1], [/\bhoy\b/, 0]];
+    function entender(st, original, { sinPartir = false } = {}) {
         const d = { texto: original, tipo: null, monto: null, nombre: null, categoria: null, emoji: null, medio: null, medioSeguro: false, medioExplicito: false, lugar: null, de: null, a: null, tarjeta: null, fecha: st.hoy, dia: null, frecuencia: null, apartado: null, pago: null, ocurrencia: null, ingresoRef: null, sugerirApartado: null, usarApartado: null, comision: null, preguntarComision: false, entendido: false };
         let t = normalizar(original);
         if (!t) return d;
+        // v2.7 (F06): primero el día dicho con palabras, para que «mañana pupusas 10» también se entienda.
+        t = t.replace(/\b(?:en |por )?(?:la|esta) manana\b/g, ' ').replace(/\s+/g, ' ').trim();
+        for (const [re, n] of RELATIVAS) {
+            if (!re.test(t)) continue;
+            if (d.fechaDicha === undefined) {
+                d.fechaDicha = n;
+                d.fecha = sumarDias(st.hoy, n);
+            }
+            t = t.replace(re, ' ').replace(/\s+/g, ' ').trim();
+        }
         // Intento por la primera palabra.
         for (const [tipo, re] of INTENTOS) {
             if (re.test(t)) {
@@ -970,12 +984,7 @@
             }
         }
         if (d.verbo) t = t.slice(d.verbo.length).trim();
-        // Fechas: «ayer», «el 12».
-        if (/\bayer\b/.test(t)) {
-            d.fecha = sumarDias(st.hoy, -1);
-            t = t.replace(/\bayer\b/, ' ');
-        }
-        t = t.replace(/\bhoy\b/, ' ');
+        // Fechas: «el 12».
         const mDia = t.match(/\b(?:el|los|dia|cada)\s+(\d{1,2})\b/);
         if (mDia && +mDia[1] >= 1 && +mDia[1] <= 31) {
             d.dia = +mDia[1];
@@ -1010,11 +1019,22 @@
             d.medioExplicito = true;
             t = t.replace(/\b(por |con )?transferencia\b/, ' ');
         }
-        // Monto: el primer número que no es un día.
-        const mMonto = t.match(/\$?\s*(\d{1,7}(?:[.,]\d{1,2})?)/);
-        if (mMonto) {
-            d.monto = leerMonto(mMonto[1]);
-            t = t.replace(mMonto[0], ' ');
+        // Monto: el primer número que no es un día. v2.7 (F05): el número COMPLETO («1,200», «1,234.50», «1.000,50»), con el
+        // mismo lector que los formularios; si no se puede leer entero, se pregunta (nunca se corta: «1,200» no es $1.20).
+        // v2.7 (F19): si hay más de un monto, se dice (y se ofrece anotarlos todos).
+        const numeros = [...t.matchAll(/\$?\s*(\d[\d.,]*)/g)].map((m) => ({ crudo: m[0], num: m[1].replace(/[.,]+$/, '') }));
+        if (numeros.length) {
+            const x = numeros[0];
+            d.monto = leerMonto(x.num);
+            if (d.monto === null) {
+                d.montoDudoso = x.num;
+                d.montoExcede = montoExcede(x.num);
+            }
+            t = t.replace(x.crudo, ' ');
+            if (numeros.length > 1) {
+                d.otrosMontos = numeros.slice(1).map((y) => y.num);
+                for (const y of numeros.slice(1)) t = t.replace(y.crudo, ' ');
+            }
         }
         const palabras = t.replace(/[^a-z0-9ñ ]/g, ' ').split(' ').filter((w) => w && !STOP.has(w));
         const resto = palabras.join(' ');
@@ -1094,7 +1114,13 @@
                 d.medio = u.id;
                 d.medioSeguro = u.seguro;
             }
-            if (d.dia !== null) d.fecha = ultimoDia(st.hoy, d.dia);
+            // v2.7 (F06): «el 22» es el próximo 22 si todavía no pasa este mes (hoy cuenta); si ya pasó, puede ser el de este
+            // mes o el del siguiente: se pregunta. Un día dicho con palabras («ayer», «mañana») manda.
+            if (d.dia !== null && d.fechaDicha === undefined) {
+                const [y, m, hd] = partes(st.hoy);
+                if (d.dia >= hd) d.fecha = fechaDe(y, m, d.dia);
+                else d.fechaDudosa = { dia: d.dia, opciones: [fechaDe(y, m, d.dia), fechaDe(...mesMas(y, m, 1), d.dia)] };
+            }
             // Red del apartado olvidado (V2-23 a): si el gasto se llama como un apartado, se pregunta.
             const porNombre = st.apartados.find((a) => a.monto > 0 && coincide(resto, a.nombre));
             if (porNombre) {
@@ -1141,9 +1167,18 @@
             d.lugar = l ? l.id : st.lugares.length === 1 ? st.lugares[0].id : null;
         }
         if (d.tipo === 'pagoTarjeta') {
-            d.tarjeta = st.tarjetas[0] ? st.tarjetas[0].id : null;
+            // v2.7 (F07): la tarjeta que nombraste («pagué la tarjeta Cuscatlán 25»), por su nombre o por su medio; si
+            // pueden ser dos, se pregunta. (F08): sin tarjetas no se adivina: se ofrece agregarla o cambiar el tipo.
+            const tx = ` ${normalizar(original)} `;
+            const suyas = (n) => normalizar(n).split(' ').filter((w) => w.length >= 3 && !GENERICAS.has(w));
+            const porNombreT = st.tarjetas.filter((x) => suyas(x.nombre).some((w) => tx.includes(` ${w} `)));
+            const delMedio = d.medioExplicito && medio(st, d.medio)?.tarjeta ? tarjeta(st, medio(st, d.medio).tarjeta) : null;
+            const posibles = porNombreT.length ? porNombreT : delMedio ? [delMedio] : st.tarjetas;
+            d.tarjeta = posibles.length === 1 ? posibles[0].id : null;
+            d.tarjetasPosibles = posibles.length > 1 ? posibles.map((x) => x.id) : null;
+            d.sinTarjeta = !st.tarjetas.length;
             const banco = st.lugares.find((x) => x.tipo === 'banco');
-            d.lugar = banco ? banco.id : st.lugares[0]?.id;
+            d.lugar = d.tarjeta ? pagoTarjetaPropuesto(st, tarjeta(st, d.tarjeta)).lugar : banco ? banco.id : st.lugares[0]?.id || null;
             d.nombre = d.tarjeta ? 'Pago de ' + tarjeta(st, d.tarjeta).nombre : 'Pago de tarjeta';
         }
         if (d.tipo === 'mover') {
@@ -1161,6 +1196,30 @@
                 }
             }
             d.nombre = 'Mover dinero';
+        }
+        // v2.7 (F06): «acuérdame pagar la luz 35 mañana»: un recordatorio de una vez, para ese día.
+        if (d.tipo === 'pago' && d.fechaDicha > 0) {
+            d.frecuencia = 'unico';
+            d.fechaPago = d.fecha;
+            d.fecha = st.hoy;
+        }
+        // v2.7 (F19): «pupusas 6 y bus 2»: más de un monto. Si cada parte se entiende sola (un gasto o un pago con su monto),
+        // se ofrece anotarlas todas; si no, se pide anotar una cosa a la vez. Ninguna se pierde en silencio.
+        if (d.otrosMontos && !sinPartir) {
+            const trozos = String(original).split(/\s*[;+]\s*|,\s+|\s+(?:y|e|m[aá]s)\s+/i).map((x) => x.trim()).filter(Boolean);
+            const lista = trozos.map((x) => entender(st, x, { sinPartir: true }));
+            const valen = lista.length === d.otrosMontos.length + 1 && lista.every((p) => (p.tipo === 'gasto' || p.tipo === 'pagado') && p.monto > 0 && !p.otrosMontos && !p.montoDudoso && !p.fechaDudosa);
+            if (valen) {
+                // Lo dicho para todo («ayer», «en efectivo») vale para cada parte que no diga otra cosa.
+                const explicito = lista.find((p) => p.medioExplicito);
+                for (const p of lista) {
+                    if (p.fechaDicha === undefined && d.fechaDicha !== undefined) p.fecha = d.fecha;
+                    if (!p.medioExplicito && explicito) Object.assign(p, { medio: explicito.medio, medioExplicito: true, medioSeguro: true });
+                }
+                return Object.assign(lista[0], { texto: original, varios: true, partes: lista, entendido: true });
+            }
+            d.varios = true;
+            d.partes = null;
         }
         d.entendido = d.tipo !== null && d.monto !== null;
         return d;
@@ -1237,13 +1296,22 @@
         // V2-82: un pago parecido a uno que ya tienes: primero «¿Es otro pago?»; un gasto que puede ser el pago siguiente: «¿Es el pago de…?».
         if (d.tipo === 'pago' && !d.dupOk && pagoParecido(st, d)) f.push('duplicado');
         if (d.tipo === 'gasto' && d.pagoSiguiente && !d.cualPago) f.push('cualPago');
-        if (d.monto === null || d.monto <= 0) f.push('monto');
+        // v2.7 (F19): más de un monto: primero se decide qué anotar.
+        if (d.varios && !d.variosOk) f.push('varios');
+        // v2.7 (F18): «tengo 0» vale, como en Cuadrar; un gasto, un pago o un movimiento necesitan más de $0.
+        if (d.monto === null || (d.monto <= 0 && d.tipo !== 'cuadre')) f.push('monto');
+        // v2.7 (F06): «el 22» que ya pasó: ¿de este mes o del siguiente? Y lo que se hace con dinero de verdad no va en el futuro.
+        if (d.fechaDudosa) f.push('fecha');
+        if (['pagado', 'pagoTarjeta', 'mover'].includes(d.tipo) && d.fecha > st.hoy) f.push('fechaFutura');
+        // v2.7 (F07, F08): a qué tarjeta va el pago (y desde dónde sale).
+        if (d.tipo === 'pagoTarjeta' && !d.tarjeta) f.push('tarjeta');
+        if (d.tipo === 'pagoTarjeta' && !d.lugar) f.push('lugar');
         if (d.tipo === 'gasto' && !d.medio) f.push('medio');
         if (d.tipo === 'gasto' && !d.nombre) f.push('nombre');
         if (d.tipo === 'pago') {
             if (!d.nombre) f.push('nombre');
             if (!d.frecuencia) f.push('frecuencia');
-            if (d.frecuencia !== 'semanal' && d.dia === null) f.push('dia');
+            if (d.frecuencia !== 'semanal' && d.dia === null && !(d.frecuencia === 'unico' && d.fechaPago)) f.push('dia');
         }
         if (d.tipo === 'ingreso' && !d.lugar) f.push('lugar');
         if (d.tipo === 'ingreso' && d.ingresoRef && d.preguntarIngreso && !d.cualIngreso) f.push('cualIngreso');
