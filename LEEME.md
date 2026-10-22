@@ -1,4 +1,4 @@
-# Producto v2 · prototipo de teléfono — versión 2.6.7
+# Producto v2 · prototipo de teléfono — versión 2.7.0
 
 **Qué es:** un prototipo clicable de la app completa propuesta en Producto v2. Desde la v2.2 tiene **dos modos**: **entrenamiento** (datos inventados de Ana, Carlos y Rosa; entrenamiento en dos versiones —fecha fija o ingresos que varían— con «Lo esencial» y «Aprende más», 18 ejercicios y la prueba A/B para testers) y **uso normal** (la familia cercana de Victor la usa 1–2 semanas con su dinero real, guardado solo en su teléfono). Desde la v2.6, la persona solo ve tres caminos —«Usarla con mis datos», «Aprender a usarla» y «Prueba guiada»— y las herramientas de Victor (casos, sets, moderador) se abren con `?victor=1`. Es una maqueta de flujo y comprensión, no producción.
 
@@ -12,13 +12,13 @@
 
 Sin servidor propio, sin dependencias, sin CDN, sin analítica ni rastreadores. Fuentes, emoji, íconos y los íconos de la app instalable son locales, con sus licencias (`recursos/licencias`).
 
-**Estado:** brief y acuerdos V2-01…V2-22 APROBADOS por Victor (2026-10-16); **V2-23 a V2-30** y **V2-31 (respuestas v2.1)** APROBADOS por Victor (2026-10-16); **V2-34 a V2-49** APROBADOS por Victor (2026-10-17) — V2-15 y V2-31 #7 quedan REEMPLAZADAS por V2-34. **V2-50 a V2-55** y la corrección adicional (adelanto de salario) APROBADOS por Victor (2026-10-17). **v2.4 «Entrenamiento a prueba de todo»** y sus tres ajustes previos APROBADOS por Victor (2026-10-17). **V2-56 a V2-58** y el **entrenamiento en dos versiones** (v2.4.1) APROBADOS por Victor (2026-10-18). **v2.5 «Entrenamiento sencillo y a fondo»** (estructura, ritmo y claridad) y **V2-59** (respuestas 26–29) APROBADOS por Victor (2026-10-18). **V2-60 a V2-63** (v2.6 «Simplificar para la prueba familiar») APROBADOS por Victor (2026-10-19). **V2-64 a V2-78** (QA profundo, deudas y tarjetas, Primer día, lenguaje, botón atrás, iPhone y entrenamiento; v2.6.1 a v2.6.3) APROBADOS por Victor (2026-10-19). **V2-79 a V2-84** (salir del entrenamiento sin perder tus datos, duplicados, pagos futuros y formularios; v2.6.4 y v2.6.5) APROBADOS por Victor (2026-10-19). **V2-85 y V2-86** (lo de antes de empezar no se cobra solo y la revisión para quienes ya usan la app; v2.6.6) APROBADOS por Victor (2026-10-19). **V2-87 y V2-88** (lo que pagas normalmente de una tarjeta se paga como cualquier otro pago, y editar = los mismos campos que crear; v2.6.7) y su agregado (el caso de la segunda tester y la ficha de la tarjeta) APROBADOS por Victor (2026-10-19). Nada de esto está documentado todavía en el repo de la app: se documentará después de las pruebas con personas. Este prototipo no cambia nada del repo de la app.
+**Estado:** brief y acuerdos V2-01…V2-22 APROBADOS por Victor (2026-10-16); **V2-23 a V2-30** y **V2-31 (respuestas v2.1)** APROBADOS por Victor (2026-10-16); **V2-34 a V2-49** APROBADOS por Victor (2026-10-17) — V2-15 y V2-31 #7 quedan REEMPLAZADAS por V2-34. **V2-50 a V2-55** y la corrección adicional (adelanto de salario) APROBADOS por Victor (2026-10-17). **v2.4 «Entrenamiento a prueba de todo»** y sus tres ajustes previos APROBADOS por Victor (2026-10-17). **V2-56 a V2-58** y el **entrenamiento en dos versiones** (v2.4.1) APROBADOS por Victor (2026-10-18). **v2.5 «Entrenamiento sencillo y a fondo»** (estructura, ritmo y claridad) y **V2-59** (respuestas 26–29) APROBADOS por Victor (2026-10-18). **V2-60 a V2-63** (v2.6 «Simplificar para la prueba familiar») APROBADOS por Victor (2026-10-19). **V2-64 a V2-78** (QA profundo, deudas y tarjetas, Primer día, lenguaje, botón atrás, iPhone y entrenamiento; v2.6.1 a v2.6.3) APROBADOS por Victor (2026-10-19). **V2-79 a V2-84** (salir del entrenamiento sin perder tus datos, duplicados, pagos futuros y formularios; v2.6.4 y v2.6.5) APROBADOS por Victor (2026-10-19). **V2-85 y V2-86** (lo de antes de empezar no se cobra solo y la revisión para quienes ya usan la app; v2.6.6) APROBADOS por Victor (2026-10-19). **V2-87 y V2-88** (lo que pagas normalmente de una tarjeta se paga como cualquier otro pago, y editar = los mismos campos que crear; v2.6.7) y su agregado (el caso de la segunda tester y la ficha de la tarjeta) APROBADOS por Victor (2026-10-19). **v2.7 «Tus números bien»**: D-1 a D-12 y C-1 a C-10 (aquí solo D-6, D-7, D-8 y C-6), la protección de datos DATOS-1 a DATOS-5, el cuadrito de novedades y el cambio de roadmap APROBADOS por Victor (2026-10-21). Nada de esto está documentado todavía en el repo de la app: se documentará después de las pruebas con personas. Este prototipo no cambia nada del repo de la app.
 
-Versión visible en la app y en la guía: **«Prototipo v2.6.7 · 2026-10-19»**.
+Versión visible en la app y en la guía: **«Prototipo v2.7.0 · 2026-10-21»** (en el LEEME: «Prototipo v2.7 · Tus números bien»).
 
 ---
 
-## Prototipo v2.7 (2026-10-21): Tus números bien — EN CURSO
+## Prototipo v2.7 · Tus números bien (2026-10-21)
 
 **Base:** `main` en `c640e4e` (v2.6.7). Rama `v2-7`; `main` no se toca hasta que Victor escriba «Bloque validado» (un push a `main` les actualiza la app a Pam y Majo). Fuente: el informe de Codex «Analisis_PamPlanea_Prototipo_v2.6.7.md» (50 hallazgos: F01–F23, U01–U19, A01–A08) y el brief del chat auditor.
 
@@ -33,7 +33,137 @@ Versión visible en la app y en la guía: **«Prototipo v2.6.7 · 2026-10-19»**
 - **Cuadrito de novedades: APROBADO por Victor (2026-10-21)**, frase literal: «les saldrá un cuadrito de una vez nada más explicando súper friendly el update, solo lo importante que deban saber, nada techy».
 - **Cambio de roadmap: APROBADO por Victor (2026-10-21)**, frase literal: «Me urgen los cambios a prototipo primero, asap, para que la sigan usando, modifiquemos el road map». Mi plan, ahorros aparte, gastos variables y el Hoy nuevo van en la v2.8.
 
-**Orden obligatorio:** A (proteger sus datos) → B (arreglos del dinero) → C (escribir montos y anotar) → D (cuadrito de novedades). Sin la Parte D no se publica.
+**Orden obligatorio:** A (proteger sus datos) → B (arreglos del dinero) → C (escribir montos y anotar) → D (cuadrito de novedades). Sin la Parte D no se publica. Las cuatro partes están hechas, cada una con su commit.
+
+### Parte A — tus datos a salvo en cada actualización (DATOS-1 a DATOS-5, A04, F04, F20)
+
+- **DATOS-1 · una copia por versión.** La primera vez que una versión abre lo guardado por otra, guarda una copia intacta en `pamplanea-uso:respaldo:antes-de-v2.7.0` (la clave lleva la versión que actualiza). Nunca escribe encima de una que ya existe. Antes de restaurar una copia, lo que había (aunque no se pudiera leer) queda en `…:respaldo:antes-de-restaurar-<fecha>`.
+  - `respaldo-esquema-1` (la de la v2.3) se conserva.
+  - Sin espacio: quedan la original y las 2 más recientes, y Hoy lo dice («Guarda una copia de tus datos»). La app no falla.
+  - Lo guardado ahora lleva qué versión lo guardó (`version`).
+- **DATOS-2 · «no hay datos», «no puedo leerlos» y «son de una versión más nueva» ya no se confunden.** En los dos últimos, la app muestra la pantalla **«Tus datos están a salvo»**. No escribe nada y nunca empieza de cero. Ofrece:
+  - «Actualizar la app» (si los guardó una versión más nueva);
+  - recuperar una copia del teléfono o de un archivo, **revisada entera antes de escribir** (forma, montos en centavos enteros, fechas, que lo que nombra exista y que se pueda calcular: F20);
+  - guardar lo guardado, tal cual, en un archivo para Victor o Pam;
+  - «Mientras tanto, ver los ejemplos».
+
+  Al abrir, además de leer, la app calcula en una copia aparte: si eso falla, también sale «Tus datos están a salvo».
+- **DATOS-3 · la actualización congela lo que ven.** Cada gasto guarda la cuenta de donde salió (`lugar`). A lo de antes se le pone la cuenta donde aparece hoy (F04): cambiar después la cuenta de un medio solo afecta lo nuevo. Nada cambia de tipo ni de nombre; solo se agrega ese dato.
+- **DATOS-4 · los números antes y después.** La primera vez que la v2.7 abre datos de una versión anterior, calcula el Mes actual, lo que debes de cada tarjeta y el libre con las reglas de antes y con las de ahora. Si alguno cambió porque estaba mal, el cuadrito de novedades lo dice en una línea.
+- **DATOS-5 · probado desde la v2.6.7 (`c640e4e`)** con `herramientas/actualizar.mjs --ref=c640e4e`, con cuatro juegos de datos creados por la versión vieja: Ana («Prueba»), Carlos, Rosa y un set sintético con cada F. Resultado:
+  - cero pérdidas: cada registro, pago, cuenta, ahorro y tarjeta sigue ahí con lo mismo (lo único nuevo es la cuenta de cada gasto);
+  - los mismos saldos en cada cuenta;
+  - la copia por versión, intacta;
+  - los números «de antes» del cuadrito, iguales a los que mostraba la v2.6.7;
+  - en el set sintético, el cuadrito dice lo corregido.
+
+**Decisión técnica — REVISAR:** el esquema sigue en 2 (solo se agregan datos). Si subiera a 3, una pestaña vieja abierta durante la actualización leería el esquema 3 como «sin datos» y los pisaría (A04). Así, la v2.6.7 sigue leyendo bien lo que guarda la v2.7.
+
+### Parte B — arreglos del dinero
+
+| F | Qué hace ahora | Prueba |
+|---|---|---|
+| F01 (D-8) | Cuadrar a $80 y después detallar un gasto anterior de $20: Mes sigue en $20 de salidas. El cuadre dice «explicado con lo que anotaste». | invariantes I01 |
+| F02 (D-7) | «Debo hoy $2,000» y un abono de $100: debes $1,900. Todo abono de después baja el saldo, no solo lo que pasa de lo que pagas normalmente. | I03 |
+| F03 (D-7) | Una compra anterior a «lo que debo hoy» no lo sube (ni baja el libre): ya estaba en ese saldo. | I03b |
+| F10 | Un abono del día del corte, anotado después del estado de cuenta, baja esa tarjeta (cada estado nuevo guarda su orden). | I07 |
+| F11 | Agregar otro estado de cuenta no marca el anterior como «pagado» sin abono: dice «Sin pagar completo · pasó a tu estado de cuenta del X». | I06 |
+| F12 (D-6) | Una cuota de $100 con $50 pagados queda «Parcial · faltan $50.00» y los $50 siguen en tu libre. Igual por el formulario, Anotar, Mes, «Pagado» y Pongámonos al día. | I05, I08 |
+| F13 (D-6) | «Otro monto» puede ser menos que el mínimo, con «Te faltan $X para el mínimo» (también al pagar la tarjeta). El mínimo no puede pasar del total. | F13 |
+| F14 | Un estado de cuenta de $0 se confirma (y al agregar la tarjeta, «0» no es «vacío»). | F14 |
+| F15 | Corregir un ingreso recibido corrige su llegada: un solo monto en saldo, movimiento y calendario. | I02 |
+| F16 | Corregir un gasto pagado con un ahorro corrige el ahorro (y lo reservado para la tarjeta, si fue con crédito). | I10 |
+| F17 | Pongámonos al día pide cuánto pagaste de la tarjeta (propone lo mismo que «Pagar tarjeta»). Nunca se crea un abono de $0. | F17 |
+| F21 | Sin hora ni «Notificación y correo» (esta versión avisa al abrir la app). Apagar «Un día antes» o «El día que vence» los apaga de verdad. | F21 |
+| F22 | «En lo que escribes, los números salen como [monto] y los nombres de tus cosas como [nombre]. Un monto escrito con letras, como «dos mil», no se tapa.» | F22 |
+| F23 | aria-pressed (y los demás estados) siempre «true» o «false». | F23 |
+| Extra | «pasé 20 de efectivo a banco» ya se entiende (lo encontró la fila I11). | I11 |
+
+### Parte C — escribir montos y anotar
+
+- **C-6 · el teclado de montos** (`montos.js`). En el teléfono, cada campo de monto usa un teclado propio grande: dígitos, punto, borrar y «Listo». No usa el del sistema, así que el punto siempre está, también en iPhone.
+  - «25» = $25.00, «2.5» = $2.50, «1200» = $1,200.00. Hasta 2 decimales y 9 dígitos.
+  - El monto se ve en vivo y grande («$1,200.00»).
+  - Teclas de 56 px («Listo», 48). El foco se queda en el campo y el lector de pantalla anuncia el monto.
+  - Funciona con teclado físico; Escape cierra el teclado (no la hoja).
+  - Es el mismo componente en TODOS los campos de monto: hojas, Pongámonos al día, Reparte y el Primer día.
+  - En la computadora se escribe normal y se lee con las mismas reglas: un solo lector de montos (`MOTOR.leerMonto`) para formularios y Anotar.
+- **Anotar no adivina:**
+  - **F05:** «1,200» = $1,200.00 y «1,234.50» = $1,234.50. Si un número no se lee completo («1,2345», «1.200»), pregunta y dice cuál no entendió.
+  - **F06:** reconoce hoy, ayer, antier y mañana («en la mañana» es la hora). «el 22» es el próximo 22 si no ha pasado este mes; si ya pasó, pregunta cuál. Lo futuro se dice antes de guardar («Es para el 22 de octubre…» y «Guardar para el 22»).
+  - **F07:** «pagué la tarjeta Cuscatlán 25» va a Cuscatlán; si pueden ser dos, pregunta. La tarjeta destino se ve antes de guardar.
+  - **F08:** sin tarjeta, «pagué la tarjeta» ofrece «Agregar mi tarjeta» o «Es un gasto». Nunca una excepción.
+  - **F18:** «tengo 0» funciona igual que en Cuadrar.
+  - **F19:** «pupusas 6 y bus 2» ofrece «Anotar las 2» o «Solo Pupusas». Si son cosas distintas («me pagaron 600 y gasté 20»): «Anota una cosa a la vez». Ninguno se pierde en silencio.
+
+### Parte D — el cuadrito de novedades
+
+- Sale **una vez**, al abrir la v2.7 con sus datos de una versión anterior. Al cerrarlo no vuelve, ni al recargar: queda guardado con sus datos (`novedades`).
+- No sale a quien empieza de cero ni en el modo de ejemplos.
+- Título «¡PamPlanea se puso al día! ✨» y hasta 4 líneas, solo las que le tocan a esa persona:
+  - los montos: «Escribir montos es más fácil: escribe 25 y son $25. Y ya puedes anotar 1,200.» (las dos líneas del borrador en una, para que todo quepa en 5);
+  - la cuota, si tiene pagos: «Si pagas parte de una cuota, te mostramos cuánto falta.»;
+  - la tarjeta, si tiene tarjeta: «Tus abonos a la tarjeta ahora bajan lo que debes.»;
+  - si DATOS-4 detectó un cambio, una sola línea, sin culpa: «Corregimos tu gasto de octubre: ahora es $X.» o «Corregimos unos números: tu gasto de octubre es $X y lo que debes de BAC es $Y.».
+- Cierre: «Tus datos están completos y a salvo.» Botón: «¡Entendido!».
+- Cada línea tiene 20 palabras o menos, sin palabras técnicas.
+- Accesible: diálogo con título; el foco entra y vuelve al cerrar; Tab no sale; Escape lo cierra; nada se mueve con «reducir movimiento».
+
+### Pruebas y calidad
+
+**Línea base (c640e4e, la v2.6.7 sacada de git a una carpeta aparte, una prueba a la vez):** las 33 pruebas por archivo con código 0. v266 y v267 necesitan la carpeta `.git` (`GIT_DIR`); con ella, código 0. Servidas (`--base=http://…`): 24 pruebas, todas con código 0 (las `recorrer-*` con su ronda `final`).
+
+**v2.7, por archivo:** 36 pruebas (las 33 + `invariantes`, `montos` y `novedades`).
+- Primera vuelta: 32 igual que la base y 4 bajaron. Las 4 esperaban el comportamiento de antes y se actualizaron citando su F (no se borró ninguna):
+  - `aceptacion-v23`: corregir un pago de $25 a $20 ahora queda «Parcial · faltan $5» (F12, D-6).
+  - `atras` y `v264`: siembran datos de antes de la v2.7, así que sale una vez el cuadrito; la prueba lo cierra y sigue (Parte D).
+  - `formularios-v265`: en el teléfono los montos usan el teclado de la app, `inputmode="none"` (C-6).
+  - `v267`: la versión que abre ya es la v2.7, y lo único nuevo guardado es `version` (DATOS-1) y `novedades` (Parte D).
+- Después, todas con código 0.
+- La vuelta servida se cortó por poca memoria en el equipo, con 13 de 24 hechas. Las 13 igual que la base, salvo las mismas 3 de arriba (ya arregladas). No se volvió a correr completa.
+- Con los arreglos del final se volvieron a correr una por una, todas con código 0: aceptacion-v23, atras, formularios-v265, v267, v264, invariantes, montos, novedades, actualizar, qa-v261, recorrer-modos, v231, v26, v266, probar-pwa, probar-motor, humo, teclado, contraste, humo-v23, entrega2-v23, viaje-v23, v261, v263 y v265.
+
+**Las pruebas nuevas:**
+- `invariantes.mjs`: **19 de 19 filas bien**. Sobre la v2.6.7 (`--raiz=` la copia de c640e4e): **0 de 19**, o sea que cada fila fallaba antes.
+- `montos.mjs`: 92 revisiones, 0 fallos.
+- `novedades.mjs`: 32 revisiones, 0 fallos. Incluye que el botón atrás del teléfono lo cierra.
+- `actualizar.mjs --ref=c640e4e` (DATOS-5): 0 fallos. Ana, Carlos, Rosa y un set sintético con cada F: copia por versión intacta, cero pérdidas, mismos saldos y los números de DATOS-4.
+
+**Lo que encontraron las pruebas y las capturas (arreglado):**
+- **I12:** con el teléfono lleno, la app decía «No se están guardando tus datos» aunque ya guardaba (tras limpiar copias viejas). Ahora, cuando guardar vuelve a funcionar, Hoy lo dice enseguida.
+- **Capturas:** «Recuperar la copia del 22 oct» a las 9 p. m. del 21 (usaba la fecha de Greenwich). Ahora usa la del teléfono.
+- **Capturas:** el texto de «Tus datos están a salvo» salía corrido a la derecha.
+- **Revisión:** el botón atrás del teléfono no cerraba el cuadrito de novedades. En Android salía de la app y el cuadrito volvía a salir. Ahora lo cierra, como «¡Entendido!».
+
+**Capturas:** `capturas/v27/` (390×844 y 1440×900): teclado, Anotar («1,200», «mañana pupusas 10», «pagué la tarjeta Cuscatlán», dos montos), tarjeta, parcial en Pagos, Mes, el cuadrito y «Tus datos están a salvo». Las genera `herramientas/capturas-v27.mjs`.
+
+### Decisiones técnicas — REVISAR
+
+1. **D-8:** si lo que detallas después pasa de la diferencia del cuadre, el resto sale como «entró sin detalle» (así Mes y el saldo siempre cuadran). El primer cuadre (lo que tenías al empezar) no explica nada.
+2. **D-7:** las compras de antes de «lo que debo hoy» tampoco bajan el libre (ya estaban en ese saldo). Las tarjetas de antes de la v2.7 toman como fecha de ese saldo el día en que se agregaron.
+3. **D-6:** un estimado (luz, agua) no queda «parcial»: lo que pagas es lo que costó. Corregir en Mes un pago a menos de lo que tocaba deja pendiente lo que falta. «Lo que tocaba» es lo pagado entonces, sin pasar del monto del pago.
+4. **F11:** un estado de cuenta anterior sin pagar completo no se vuelve a preguntar («¿lo pagaste?»): ya está en el siguiente.
+5. **F10:** solo los estados de cuenta nuevos saben en qué orden se anotaron. Los de antes siguen como antes: un abono del día del corte no cuenta para ellos.
+6. **F06:** «mañana» en un pago, un abono o un movimiento pregunta «Es de hoy» (eso se anota el día que pasa). En «Recordarme un pago», «mañana» es un recordatorio de una vez.
+7. **F19:** «Anotar las 2» es solo para gastos y pagos; si se mezclan tipos, una cosa a la vez.
+8. **C-6:** el teclado no se abre solo al abrir una hoja (como el del sistema, V2-50): sale al tocar el campo, al llegar con Tab o al escribir. 9 dígitos en total; el tope de $1,000,000.00 sigue y se dice.
+9. **F21:** lo vencido («¿Ya lo pagaste?») se sigue preguntando aunque apagues «El día que vence»: no es un aviso, es lo que mantiene bien tu número.
+10. **«Borrar todos mis datos»** también borra las copias internas: es lo que la persona pide, con dos confirmaciones.
+11. **Recuperar una copia de una versión anterior** se trata como una actualización: se guarda con la versión que la hizo y, si es de antes de la v2.7, sale el cuadrito una vez.
+12. **El botón atrás del teléfono** cierra el cuadrito de novedades y cuenta como visto (igual que Escape o «¡Entendido!»).
+13. **`?teclado=1`** en el enlace muestra el teclado de montos en la computadora, para probarlo sin teléfono.
+
+### DECISIONES PENDIENTES PARA VICTOR (v2.7)
+
+1. **«el 22» que ya pasó: ¿preguntar o tomar el de este mes?** Hoy pregunta (lo pide el brief). *Recomendación:* dejarlo. *Tradeoff:* quien anota tarde lo de la semana toca un botón más.
+2. **Lo detallado después de un «Listo» de Reparte** cuenta como explicación de ese cuadre, aunque la persona no haya contado su dinero. *Recomendación:* dejarlo (Mes y el saldo cuadran). *Tradeoff:* en Mes puede verse «entró sin detalle» si el gasto era de antes.
+3. **Las copias internas** se guardan una por versión; con muchas versiones ocupan espacio. *Recomendación:* dejarlo así hasta que falte espacio (ya se limpian solas). *Tradeoff:* ninguno visible.
+
+### Limitaciones
+
+- El teclado de montos no se ha probado en un iPhone real. En los iPhone con iOS anterior a 12.2 podría salir también el teclado del sistema.
+- Lo que la v2.6.7 dejó con dos montos (un ingreso corregido, un ahorro sin corregir) no se arregla solo: se congela como estaba (DATOS-3) y se arregla al corregirlo otra vez.
+- Un pago de $50 de $100 marcado «pagado» en la v2.6.7 sigue «pagado» (no se cambia solo).
 
 ---
 

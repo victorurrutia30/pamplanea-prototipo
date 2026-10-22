@@ -151,3 +151,26 @@ Plan de pruebas de la revisión total pedida por Victor (V2-64: «me gustaria qu
 |---|---|---|---|---|---|---|
 | M-01 | Por file:// | Todas las pruebas | Cero errores | P1 | ✅ | todas |
 | M-02 | En la subruta de Pages | Las pruebas servidas | Cero errores | P1 | ✅ | todas (servidas) |
+
+## N. v2.7 · Tus números bien (informe de Codex sobre la v2.6.7)
+
+**Estado** como arriba; 🔧 = fallaba en la v2.6.7 (las pruebas con `--raiz=` sobre la v2.6.7 sacada de git lo muestran) y se corrigió en la v2.7.
+
+| ID | Caso | Esperado (acuerdo) | Prio. | Estado | Prueba |
+|---|---|---|---|---|---|
+| N-A1 | Actualizar desde la v2.6.7 con Ana, Carlos, Rosa y un set con cada F | Copia por versión intacta, cero pérdidas, mismos saldos (DATOS-1, 3, 5) | P1 | 🔧 | actualizar `--ref=c640e4e` |
+| N-A2 | Lo guardado dañado, de una versión más nueva o que no se puede calcular | «Tus datos están a salvo»; no se escribe nada; nunca de cero (DATOS-2, A04, F20) | P1 | 🔧 | invariantes I09 |
+| N-A3 | Sin espacio para la copia por versión | Quedan la original y las 2 más recientes; se avisa (DATOS-1) | P1 | 🔧 | invariantes I12 |
+| N-A4 | Cambiar la cuenta de un medio | No mueve lo de antes (F04, DATOS-3) | P1 | 🔧 | invariantes I04 |
+| N-B1 | Cuadrar y luego detallar | Mes no se duplica (F01, D-8) | P1 | 🔧 | invariantes I01 |
+| N-B2 | Abono y compra con «lo que debo hoy» | El abono baja; la compra de antes no sube (F02, F03, D-7) | P1 | 🔧 | invariantes I03, I03b |
+| N-B3 | Abono el día del corte; segundo estado de cuenta | Baja esa tarjeta; no inventa pagos (F10, F11) | P1 | 🔧 | invariantes I06, I07 |
+| N-B4 | Pagar $50 de $100 (formulario, Anotar, Mes, Pongámonos al día) | «Parcial · faltan $50»; el mismo resultado por cada entrada (F12, D-6) | P1 | 🔧 | invariantes I05, I08 |
+| N-B5 | Menos del mínimo; mínimo > total; estado de $0 | Se puede, con aviso; no; se confirma (F13, F14) | P2 | 🔧 | invariantes F13, F14 |
+| N-B6 | Corregir un ingreso o un gasto de un ahorro | Un solo monto; el ahorro cambia con el gasto (F15, F16) | P1 | 🔧 | invariantes I02, I10 |
+| N-B7 | Tarjeta en Pongámonos al día | Nunca un abono de $0 (F17) | P1 | 🔧 | invariantes F17 |
+| N-B8 | Avisos, privacidad y aria | Sin promesas falsas; apagar apaga; «true»/«false» (F21, F22, F23) | P2 | 🔧 | invariantes F21–F23 |
+| N-C1 | Teclado de montos en todos los campos | «25» = $25.00, 9 dígitos, 2 decimales, Escape, lector (C-6) | P1 | 🔧 | montos B, C |
+| N-C2 | Un solo lector de montos | El mismo resultado en formularios, teclado y Anotar | P1 | 🔧 | montos A, D |
+| N-C3 | Anotar no adivina | Miles, fechas, la tarjeta nombrada, sin tarjeta, «tengo 0», dos montos (F05–F08, F18, F19) | P1 | 🔧 | montos E |
+| N-D1 | El cuadrito de novedades | Una vez, solo con datos de antes, líneas según los datos, accesible; atrás lo cierra | P2 | ✅ | novedades |
