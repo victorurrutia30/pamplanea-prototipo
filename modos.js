@@ -579,9 +579,13 @@
         const st = P.st;
         const out = [];
         const manana = M.sumarDias(st.hoy, 1);
+        // v2.7 (F21): los interruptores de la ficha mandan: «Un día antes» (lo de mañana) y «El día que vence» (lo de hoy).
+        // Apagados, no hay aviso de ese pago. Lo vencido no es un aviso: es «¿ya lo pagaste?» y se pregunta igual.
+        const prendido = P.avisoPrendido;
         for (const p of st.pagos.filter((x) => x.activo !== false && !x.descuento)) {
             for (const o of M.ocurrenciasPago(st, p, M.sumarDias(st.hoy, -31), manana)) {
                 if (o.estado !== 'vencido' && o.estado !== 'pendiente') continue;
+                if (o.estado === 'pendiente' && !prendido(p, o.fecha === manana ? 'antes' : 'vence')) continue;
                 const art = P.conArticulo(p.nombre);
                 const base = { id: `auto-${p.id}-${o.fecha}`, emoji: p.emoji, accion: { tipo: 'pago', id: p.id } };
                 if (o.estado === 'vencido') out.push({ ...base, hora: 'Venció', titulo: `${p.nombre}: venció el ${M.fechaCorta(o.fecha)}`, texto: '¿Ya lo pagaste? Márcalo como Pagado.' });
@@ -1187,7 +1191,7 @@
             .join('');
         return `<p class="txt">Al final de la prueba, mándale esto a Victor o a Pam. Tú eliges a quién: toca «Compartir» y elige su chat, o «Copiar» y pégalo.</p>
             <section class="ay-card ct-lista ct-lista--si" aria-labelledby="ct-si-t"><h3 class="ay-h3" id="ct-si-t">${icon('circle-check', 'ico-s')}Esto se manda</h3><ul class="ay-puntos" id="ct-si">${si}</ul></section>
-            <section class="ay-card ct-lista ct-lista--no" aria-labelledby="ct-no-t"><h3 class="ay-h3" id="ct-no-t">${icon('ban', 'ico-s')}Esto NO se manda</h3><ul class="ay-puntos" id="ct-no"><li>Montos</li><li>Nombres de tus cuentas, pagos, ahorros, tarjetas y préstamos</li></ul><p class="fila-s">Si escribes alguno en lo que cuentas, lo tapo: sale [monto] o [nombre].</p></section>
+            <section class="ay-card ct-lista ct-lista--no" aria-labelledby="ct-no-t"><h3 class="ay-h3" id="ct-no-t">${icon('ban', 'ico-s')}Esto NO se manda</h3><ul class="ay-puntos" id="ct-no"><li>Montos</li><li>Nombres de tus cuentas, pagos, ahorros, tarjetas y préstamos</li></ul><p class="fila-s">En lo que escribes, los números salen como [monto] y los nombres de tus cosas como [nombre].</p><p class="fila-s">Un monto escrito con letras, como «dos mil», no se tapa. Revisa el texto antes de mandarlo.</p></section>
             <div class="campo-g"><label class="campo-l" for="ct-nombre">Tu nombre o apodo</label><div class="campo"><input id="ct-nombre" data-ct="nombre" type="text" autocomplete="off" value="${esc(nombreContar(u))}"></div></div>
             <div class="campo-g"><label class="campo-l" for="ct-mas">¿Algo más que quieras contarle? <span class="opcional">(opcional)</span></label><textarea id="ct-mas" class="ay-textarea" data-ct="mas" rows="3">${esc(A.contarMas || '')}</textarea></div>
             <section class="ay-card" aria-labelledby="ct-texto-t"><h3 class="ay-h3" id="ct-texto-t">${icon('receipt-text', 'ico-s')}El texto, tal como se manda</h3>${P.ayuda.compartirHtml(textoContar())}</section>`;

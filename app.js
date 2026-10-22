@@ -261,6 +261,8 @@
         if (o.estado === 'pagado') return `pagado · ${M.fechaCorta(o.fecha)}`;
         if (o.estado === 'saltado') return `saltado · ${M.fechaCorta(o.fecha)}`;
         if (o.estado === 'porConfirmar') return `${M.fechaCorta(o.fecha)} · según tu estado de cuenta`;
+        // v2.7 (F11): un estado de cuenta anterior sin pagar: lo que faltó pasó al siguiente (no se inventa un pago).
+        if (o.estado === 'arrastrado') return `${M.fechaCorta(o.fecha)} · pasó a tu estado de cuenta del ${M.fechaCorta(o.siguiente.corte)}`;
         const rel = M.relativa(o.fecha, st.hoy);
         if (!hz || hz.esHoy || hz.atrasada || !hz.ingreso) return rel;
         if (o.fecha === hz.fecha) return `${rel}, día de tu ${nombreIngreso(hz)}`;
@@ -308,7 +310,8 @@
         const espera = !!sig && sig.fecha !== o.fecha;
         // Recién marcado (hoy): «Pagado ✓» con «Deshacer», sin un segundo «Pagado».
         const pagadoHoy = !esTarjeta && conBoton && o.estado === 'pagado' && o.hecho && o.hecho.registro && (st.registros.find((r) => r.id === o.hecho.registro) || {}).fecha === st.hoy;
-        const marca = o.estado === 'pagado' ? `<span class="estado estado--ok">Pagado ✓</span>` : o.estado === 'saltado' ? '<span class="estado">Saltado</span>' : o.estado === 'vencido' ? `<span class="estado estado--pend">${icon('clock', 'ico-xs')}Por confirmar</span>` : '';
+        // v2.7 (D-6, F12): pagado en parte: «Parcial · faltan $50.00» (lo que falta sigue pendiente).
+        const marca = o.estado === 'pagado' ? `<span class="estado estado--ok">Pagado ✓</span>` : o.estado === 'saltado' ? '<span class="estado">Saltado</span>' : o.estado === 'arrastrado' ? `<span class="estado">${o.parcial ? `Pagaste ${dinero(o.parcial.pagado)} · ` : ''}Sin pagar completo</span>` : o.parcial ? `<span class="estado estado--parcial">Parcial · faltan ${dinero(o.parcial.falta)}</span>` : o.estado === 'vencido' ? `<span class="estado estado--pend">${icon('clock', 'ico-xs')}Por confirmar</span>` : '';
         const avisoOn = !esTarjeta && o.pago.avisos && o.pago.avisos.some((a) => a.on) && o.estado === 'pendiente' ? `<span class="campana">${icon('bell', 'ico-xs')}${sr('Con aviso. ')}</span>` : '';
         let sub;
         if (enLinea) {
@@ -332,7 +335,7 @@
             <button type="button" class="fila-main" ${abrir} data-fk="${fk}">
                 ${caja(emoji)}
                 <span class="fila-txt"><span class="fila-t">${esc(nombre)}</span><span class="fila-s">${enLinea ? marcaMov('pago') : ''}<span>${avisoOn}${esc(sub)}</span></span>${marca ? `<span class="fila-s">${marca}</span>` : ''}${partesTxt}</span>
-                <span class="fila-m">${montoHtml(o.monto, 'pago', { aprox: o.estimado })}${o.estimado ? '<span class="fila-s">estimado</span>' : ''}</span>
+                <span class="fila-m">${montoHtml(o.parcial && o.estado !== 'arrastrado' ? o.parcial.falta : o.monto, 'pago', { aprox: o.estimado && !o.parcial })}${o.estimado && !o.parcial ? '<span class="fila-s">estimado</span>' : ''}</span>
             </button>
             ${puedePagar ? `<button type="button" class="btn btn--sm${espera ? ' btn--espera' : ''}" data-a="pagado" data-tipo="${esTarjeta ? 'tarjeta' : 'pago'}" data-id="${esTarjeta ? o.tarjeta.id : o.pago.id}" data-fecha="${o.fecha}" data-fk="pagado-${fk}" aria-label="${espera ? `Marcar ${esc(nombre)} como pagado: primero el del ${esc(P.diaMes(sig.fecha))}` : `Marcar ${esc(nombre)} como pagado`}">Pagado</button>` : ''}
             ${pagadoHoy ? `<button type="button" class="btn btn--sm" data-a="pagoDeshacer" data-id="${o.pago.id}" data-fecha="${o.fecha}" data-fk="deshacer-${fk}" aria-label="Deshacer: ${esc(nombre)} ya no está pagado">Deshacer</button>` : ''}
@@ -368,9 +371,10 @@
             monto = montoHtml(r.monto, 'neutro');
         } else if (r.tipo === 'cuadre') {
             emoji = '⚖️';
-            const dif = r.monto - r.esperado;
+            // v2.7 (D-8): lo que detallaste después ya no cuenta como «sin detalle».
+            const dif = M.sinDetalle(st, r);
             titulo = `Cuadraste ${M.lugar(st, r.lugar)?.nombre}`;
-            sub = [fecha, dif === 0 ? 'cuadró exacto' : `${dinero(Math.abs(dif))} sin detalle`].filter(Boolean).join(' · ');
+            sub = [fecha, dif === 0 ? (r.monto === r.esperado ? 'cuadró exacto' : 'explicado con lo que anotaste') : `${dinero(Math.abs(dif))} sin detalle`].filter(Boolean).join(' · ');
             monto = `<span class="monto monto--neutro">${dinero(r.monto)}</span>`;
         } else if (r.tipo === 'cargoTarjeta') {
             emoji = '💳';
@@ -601,7 +605,8 @@
         for (const p of st.pagos.filter((x) => x.activo !== false && !x.descuento)) {
             for (const o of M.ocurrenciasPago(st, p, p.desde, m1)) {
                 if (o.estado === 'vencido' && !enRevision.has(`pago:${p.id}:${o.fecha}`)) vencidos.push(o);
-                else if (o.estado === 'pendiente') (o.fecha === st.hoy ? hoyL : manana).push(o);
+                // v2.7 (F21): con sus avisos apagados en la ficha, no se avisa (lo vencido sí se pregunta: es «¿ya lo pagaste?»).
+                else if (o.estado === 'pendiente' && P.avisoPrendido(p, o.fecha === st.hoy ? 'vence' : 'antes')) (o.fecha === st.hoy ? hoyL : manana).push(o);
             }
         }
         for (const o of M.ocurrenciasTarjeta(st, M.sumarDias(st.hoy, -40), m1)) {
@@ -645,6 +650,11 @@
         return items.filter((x) => !P.ui.descartados[x.id]);
     }
     P.atencion = atencion;
+    /** v2.7 (F21): ¿el aviso «antes» (un día antes) o «vence» (el día que vence) de este pago está prendido? */
+    P.avisoPrendido = (p, tipo) => {
+        const a = Array.isArray(p.avisos) ? p.avisos.find((x) => x.tipo === tipo) : null;
+        return !a || !!a.on;
+    };
     /**
      * v2.6.6 (V2-86): lo de antes de empezar que se está revisando («Revisemos unos pagos…») no sale en los avisos, en
      * «Pongámonos al día» ni en «Por confirmar»: ahí «Pagado» anotaría otra vez un pago que ya salió. Claves «tipo:id:fecha».
@@ -1377,10 +1387,13 @@
         const ultimaPagada = hechas.filter((o) => o.estado === 'pagado' && (!prox || o.fecha < prox.fecha)).at(-1);
         const regUltima = ultimaPagada && ultimaPagada.hecho.registro ? st.registros.find((r) => r.id === ultimaPagada.hecho.registro) : null;
         const recien = ultimaPagada && regUltima && (ultimaPagada.fecha >= st.hoy || regUltima.fecha === st.hoy) ? ultimaPagada : null;
-        const historia = [...hechas.map((o) => ({ fecha: o.fecha, monto: o.monto, estado: o.estado, hecho: o.hecho })), ...(p.previos || []).map((x) => ({ ...x, estado: 'pagado' }))].sort((a, b) => (a.fecha < b.fecha ? 1 : -1));
+        // v2.7 (D-6): lo pagado en parte también está en el historial (y se corrige como los demás).
+        const parciales = M.ocurrenciasPago(st, p, p.desde, M.sumarDias(st.hoy, 400)).filter((o) => o.parcial).map((o) => ({ fecha: o.fecha, monto: o.parcial.pagado, estado: 'parcial', falta: o.parcial.falta, hecho: { registro: o.parcial.hecho.pagos.at(-1).registro } }));
+        const historia = [...hechas.map((o) => ({ fecha: o.fecha, monto: o.monto, estado: o.estado, hecho: o.hecho })), ...parciales, ...(p.previos || []).map((x) => ({ ...x, estado: 'pagado' }))].sort((a, b) => (a.fecha < b.fecha ? 1 : -1));
         const medio = M.medio(st, p.medio);
         const ing = p.descuento ? M.ingreso(st, p.descuento) : null;
-        const avisoTexto = (a) => (a.tipo === 'recibo' ? `Revisar el recibo · el ${a.dia}` : a.tipo === 'antes' ? `Un día antes · 8:00 a. m.` : 'El día que vence · 8:00 a. m.');
+        // v2.7 (F21): esta versión no manda notificaciones ni correos ni avisa a una hora: avisa al abrir la app.
+        const avisoTexto = (a) => (a.tipo === 'recibo' ? `Revisar el recibo · el ${a.dia}` : a.tipo === 'antes' ? 'Un día antes' : 'El día que vence');
         const atrasTexto = P.atrasDe('Pagos');
         const estadoProx = ing
             ? `<p class="fila-s">Se descuenta solo de ${esc(ing.nombre.toLowerCase())}: al confirmar que llegó, queda pagado. No baja tu libre otra vez.</p>`
@@ -1388,7 +1401,7 @@
               ? `<div class="ficha-prox"><p class="estado estado--ok ficha-pagado-ok">Pagado ✓ · ${esc(M.capital(M.fechaLarga(recien.fecha)))}</p>${prox ? `<p class="fila-s">Después: ${esc(M.capital(M.fechaLarga(prox.fecha)))}</p>` : ''}
                 <div class="acciones-2"><button type="button" class="btn btn--48" data-a="pagoDeshacer" data-id="${p.id}" data-fecha="${recien.fecha}" data-fk="ficha-deshacer">Deshacer</button></div></div>`
               : prox
-                ? `<div class="ficha-prox"><p class="fila-s">${prox.estado === 'vencido' ? 'Venció' : 'Próximo'}: ${esc(M.capital(M.fechaLarga(prox.fecha)))}${prox.estado === 'vencido' ? ' · por confirmar' : ''}</p>
+                ? `<div class="ficha-prox"><p class="fila-s">${prox.estado === 'vencido' ? 'Venció' : 'Próximo'}: ${esc(M.capital(M.fechaLarga(prox.fecha)))}${prox.parcial ? ` · pagaste ${dinero(prox.parcial.pagado)}, faltan ${dinero(prox.parcial.falta)}` : prox.estado === 'vencido' ? ' · por confirmar' : ''}</p>
                 <div class="acciones-2"><button type="button" class="btn btn--48" data-a="saltar" data-id="${p.id}" data-fecha="${prox.fecha}" data-fk="saltar">${p.frecuencia === 'unico' ? 'Saltar' : 'Saltar esta vez'}</button><button type="button" class="btn btn--prim btn--48" data-a="pagado" data-tipo="pago" data-id="${p.id}" data-fecha="${prox.fecha}" data-fk="ficha-pagado">Pagado</button></div></div>`
                 : '<p class="fila-s">No hay pagos por delante.</p>';
         // V2-34: con qué ingreso lo pagas (cada ocurrencia).
@@ -1410,7 +1423,7 @@
         // Corrección v2.3.1: un préstamo o una cuota creados como pago normal se pueden anotar en Deudas (es el mismo pago).
         const esDeuda = !p.tipoDeuda && !p.descuento && !p.deuda && p.tipoPago !== 'suscripcion' && /pr[eé]stamo|cuota|cr[eé]dito|deuda|casa comercial|financ/i.test(p.nombre) ? tarjetaSeccion('¿Es una deuda?', `<p class="txt txt--card">Anótala en Deudas para ver cuánto debes; baja con cada «Pagado». Es este mismo pago: no se duplica.</p><div class="card-pie"><button type="button" class="btn btn--full" data-a="hoja" data-hoja="esDeuda" data-id="${p.id}" data-fk="es-deuda">Anotarla en Deudas</button></div>`, { id: 'f-es-deuda' }) : '';
         const filaHist = (h) => {
-            const inner = `${caja(h.estado === 'saltado' ? '⏭️' : p.emoji)}<span class="fila-txt"><span class="fila-t">${esc(M.capital(M.fechaLarga(h.fecha)))}</span><span class="fila-s">${h.estado === 'saltado' ? 'Saltado' : h.hecho && h.hecho.descuento ? 'Descontado de tu salario' : 'Pagado'}${h.hecho && h.hecho.registro ? ' · toca para corregir' : ''}</span></span><span class="fila-m">${h.estado === 'saltado' ? '' : montoHtml(h.monto)}</span>`;
+            const inner = `${caja(h.estado === 'saltado' ? '⏭️' : p.emoji)}<span class="fila-txt"><span class="fila-t">${esc(M.capital(M.fechaLarga(h.fecha)))}</span><span class="fila-s">${h.estado === 'saltado' ? 'Saltado' : h.estado === 'parcial' ? `Parcial · faltan ${dinero(h.falta)}` : h.hecho && h.hecho.descuento ? 'Descontado de tu salario' : 'Pagado'}${h.hecho && h.hecho.registro ? ' · toca para corregir' : ''}</span></span><span class="fila-m">${h.estado === 'saltado' ? '' : montoHtml(h.monto)}</span>`;
             // V2-48: un pago ya marcado se abre y se corrige (o se desmarca).
             if (h.hecho && h.hecho.registro) return `<li class="fila"><button type="button" class="fila-main" data-a="editarRegistro" data-id="${h.hecho.registro}" data-fk="hist-${h.fecha}" aria-label="${esc(M.fechaLarga(h.fecha))}: pagado ${esc(dinero(h.monto))}. Corregir">${inner}</button></li>`;
             if (h.estado === 'saltado') return `<li class="fila"><button type="button" class="fila-main" data-a="desSaltar" data-id="${p.id}" data-fecha="${h.fecha}" data-fk="hist-${h.fecha}" aria-label="${esc(M.fechaLarga(h.fecha))}: saltado. Deshacer el salto">${inner}</button></li>`;
@@ -1428,7 +1441,7 @@
             ${pagasCon}
             ${esDeuda}
             ${p.deuda || tipoDeuda ? tarjetaSeccion('Lo que debes', `<div class="dato"><p class="cifra cifra--s">${debe ? dinero(p.deuda.debe, { aprox: true }) : 'Sin anotar'}</p><p class="fila-s">Opcional. Baja con cada «Pagado».</p></div><div class="card-pie"><button type="button" class="link" data-a="hoja" data-hoja="deuda" data-id="${p.id}" data-fk="deuda">${debe ? 'Actualizar lo que debo' : 'Anotar cuánto debo'}</button></div>`, { id: 'f-deuda' }) : ''}
-            ${ing ? '' : tarjetaSeccion('Avisos', `<ul class="lista">${(p.avisos || []).map((a, i) => `<li class="fila fila--switch"><span class="fila-txt"><span class="fila-t">${esc(avisoTexto(a))}</span><span class="fila-s">Notificación y correo</span></span><button type="button" class="switch" role="switch" aria-checked="${a.on}" data-a="avisoSwitch" data-id="${p.id}" data-i="${i}" data-fk="sw-${i}" aria-label="${esc(avisoTexto(a))}"><span></span></button></li>`).join('')}</ul>`, { id: 'f-avisos' })}
+            ${ing ? '' : tarjetaSeccion('Avisos', `<ul class="lista">${(p.avisos || []).map((a, i) => `<li class="fila fila--switch"><span class="fila-txt"><span class="fila-t">${esc(avisoTexto(a))}</span><span class="fila-s">Te avisamos al abrir la app</span></span><button type="button" class="switch" role="switch" aria-checked="${!!(a.on)}" data-a="avisoSwitch" data-id="${p.id}" data-i="${i}" data-fk="sw-${i}" aria-label="${esc(avisoTexto(a))}"><span></span></button></li>`).join('')}</ul>`, { id: 'f-avisos' })}
             ${tarjetaSeccion('Historial', historia.length ? `<ul class="lista">${historia.map(filaHist).join('')}</ul>` : '<p class="vacio">Todavía no hay pagos.</p>', { id: 'f-hist' })}
             <div class="pie-acciones"><button type="button" class="btn btn--full" data-a="hoja" data-hoja="${tipoDeuda && !ing && p.frecuencia === 'mensual' ? 'nuevaDeuda' : 'editarPago'}" data-id="${p.id}" data-fk="editar-pago">${icon('pencil', 'ico-s')}Editar</button><button type="button" class="btn btn--full btn--peligro-txt" data-a="hoja" data-hoja="yaNoAplica" data-id="${p.id}" data-fk="ya-no">${icon('ban', 'ico-s')}Ya no aplica</button></div>
         </div>`;
@@ -1496,7 +1509,7 @@
         const despues = regs.filter((r) => r.tipo !== 'cuadre' && M.despues(r, l.cuadre));
         const cuadre = regs.find((r) => r.tipo === 'cuadre' && r.seq === l.cuadre.seq);
         const antes = regs.filter((r) => r.tipo !== 'cuadre' && !M.despues(r, l.cuadre)).slice(0, 6);
-        const dif = cuadre ? cuadre.monto - cuadre.esperado : 0;
+        const dif = cuadre ? M.sinDetalle(st, cuadre) : 0;
         const atrasTexto = P.atrasDe('Mi dinero');
         return `<div class="pg">
             ${encabezado(`${emo(l.emoji, 28)} ${esc(l.nombre)}`, medios.length ? 'Con ' + medios.map((m) => esc(m.nombre)).join(' y ') : '', { atras: atrasTexto })}
@@ -1507,7 +1520,7 @@
                 <div class="card-pie"><button type="button" class="link" data-a="hoja" data-hoja="lugar" data-id="${id}" data-fk="l-editar">${icon('pencil', 'ico-s')}Editar o eliminar</button></div>
             </section>
             ${tarjetaSeccion('Después de tu último cuadre', despues.length ? `<ul class="lista">${despues.map((r) => filaRegistro(r)).join('')}</ul>` : '<p class="vacio">Nada anotado desde el cuadre.</p>', { id: 'l-desp' })}
-            ${cuadre ? `<div class="cuadre-marca">${caja('⚖️')}<p><strong>Cuadre del ${esc(M.fechaCorta(cuadre.fecha))}: dijiste ${dinero(cuadre.monto)}.</strong> ${dif === 0 ? 'Cuadró exacto con lo anotado.' : `Según lo anotado tenías ${dinero(cuadre.esperado)}: ${dinero(Math.abs(dif))} quedaron sin detalle.`}</p></div>` : ''}
+            ${cuadre ? `<div class="cuadre-marca">${caja('⚖️')}<p><strong>Cuadre del ${esc(M.fechaCorta(cuadre.fecha))}: dijiste ${dinero(cuadre.monto)}.</strong> ${dif === 0 ? (cuadre.monto === cuadre.esperado ? 'Cuadró exacto con lo anotado.' : 'Lo que anotaste después explica la diferencia.') : `Según lo anotado tenías ${dinero(cuadre.esperado)}: ${dinero(Math.abs(dif))} quedaron sin detalle.`}</p></div>` : ''}
             ${antes.length ? tarjetaSeccion('Antes del cuadre', `<p class="txt txt--card">Ya están incluidos en el cuadre: corregirlos no cambia tu saldo.</p><ul class="lista lista--apagada">${antes.map((r) => filaRegistro(r)).join('')}</ul>`, { id: 'l-antes' }) : ''}
         </div>`;
     };
@@ -1535,7 +1548,7 @@
             </section>
             <div class="nota nota--info" role="note">${icon('info')}<p>Tus ahorros siguen en tu banco o efectivo (${esc(st.lugares.map((l) => l.nombre).join(' y '))}); solo les pones nombre.</p></div>
             ${tarjetaSeccion('Meta', `<div class="dato"><p class="dato-n">${a.meta ? dinero(a.meta) : 'Sin meta'}</p><p class="fila-s">${a.metaFecha ? 'Para el ' + esc(M.fechaLarga(a.metaFecha)) : 'Sin fecha'}</p></div><div class="card-pie"><button type="button" class="link" data-a="hoja" data-hoja="meta" data-id="${a.id}" data-fk="ap-meta">${a.meta ? 'Editar nombre y meta' : 'Editar nombre o ponerle meta'}</button></div>`, { id: 'ap-meta-t' })}
-            ${tarjetaSeccion('Historial', a.historial.length ? `<ul class="lista">${a.historial.map((h) => `<li class="fila"><div class="fila-main fila-main--quieta">${caja(h.tipo === 'usar' ? '🎉' : h.tipo === 'liberar' ? '🔓' : '🐷')}<span class="fila-txt"><span class="fila-t">${h.tipo === 'apartar' ? 'Ahorraste' : h.tipo === 'liberar' ? 'Sacaste' : h.tipo === 'usar' ? 'Lo usaste' : h.tipo === 'devuelto' ? 'Volvió de un gasto que eliminaste' : h.tipo === 'entra' ? 'Llegó de ' + esc(h.de) : 'Pasaste a ' + esc(h.a)}</span><span class="fila-s">${esc(M.capital(M.fechaLarga(h.fecha)))}</span></span><span class="fila-m">${montoHtml(h.monto, 'neutro')}</span></div></li>`).join('')}</ul>` : '<p class="vacio">Todavía nada.</p>', { id: 'ap-hist' })}
+            ${tarjetaSeccion('Historial', a.historial.length ? `<ul class="lista">${a.historial.map((h) => `<li class="fila"><div class="fila-main fila-main--quieta">${caja(h.tipo === 'usar' ? '🎉' : h.tipo === 'liberar' ? '🔓' : '🐷')}<span class="fila-txt"><span class="fila-t">${h.tipo === 'apartar' ? 'Ahorraste' : h.tipo === 'liberar' ? 'Sacaste' : h.tipo === 'usar' ? 'Lo usaste' : h.tipo === 'devuelto' ? 'Volvió de un gasto que eliminaste' : h.tipo === 'corregido' ? (h.monto >= 0 ? 'Corregiste un gasto: usaste más' : 'Corregiste un gasto: volvió al ahorro') : h.tipo === 'entra' ? 'Llegó de ' + esc(h.de) : 'Pasaste a ' + esc(h.a)}</span><span class="fila-s">${esc(M.capital(M.fechaLarga(h.fecha)))}</span></span><span class="fila-m">${montoHtml(Math.abs(h.monto), 'neutro')}</span></div></li>`).join('')}</ul>` : '<p class="vacio">Todavía nada.</p>', { id: 'ap-hist' })}
         </div>`;
     };
 
@@ -1627,8 +1640,8 @@
         const st = P.st;
         return `<div class="pg">
             ${encabezado('Avisos', 'Cómo y cuándo te avisamos', { atras: 'Hoy' })}
-            ${tarjetaSeccion('Por dónde', `<ul class="lista"><li class="fila fila--switch"><span class="fila-txt"><span class="fila-t">Notificación de la app</span><span class="fila-s">En tu teléfono, con la app instalada</span></span><button type="button" class="switch" role="switch" aria-checked="true" data-a="switchSimple" data-fk="sw-app" aria-label="Notificación de la app"><span></span></button></li><li class="fila fila--switch"><span class="fila-txt"><span class="fila-t">Correo de respaldo</span><span class="fila-s">Por si no viste la notificación</span></span><button type="button" class="switch" role="switch" aria-checked="true" data-a="switchSimple" data-fk="sw-correo" aria-label="Correo de respaldo"><span></span></button></li></ul>`, { id: 'av-donde' })}
-            ${tarjetaSeccion('Recientes', st.avisos.length ? `<ul class="lista">${st.avisos.map((a) => `<li class="fila"><button type="button" class="fila-main" data-a="abrirAviso" data-id="${a.id}" data-fk="av-${a.id}">${caja(a.emoji || '🔔')}<span class="fila-txt"><span class="fila-t">${esc(a.titulo)}</span><span class="fila-s">${esc(a.texto)}</span><span class="fila-s">${esc(M.capital(M.fechaCorta(a.fecha)))} · ${esc(a.hora)}</span></span></button></li>`).join('')}</ul>` : '<p class="vacio">Sin avisos todavía.</p>', { id: 'av-rec' })}
+            ${tarjetaSeccion('Cuándo', `<p class="txt txt--card">Por ahora te avisamos al abrir la app: lo que vence hoy y mañana, y lo que ya venció. Cada pago tiene sus avisos en su ficha.</p>`, { id: 'av-donde' })}
+            ${tarjetaSeccion('Recientes', st.avisos.length ? `<ul class="lista">${st.avisos.map((a) => `<li class="fila"><button type="button" class="fila-main" data-a="abrirAviso" data-id="${a.id}" data-fk="av-${a.id}">${caja(a.emoji || '🔔')}<span class="fila-txt"><span class="fila-t">${esc(a.titulo)}</span><span class="fila-s">${esc(a.texto)}</span><span class="fila-s">${esc(M.capital(M.fechaCorta(a.fecha)))}</span></span></button></li>`).join('')}</ul>` : '<p class="vacio">Sin avisos todavía.</p>', { id: 'av-rec' })}
         </div>`;
     };
 

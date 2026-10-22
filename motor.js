@@ -159,6 +159,30 @@
     function anteriorAlCuadre(st, r) {
         return lugaresDe(st, r).map((id) => lugar(st, id)).filter((l) => l && l.cuadre && !despues(r, l.cuadre));
     }
+    /**
+     * v2.7 (D-8, F01): lo anotado DESPUÉS de un cuadre pero con fecha de ANTES explica la diferencia de ese cuadre: no se
+     * suma otra vez. Para cada cuadre, lo que explican esas anotaciones (con su signo: un gasto explica lo que salió).
+     * Cada anotación explica al primer cuadre que ya la incluía y que se hizo antes de anotarla. El primer cuadre (con lo
+     * que tenías al empezar) no explica nada: lo de antes de empezar es historia, no una diferencia.
+     */
+    function explicadoPorCuadre(st) {
+        const cuadres = {};
+        for (const r of st.registros) if (r.tipo === 'cuadre' && r.esperado !== undefined && !r.primero) (cuadres[r.lugar] = cuadres[r.lugar] || []).push(r);
+        for (const lista of Object.values(cuadres)) lista.sort((a, b) => (a.fecha < b.fecha ? -1 : a.fecha > b.fecha ? 1 : a.seq - b.seq));
+        const out = {};
+        for (const r of st.registros) {
+            if (r.tipo === 'cuadre') continue;
+            for (const id of lugaresDe(st, r)) {
+                const c = (cuadres[id] || []).find((x) => !despues(r, x));
+                if (c && r.seq > c.seq) out[c.id] = (out[c.id] || 0) + efecto(st, r, id);
+            }
+        }
+        return out;
+    }
+    /** v2.7 (D-8): lo que de verdad quedó «sin detalle» en un cuadre (positivo: entró; negativo: salió). */
+    const sinDetalleDe = (r, explicado) => r.monto - r.esperado - ((explicado && explicado[r.id]) || 0);
+    /** v2.7 (D-8): el «sin detalle» de un cuadre, ya descontado lo que se explicó después (Mes, la ficha del lugar). */
+    const sinDetalle = (st, r) => sinDetalleDe(r, explicadoPorCuadre(st));
     const tienes = (st) => suma(st.lugares, (l) => saldoLugar(st, l.id));
     const apartadoTotal = (st) => suma(st.apartados, (a) => a.monto);
     /** El último cuadre o anotación: para «Pongámonos al día». */
@@ -224,6 +248,11 @@
         const fin = p.hasta && p.hasta < hasta ? p.hasta : hasta;
         return fechasRegla(reglaPago(st, p), ini, fin).filter((fecha) => !deAntes(p.hechos[fecha])).map((fecha) => {
             const hecho = p.hechos[fecha];
+            // v2.7 (D-6, F12): pagaste una parte: lo que falta sigue pendiente (y cuenta en tu libre) hasta completarlo.
+            if (hecho && hecho.estado === 'parcial') {
+                const falta = Math.max(0, hecho.debido - hecho.pagado);
+                return { pago: p, fecha, monto: falta, estimado: false, hecho: null, estado: fecha < st.hoy ? 'vencido' : 'pendiente', parcial: { pagado: hecho.pagado, falta, total: hecho.debido, hecho } };
+            }
             return { pago: p, fecha, monto: hecho && hecho.monto !== undefined ? hecho.monto : p.monto, estimado: !hecho && p.estimado, hecho, estado: hecho ? hecho.estado : fecha < st.hoy ? 'vencido' : 'pendiente' };
         });
     }
@@ -339,14 +368,36 @@
         const lista = Array.isArray(elegido) && elegido.length === 1 ? [{ de: elegido[0].de, monto }] : elegido;
         return { id: t.id, tarjeta: true, nombre: t.nombre, emoji: t.emoji, asignaciones: Array.isArray(lista) && lista.length ? { [fecha]: lista } : {}, pagarCon: null };
     }
-    function tarjetaInfo(st, t, hz = null) {
+    /**
+     * v2.7 (F10): desde cuándo cuenta un abono para un estado de cuenta: después de su corte. Un estado guardado con la
+     * v2.7 sabe en qué orden se anotó (`seq`): un abono del MISMO día del corte, anotado después, es para ese estado. Los
+     * de antes no lo saben y siguen como antes (solo cuentan los de días después del corte).
+     */
+    const marcaEstado = (e, comoAntes = false) => ({ fecha: e.corte, seq: !comoAntes && Number.isInteger(e.seq) ? e.seq : Infinity });
+    /**
+     * v2.7 (D-7, F02, F03): «¿Cuánto debes hoy?» es un saldo con fecha: cuándo lo dijiste (`t.debeDesde`, con su orden).
+     * Las tarjetas de antes de la v2.7 no lo guardaban: el día en que se agregaron, y el orden de su número o del primer
+     * cuadre de ese día (el Primer día).
+     */
+    function puntoSaldo(st, t) {
+        if (t.debeDesde && t.debeDesde.fecha) return t.debeDesde;
+        const fecha = t.desde || inicioDe(st);
+        const m = /^t(\d+)$/.exec(String(t.id));
+        const seq = m ? +m[1] : Math.max(0, ...st.registros.filter((r) => r.primero && r.fecha === fecha).map((r) => r.seq || 0));
+        return { fecha, seq };
+    }
+    function tarjetaInfo(st, t, hz = null, { comoAntes = false } = {}) {
         const ult = t.estados[t.estados.length - 1];
         const regs = st.registros;
-        const pagos = regs.filter((r) => r.tipo === 'pagoTarjeta' && r.tarjeta === t.id && r.fecha > ult.corte);
+        const pagos = regs.filter((r) => r.tipo === 'pagoTarjeta' && r.tarjeta === t.id && despues(r, marcaEstado(ult, comoAntes)));
         // Un pago marcado «aCompras» paga compras nuevas (por ejemplo, solo la laptop) y no el estado de cuenta.
         const pagado = suma(pagos.filter((r) => !r.aCompras), (r) => r.monto);
         const pagadoCompras = suma(pagos.filter((r) => r.aCompras), (r) => r.monto);
-        const compras = regs.filter((r) => r.tipo === 'gasto' && medio(st, r.medio)?.tarjeta === t.id && r.fecha > ult.corte);
+        // v2.7 (D-7, F03): con lo que debes hoy, las compras de antes de decirlo ya están en ese saldo: no se suman otra vez
+        // (ni a lo que debes ni a tu libre). `comoAntes` (DATOS-4): como lo contaba la v2.6.7.
+        const conSaldo = !!ult.inicial && t.debeInicial !== null && t.debeInicial !== undefined;
+        const punto = conSaldo && !comoAntes ? puntoSaldo(st, t) : null;
+        const compras = regs.filter((r) => r.tipo === 'gasto' && medio(st, r.medio)?.tarjeta === t.id && r.fecha > ult.corte && (!punto || despues(r, punto)));
         // V2-54: la tarjeta del primer día no tiene día de corte hasta su primer estado de cuenta.
         const sinCorte = !t.corte;
         const [cy, cm] = partes(ult.corte);
@@ -383,7 +434,10 @@
         // Lo que debe de verdad no se sabe hasta su primer estado de cuenta: el estimado no cuenta como deuda.
         const debeTotal = Math.max(0, ult.total - cubierto + comprasTotal - Math.max(0, pagado - usual) - pagadoCompras);
         // agregado v2.6.7 #3: lo que dijiste que debes hoy (sin su primer estado de cuenta), o null si no lo dijiste.
-        const debeHoy = ult.inicial && t.debeInicial !== null && t.debeInicial !== undefined ? t.debeInicial + debeTotal : null;
+        // v2.7 (D-7, F02): ese saldo, más las compras de después, menos TODO lo que abonaste después (antes, un abono hasta
+        // lo que pagas normalmente no lo bajaba).
+        const abonadoSaldo = punto ? suma(regs.filter((r) => r.tipo === 'pagoTarjeta' && r.tarjeta === t.id && despues(r, punto)), (r) => r.monto) : 0;
+        const debeHoy = !conSaldo ? null : comoAntes ? t.debeInicial + debeTotal : Math.max(0, t.debeInicial + comprasTotal - abonadoSaldo);
         // v2.6.6 (V2-85): la fecha del pago que se cuenta. Sin estado de cuenta, la del ciclo pendiente: las pantallas leían
         // `ult.vence`, que en una tarjeta agregada después de su día de pago es la del ciclo anterior («venció el 14 oct»).
         const vence = ult.inicial && pendiente ? pendiente.vence : ult.vence;
@@ -415,7 +469,18 @@
         const pedir = !!pendiente && (sinCorte ? st.hoy >= sumarDias(pendiente.vence, -10) : siguiente ? st.hoy > pendiente.corte : !(ult.inicial && ult.esperarCorte && st.hoy <= proxCorte));
         // Dos pagos próximos de la misma tarjeta: el texto dice el mes (V2-31 #1).
         const dosPagos = porPagarEstado + estimado > 0 && comprasNetas > 0 && vence !== venceCompras;
-        return { t, ult, pagado, pagadoCompras, porPagarEstado, usual, estimado, sinCorte, compras, comprasTotal, comprasNetas, pendiente, pedir, proxCorte, resto, enLibre, debeTotal, debeHoy, reservas, reservado, venceCompras, cupoLibre, dosPagos, vence, comoPago, deCompras, partes: partesPago, conIngreso, reservadoComo, porPagarAhora, estimadoAhora, pagoComo };
+        return { t, ult, pagado, pagadoCompras, porPagarEstado, usual, estimado, sinCorte, compras, comprasTotal, comprasNetas, pendiente, pedir, proxCorte, resto, enLibre, debeTotal, debeHoy, punto, reservas, reservado, venceCompras, cupoLibre, dosPagos, vence, comoPago, deCompras, partes: partesPago, conIngreso, reservadoComo, porPagarAhora, estimadoAhora, pagoComo };
+    }
+    /**
+     * v2.7 (F17): lo que se propone pagar de una tarjeta y desde dónde, igual en todas las entradas («Pagar tarjeta»,
+     * Pongámonos al día, Anotar): lo del estado de cuenta, lo que pagas normalmente y lo reservado de un ahorro; desde la
+     * cuenta del medio con que dijiste que la pagas (V2-88) o, si no, el banco.
+     */
+    function pagoTarjetaPropuesto(st, t) {
+        const info = tarjetaInfo(st, t);
+        const m = t.medio ? medio(st, t.medio) : null;
+        const l = m && m.lugar && lugar(st, m.lugar) ? m.lugar : (st.lugares.find((x) => x.tipo === 'banco') || st.lugares[0] || {}).id || null;
+        return { monto: info.porPagarEstado + info.estimado + info.reservado, lugar: l, info };
     }
     /** Pagos de tarjeta como ocurrencias de Pagos: el estado vigente y, si llegó otro, el pendiente. */
     function ocurrenciasTarjeta(st, desde, hasta) {
@@ -425,16 +490,24 @@
             t.estados.forEach((e, i) => {
                 // v2.6.6 (V2-85): el que se pagó antes de agregar la tarjeta no se ve.
                 if (e.inicial || e.antes === 'pagado' || e.vence < desde || e.vence > hasta) return;
+                // v2.7 (F14): un estado de cuenta de $0 no tiene nada que pagar.
+                if (!(e.aPagar > 0)) return;
                 const ultimo = i === t.estados.length - 1;
-                const pagadoE = ultimo ? info.pagado : e.aPagar;
-                const estado = pagadoE >= e.aPagar ? 'pagado' : e.vence < st.hoy ? 'vencido' : 'pendiente';
-                out.push({ tarjeta: t, fecha: e.vence, monto: e.aPagar, estado, estadoCuenta: e, info });
+                // v2.7 (F11): uno anterior está pagado solo si hubo abonos para él (entre su corte y el del siguiente). Si no, lo
+                // que faltó pasó al estado de cuenta siguiente («arrastrado»): se dice así, sin inventar un pago ni volver a pedirlo.
+                const sig = t.estados[i + 1];
+                const pagadoE = ultimo ? info.pagado : suma(st.registros.filter((r) => r.tipo === 'pagoTarjeta' && r.tarjeta === t.id && !r.aCompras && despues(r, marcaEstado(e)) && !despues(r, marcaEstado(sig))), (r) => r.monto);
+                const estado = pagadoE >= e.aPagar ? 'pagado' : !ultimo ? 'arrastrado' : e.vence < st.hoy ? 'vencido' : 'pendiente';
+                // v2.7 (D-6, F12): pagaste una parte: se ve cuánto falta.
+                const parcial = pagadoE > 0 && pagadoE < e.aPagar ? { pagado: pagadoE, falta: e.aPagar - pagadoE } : null;
+                out.push({ tarjeta: t, fecha: e.vence, monto: e.aPagar, estado, estadoCuenta: e, info, ...(parcial ? { parcial } : {}), ...(sig ? { siguiente: sig } : {}) });
             });
             if (info.pendiente && info.pendiente.vence >= desde && info.pendiente.vence <= hasta) {
                 // V2-54: con lo que paga normalmente, el pago se ve (estimado) y se puede marcar Pagado.
                 if (info.usual) {
                     const pagadoYa = info.pagado >= info.usual;
-                    out.push({ tarjeta: t, fecha: info.pendiente.vence, monto: pagadoYa ? info.pagado : info.usual, estimado: !pagadoYa, estado: pagadoYa ? 'pagado' : info.pendiente.vence < st.hoy ? 'vencido' : 'pendiente', info });
+                    const parcial = info.pagado > 0 && !pagadoYa ? { pagado: info.pagado, falta: info.usual - info.pagado } : null;
+                    out.push({ tarjeta: t, fecha: info.pendiente.vence, monto: pagadoYa ? info.pagado : info.usual, estimado: !pagadoYa, estado: pagadoYa ? 'pagado' : info.pendiente.vence < st.hoy ? 'vencido' : 'pendiente', info, ...(parcial ? { parcial } : {}) });
                 } else out.push({ tarjeta: t, fecha: info.pendiente.vence, monto: null, estado: 'porConfirmar', info });
             }
         }
@@ -681,7 +754,8 @@
         return out;
     }
 
-    function calcular(st) {
+    /** `comoAntes` (v2.7, DATOS-4): con las reglas de tarjeta de la v2.6.7, solo para comparar al actualizar. */
+    function calcular(st, opts = {}) {
         const hz = horizonte(st);
         const t = tienes(st);
         const ap = apartadoTotal(st);
@@ -707,7 +781,7 @@
                 }
             }
         }
-        const tarjetas = st.tarjetas.map((x) => tarjetaInfo(st, x, hz));
+        const tarjetas = st.tarjetas.map((x) => tarjetaInfo(st, x, hz, opts));
         // v2.6.7 (V2-87): lo que pagas normalmente de una tarjeta (y el estado de cuenta que lo reemplaza) va con el ingreso
         // que lo paga, como cualquier otro pago: con un ingreso que todavía no llega no baja tu libre de hoy; si elegiste
         // pagarlo con lo que tienes y vence después de tu próximo ingreso, queda reservado.
@@ -782,10 +856,13 @@
     }
 
     // ------------------------------------------------------------------ mes
-    function resumenMes(st, y, m) {
+    function resumenMes(st, y, m, { comoAntes = false } = {}) {
         const ini = `${y}-${pad(m)}-01`;
         const fin = fechaDe(y, m, 31);
         const regs = st.registros.filter((r) => r.fecha >= ini && r.fecha <= fin);
+        // v2.7 (D-8, F01): un gasto anotado después de cuadrar explica el «sin detalle» de ese cuadre (cada centavo, una vez).
+        // `comoAntes` (DATOS-4): como lo contaba la v2.6.7, para saber si el número cambió al actualizar.
+        const explicado = comoAntes ? {} : explicadoPorCuadre(st);
         const ingresos = regs.filter((r) => r.tipo === 'ingreso');
         const gastos = regs.filter((r) => r.tipo === 'gasto');
         const fijos = gastos.filter((r) => r.pago);
@@ -798,8 +875,8 @@
         }
         const tarjetaSinDetalle = suma(regs.filter((r) => r.tipo === 'cargoTarjeta'), (r) => r.monto);
         const cuadres = regs.filter((r) => r.tipo === 'cuadre');
-        const sinDetalleSalio = suma(cuadres.filter((r) => r.monto < r.esperado), (r) => r.esperado - r.monto);
-        const sinDetalleEntro = suma(cuadres.filter((r) => r.monto > r.esperado), (r) => r.monto - r.esperado);
+        const sinDetalleSalio = suma(cuadres, (r) => Math.max(0, -sinDetalleDe(r, explicado)));
+        const sinDetalleEntro = suma(cuadres, (r) => Math.max(0, sinDetalleDe(r, explicado)));
         const entro = suma(ingresos, (r) => r.monto) + sinDetalleEntro;
         const salio = suma(gastos, (r) => r.monto) + tarjetaSinDetalle + sinDetalleSalio;
         return { y, m, ini, fin, regs, ingresos, fijos, anotados, porCategoria: Object.values(porCategoria).sort((a, b) => b.total - a.total), tarjetaSinDetalle, sinDetalleSalio, sinDetalleEntro, entro, salio, totalFijos: suma(fijos, (r) => r.monto), totalAnotados: suma(anotados, (r) => r.monto) };
@@ -827,8 +904,9 @@
         for (const p of st.pagos) {
             if (p.descuento) continue;
             for (const o of ocurrenciasPago(st, p, ini, fin)) {
-                if (o.estado === 'saltado' || (p.activo === false && !o.hecho)) continue;
-                pagos += o.monto;
+                if (o.estado === 'saltado' || (p.activo === false && !o.hecho && !o.parcial)) continue;
+                // v2.7 (D-6): una pagada en parte cuenta entera (lo pagado más lo que falta).
+                pagos += o.parcial ? o.parcial.total : o.monto;
                 if (o.estimado) aprox = true;
             }
         }
@@ -925,7 +1003,8 @@
         } else if (/\befectivo\b/.test(t) && st.medios.some((m) => m.id === 'efectivo')) {
             d.medio = 'efectivo';
             d.medioExplicito = true;
-            t = t.replace(/\b(en |con )?efectivo\b/, ' ');
+            // v2.7 (encontrado por invariantes I11): en «pasé 20 de efectivo a banco» la palabra es del lugar: se queda.
+            if (d.tipo !== 'cuadre' && d.tipo !== 'mover') t = t.replace(/\b(en |con )?efectivo\b/, ' ');
         } else if (/\btransferencia\b/.test(t) && st.medios.some((m) => m.id === 'transferencia')) {
             d.medio = 'transferencia';
             d.medioExplicito = true;
@@ -1179,12 +1258,12 @@
         MONTO_MAX, hoyLocal,
         MESES, MESES_CORTOS, DIAS, DIAS_CORTOS, pad, sumarDias, diasEntre, diaSemana, partes, diasDelMes, fechaDe, mesMas, fechaCorta, fechaLarga, conDia, diaCorto, relativa, haceDias, ultimoDia, proximoDia,
         dinero, leerMonto, montoExcede, montoCampo, suma, lugar, medio, tarjeta, pago, ingreso, apartado, categoria, principal, sinVS,
-        despues, lugarGasto, saldoLugar, anteriorAlCuadre, lugaresDe, tienes, apartadoTotal, ultimaActividad, fechasRegla, ocurrenciasPago, ocurrenciasIngreso, tarjetaInfo, ocurrenciasTarjeta,
+        despues, lugarGasto, saldoLugar, anteriorAlCuadre, lugaresDe, tienes, explicadoPorCuadre, sinDetalle, apartadoTotal, ultimaActividad, fechasRegla, ocurrenciasPago, ocurrenciasIngreso, tarjetaInfo, ocurrenciasTarjeta,
         horizonte, calcular, resumenMes, pagosDelMes, medioUsual, normalizar, entender, faltan, capital, porDiaDe, apartadosVencidos, esDiaDeIngreso, coincide,
         inicioDe, cortes, corteAntes, corteDespues, fundado, esFundado, periodoDe, fuentesPara, asignacion, reglaPago, recurrentes, descuentosDe, proyectar, claveVigente, reservasDe,
         esUnico, ingresoDeClave, llegoUnico, unicosPara,
         porPagar, porRecibir, ingresoEsperado, aplicarEsperado, pagoParecido,
         pasadaDelPeriodo, desdeSegun, inicioUso, antesDeEmpezar,
-        pagoDeTarjeta,
+        pagoDeTarjeta, pagoTarjetaPropuesto, puntoSaldo,
     };
 })();

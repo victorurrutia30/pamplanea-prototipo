@@ -776,6 +776,10 @@ button.fila-main:active {
 .estado--pend {
     color: var(--color-text);
 }
+/* v2.7 (D-6): pagado en parte; lo que falta sigue pendiente. */
+.estado--parcial {
+    color: var(--color-text);
+}
 .campana {
     display: inline-flex;
     margin-right: 4px;

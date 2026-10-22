@@ -141,7 +141,7 @@ En «Ayuda» → **«Instalar la app»** están los mismos pasos, con dibujos (l
 «Ayuda» o tu letra → **«Cuéntale a Victor o a Pam cómo vas»**. Al final de la prueba, mándaselo a Victor o a Pam: toca **«Compartir»** y elige su chat, o **«Copiar»** y pégalo. Antes del texto ves dos listas:
 
 - **Esto se manda:** la versión de la app; tu nombre o apodo; qué días la abriste con tus datos y cuántos; si la instalaste y qué hiciste en «Aprender a usarla»; cuántas veces anotaste, marcaste «Pagado», cuadraste y usaste «Reparte» y «Pongámonos al día»; las 5 pantallas que más abriste (solo cuáles); cuántas veces la app no te entendió al anotar; y, si los hay, tus respuestas a «¿Cómo te ha ido?», tu prueba guiada (cada tarea y tus respuestas del final), lo que contestaste en «Sobre ti» y lo que escribas en «¿Algo más…?».
-- **Esto NO se manda:** montos, ni los nombres de tus cuentas, pagos, ahorros, tarjetas y préstamos. Si escribes alguno en lo que cuentas, se tapa: sale [monto] o [nombre].
+- **Esto NO se manda:** tus montos, ni los nombres de tus cuentas, pagos, ahorros, tarjetas y préstamos. En lo que escribes, los números (con cifras) salen como [monto] y los nombres de tus cosas como [nombre]. Un monto escrito con letras, como «dos mil», no se tapa: revisa el texto antes de mandarlo (v2.7, F22).
 
 Lo ves completo antes de mandarlo. Nada sale solo: no hay recordatorios ni notificaciones.
 
