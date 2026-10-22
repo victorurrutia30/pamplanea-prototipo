@@ -460,8 +460,8 @@ caso('C-09', 'C', '«me pagaron 600» pregunta si es la quincena o un extra (V2-
     await cargar();
     // v2.8 (C-5): se pregunta a ±10 % y ±3 días de la quincena: aquí, el 28 (dos días antes de la del 30).
     const d0 = await ev(`(() => { P.st.hoy = '2026-10-28'; P.acciones.anotar(); const q = document.getElementById('anotar-q'); q.value = 'me pagaron 600'; q.dispatchEvent(new Event('input', { bubbles: true })); return { tipo: P.ui.hoja.d.tipo, pregunta: document.getElementById('anotar-preg')?.innerText || '' }; })()`);
-    // v2.6.5 (V2-81): la misma pregunta, con las palabras nuevas: «¿Es tu quincena del 30?» [Sí, marcarla como recibida] [No, es otro ingreso].
-    return /¿Es tu quincena del 30\?/.test(d0.pregunta) && /marcarla como recibida/.test(d0.pregunta) && /otro ingreso/.test(d0.pregunta) ? [] : ['no pregunta si es la quincena o un extra: ' + d0.pregunta.slice(0, 120)];
+    // v2.6.5 (V2-81): la misma pregunta. (ajuste 2, C-5 reforzado, APROBADO por Victor 2026-10-22): «¿Es tu quincena del 30?» [Sí, es esa] [No, es otro dinero].
+    return /¿Es tu quincena del 30\?/.test(d0.pregunta) && /Sí, es esa/.test(d0.pregunta) && /otro dinero/.test(d0.pregunta) ? [] : ['no pregunta si es la quincena o un extra: ' + d0.pregunta.slice(0, 120)];
 });
 
 // ============================================================ D · números

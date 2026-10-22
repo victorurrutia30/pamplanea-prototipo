@@ -496,9 +496,9 @@ for (const tema of temas) {
         await clic('[data-fk="nav-anotar"]');
         await escribir('#anotar-q', 'me pagaron 600');
         await foto('frase-me-pagaron');
-        // v2.8 (C-5): a 9 días de tu quincena ya no se pregunta «¿Es tu quincena?» (solo a ±10 % y ±3 días): es un extra.
-        // (La pregunta, a ±3 días: invariantes V8 y v265.)
-        check('9 días antes: no pregunta (es un extra)', await texto('#anotar-preg'), (t) => !String(t || '').includes('¿Es tu quincena'));
+        // v2.8 (C-5): la pregunta era solo a ±10 % y ±3 días. Ajuste 2 (C-5 reforzado, APROBADO por Victor 2026-10-22):
+        // «me pagaron» es Salario y siempre pregunta, también a 9 días (invariantes V8 y V13, v265).
+        check('9 días antes, Salario: pregunta «¿Es tu quincena del 30?»', await texto('#anotar-preg'), (t) => String(t || '').includes('¿Es tu quincena del 30?') && String(t).includes('Sí, es esa') && String(t).includes('No, es otro dinero'));
         await escribir('#anotar-q', 'aparté 20 luz');
         await foto('frase-aparte-luz');
         check('pregunta luz', await texto('#anotar-preg'), contiene('La luz ya está en tus pagos y se descuenta sola. ¿La ahorras igual?'));

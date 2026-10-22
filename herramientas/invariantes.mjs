@@ -27,6 +27,11 @@
 //  V10 tus datos de la v2.7 en la v2.8 (DATOS-1 a 5, C-1)
 //  V11 «no asumir» (APROBADO por Victor, 2026-10-22): cada ahorro de antes pregunta en qué cuenta está; «Aparte» sube tu libre
 //  V12 «¿Con qué lo pagas?» (APROBADO por Victor, 2026-10-22): un gasto fijo nunca recibe una cuenta que la persona no eligió
+// Ajuste 2 (APROBADO por Victor, 2026-10-22):
+//  V13 un salario anotado por «Me llegó dinero» nunca se cuenta dos veces (C-5 reforzado)
+//  V14 mover en Anotar: nunca a la misma cuenta
+//  V15 D-2 corregida (fijo o variable no se decide por el monto), decisión 24 y «¿Cómo es?»
+//  V16 «Pagué una deuda»: primero y solo «¿Cuál deuda pagaste?»
 // Uso: node herramientas/invariantes.mjs [--base=http://…/] [--puerto=9961] [--solo=I01,F13] [--raiz=<otra copia>]
 //      (--raiz: las mismas filas sobre otra copia, por ejemplo la v2.6.7 sacada de git, para ver cuáles fallaban antes)
 import { mkdir } from 'node:fs/promises';
@@ -850,9 +855,13 @@ await filaDe('V8', '«Me llegó dinero» (C-5): a ±10 % y ±3 días de tu quinc
     await ev(`P.st.hoy = '2026-10-14'; true`);
     const cerca = await ev(`(() => { const d = MOTOR.entender(P.st, 'me pagaron 560'); return { ref: d.ingresoRef && d.ingresoRef.fecha, preguntar: d.preguntarIngreso, faltan: MOTOR.faltan(P.st, d) }; })()`);
     check('$560 (−7 %) un día antes: «¿Es tu quincena?» (no se asume)', [cerca.ref, cerca.preguntar, cerca.faltan.includes('cualIngreso')], ['2026-10-15', true, true]);
-    check('$500 (−17 %): es un extra', await ev(`MOTOR.entender(P.st, 'me pagaron 500').ingresoRef`), null);
+    // Ajuste 2 (APROBADO por Victor, 2026-10-22, C-5 reforzado): «me pagaron» es Salario: siempre pregunta, sin importar el
+    // monto ni los días. La regla de ±10 % y ±3 días queda para lo demás («recibí»).
+    check('«me pagaron 500» (Salario, −17 %): también pregunta', await ev(`MOTOR.entender(P.st, 'me pagaron 500').ingresoRef?.fecha`), '2026-10-15');
+    check('«recibí 500» (−17 %): es un extra', await ev(`MOTOR.entender(P.st, 'recibí 500').ingresoRef`), null);
     await ev(`P.st.hoy = '2026-10-10'; true`);
-    check('$600 cinco días antes: es un extra', await ev(`MOTOR.entender(P.st, 'me pagaron 600').ingresoRef`), null);
+    check('«me pagaron 600» cinco días antes (Salario): también pregunta', await ev(`MOTOR.entender(P.st, 'me pagaron 600').ingresoRef?.fecha`), '2026-10-15');
+    check('«recibí 600» cinco días antes: es un extra', await ev(`MOTOR.entender(P.st, 'recibí 600').ingresoRef`), null);
     await ev(`P.st.hoy = '2026-10-14'; true`);
     await ev(`{ P.acciones.anotar(); const q = document.getElementById('anotar-q'); q.value = 'me pagaron 600'; q.dispatchEvent(new Event('input', { bubbles: true })); } true`);
     await esperar(80);
@@ -878,7 +887,8 @@ await filaDe('V9', 'Anotar un pago (C-4, P-1): «¿Es tu pago de Internet?», «
     await ev(`P.acciones.anotarGuardar(); true`);
     check('«Sí, es ese»: queda pagado (un solo gasto, ligado)', await ev(`[MOTOR.ocurrenciasPago(P.st, P.st.pagos[0], '2026-10-20', '2026-10-20')[0].estado, P.st.registros.filter((r) => r.tipo === 'gasto').map((r) => r.pago)]`), ['pagado', ['internet']]);
     await ev(`__armar((st) => __internet(st))`);
-    await ev(`__anotar('internet 100', { cualPlan: 'nuevo' })`);
+    // Ajuste 2 (D-2 corregida, APROBADO por Victor 2026-10-22): «Es nuevo» pregunta «¿Cómo es?»; aquí, «Solo esta vez».
+    await ev(`__anotar('internet 100', { cualPlan: 'nuevo', comoEs: 'unaVez' })`);
     check('«No, es un gasto nuevo»: un gasto sin ligar y tu internet sigue pendiente', await ev(`[MOTOR.ocurrenciasPago(P.st, P.st.pagos[0], '2026-10-20', '2026-10-20')[0].estado, P.st.registros.filter((r) => r.tipo === 'gasto').map((r) => r.pago || null)]`), ['vencido', [null]]);
     // Dos préstamos que se parecen: «¿De cuál de tus préstamos?».
     await ev(`__armar((st) => { __internet(st, { id: 'p1', nombre: 'Préstamo cooperativa', emoji: '🏦', categoria: 'cuotas', monto: 4500, dia: 25, tipoDeuda: 'prestamo', deuda: { debe: 50000 } }); __internet(st, { id: 'p2', nombre: 'Préstamo banco', emoji: '🏦', categoria: 'cuotas', monto: 6000, dia: 28, tipoDeuda: 'prestamo', deuda: { debe: 90000 } }); })`);
@@ -1039,6 +1049,118 @@ await filaDe('V12', '«¿Con qué lo pagas?»: un gasto fijo nunca recibe una cu
     await clic('[data-fk="ob-sig"]', 300);
     check('de antes, sin respuesta: no se agrega y lo pregunta', [await ev(`!!P.ui.ob`), await texto('.ob-editor .campo-error'), await pagoDe('Cable')], [true, 'Elige con qué lo pagas', null]);
     await ev(`P.acciones.obCerrar(); true`);
+});
+
+// ------------------------------------------------------------------ V13 (un salario por «Me llegó dinero» cuenta una vez)
+await filaDe('V13', 'Un salario anotado por «Me llegó dinero» nunca se cuenta dos veces: con Salario, o el nombre de un ingreso de tu plan, siempre «¿Es tu quincena del 30?»', async () => {
+    await ev(`__armar()`);
+    const tienes0 = await ev('P.calc().tienes');
+    const llegadas = () => ev(`Object.entries(P.st.ingresos.find((i) => i.id === 'quincena').llegadas).map(([f, x]) => [f, x.monto])`);
+    // Por el nombre: «me llegó la quincena 300» (lejos del monto y de los días) pregunta; «No, es otro dinero» es un extra.
+    const r0 = await ev(`__anotar('me llegó la quincena 300')`);
+    check('por el nombre: pregunta «¿Es tu quincena del 30?»', [r0.abierta, await texto('#l-cualIngreso')], [true, '¿Es tu quincena del 30?']);
+    await ev(`P.acciones.anotarValor({ campo: 'cualIngreso', v: 'extra' }); P.acciones.anotarGuardar(); true`);
+    await esperar(300);
+    check('«No, es otro dinero»: un extra; la quincena del 30 sigue esperada', [await llegadas(), (await ev('P.calc().tienes')) - tienes0], [[['2026-10-15', 60000]], 30000]);
+    await ev(`P.ui.hoja && P.cerrarHoja({ sinFoco: true }); P.ui.stack = []; P.render(); true`);
+    // Salario lejos del monto y de los días (antes no preguntaba): $450 el 21; la quincena es de $600 el 30.
+    const r = await ev(`(() => { P.acciones.anotar(); P.acciones.anotarAtajo({ v: 'ingreso' }); const m = document.getElementById('f-monto'); m.value = '450'; m.dispatchEvent(new Event('input', { bubbles: true })); P.acciones.anotarValor({ campo: 'categoriaIngreso', v: 'salario' }); P.acciones.anotarGuardar(); return P.ui.hoja ? P.ui.hoja.errores : null; })()`);
+    check('Salario: no se guarda sin contestar', r, (x) => Array.isArray(x) && x.includes('cualIngreso'));
+    check('«¿Es tu quincena del 30?» (Sí, es esa / No, es otro dinero)', [await texto('#l-cualIngreso'), await ev(`[...document.querySelectorAll('[data-campo="cualIngreso"]')].map((b) => b.textContent.trim())`)], ['¿Es tu quincena del 30?', ['Sí, es esa', 'No, es otro dinero']]);
+    await ev(`P.acciones.anotarValor({ campo: 'cualIngreso', v: 'esperado' }); P.acciones.anotarGuardar(); true`);
+    await esperar(300);
+    check('«Sí, es esa»: la del 30 llegó con $450 (no se crea otro ingreso)', [await llegadas(), await ev('P.st.ingresos.length')], [[['2026-10-15', 60000], ['2026-10-30', 45000]], 1]);
+    check('cuenta una vez: tienes +$750 ($300 extra y $450) y en Mes entró $1,350.00', [(await ev('P.calc().tienes')) - tienes0, (await ev('__mes()')).entro], [75000, 135000]);
+    // Otra vez Salario: la del 30 ya llegó: lo dice antes de guardar (lo que guardes es otro ingreso, no la quincena).
+    await ev(`P.ui.hoja && P.cerrarHoja({ sinFoco: true }); P.ui.stack = []; P.render(); true`);
+    await ev(`(() => { P.acciones.anotar(); P.acciones.anotarAtajo({ v: 'ingreso' }); const m = document.getElementById('f-monto'); m.value = '600'; m.dispatchEvent(new Event('input', { bubbles: true })); P.acciones.anotarValor({ campo: 'categoriaIngreso', v: 'salario' }); return true; })()`);
+    await esperar(200);
+    check('ya llegó: «Ya marcaste tu quincena del 30 como recibida»', await texto('#capa-hoja'), (t) => typeof t === 'string' && t.includes('Ya marcaste tu quincena del 30 como recibida'));
+    check('y la del 30 sigue contada una vez', await llegadas(), [['2026-10-15', 60000], ['2026-10-30', 45000]]);
+    // Lo demás sigue con ±10 % y ±3 días: «vendí 100» no pregunta.
+    await ev(`P.ui.hoja && P.cerrarHoja({ sinFoco: true }); P.ui.stack = []; P.render(); true`);
+    const r3 = await ev(`__anotar('vendí 100')`);
+    check('«vendí 100»: sin pregunta, un ingreso', [r3.abierta, (await ev('P.calc().tienes')) - tienes0], [false, 85000]);
+});
+
+// ------------------------------------------------------------------ V14 (mover: nunca a la misma cuenta)
+await filaDe('V14', 'Mover en Anotar: «¿A dónde?» nunca ofrece la cuenta de «¿De dónde?»; si queda igual, se vacía y se pide otra vez', async () => {
+    await ev(`__armar()`);
+    const total0 = await ev('P.calc().tienes');
+    await ev(`(() => { P.acciones.anotar(); const q = document.getElementById('anotar-q'); q.value = 'moví 20'; q.dispatchEvent(new Event('input', { bubbles: true })); P.acciones.anotarEditar({ campo: 'mover' }); P.acciones.anotarValor({ campo: 'de', v: 'efectivo' }); if (P.ui.hoja.editando !== 'mover') P.acciones.anotarEditar({ campo: 'mover' }); return true; })()`);
+    await esperar(200);
+    const destinos = () => ev(`[...document.querySelectorAll('#anotar-editor [data-campo="a"]')].map((b) => b.dataset.v)`);
+    check('de Efectivo: «¿A dónde?» sin Efectivo', await destinos(), ['banco', 'banco2']);
+    await ev(`(() => { P.acciones.anotarValor({ campo: 'a', v: 'banco' }); if (P.ui.hoja.editando !== 'mover') P.acciones.anotarEditar({ campo: 'mover' }); P.acciones.anotarValor({ campo: 'de', v: 'banco' }); if (P.ui.hoja.editando !== 'mover') P.acciones.anotarEditar({ campo: 'mover' }); return true; })()`);
+    await esperar(200);
+    check('el origen cambia a Banco Agrícola (el destino): se vacía y se pide', [await ev('P.ui.hoja.d.a'), await ev(`MOTOR.faltan(P.st, P.ui.hoja.d)`)], (x) => x[0] === null && x[1].includes('mover'));
+    check('y ya no ofrece Banco Agrícola', await destinos(), ['efectivo', 'banco2']);
+    await ev(`P.acciones.anotarValor({ campo: 'a', v: 'efectivo' }); P.acciones.anotarGuardar(); true`);
+    await esperar(300);
+    check('se movió: Efectivo +$20, Banco Agrícola −$20, el total igual', [await ev(`__saldo('efectivo')`), await ev(`__saldo('banco')`), await ev('P.calc().tienes')], [12000, 158000, total0]);
+});
+
+// ------------------------------------------------------------------ V15 (D-2 corregida y decisión 24)
+await filaDe('V15', 'D-2 corregida: fijo o variable no se decide por el monto; el gasto variable no trae medio elegido; «Es nuevo» pregunta «¿Cómo es?»', async () => {
+    const hay = (sel) => ev(`!!document.querySelector(${js(sel)})`);
+    await ev(`__armar()`);
+    await ev(`P.abrirHoja('nuevoPago', {}); true`);
+    await esperar(200);
+    check('«+ Gasto fijo»: sin «¿Siempre es el mismo monto?»; al final, «Pásalo a gasto variable»', await texto('.hoja'), (x) => typeof x === 'string' && !/mismo monto/i.test(x) && x.includes('¿Lo vas gastando en varias compras? Pásalo a gasto variable') && x.includes('El monto cambia cada mes') && x.includes('Pon un aproximado; cuando llegue, anotas el real.'));
+    await clic('[data-fk="np-servicios"]');
+    await clic('[data-fk="op-frecuente-luz"]');
+    check('la luz: «El monto cambia cada mes» viene marcado', await ev(`document.querySelector('[data-fk="estimado"]').getAttribute('aria-pressed')`), 'true');
+    await clic('[data-fk="clase-variable"]');
+    check('el enlace lo pasa a gasto variable, con el enlace de vuelta', [await texto('#hoja-t'), await hay('[data-fk="clase-fijo"]')], ['Gasto variable', true]);
+    await ev(`P.cerrarHoja({ sinFoco: true }); P.abrirHoja('nuevoPago', { fecha: 'variable' }); true`);
+    await esperar(200);
+    check('«+ Gasto variable»: «¿Con qué pagas normalmente?» sin nada elegido (decisión 24)', await ev(`document.querySelectorAll('[data-campo="medio"][aria-pressed="true"]').length`), 0);
+    await escribir('#f-nombre', 'Súper');
+    await escribir('#f-monto', '100');
+    await clic('[data-fk="hoja-ok"]');
+    check('sin elegir no se guarda: «Elige con qué lo pagas»', [await texto('#err-medio'), await ev('(P.st.variables || []).length')], ['Elige con qué lo pagas', 0]);
+    await clic('[data-fk="op-medio-debito"]');
+    await clic('[data-fk="hoja-ok"]');
+    check('con tu débito: guardado', await ev(`(P.st.variables || []).map((v) => [v.nombre, v.tope, v.medio])`), [['Súper', 10000, 'debito']]);
+    // Editar el gasto variable: «Pasar a gasto fijo» (lo guardado no cambia de tipo solo).
+    const vid = await ev('P.st.variables[0].id');
+    await ev(`P.abrirHoja('editarVariable', { id: ${js(vid)} }); true`);
+    await esperar(200);
+    await clic('[data-fk="clase-fijo"]');
+    check('«Pasar a gasto fijo»: su formulario con lo del variable', [await texto('#hoja-t'), await ev('P.ui.hoja.nombre'), await ev('P.ui.hoja.medio'), await ev('P.ui.hoja.estimado')], ['Pasar a gasto fijo', 'Súper', 'debito', true]);
+    await clic('[data-fk="dia-dia-28"]');
+    await clic('[data-fk="op-solo-no"]');
+    await clic('[data-fk="hoja-ok"]');
+    check('ahora es gasto fijo y el variable ya no sale en tu plan', [await ev(`P.st.pagos.some((p) => p.nombre === 'Súper' && p.activo !== false)`), await ev(`MOTOR.variablesInfo(P.st).length`)], [true, 0]);
+    // «Es nuevo» en Anotar: «¿Cómo es?».
+    await ev(`__armar((st) => __internet(st))`);
+    const r = await ev(`__anotar('pagué 30 de internet', { cualPlan: 'nuevo' })`);
+    check('«Es nuevo»: falta «¿Cómo es?»', r.errores, (x) => Array.isArray(x) && x.includes('comoEs'));
+    check('con sus respuestas', await ev(`[...document.querySelectorAll('[data-campo="comoEs"]')].map((b) => b.textContent.trim())`), ['Llega con fecha (luz, agua, internet)', 'Lo voy gastando (súper, gasolina)', 'Solo esta vez']);
+    await ev(`P.acciones.anotarValor({ campo: 'comoEs', v: 'unaVez' }); P.acciones.anotarGuardar(); true`);
+    await esperar(300);
+    check('«Solo esta vez»: un gasto, sin tocar tu plan', [await ev(`P.st.registros.filter((x) => x.tipo === 'gasto' && x.monto === 3000).length`), await ev('P.st.pagos.length'), await ev('!!P.ui.hoja')], [1, 1, false]);
+});
+
+// ------------------------------------------------------------------ V16 («Pagué una deuda»)
+await filaDe('V16', '«Pagué una deuda»: primero y solo «¿Cuál deuda pagaste?»; después, solo lo de esa deuda; sin deudas, «No tienes deudas anotadas»', async () => {
+    const hay = (sel) => ev(`!!document.querySelector(${js(sel)})`);
+    await ev(`__armar()`);
+    await ev(`P.acciones.anotar(); P.acciones.anotarAtajo({ v: 'pagoDeuda' }); true`);
+    await esperar(200);
+    check('sin deudas: «No tienes deudas anotadas» con «Agregar una deuda»', [await texto('#l-cualPlan'), await ev(`[...document.querySelectorAll('[data-campo="cualPlan"]')].map((b) => b.textContent.trim())`)], ['No tienes deudas anotadas.', ['Agregar una deuda']]);
+    await ev(`__armar((st) => { __tarjeta(st); st.tarjetas[0].apodo = 'La de la casa'; st.pagos.push({ id: 'prest', nombre: 'Préstamo de mi tía', emoji: '🤝', categoria: 'cuotas', monto: 5000, estimado: false, frecuencia: 'mensual', dia: 28, medio: 'debito', avisos: [], desde: '2026-10-01', hechos: {}, previos: [], tipoDeuda: 'prestamo', deuda: { debe: 30000 } }); })`);
+    await ev(`P.acciones.anotar(); P.acciones.anotarAtajo({ v: 'pagoDeuda' }); true`);
+    await esperar(200);
+    check('primero y solo la pregunta: sin campos ni tipo de gasto', [await ev(`document.querySelectorAll('#anotar-editor .editor').length`), await hay('[data-campo="categoria"]')], [0, false]);
+    check('tus deudas por su alias o nombre, y «Es nueva»', await ev(`[...document.querySelectorAll('[data-campo="cualPlan"]')].map((b) => b.textContent.replace(/\\s+/g, ' ').trim())`), (x) => x.some((t) => t.startsWith('La de la casa')) && x.some((t) => t.startsWith('Préstamo de mi tía')) && x.at(-1) === 'Es nueva');
+    await clic('[data-fk="plan-pago-prest"]');
+    check('al elegir: solo cuánto (su cuota), con qué y cuándo', [await ev('P.ui.hoja.d.tipo'), await ev('P.ui.hoja.d.monto'), await hay('#anotar-editor [data-campo="medio"]'), await hay('#anotar-editor [data-campo="fecha"]'), await hay('#f-nombre'), await hay('[data-campo="categoria"]')], ['pagado', 5000, true, true, false, false]);
+    // Pagar menos: D-6 (parcial).
+    await escribir('#f-monto', '30');
+    await ev(`P.acciones.anotarGuardar(); true`);
+    await esperar(300);
+    check('pagar $30 de $50: quedan $20 de esa cuota (D-6)', await ev(`(() => { const p = MOTOR.pago(P.st, 'prest'); const o = MOTOR.porPagar(P.st, p); return o ? [o.fecha, o.monto] : null; })()`), ['2026-10-28', 2000]);
 });
 
 const resultado = { version: await ev('window.VERSION_PROTOTIPO').catch(() => null), filas: filas.map((f) => ({ id: f.id, ok: f.ok, nombre: f.nombre, checks: f.checks.length, malas: f.checks.filter((c) => !c.ok) })), resumen: `${filas.filter((f) => f.ok).length} de ${filas.length} filas bien`, fallos, errores: b.errores, fallidas: b.fallidas };

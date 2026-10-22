@@ -222,7 +222,8 @@ if (partes.includes('b')) {
     });
     await seccion('B2 «Recibí» de tipo Salario', async () => {
         await conDatos();
-        // v2.8 (C-5): «¿Es tu quincena?» se pregunta a ±10 % y ±3 días: el 21, a 9 días de la del 30, es un extra; el 28, sí.
+        // v2.8 (C-5): «¿Es tu quincena?» se pregunta a ±10 % y ±3 días. (ajuste 2, C-5 reforzado, APROBADO por Victor 2026-10-22): con Salario, siempre:
+        // también el 21, a 9 días de la del 30. Las respuestas: «Sí, es esa» / «No, es otro dinero».
         const recibiSalario = async (monto) => {
             await clic('[data-fk="nav-anotar"]', 300);
             await clic('[data-fk="atajo-ingreso"]', 300);
@@ -234,12 +235,12 @@ if (partes.includes('b')) {
             }
         };
         await recibiSalario('600');
-        check('el 21 (9 días antes): no pregunta, es un extra', await texto('#capa-hoja'), (t) => !/¿Es tu quincena/.test(String(t)));
+        check('el 21 (9 días antes), con Salario: también pregunta', await texto('#capa-hoja'), (t) => /¿Es tu quincena del 30\?/.test(String(t)));
         await ev(`P.cerrarHoja({ sinFoco: true }); P.st.hoy = '2026-10-28'; P.render(); true`);
         const n0 = await numeros();
         const ingresosAntes = await ev('P.st.ingresos.length');
         await recibiSalario('580');
-        check('pregunta «¿Es tu quincena del 30?»', await texto('#capa-hoja'), (t) => /¿Es tu quincena del 30\?/.test(String(t)) && /Sí, marcarla como recibida/.test(String(t)) && /No, es otro ingreso/.test(String(t)));
+        check('pregunta «¿Es tu quincena del 30?»', await texto('#capa-hoja'), (t) => /¿Es tu quincena del 30\?/.test(String(t)) && /Sí, es esa/.test(String(t)) && /No, es otro dinero/.test(String(t)));
         await foto('B2-es-tu-quincena');
         await clic('[data-fk="cual-esperado"]', 300);
         await clic('[data-fk="anotar-guardar"]', 700);
