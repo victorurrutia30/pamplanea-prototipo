@@ -143,7 +143,9 @@ Versión visible en la app y en la guía: **«Prototipo v2.8.0 · 2026-10-22»**
   - **Modo ajuste** (hasta que Victor escriba «todo aprobado, lancemos»): en cada ajuste, decisiones en una línea, invariantes, las pruebas de las pantallas que cambian, el guion verificado con una fecha, push y reporte corto.
   - **No en modo ajuste:** entrenamiento, ayuda, glosario, tour, consejos, cuadrito, batería completa, pruebas largas, capturas-v28, vista de computadora, LEEME largo, README, MATRIZ-QA, versión y caché. Van en «Pendiente para el cierre».
   - **Única condición:** el entrenamiento y el tour no se rompen. Un paso que señala algo que ya no existe se salta sin error; el texto viejo está bien.
-- **Estado (wip, 2026-10-22):** Mi plan nuevo hecho; `invariantes` I05, I06, V24, V25 y V26 en verde. Faltan las 13 pruebas cortas, el guion y las 2 capturas: se detuvo por poca memoria.
+- **Decisiones 43 y 44: APROBADO por Victor (2026-10-22)**, al pegar «sigue — ya liberé memoria». Frases literales:
+  - «En Esta quincena, el resumen dice «Tienes $X · Ahorros $Y · Sale $Z» (los ahorros NO van dentro de «Sale»). Tienes − Ahorros − Sale = Tu libre, el mismo número de Hoy.»
+  - ««+~$150» para un ingreso aproximado en la lista por fecha: APROBADO (reemplaza el acuerdo de la v2.3 «nunca +~» solo en esta lista).»
 
 ### E1 — el cálculo y los datos
 
@@ -240,6 +242,11 @@ Versión visible en la app y en la guía: **«Prototipo v2.8.0 · 2026-10-22»**
 | Ajuste 4 · «¿En qué?» sin duplicados, en 4 líneas | Sí | `invariantes` V22, QUÉ DEBO PROBAR 2 |
 | Ajuste 4 · sin «¿Qué pasó?»; con un botón, solo sus datos | Sí | `invariantes` V23, `palabras-v28`, `numeros-entrenamiento`, QUÉ DEBO PROBAR 1 |
 | Ajuste 4 · no asumir en «Gasté» | Sí | `invariantes` V23 (también I10 y V3), QUÉ DEBO PROBAR 2 y 3 |
+| Ajuste 5 · un solo «+ Agregar» con los 6 formularios | Sí | `invariantes` V26, QUÉ DEBO PROBAR 4 |
+| Ajuste 5 · por fecha y «Ver por tipo ›», y se recuerda | Sí | `invariantes` V25, `entrega2-v23`, QUÉ DEBO PROBAR 1 y 5, capturas |
+| Ajuste 5 · un resumen por periodo: «Tu libre» = Hoy | Sí | `invariantes` V24, `viaje-v23`, `aceptacion-v23`, QUÉ DEBO PROBAR 1 y 3 |
+| Ajuste 5 · «⚠ N por confirmar ›» y una línea por fila | Sí | `invariantes` I05, I06 y V25, `v262`, QUÉ DEBO PROBAR 2 |
+| Ajuste 5 · nada se pierde frente a `509aef4` | Sí | `invariantes` V25 |
 
 ### Pruebas de E2 y al terminar
 
@@ -362,6 +369,34 @@ Versión visible en la app y en la guía: **«Prototipo v2.8.0 · 2026-10-22»**
   - Calendario: $856;
   - «Facturas y servicios»: $856.
 
+### Ajuste 5 «Mi plan más ligero» (2026-10-22)
+
+- **Lo que cambió** (opción A, APROBADO por Victor 2026-10-22; v2.8.0): un solo «+ Agregar»; abre por fecha con «Ver por tipo ›» (se recuerda); un resumen por pestaña («Tu libre» = Hoy); «⚠ N por confirmar ›»; una línea por fila; variables, ahorro y «Más adelante» al final; por tipo, secciones plegadas con cuántas y su total.
+- **Pruebas** (modo ajuste: una a la vez, con la memoria primero; hubo entre 4.5 y 4.9 GB libres):
+  - `invariantes`: **45 de 45**. Nuevas: V24 (libre = Hoy), V25 (nada se pierde frente a `509aef4`) y V26 («+ Agregar»);
+  - en verde: `palabras-v28`, `v263`, `v262`, `v241`, `aceptacion-v23`, `entrega2-v23`, `viaje-v23`, `humo-v23`, `atras`, `recorrer-sets`, `contraste-v23` (mínimo 4.94:1) y `numeros-entrenamiento`;
+  - actualizadas citando el ajuste 5 (no se borró ninguna): todas esas menos `humo-v23` y `atras`;
+  - 2 capturas a 390×844 con los datos de Victor (por fecha y por tipo), revisadas como imágenes.
+- **QUÉ DEBO PROBAR, verificado antes de escribirlo:**
+  - un guion repitió tu preparación y los ajustes 1 a 4 (el 4 en `509aef4`) y después las 5 pruebas nuevas con el código final, el 22 de octubre, sin fallos: en las 5 nuevas tu libre sigue en $856;
+  - encontró «~$NaN» en el total de «Deudas» con Mi BAC pagada en parte: quedó arreglado y probado en V25.
+
+### Pendiente para el cierre
+
+Para cuando Victor escriba «todo aprobado, lancemos» (modo ajuste: no se hizo ahora).
+
+- **Textos:**
+  - Practicar «Remesa» dice «En Mi plan (Calendario)…» y «Esperado · suma cuando llegue».
+  - La ayuda llama a Mi plan «Pagos».
+  - El tour y el glosario hablan de «tu próxima quincena» como tarjeta; ahora señalan el resumen de Mi plan → Próxima.
+  - El consejo de la primera vez en Mi plan.
+- **Contraste:** «⚠ N por confirmar» no se midió en los 4 temas (el caso de `contraste-v23` no tiene nada vencido).
+- **Pruebas que no se corrieron:**
+  - la batería completa y las largas: `v25`, `v24`, `v231`, `v26`, `v264`, `v266`, `v267`, `v267-editar`, `formularios-v265`, `recorrer-v2`, `recorrer-modos`;
+  - `capturas-v28`, `capturas-ux` y la vista de computadora;
+  - `actualizar` ×2: no hizo falta (no cambió cómo se guardan los datos).
+- **Documentos:** README, MATRIZ-QA, versión y caché.
+
 ### Decisiones técnicas — REVISAR (v2.8)
 
 1. ~~**Ahorros de antes: en qué cuenta.** En el banco con más dinero (si no hay banco, en la cuenta con más). Solo se ve como «dentro de Banco Agrícola»; se cambia en el ahorro.~~ **REEMPLAZADA (2026-10-22) por la pregunta de una vez «Tu ahorro [nombre], ¿en qué cuenta está?» («no asumir», APROBADO por Victor).** Ese banco solo se usa mientras no contestes. *(Se ve: QUÉ DEBO PROBAR.)*
@@ -420,6 +455,13 @@ Versión visible en la app y en la guía: **«Prototipo v2.8.0 · 2026-10-22»**
     - «Más…» pasa a «Menos». «Otros» cuenta como una categoría más.
 41. **Punto 6:** al elegir una categoría, el nombre escrito o entendido se queda; el de la categoría solo se pone si estaba vacío.
 42. **Punto 3:** «Corregir» un gasto muestra la misma lista, sin «Otra». Elegir ahí un gasto variable pasa el gasto a ese gasto variable.
+43. **Ajuste 5, Esta quincena dice «Tienes $X · Ahorros $Y · Sale $Z»** (APROBADO por Victor 2026-10-22): Tienes − Ahorros − Sale = Tu libre, el de Hoy. Sin ahorros dentro de tus cuentas, sin «Ahorros».
+44. **En la lista por fecha todo ingreso lleva «+», también el estimado («+~$150»)** (APROBADO por Victor 2026-10-22): reemplaza ahí, y solo ahí, el acuerdo de la v2.3 («nunca +~»).
+45. **Ver por tipo:** el total de cada sección es lo de la pestaña elegida (en Mes, los topes y el ahorro de cada quincena del mes). Las filas son todo tu plan, aunque no caiga en esas fechas.
+46. **«Al mes, más o menos: ingresos … · tu plan …» se quita:** lo dice la pestaña Mes («Entra · Sale · Te quedarían»). Mes sigue sin tus gastos del día a día, y lo dice.
+47. **La vista se recuerda en las preferencias del teléfono** (junto a los consejos vistos). No cambia cómo se guardan tus datos; por eso no se corrió `actualizar`.
+48. **«Por confirmar» es su propia pantalla** («‹ Mi plan»). Vacía dice «Nada por confirmar. Vas al día.»
+49. **Tour, solo para que no se rompa:** «Esta es tu próxima quincena» señala el resumen de Mi plan → Próxima, y «Aquí anotas un adelanto», «+ Agregar». Los textos no se tocaron.
 
 ### PENDIENTE (lo vi y no lo toqué)
 
