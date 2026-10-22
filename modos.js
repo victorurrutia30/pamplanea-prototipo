@@ -485,7 +485,8 @@
     function lineasNovedades(u) {
         const st = u.st;
         const n = u.novedades && u.novedades['v2.7'];
-        const lineas = ['Escribir montos es más fácil: escribe 25 y son $25. Y ya puedes anotar 1,200.'];
+        // v2.7 (A): sin el teclado propio, la línea de los montos es solo la de los miles.
+        const lineas = ['Ya puedes anotar montos grandes, como 1,200.'];
         if (st.pagos.some((p) => p.activo !== false)) lineas.push('Si pagas parte de una cuota, te mostramos cuánto falta.');
         if (st.tarjetas.length) lineas.push('Tus abonos a la tarjeta ahora bajan lo que debes.');
         const correccion = lineaCorreccion(n, st);

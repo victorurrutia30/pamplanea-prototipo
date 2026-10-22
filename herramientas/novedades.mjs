@@ -118,13 +118,14 @@ await seccion('C líneas', async () => {
     await sembrar(`s.tarjetas = []; s.medios = s.medios.filter((m) => !m.tarjeta); s.pagos = []; s.registros = s.registros.filter((r) => r.tipo !== 'cargoTarjeta' && r.tipo !== 'pagoTarjeta' && !r.pago);`);
     await abrirApp();
     const sin = await lineas();
-    check('sin tarjeta ni pagos: solo lo de los montos', sin, ['Escribir montos es más fácil: escribe 25 y son $25. Y ya puedes anotar 1,200.']);
+    // v2.7 (A): sin el teclado propio, la línea de los montos es solo la de los miles.
+    check('sin tarjeta ni pagos: solo lo de los montos', sin, ['Ya puedes anotar montos grandes, como 1,200.']);
     await foto('C-sin-tarjeta');
     // Con tarjeta y pagos, sin números corregidos (Ana tal cual, con otro nombre).
     await sembrar();
     await abrirApp();
     const con = await lineas();
-    check('con tarjeta y pagos: la de la cuota y la de la tarjeta', con, ['Escribir montos es más fácil: escribe 25 y son $25. Y ya puedes anotar 1,200.', 'Si pagas parte de una cuota, te mostramos cuánto falta.', 'Tus abonos a la tarjeta ahora bajan lo que debes.']);
+    check('con tarjeta y pagos: la de la cuota y la de la tarjeta', con, ['Ya puedes anotar montos grandes, como 1,200.', 'Si pagas parte de una cuota, te mostramos cuánto falta.', 'Tus abonos a la tarjeta ahora bajan lo que debes.']);
     check('sin números corregidos: ninguna línea de «Corregimos»', con.some((l) => l.startsWith('Corregimos')), false);
     // Con números que estaban mal en la v2.6.7: F01 (un gasto anotado después de cuadrar) y F02 (un abono a «lo que debo hoy»).
     await sembrar(`
