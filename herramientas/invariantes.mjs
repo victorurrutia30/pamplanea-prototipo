@@ -1396,7 +1396,8 @@ await filaDe('V24', 'Ajuste 5: «Tu libre» de Mi plan → Esta quincena es el m
     };
     await ev(`__armar(${EJEMPLO_385})`);
     check('el ejemplo de $385', await igual('ejemplo de $385'), '$385.00');
-    check('«Tienes $1,000.00 · Sale $615.00» ($300 de ahorro + $315 de tu plan)', await texto('.plan-res-l'), 'Tienes $1,000.00 · Sale $615.00');
+    // Decisión 43 (APROBADO por Victor, 2026-10-22): los ahorros dentro de tus cuentas van aparte de «Sale».
+    check('«Tienes $1,000.00 · Ahorros $300.00 · Sale $315.00»: Tienes − Ahorros − Sale = Tu libre', await texto('.plan-res-l'), 'Tienes $1,000.00 · Ahorros $300.00 · Sale $315.00');
     check('al tocarlo se abre «¿De dónde sale?»', await (async () => { await clic('[data-fk="plan-resumen"]'); return ev(`P.ui.hoja && P.ui.hoja.tipo`); })(), 'desglose');
     await ev(`P.cerrarHoja({ sinFoco: true }); true`);
     await igual('ejemplo de $385, por tipo', 'tipo');
@@ -1405,6 +1406,7 @@ await filaDe('V24', 'Ajuste 5: «Tu libre» de Mi plan → Esta quincena es el m
     // Día de pago sin confirmar: Hoy dice «Libre por ahora»; Mi plan, «Tu libre por ahora», con el mismo número.
     await ev(`__armar((st) => { st.hoy = '2026-10-30'; })`);
     await igual('día de tu quincena, sin confirmar');
+    check('sin ahorros dentro de tus cuentas, sin «Ahorros» (decisión 43)', await texto('.plan-res-l'), (t) => typeof t === 'string' && /^Tienes \$[\d,.]+ · Sale \$[\d,.]+$/.test(t));
     check('Hoy: «Libre por ahora»; Mi plan: «Tu libre por ahora»', [etiquetaHoy, await texto('.plan-res-e')], ['Libre por ahora', 'Tu libre por ahora']);
     // Sin libre: $0.00 en los dos, y dice cuánto falta.
     await ev(`__armar((st) => __internet(st, { monto: 500000, dia: 25 }))`);
@@ -1460,6 +1462,16 @@ await filaDe('V25', 'Ajuste 5: todo lo que mostraba el Mi plan anterior (509aef4
     await ev(`__armar(${RICO})`);
     await ev(`P.irTab('pagos'); true`);
     check('«Ver por fecha»: vuelve a abrir por fecha', [await ev(`!!document.querySelector('.pl-lista')`), await ev(`!!document.querySelector('[data-fk="ver-tipo"]')`)], [true, true]);
+    // Una tarjeta pagada en parte (con los datos de Victor salía «Deudas … ~$NaN.NaN»): cuenta la tarjeta entera.
+    await ev(`P.abrirHoja('pagado', { tipoPago: 'tarjeta', id: 't50' }); true`);
+    await escribir('#f-monto', '30');
+    await ev(`P.acciones.pagadoGuardar(); true`);
+    await esperar(150);
+    await ev(`P.ui.hoja && P.cerrarHoja({ sinFoco: true }); P.ui.pagosModo = 'fecha'; P.ui.pagosVista = 'actual'; P.irTab('pagos'); true`);
+    check('tarjeta pagada en parte: su fila dice «faltan $70.00»', await texto('[data-fk^="t-t50-"]'), (t) => typeof t === 'string' && t.includes('faltan $70.00'));
+    await ev(`P.ui.pagosModo = 'tipo'; P.render(); true`);
+    check('«Deudas» cuenta la tarjeta entera (~$145: $45 + lo que pagas normalmente, $100), sin «NaN»', await texto('[data-fk="sec-deudas"]'), (t) => typeof t === 'string' && t.endsWith('~$145') && !t.includes('NaN'));
+    await ev(`P.ui.pagosModo = null; true`);
 });
 
 // ------------------------------------------------------------------ V26 (ajuste 5, punto 1)

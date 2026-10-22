@@ -930,6 +930,8 @@
         const orden = (x) => (x.tipo === 'ingreso' ? 0 : 1);
         return xs.sort((a, b) => (a.fecha < b.fecha ? -1 : a.fecha > b.fecha ? 1 : orden(a) - orden(b)));
     }
+    /** Lo que vale entera una ocurrencia pagada en parte: un pago guarda el total aparte; una tarjeta, en su monto. */
+    const enteroDe = (o) => (o.parcial && o.parcial.total !== undefined ? o.parcial.total : o.monto || 0);
     /** El día a la izquierda de la fila: «29 oct», o «22 hoy». */
     const diaPlan = (f) => `<span class="pl-dia" aria-hidden="true"><span class="pl-dia-n">${M.partes(f)[2]}</span><span class="pl-dia-m">${f === P.st.hoy ? 'hoy' : M.MESES_CORTOS[M.partes(f)[1] - 1]}</span></span>`;
     /**
@@ -1001,7 +1003,8 @@
         if (vista === 'actual') {
             const hz = k.hz;
             const porConfirmar = hz.esHoy ? hz.ocurrencia : (hz.atrasadas || []).at(-1) || null;
-            linea = `Tienes ${dinero(k.tienes)} · Sale ${dinero(k.obligaciones + k.apartado)}`;
+            // Decisión 43 (APROBADO por Victor, 2026-10-22): Tienes − Ahorros − Sale = Tu libre. Sin ahorros dentro de tus cuentas, sin «Ahorros».
+            linea = `Tienes ${dinero(k.tienes)}${k.apartado ? ` · Ahorros ${dinero(k.apartado)}` : ''} · Sale ${dinero(k.obligaciones)}`;
             etiqueta = porConfirmar ? 'Tu libre por ahora' : 'Tu libre';
             numero = dinero(k.libre);
             if (k.libre <= 0 && (k.faltaPagos > 0 || k.sinCubrir > 0)) {
@@ -1037,7 +1040,7 @@
                 // Sin proyección del motor: lo de la lista (ingresos que llegan menos lo que sale).
                 const xs = ocurrenciasPlan(rango.desde, rango.hasta);
                 const entra = M.suma(xs.filter((y) => y.tipo === 'ingreso' && y.o.estado !== 'noLlego'), (y) => y.o.monto);
-                const sale = M.suma(xs.filter((y) => y.tipo !== 'ingreso' && y.o.estado !== 'saltado'), (y) => (y.o.parcial ? y.o.parcial.total : y.o.monto || 0));
+                const sale = M.suma(xs.filter((y) => y.tipo !== 'ingreso' && y.o.estado !== 'saltado'), (y) => enteroDe(y.o));
                 linea = `Entra ${dinero(entra, ap)} · Sale ${dinero(sale, ap)}`;
                 etiqueta = entra >= sale ? 'Te quedarían' : 'Te faltarían';
                 numero = dinero(Math.abs(entra - sale), ap);
@@ -1158,7 +1161,7 @@
         // El total de cada tipo en el periodo de la pestaña (en «Mes», los topes y el ahorro de cada quincena del mes).
         const veces = vista === 'mes' ? { quincena: 2, quince: 2, semana: 52 / 12, catorcena: 26 / 12 }[M.periodoPlan(st).cada] || 1 : 1;
         const deTipo = (...tipos) => xs.filter((x) => tipos.includes(x.tipo) && x.o.estado !== 'saltado' && x.o.estado !== 'noLlego');
-        const total = (lista) => ({ c: M.suma(lista, (x) => (x.o.parcial ? x.o.parcial.total : x.o.monto || 0)), aprox: lista.some((x) => (x.tipo === 'ingreso' ? x.o.estado !== 'llego' && x.o.aprox : x.o.estimado)) });
+        const total = (lista) => ({ c: M.suma(lista, (x) => enteroDe(x.o)), aprox: lista.some((x) => (x.tipo === 'ingreso' ? x.o.estado !== 'llego' && x.o.aprox : x.o.estimado)) });
         const porVeces = (c) => ({ c: Math.round(c * veces), aprox: !Number.isInteger(veces) });
         const abiertas = P.ui.planAbiertas || {};
         const seccion = (clave, titulo, id, filas, t, vacio) => {
