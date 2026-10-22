@@ -156,7 +156,8 @@ try {
         await foto('A-paso4-tarjetas');
         await clic('[data-fk="ob-sig"]');
         check('paso 5: gastos fijos', [await paso(), await titulo()], ['Paso 5 de 5', 'Tus gastos fijos']);
-        check('servicios en su cuadro (V2-66)', await ev(`[...document.querySelectorAll('.campo-l--sec')].map((e) => e.textContent.trim())`), ['Facturas de servicios', 'Casa y familia', 'Suscripciones']);
+        // Ajuste 3 (APROBADO por Victor, 2026-10-22), FM-4: el grupo se llama «Facturas y servicios».
+        check('servicios en su cuadro (V2-66)', await ev(`[...document.querySelectorAll('.campo-l--sec')].map((e) => e.textContent.trim())`), ['Facturas y servicios', 'Casa y familia', 'Suscripciones']);
         await clic('[data-fk="ob-p-luz"]');
         await escribir('#ob-p-monto', '35');
         await clic('[data-fk="ob-p-dia-12"]');

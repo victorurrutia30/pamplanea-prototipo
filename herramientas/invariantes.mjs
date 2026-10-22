@@ -32,6 +32,9 @@
 //  V14 mover en Anotar: nunca a la misma cuenta
 //  V15 D-2 corregida (fijo o variable no se decide por el monto), decisión 24 y «¿Cómo es?»
 //  V16 «Pagué una deuda»: primero y solo «¿Cuál deuda pagaste?»
+// Ajuste 3 «Formularios claros» (APROBADO por Victor, 2026-10-22):
+//  V17 FM-1 nada duplicado · V18 FM-2 «+ Ingreso» nunca ofrece Salario · V19 FM-3 «Es mi quincena → Ya llegó» no duplica
+//  V20 FM-5 archivar una categoría no cambia montos ni historial · V21 FM-7 «Gasté» en un gasto variable lo consume
 // Uso: node herramientas/invariantes.mjs [--base=http://…/] [--puerto=9961] [--solo=I01,F13] [--raiz=<otra copia>]
 //      (--raiz: las mismas filas sobre otra copia, por ejemplo la v2.6.7 sacada de git, para ver cuáles fallaban antes)
 import { mkdir } from 'node:fs/promises';
@@ -881,7 +884,7 @@ await filaDe('V9', 'Anotar un pago (C-4, P-1): «¿Es tu pago de Internet?», «
     await ev(`__armar((st) => __internet(st))`);
     const r1 = await ev(`__anotar('internet 100')`);
     check('«internet 100» no se guarda sin contestar', [r1.abierta, r1.errores.includes('cualPlan')], [true, true]);
-    check('pregunta «¿Es tu pago de Internet del 20 de octubre?»', await texto('#l-cualPlan'), '¿Es tu pago de Internet del 20 de octubre?');
+    check('pregunta «¿Es tu Internet del 20 de octubre?» (FM-8: «pago» solo para deudas, ajuste 3)', await texto('#l-cualPlan'), '¿Es tu Internet del 20 de octubre?');
     await foto('V9-es-tu-pago');
     await clic('[data-fk="plan-si"]');
     await ev(`P.acciones.anotarGuardar(); true`);
@@ -1161,6 +1164,158 @@ await filaDe('V16', '«Pagué una deuda»: primero y solo «¿Cuál deuda pagast
     await ev(`P.acciones.anotarGuardar(); true`);
     await esperar(300);
     check('pagar $30 de $50: quedan $20 de esa cuota (D-6)', await ev(`(() => { const p = MOTOR.pago(P.st, 'prest'); const o = MOTOR.porPagar(P.st, p); return o ? [o.fecha, o.monto] : null; })()`), ['2026-10-28', 2000]);
+});
+
+// ------------------------------------------------------------------ V17 (FM-1: nada duplicado)
+await filaDe('V17', 'FM-1: nunca dos con el mismo nombre en tu plan; «Es otro distinto» pide un nombre distinto', async () => {
+    const hay = (sel) => ev(`!!document.querySelector(${js(sel)})`);
+    const nombres = () => ev(`[...P.st.pagos, ...(P.st.variables || []), ...P.st.ingresos].filter((x) => x.activo !== false).map((x) => MOTOR.normalizar(x.nombre))`);
+    await ev(`__armar((st) => { __internet(st); st.pagos.push({ id: 'luz', nombre: 'Luz', emoji: '💡', categoria: 'servicios', monto: 3000, estimado: true, frecuencia: 'mensual', dia: 28, medio: 'debito', avisos: [], desde: '2026-10-01', hechos: {}, previos: [] }); st.variables = [{ id: 'v1', nombre: 'Súper', emoji: '🛒', categoria: 'super', tope: 15000, medio: 'debito', desde: '2026-10-15', creado: '2026-10-15', cierres: {}, activo: true }]; })`);
+    // «+ Gasto fijo» → Facturas y servicios → Luz: «Ya tienes «Luz» (el 28, ~$30)».
+    await ev(`P.abrirHoja('nuevoPago', {}); true`);
+    await esperar(200);
+    await clic('[data-fk="np-servicios"]');
+    await clic('[data-fk="op-frecuente-luz"]');
+    check('al elegir Luz: «Ya tienes «Luz» (el 28, ~$30)»', [await texto('#dup-t'), await ev(`[...document.querySelectorAll('#dup-box [data-a="yaTienes"]')].map((b) => b.textContent.trim())`)], ['Ya tienes «Luz» (el 28, ~$30).', ['Editar el que tengo', 'Es otro distinto']]);
+    await escribir('#f-monto', '30');
+    await clic('[data-fk="dia-dia-28"]');
+    await clic('[data-fk="op-medio-efectivo"]');
+    await clic('[data-fk="hoja-ok"]');
+    check('sin contestar no se guarda', [await ev(`P.st.pagos.filter((p) => p.nombre === 'Luz').length`), await texto('#err-duplicado')], [1, 'Elige una opción']);
+    await clic('[data-fk="dup-otro"]');
+    await escribir('#f-alias', 'luz');
+    await clic('[data-fk="hoja-ok"]');
+    check('«Es otro distinto» con el mismo nombre: no se guarda', [await ev(`P.st.pagos.filter((p) => MOTOR.normalizar(p.nombre) === 'luz').length`), await texto('#err-alias')], [1, 'Ponle un nombre distinto']);
+    await escribir('#f-alias', 'Luz de la casa de mamá');
+    await clic('[data-fk="hoja-ok"]');
+    check('con un nombre distinto: se guarda aparte (la de antes no cambia)', await ev(`P.st.pagos.filter((p) => /luz/i.test(p.nombre)).map((p) => [p.nombre, p.monto])`), [['Luz', 3000], ['Luz de la casa de mamá', 3000]]);
+    // «Editar el que tengo» abre el que ya tienes (no crea nada).
+    await ev(`P.abrirHoja('nuevoPago', { fecha: 'variable' }); true`);
+    await esperar(200);
+    await clic('[data-fk="op-frecuenteVar-super"]');
+    check('gasto variable: «Ya tienes «Súper»»', await texto('#dup-t'), (t) => typeof t === 'string' && t.startsWith('Ya tienes «Súper»'));
+    await clic('[data-fk="dup-editar"]');
+    check('«Editar el que tengo»: su formulario, sin crear otro', [await texto('#hoja-t'), await ev('(P.st.variables || []).length')], ['Editar Súper', 1]);
+    // Al editar: no se puede llamar como otro.
+    await ev(`P.cerrarHoja({ sinFoco: true }); P.abrirHoja('editarPago', { id: 'internet' }); true`);
+    await esperar(200);
+    await escribir('#f-nombre', 'LUZ');
+    await clic('[data-fk="hoja-ok"]');
+    check('editar Internet a «LUZ»: no se guarda', [await ev(`MOTOR.pago(P.st, 'internet').nombre`), await texto('#err-nombreDup')], ['Internet', 'Ya tienes uno con ese nombre. Ponle otro.']);
+    await ev(`P.cerrarHoja({ sinFoco: true }); true`);
+    // El cuchubal: si ya hay uno, pide otro nombre.
+    await ev(`P.st.pagos.push({ id: 'cuch', nombre: 'Cuchubal', emoji: '🤝', categoria: 'cuotas', monto: 2500, estimado: false, frecuencia: 'quincenal', dias: [15, 30], medio: 'efectivo', avisos: [], desde: '2026-10-01', hechos: {}, previos: [] }); P.abrirHoja('nuevoPago', {}); true`);
+    await esperar(200);
+    await clic('[data-fk="np-otro"]');
+    await clic('[data-fk="op-frecuente-cuchubal"]');
+    check('otro cuchubal: «Ya tienes «Cuchubal»» con «Ej. Cuchubal del trabajo»', [await texto('#dup-t'), await hay('[data-fk="dup-otro"]')], (x) => typeof x[0] === 'string' && x[0].startsWith('Ya tienes «Cuchubal»') && x[1]);
+    await clic('[data-fk="dup-otro"]');
+    check('su ejemplo', await ev(`document.getElementById('f-alias').placeholder`), 'Ej. Cuchubal del trabajo');
+    await ev(`P.cerrarHoja({ sinFoco: true }); true`);
+    const n = await nombres();
+    check('nunca dos con el mismo nombre', n.length, new Set(n).size);
+});
+
+// ------------------------------------------------------------------ V18 (FM-2: el ingreso principal en un solo lugar)
+await filaDe('V18', 'FM-2: «+ Ingreso» nunca ofrece Salario; el ingreso principal se crea y se edita en «Mi ingreso principal»', async () => {
+    const hay = (sel) => ev(`!!document.querySelector(${js(sel)})`);
+    const tipos = () => ev(`[...document.querySelectorAll('[data-campo="tipoIng"]')].map((b) => b.textContent.trim())`);
+    await ev(`__armar()`);
+    await ev(`P.abrirHoja('nuevoIngreso', {}); true`);
+    await esperar(200);
+    check('con ingreso principal: solo extras, sin Salario', [await tipos(), await hay('[data-fk="ing-configurar-principal"]'), await hay('[data-fk="ing-principal"]')], [['Remesa', 'Aguinaldo', 'Quincena 25', 'Bono o comisión', 'Venta', 'Adelanto de salario', 'Otro'], false, false]);
+    await ev(`P.cerrarHoja({ sinFoco: true }); P.abrirHoja('nuevoIngreso', { id: 'quincena' }); true`);
+    await esperar(200);
+    check('editar la quincena: «Mi ingreso principal», sin «¿Qué es?»', [await texto('#hoja-t'), await tipos()], ['Mi ingreso principal', []]);
+    // Sin ingreso principal: primero «Configurar mi ingreso principal».
+    await ev(`P.cerrarHoja({ sinFoco: true }); __armar((st) => { st.ingresos = []; st.registros = st.registros.filter((r) => r.tipo !== 'ingreso'); })`);
+    await ev(`P.abrirHoja('nuevoIngreso', {}); true`);
+    await esperar(200);
+    check('sin ingreso principal: primero «Configurar mi ingreso principal»; tampoco Salario', [await hay('[data-fk="ing-configurar-principal"]'), (await tipos()).includes('Salario')], [true, false]);
+    await clic('[data-fk="ing-configurar-principal"]');
+    check('«Mi ingreso principal»: quincena, el 15 y el 30', [await texto('#hoja-t'), await ev('P.ui.hoja.nombre'), await ev('P.ui.hoja.frecuencia')], ['Mi ingreso principal', 'Quincena', 'quincenal']);
+    await escribir('#f-monto', '600');
+    await clic('[data-fk="hoja-ok"]');
+    if (await hay('.hoja .pregunta--antes')) await clic('[data-fk="hoja-ok"]');
+    check('guardado como tu ingreso principal', await ev(`P.st.ingresos.map((i) => [i.nombre, i.monto, !!i.principal, i.categoria])`), [['Quincena', 60000, true, 'salario']]);
+});
+
+// ------------------------------------------------------------------ V19 (FM-3: «Es mi quincena → Ya llegó»)
+await filaDe('V19', 'FM-3: «Me llegó dinero» → «Es mi quincena del 30 → Ya llegó» la marca con el monto real y nunca la cuenta dos veces', async () => {
+    await ev(`__armar()`);
+    const tienes0 = await ev('P.calc().tienes');
+    await ev(`P.acciones.anotar(); P.acciones.anotarAtajo({ v: 'ingreso' }); true`);
+    await esperar(200);
+    check('arriba: «Es mi quincena del 30 → Ya llegó»', await texto('[data-fk="ing-ya-llego"]'), 'Es mi quincena del 30 → Ya llegó');
+    check('«¿Qué es?» con las mismas opciones que «+ Ingreso» (sin Salario)', await ev(`[...document.querySelectorAll('[data-campo="categoriaIngreso"]')].map((b) => b.textContent.trim())`), ['Remesa', 'Aguinaldo', 'Quincena 25', 'Bono o comisión', 'Venta', 'Adelanto de salario', 'Otro', 'Me prestaron']);
+    await clic('[data-fk="ing-ya-llego"]');
+    check('trae lo que esperabas ($600)', await ev('P.ui.hoja.d.monto'), 60000);
+    await escribir('#f-monto', '580');
+    await ev(`P.acciones.anotarGuardar(); true`);
+    await esperar(300);
+    const q = await ev(`(() => { const i = P.st.ingresos.find((x) => x.id === 'quincena'); return [i.llegadas['2026-10-30'] ? i.llegadas['2026-10-30'].monto : null, P.st.ingresos.length]; })()`);
+    check('la del 30 llegó con $580 (sin otro ingreso)', q, [58000, 1]);
+    check('cuenta una vez: tienes +$580 y en Mes entró $1,180.00', [(await ev('P.calc().tienes')) - tienes0, (await ev('__mes()')).entro], [58000, 118000]);
+    await ev(`P.ui.hoja && P.cerrarHoja({ sinFoco: true }); P.ui.stack = []; P.render(); P.acciones.anotar(); P.acciones.anotarAtajo({ v: 'ingreso' }); true`);
+    await esperar(200);
+    check('la del 30 ya llegó: el botón ya no sale (no se cuenta otra vez)', await texto('[data-fk="ing-ya-llego"]'), null);
+    await ev(`P.cerrarHoja({ sinFoco: true }); true`);
+});
+
+// ------------------------------------------------------------------ V20 (FM-5: archivar una categoría)
+await filaDe('V20', 'FM-5: «Otra» crea una categoría tuya; archivarla o renombrarla no cambia montos ni historial', async () => {
+    await ev(`__armar()`);
+    await ev(`P.abrirHoja('nuevoPago', {}); true`);
+    await esperar(200);
+    await clic('[data-fk="np-otro"]');
+    await clic('[data-fk="op-frecuente-otra"]');
+    await escribir('#f-catNombre', 'Clases de inglés');
+    await clic('[data-fk="op-catEmoji-13"]');
+    await escribir('#f-monto', '25');
+    await clic('[data-fk="dia-dia-28"]');
+    await clic('[data-fk="op-medio-efectivo"]');
+    await clic('[data-fk="hoja-ok"]');
+    const cat = await ev(`(P.st.categoriasPropias || []).map((c) => [c.grupo, c.nombre, c.emoji])`);
+    check('la categoría se guarda en «Otro» con su ícono; el gasto fijo se llama así', [cat, await ev(`P.st.pagos.map((p) => [p.nombre, p.monto, !!p.propia])`)], [[['otro', 'Clases de inglés', '📚']], [['Clases de inglés', 2500, true]]]);
+    await ev(`P.abrirHoja('nuevoPago', {}); true`);
+    await esperar(200);
+    await clic('[data-fk="np-otro"]');
+    check('la próxima vez sale en «¿Cuál?»', await ev(`[...document.querySelectorAll('[data-campo="frecuente"]')].map((b) => b.textContent.trim())`), (x) => x.includes('Clases de inglés') && x.at(-1) === 'Otra');
+    await ev(`P.cerrarHoja({ sinFoco: true }); true`);
+    const antes = await ev(`JSON.stringify({ pagos: P.st.pagos, registros: P.st.registros, libre: P.calc().libre })`);
+    const cid = await ev(`P.st.categoriasPropias[0].id`);
+    await ev(`P.abrirHoja('categorias', {}); true`);
+    await esperar(200);
+    await clic(`[data-fk="cat-${cid}"]`);
+    await escribir('#f-catNombre', 'Inglés');
+    await clic('[data-fk="cat-archivar"]');
+    await clic('[data-fk="cat-ok"]');
+    check('archivada y renombrada', await ev(`P.st.categoriasPropias.map((c) => [c.nombre, !!c.archivada])`), [['Inglés', true]]);
+    check('montos, historial y libre iguales (el gasto fijo sigue igual)', await ev(`JSON.stringify({ pagos: P.st.pagos, registros: P.st.registros, libre: P.calc().libre })`), antes);
+    check('«Mis categorías» la muestra archivada', await texto('.hoja'), (t) => typeof t === 'string' && t.includes('Inglés') && t.includes('Archivada'));
+    await ev(`P.cerrarHoja({ sinFoco: true }); P.abrirHoja('nuevoPago', {}); true`);
+    await esperar(200);
+    await clic('[data-fk="np-otro"]');
+    check('archivada no sale al crear', await ev(`[...document.querySelectorAll('[data-campo="frecuente"]')].map((b) => b.textContent.trim())`), (x) => !x.includes('Inglés') && !x.includes('Clases de inglés'));
+    await ev(`P.cerrarHoja({ sinFoco: true }); true`);
+});
+
+// ------------------------------------------------------------------ V21 (FM-7: «Gasté» en un gasto variable)
+await filaDe('V21', 'FM-7: «Gasté» muestra primero tus gastos variables; elegir uno lo consume y tu libre no baja', async () => {
+    await ev(`__armar((st) => { st.variables = [{ id: 'v1', nombre: 'Súper', emoji: '🛒', categoria: 'super', tope: 15000, medio: 'debito', desde: '2026-10-15', creado: '2026-10-15', cierres: {}, activo: true }]; })`);
+    const libre0 = await libre();
+    await ev(`P.acciones.anotar(); P.acciones.anotarAtajo({ v: 'gasto' }); true`);
+    await esperar(200);
+    const primeras = await ev(`[...document.querySelectorAll('[data-campo="enQue"]')].map((b) => b.textContent.replace(/\\s+/g, ' ').trim())`);
+    check('«¿En qué?»: primero «Súper · te quedan $150.00»', primeras[0], (t) => typeof t === 'string' && t.startsWith('Súper') && t.endsWith('te quedan $150.00'));
+    check('después los tipos de gasto y «Otra»', primeras.at(-1), 'Otra');
+    await clic('[data-fk="op-enQue-var:v1"]');
+    await escribir('#f-monto', '40');
+    await ev(`P.acciones.anotarGuardar(); true`);
+    await esperar(300);
+    check('lo consume: llevas $40 de $150', await ev(`(() => { const x = MOTOR.variablesInfo(P.st).find((y) => y.v.id === 'v1'); return [x.anotado, x.falta]; })()`), [4000, 11000]);
+    check('tu libre no baja', await libre(), libre0);
+    check('el gasto dice de qué gasto variable es', await ev(`P.st.registros.filter((r) => r.tipo === 'gasto').map((r) => [r.nombre, r.monto, r.variable])`), [['Súper', 4000, 'v1']]);
 });
 
 const resultado = { version: await ev('window.VERSION_PROTOTIPO').catch(() => null), filas: filas.map((f) => ({ id: f.id, ok: f.ok, nombre: f.nombre, checks: f.checks.length, malas: f.checks.filter((c) => !c.ok) })), resumen: `${filas.filter((f) => f.ok).length} de ${filas.length} filas bien`, fallos, errores: b.errores, fallidas: b.fallidas };

@@ -61,9 +61,10 @@ const anotar = (atajo, editor) => `(() => { P.ui.hoja = null; P.acciones.anotar(
  * la primera opción sin elegir que no lleve a otra pantalla.
  */
 const FORMULARIOS = [
-    { nombre: 'Anotar · gasto (tipo de gasto)', abrir: anotar('gasto', 'nombre'), elegir: ['[data-fk="op-categoria-comida"]'] },
+    // Ajuste 3 (APROBADO por Victor 2026-10-22): FM-7 «¿En qué?» (antes «¿Qué tipo de gasto?») y FM-3 «¿Qué es?» (las opciones de «+ Ingreso»).
+    { nombre: 'Anotar · gasto (tipo de gasto)', abrir: anotar('gasto', 'nombre'), elegir: ['[data-fk="op-enQue-comida"]'] },
     { nombre: 'Anotar · gasto (con qué)', abrir: anotar('gasto', 'medio'), elegir: ['[data-fk="op-medio-efectivo"]'] },
-    { nombre: 'Anotar · Recibí (¿de qué?)', abrir: anotar('ingreso', 'nombre'), elegir: ['[data-fk="op-categoriaIngreso-venta"]'] },
+    { nombre: 'Anotar · Recibí (¿de qué?)', abrir: anotar('ingreso', 'nombre'), elegir: ['[data-fk="op-categoriaIngreso-tipo:venta"]'] },
     { nombre: 'Anotar · Recordarme un pago (frecuentes)', abrir: anotar('pago', 'nombre'), elegir: ['[data-fk="op-frecuente-gimnasio"], [data-fk^="op-frecuente-"]:not([data-fk="op-frecuente-luz"])'] },
     { nombre: 'Anotar · Cuadrar (dónde)', abrir: anotar('cuadre', 'lugar'), elegir: ['[data-fk="op-lugar-efectivo"]'] },
     { nombre: 'Anotar · Mover', abrir: anotar('mover', 'mover'), elegir: ['[data-fk="op-de-efectivo"]'] },
@@ -113,8 +114,9 @@ const REVISAR = `(enOb) => {
         };
     });
     // Las etiquetas de los campos (no los títulos de sección, .campo-l--sec) son preguntas. «Alias (opcional)» es la frase
-    // que aprobó Victor (2026-10-22: «como se llama, como le dices? no será mejor, banco o cooperativa y alias?»).
-    const etiquetas = [...cont.querySelectorAll('.campo-l')].filter((e) => e.getClientRects().length && !e.classList.contains('campo-l--sec') && !e.closest('.ob-resumen')).map((e) => e.innerText.replace(/\\s+/g, ' ').trim()).filter((t) => t && !/¿[^?]+\\?/.test(t) && t !== 'Alias (opcional)');
+    // que aprobó Victor (2026-10-22: «como se llama, como le dices? no será mejor, banco o cooperativa y alias?»). «Ya tienes
+    // «Luz» (el 28, ~$30)» es el aviso del ajuste 3 (FM-1, APROBADO por Victor 2026-10-22), con sus dos botones.
+    const etiquetas = [...cont.querySelectorAll('.campo-l')].filter((e) => e.getClientRects().length && !e.classList.contains('campo-l--sec') && !e.closest('.ob-resumen')).map((e) => e.innerText.replace(/\\s+/g, ' ').trim()).filter((t) => t && !/¿[^?]+\\?/.test(t) && t !== 'Alias (opcional)' && !t.startsWith('Ya tienes «'));
     // v2.7 (A, reemplaza a C-6): los montos usan el teclado del teléfono, el numérico con punto (sin teclado propio).
     const montos = [...cont.querySelectorAll('.campo--monto input')].filter((i) => i.getAttribute('inputmode') !== 'decimal').map((i) => i.id);
     const chicos = [...cont.querySelectorAll('button, input, label.btn, [role="radio"]')].filter((e) => e.getClientRects().length && !e.classList.contains('sr-only') && !e.closest('.link--inline') && !e.classList.contains('link--inline')).map((e) => ({ e, r: e.getBoundingClientRect() })).filter(({ e, r }) => r.height < 43.5 && !(e.classList.contains('link') && r.height >= 24)).map(({ e, r }) => (e.dataset.fk || e.id || e.className) + ':' + Math.round(r.height));

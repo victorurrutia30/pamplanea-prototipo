@@ -178,8 +178,8 @@ if (partes.includes('a')) {
         // «luz 35»: la conexión de siempre: marca la vencida (12 oct).
         await anotar('luz 35');
         check('«luz 35» marca la luz del 12 de octubre', await ev(`({ tipo: P.ui.hoja.d.tipo, ocurrencia: P.ui.hoja.d.ocurrencia, boton: document.querySelector('[data-fk="anotar-guardar"]')?.innerText.trim() })`), { tipo: 'pagado', ocurrencia: '2026-10-12', boton: 'Marcar pagado' });
-        // v2.8 (C-4, P-1): primero «¿Es tu pago de Luz del 12 de octubre?» — «Sí, es ese».
-        check('pregunta «¿Es tu pago de Luz del 12 de octubre?»', await texto('#l-cualPlan'), '¿Es tu pago de Luz del 12 de octubre?');
+        // v2.8 (C-4, P-1): primero «¿Es tu Luz del 12 de octubre?» — «Sí, es ese». (Ajuste 3 (APROBADO por Victor, 2026-10-22), FM-8: «pago» solo para deudas.)
+        check('pregunta «¿Es tu Luz del 12 de octubre?»', await texto('#l-cualPlan'), '¿Es tu Luz del 12 de octubre?');
         await clic('[data-fk="plan-si"]', 300);
         await clic('[data-fk="anotar-guardar"]', 600);
         check('pagada la de octubre', await estadoPago('luz', '2026-10-12'), 'pagado');
@@ -224,15 +224,12 @@ if (partes.includes('b')) {
         await conDatos();
         // v2.8 (C-5): «¿Es tu quincena?» se pregunta a ±10 % y ±3 días. (ajuste 2, C-5 reforzado, APROBADO por Victor 2026-10-22): con Salario, siempre:
         // también el 21, a 9 días de la del 30. Las respuestas: «Sí, es esa» / «No, es otro dinero».
+        // Ajuste 3 (APROBADO por Victor, 2026-10-22), FM-3: «Me llegó dinero» ya no ofrece Salario (tu quincena se marca con «Es mi quincena del 30 →
+        // Ya llegó», invariantes V19). Lo escrito como salario («me pagaron 600») sigue preguntando (C-5 y ajuste 2).
         const recibiSalario = async (monto) => {
             await clic('[data-fk="nav-anotar"]', 300);
-            await clic('[data-fk="atajo-ingreso"]', 300);
-            await escribir('#f-monto', monto);
-            if (await hay('[data-fk="op-categoriaIngreso-salario"]')) await clic('[data-fk="op-categoriaIngreso-salario"]', 300);
-            else {
-                await clic('[data-fk="chip-nombre"]', 300);
-                await clic('[data-fk="op-categoriaIngreso-salario"]', 300);
-            }
+            await escribir('#anotar-q', 'me pagaron ' + monto);
+            await esperar(300);
         };
         await recibiSalario('600');
         check('el 21 (9 días antes), con Salario: también pregunta', await texto('#capa-hoja'), (t) => /¿Es tu quincena del 30\?/.test(String(t)));
@@ -284,18 +281,23 @@ if (partes.includes('c')) {
     const pagos = (n) => ev(`P.st.pagos.filter((p) => MOTOR.normalizar(p.nombre) === MOTOR.normalizar(${js(n)})).length`);
     await seccion('C1 «+ Pago» con la luz que ya tienes', async () => {
         await conDatos();
+        // Ajuste 3 (APROBADO por Victor, 2026-10-22), FM-1 (reemplaza V2-82): «Ya tienes «Luz» (el 12, ~$35)» sale al elegirla →
+        // «Editar el que tengo» / «Es otro distinto» (con un nombre distinto, obligatorio).
         await nuevoPago({ caja: 'servicios', frecuente: 'luz', monto: '35', dia: 12 });
         check('la luz elegida se ve marcada', await ev(`(() => { const b = document.querySelector('[data-fk="op-frecuente-luz"]'); return b && b.getAttribute('aria-pressed'); })()`), 'true');
+        check('lo dice al elegirla', await texto('#dup-t'), 'Ya tienes «Luz» (el 12, ~$35).');
         await clic('[data-fk="hoja-ok"]', 400);
-        check('pregunta antes de crear', await texto('#capa-hoja'), (t) => /Ya tienes «Luz» el 12 por ~\$35\. ¿Es otro pago\?/.test(String(t)));
-        check('todavía una sola luz', await pagos('Luz'), 1);
+        check('sin contestar no se crea', await pagos('Luz'), 1);
         await foto('C1-ya-tienes-luz');
-        await clic('[data-fk="dup-ver"]', 500);
-        check('«Ver el que tengo»: su ficha, sin crear otro', [await ev(`P.ui.stack.at(-1) && P.ui.stack.at(-1).tipo`), await ev(`P.ui.stack.at(-1) && P.ui.stack.at(-1).id`), await pagos('Luz'), await ev('!!P.ui.hoja')], ['pago', 'luz', 1, false]);
+        await clic('[data-fk="dup-editar"]', 500);
+        check('«Editar el que tengo»: su formulario, sin crear otro', [await texto('#hoja-t'), await pagos('Luz')], ['Editar Luz', 1]);
+        await ev('P.cerrarHoja && P.cerrarHoja({ sinFoco: true }); true');
         await nuevoPago({ caja: 'servicios', frecuente: 'luz', monto: '35', dia: 12 });
-        await clic('[data-fk="hoja-ok"]', 400);
         await clic('[data-fk="dup-otro"]', 500);
-        check('«Sí, es otro»: se guarda', await pagos('Luz'), 2);
+        await escribir('#f-alias', 'Luz de la casa de mamá');
+        await clic('[data-fk="hoja-ok"]', 400);
+        if (await hay('.hoja .pregunta--antes')) await clic('[data-fk="hoja-ok"]', 400);
+        check('«Es otro distinto»: se guarda con su nombre distinto', [await pagos('Luz'), await pagos('Luz de la casa de mamá')], [1, 1]);
     });
     await seccion('C2 parecido y misma categoría, día y monto', async () => {
         await conDatos();
@@ -318,7 +320,8 @@ if (partes.includes('c')) {
         await esperar(400);
         await escribir('#f-nombre', 'Internet');
         await clic('[data-fk="hoja-ok"]', 400);
-        check('cambiar Agua a «Internet» pregunta', await texto('#capa-hoja'), (t) => /Ya tienes «Internet» el 20 por \$25\.00\. ¿Es otro pago\?/.test(String(t)));
+        // Ajuste 3 (APROBADO por Victor, 2026-10-22), FM-1: al editar no se puede llamar como otro (nunca dos con el mismo nombre).
+        check('cambiar Agua a «Internet» no se guarda', [await texto('#err-nombreDup'), await pagos('Internet'), await pagos('Agua')], ['Ya tienes uno con ese nombre. Ponle otro.', 1, 1]);
     });
     await seccion('C4 Anotar «Recordarme un pago»', async () => {
         await conDatos();
@@ -326,10 +329,12 @@ if (partes.includes('c')) {
         await escribir('#anotar-q', 'recordarme luz el 12 35');
         await esperar(300);
         await clic('[data-fk="anotar-guardar"]', 400);
-        check('pregunta antes de crear', await texto('#capa-hoja'), (t) => /Ya tienes «Luz» el 12 por ~\$35\. ¿Es otro pago\?/.test(String(t)));
+        // Ajuste 3 (APROBADO por Victor, 2026-10-22), FM-1: «Ya tienes «Luz» (el 12, ~$35)» → «Es otro distinto» pide un nombre distinto.
+        check('pregunta antes de crear', await texto('#capa-hoja'), (t) => /Ya tienes «Luz» \(el 12, ~\$35\)\./.test(String(t)));
         check('todavía una sola luz', await pagos('Luz'), 1);
         await clic('[data-fk="dup-otro"]', 300);
-        check('«Sí, es otro»: ya no pregunta', await ev(`!!document.querySelector('.pregunta--dup')`), false);
+        check('«Es otro distinto»: ya no pregunta y pide su nombre', [await ev(`!!document.querySelector('.pregunta--dup')`), await texto('label[for="f-nombre"]')], [false, '¿Cómo le llamas a este?']);
+        await escribir('#f-nombre', 'Luz de mamá');
         await clic('[data-fk="op-frecuencia-mensual"]', 300);
         // v2.8 (APROBADO por Victor, 2026-10-22): «¿Con qué lo pagas?» ya no se elige solo (antes, por el tipo de gasto): se
         // elige el mismo de antes y se contesta «¿Se cobra solo?».
@@ -337,7 +342,7 @@ if (partes.includes('c')) {
         await clic(`[data-fk="op-medio-${await ev("MOTOR.medioUsual(P.st, 'servicios').id")}"]`, 300);
         if (await hay('[data-fk="op-solo-no"]')) await clic('[data-fk="op-solo-no"]', 300);
         await clic('[data-fk="anotar-guardar"]', 500);
-        check('«Sí, es otro»: se guarda', await pagos('Luz'), 2);
+        check('«Es otro distinto»: se guarda con su nombre', [await pagos('Luz'), await pagos('Luz de mamá')], [1, 1]);
     });
     await seccion('C5 «Completar tu Primer día» no repite', async () => {
         await conDatos();

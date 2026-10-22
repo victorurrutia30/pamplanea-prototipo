@@ -587,7 +587,8 @@ if (partes.includes('f')) {
         await abrirApp();
         check('al volver a abrir: otra vez (sin el préstamo contestado)', [await hay('.aviso-antes'), await ev('P.modos.casosAntes().map((c) => c.nombre)')], [true, ['Crédito Agrícola']]);
         await clic('[data-fk="antes-si-t:' + (await ev('P.st.tarjetas[0].id')) + ':2026-09-25"]', 400);
-        check('al contestar todo: «Listo» con el cambio y «Deshacer»', await texto('.aviso-antes'), (t) => t.includes('Listo, revisamos tus pagos de antes') && t.includes('Tu libre pasó de') && t.includes('Deshacer'));
+        // Ajuste 3 (FM-8, APROBADO por Victor 2026-10-22): «pago» solo para deudas: «Listo, revisamos lo de antes».
+        check('al contestar todo: «Listo» con el cambio y «Deshacer»', await texto('.aviso-antes'), (t) => t.includes('Listo, revisamos lo de antes') && t.includes('Tu libre pasó de') && t.includes('Deshacer'));
         await foto('F1-listo');
         await ev('P.guardarYa(); true');
         await esperar(300);

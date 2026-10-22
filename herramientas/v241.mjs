@@ -96,15 +96,16 @@ try {
         await usoQuincena();
         await clic('[data-fk="nav-pagos"]');
         await clic('[data-fk="nuevo-ingreso"]');
-        check('empieza con «¿Qué es?»', await ev('[...document.querySelectorAll("[data-fk^=op-tipoIng-]")].map((e) => e.textContent.trim())'), ['Salario', 'Adelanto', 'Remesa', 'Aguinaldo', 'Quincena 25', 'Bono o comisión', 'Venta', 'Otro']);
+        check('empieza con «¿Qué es?»', await ev('[...document.querySelectorAll("[data-fk^=op-tipoIng-]")].map((e) => e.textContent.trim())'), ['Remesa', 'Aguinaldo', 'Quincena 25', 'Bono o comisión', 'Venta', 'Adelanto de salario', 'Otro']);
         check('«¿Qué es?» va primero', await ev('document.querySelector(".hoja-c .campo-l")?.textContent'), '¿Qué es?');
         await foto('ingreso-que-es');
         const sugiere = {};
-        for (const t of ['salario', 'remesa', 'aguinaldo', 'q25', 'bono', 'venta', 'adelanto']) {
+        // Ajuste 3 (FM-2, APROBADO por Victor 2026-10-22): sin Salario (el ingreso principal va en «Mi ingreso principal»).
+        for (const t of ['remesa', 'aguinaldo', 'q25', 'bono', 'venta', 'adelanto']) {
             await clic(`[data-fk="op-tipoIng-${t}"]`);
             sugiere[t] = await ev('[P.ui.hoja.nombre, P.ui.hoja.frecuencia, P.ui.hoja.frecuencia === "quincenal" ? P.ui.hoja.d1 + "/" + P.ui.hoja.d2 : P.ui.hoja.fecha || ""]');
         }
-        check('cada tipo trae su frecuencia', sugiere, { salario: ['Salario', 'quincenal', '14/29'], remesa: ['Remesa', 'mensual', ''], aguinaldo: ['Aguinaldo', 'unico', '2026-12-12'], q25: ['Quincena 25', 'unico', '2027-01-25'], bono: ['Bono', 'unico', ''], venta: ['Venta', 'unico', ''], adelanto: ['Adelanto de salario', 'unico', ''] });
+        check('cada tipo trae su frecuencia', sugiere, { remesa: ['Remesa', 'mensual', ''], aguinaldo: ['Aguinaldo', 'unico', '2026-12-12'], q25: ['Quincena 25', 'unico', '2027-01-25'], bono: ['Bono', 'unico', ''], venta: ['Venta', 'unico', ''], adelanto: ['Adelanto de salario', 'unico', ''] });
         await escribir('#f-monto', '314');
         await ev('P.ui.hoja.fecha = "2026-10-29"; P.render(); true');
         await esperar(150);

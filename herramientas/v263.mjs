@@ -130,9 +130,12 @@ try {
         await enUso();
         await clic('[data-fk="nav-pagos"]');
         await clic('[data-fk="nuevo-pago"]');
-        check('cuatro cuadros del mismo estilo', await ev(`[...document.querySelectorAll('.hoja .opciones-grandes .opcion-g .opcion-g-t')].map((e) => e.textContent.trim())`), ['Cuota de un préstamo', 'Suscripción', 'Facturas de servicios', 'Otro pago']);
+        // Ajuste 3 (APROBADO por Victor, 2026-10-22): FM-4 «Facturas y servicios» (con el plan de celular, el gas, las tasas y la vigilancia)
+        // y «Otro» (FM-8: «pago» solo para deudas); «¿Cuál?» sale solo después de elegir un grupo, con «Otra» (FM-5).
+        check('cuatro cuadros del mismo estilo', await ev(`[...document.querySelectorAll('.hoja .opciones-grandes .opcion-g .opcion-g-t')].map((e) => e.textContent.trim())`), ['Cuota de un préstamo', 'Suscripción', 'Facturas y servicios', 'Otro']);
+        check('«¿Cuál?» todavía no sale (primero el grupo)', await ev(`document.querySelectorAll('[data-fk^="op-frecuente-"]').length`), 0);
         await clic('[data-fk="np-servicios"]');
-        check('«Facturas de servicios»: sus opciones', await ev(`[...document.querySelectorAll('[data-fk^="op-frecuente-"]')].map((e) => e.textContent.trim())`), ['Luz', 'Agua', 'Internet', 'Teléfono', 'Cable']);
+        check('«Facturas y servicios»: sus opciones', await ev(`[...document.querySelectorAll('[data-fk^="op-frecuente-"]')].map((e) => e.textContent.trim())`), ['Luz', 'Agua', 'Internet', 'Cable', 'Plan de celular', 'Gas (cilindro)', 'Tasas municipales (basura)', 'Vigilancia o cuota de colonia', 'Otra']);
         await foto('B-servicios');
         await clic('[data-fk="op-frecuente-internet"]');
         await escribir('#f-monto', '30');
@@ -142,7 +145,7 @@ try {
         check('de un toque: «Internet» con su categoría y su emoji', await ev(`(() => { const p = P.st.pagos.filter((x) => x.nombre === 'Internet').at(-1); return p ? [p.categoria, p.emoji] : null; })()`), ['servicios', '🌐']);
         await clic('[data-fk="nuevo-pago"]');
         await clic('[data-fk="np-otro"]');
-        check('«Otro pago»: lo de la casa y el nombre libre', [await ev(`[...document.querySelectorAll('[data-fk^="op-frecuente-"]')].map((e) => e.textContent.trim())`), await ev(`!!document.getElementById('f-nombre')`)], [['Alquiler', 'Colegio', 'Cuchubal'], true]);
+        check('«Otro»: lo de la casa y el nombre libre', [await ev(`[...document.querySelectorAll('[data-fk^="op-frecuente-"]')].map((e) => e.textContent.trim())`), await ev(`!!document.getElementById('f-nombre')`)], [['Alquiler', 'Colegio o universidad', 'Cuchubal', 'Seguro', 'Ayuda a la familia', 'Otra'], true]);
         await cerrar();
     }
     if (partes.includes('c')) {

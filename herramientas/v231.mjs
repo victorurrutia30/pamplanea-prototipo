@@ -102,7 +102,8 @@ async function victor({ conCuchubal = true } = {}) {
     await clic('[data-fk="pn-listo"]');
     await clic('[data-fk="nav-pagos"]');
     await clic('[data-fk="nuevo-ingreso"]');
-    await clic('[data-fk="op-tipoIng-salario"]');
+    // Ajuste 3 (FM-2, APROBADO por Victor 2026-10-22): «+ Ingreso» ofrece solo extras; el salario de la pareja va como «Otro» (los mismos días).
+    await clic('[data-fk="op-tipoIng-otro"]');
     await escribir('#f-nombre', 'Salario de mi pareja');
     await escribir('#f-monto', '566');
     await clic('[data-fk="hoja-ok"]');
@@ -126,6 +127,8 @@ async function victor({ conCuchubal = true } = {}) {
     }
     if (conCuchubal) {
         await clic('[data-fk="nuevo-pago"]');
+        // Ajuste 3 (FM-4, APROBADO por Victor 2026-10-22): «¿Cuál?» sale después de elegir el grupo («Otro»).
+        await clic('[data-fk="np-otro"]');
         await clic('[data-fk="op-frecuente-cuchubal"]');
         await escribir('#f-monto', '25');
         await clic('[data-fk="op-qModo-otros"]');

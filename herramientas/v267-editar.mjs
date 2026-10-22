@@ -328,8 +328,8 @@ if (partes.includes(6)) {
         await irA('pagos', 'pago', id);
         await clic('[data-fk="editar-pago"]', 400);
         const editar = await etiquetas();
-        // «¿Cuál pago?» elige un pago frecuente (un atajo para llenar el nombre), no es un dato.
-        comparar(crear, editar, ['¿Cuál pago?']);
+        // «¿Cuál?» elige uno frecuente (un atajo para llenar el nombre), no es un dato. (Ajuste 3 (APROBADO por Victor, 2026-10-22), FM-8: antes «¿Cuál pago?».)
+        comparar(crear, editar, ['¿Cuál?']);
         check('trae su turno', [await pulsado('cal-turno-2026-11-30'), await valor('#f-turnoMonto')], ['true', '250.00']);
         await elegirFecha('turno', '2026-12-15');
         await escribir('#f-turnoMonto', '300');
@@ -366,7 +366,7 @@ if (partes.includes(7)) {
         await irA('pagos', 'pago', id);
         await clic('[data-fk="editar-pago"]', 400);
         const editar = await etiquetas();
-        comparar(crear, editar, ['¿Cuál pago?']);
+        comparar(crear, editar, ['¿Cuál?']); // FM-8 (ajuste 3): antes «¿Cuál pago?».
         check('trae lo que tiene', [await valor('#f-nombre'), await valor('#f-monto'), await pulsado('dia-dia-28'), await pulsado('op-medio-' + debito), await pulsado('op-solo-si'), await pulsado('estimado')], ['Gimnasio', '25.00', 'true', 'true', 'true', 'false']);
         await escribir('#f-monto', '30');
         await clic('[data-fk="estimado"]');
