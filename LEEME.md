@@ -28,10 +28,28 @@ Versión visible en la app y en la guía: **«Prototipo v2.7.0 · 2026-10-21»**
   - **D-6:** un pago parcial deja pendiente lo que falta (pendiente / parcial / pagado). Se puede pagar menos del mínimo con el aviso «Te faltan $X para el mínimo».
   - **D-7:** «lo que debo hoy» de una tarjeta es un saldo con fecha. Los abonos lo bajan; las compras anteriores a esa fecha no lo suben.
   - **D-8:** detallar después de cuadrar explica la diferencia del cuadre, no la suma.
-  - **C-6:** teclado propio con punto, donde «25» = $25.00. Se adelanta a la v2.7. **APROBADO por Victor (2026-10-21)**, frase literal: «vamos arreglar todo lo de como ingresar numeros tambien».
+  - **C-6:** teclado propio con punto, donde «25» = $25.00. Se adelanta a la v2.7. **APROBADO por Victor (2026-10-21)**, frase literal: «vamos arreglar todo lo de como ingresar numeros tambien». **REEMPLAZADA por A** (abajo).
 - **Protección de datos (DATOS-1 a DATOS-5): APROBADO por Victor (2026-10-21)**, frase literal: «me refería a que ya no perdieran nada de sus datos en estas actualizaciones».
 - **Cuadrito de novedades: APROBADO por Victor (2026-10-21)**, frase literal: «les saldrá un cuadrito de una vez nada más explicando súper friendly el update, solo lo importante que deban saber, nada techy».
 - **Cambio de roadmap: APROBADO por Victor (2026-10-21)**, frase literal: «Me urgen los cambios a prototipo primero, asap, para que la sigan usando, modifiquemos el road map». Mi plan, ahorros aparte, gastos variables y el Hoy nuevo van en la v2.8.
+
+### Correcciones antes de validar (2026-10-21, registradas antes del código)
+
+**Lo que vio Victor** (Chrome de escritorio en tamaño teléfono):
+
+- Bien: el pago a medias («Parcial · faltan $50.00» en el historial); «mañana pupusas 10»; «súper 1,2345» no guarda $1.23.
+- «mañana pupusas 10» **sí baja tu libre $10**, y es lo correcto: es un pago antes de tu próximo ingreso. Lo que no baja hasta que lo pagues es lo que tienes. (El guion de pruebas anterior decía «tu libre de hoy no baja»: estaba mal.)
+- Mal: el teclado propio se abre solo, tapa todo el formulario y esconde el mensaje «No entendí…».
+
+**Decisiones: APROBADO por Victor (2026-10-21)**, frase literal: «apruebo todo lo demás».
+
+- **A: C-6 REEMPLAZADA.** Se quita el teclado propio y se usa el del teléfono. Se conserva el lector único de montos: «25» = $25.00, «2.5» = $2.50, «1,200» = $1,200.00 y «25,50» = $25.50 (por si un teléfono muestra coma). Nada se abre solo tapando el formulario; el campo y su mensaje quedan a la vista al escribir.
+- **P-3: la nota del cuadre en Anotar y en los formularios, antes de guardar:**
+  - Un gasto o ingreso con fecha **anterior** al último cuadre de esa cuenta dice: «Esto fue antes de que contaras tu [cuenta] el [día]. Ya está dentro de lo que contaste: tu [cuenta] no cambia.» Trae el botón «Fue después de contar»; si lo toca, cuenta como posterior al cuadre y sí baja el saldo.
+  - Si es del **mismo día** que el cuadre, pregunta «¿Fue antes o después de contar tu dinero?». No se asume.
+- **P-1: para la v2.8 (no se implementa ahora).** Frase literal de Victor: «creo que cuando anotas un pago, tiene que ser para un pago o gasto registrado, a menos que sea un pago nuevo». Anotar un pago se conecta con algo del plan (gasto fijo, deuda o préstamo, o tarjeta): «¿Es tu pago de [nombre]?» o «¿De cuál de tus préstamos?», con la opción «Es nuevo».
+- **P-2: NO APLICA.** El Primer día ya pregunta si ya pagaste lo que vence ese día (Victor lo confirmó).
+- **F09/D-5: para la v2.8.** La tarjeta con corte el 5 y pago el 25 no aparece el 25 de este mes; se arreglará preguntando «¿Qué día vence tu próximo pago?».
 
 **Orden obligatorio:** A (proteger sus datos) → B (arreglos del dinero) → C (escribir montos y anotar) → D (cuadrito de novedades). Sin la Parte D no se publica. Las cuatro partes están hechas, cada una con su commit.
 
