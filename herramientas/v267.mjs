@@ -164,6 +164,8 @@ async function primerDia(f, { nombre = 'Marta', quincena = null, mes = null, efe
         if (t.corte) await escribir('#ob-t-corte', t.corte);
         await escribir('#ob-t-pago', t.pago);
         if (t.usual) await escribir('#ob-t-usual', t.usual);
+        // v2.8 (D-5): «Tu próximo pago»: si la persona dice que es el del mes siguiente, lo elige.
+        if (t.otroMes) await clic('[data-fk="vence-otro"]');
         await clic('[data-fk="ob-t-guardar"]');
         if (await hay('#ob-antes-t')) {
             notas['pregunta-' + t.banco + '-' + f] = await texto('#ob-antes-t');
@@ -257,8 +259,9 @@ if (partes.includes('b')) {
         await foto('B1-hoy-despues-de-deshacer');
     });
     await seccion('B2 pago el 20: a la quincena del 30 (y desde «Editar»)', async () => {
-        // Corte 5 (ya pasó) y pago el 20: el pago estimado es el del 20 nov.
-        await primerDia('2026-10-19', { ...tester1, tarjetas: [{ banco: 'BAC', corte: '5', pago: '20', usual: '100' }] });
+        // Corte 5 (ya pasó) y pago el 20: el pago estimado es el del 20 nov. v2.8 (D-5): la persona lo dice («20 de
+        // noviembre» en «Tu próximo pago»); sin decirlo sería el 20 de este mes.
+        await primerDia('2026-10-19', { ...tester1, tarjetas: [{ banco: 'BAC', corte: '5', pago: '20', usual: '100', otroMes: true }] });
         const n0 = await numeros();
         const p0 = await periodos();
         check('por defecto, la quincena del 15 nov (la de antes del 20)', (await infoTarjeta('Crédito BAC')).partes, [{ de: '2026-11-15', monto: 10000 }]);
@@ -549,7 +552,7 @@ if (partes.includes('f')) {
         await ev(`(() => { P.sinGuardar = true; localStorage.clear(); localStorage.setItem('pamplanea-uso:v1', ${js(datos)}); localStorage.setItem('pamplanea-entrenamiento', ${js(progreso)}); localStorage.setItem('pamplanea-modo', JSON.stringify({ modo: 'uso', notaAvisos: true, ofertaTarjetas: 'no', tips: { hoy: true, pagos: true, midinero: true, mes: true, anotar: true, pago: true, cuentas: true, ahorros: true, deudas: true } })); return true; })()`);
         await abrirApp();
         // v2.7: la versión que abre estos datos ya es la v2.7 (la prueba sigue midiendo lo mismo).
-        check('es la v2.6.7 o más nueva', await ev('window.VERSION_PROTOTIPO'), (v) => /2\.6\.7|2\.7\.\d/.test(v));
+        check('es la v2.6.7 o más nueva', await ev('window.VERSION_PROTOTIPO'), (v) => /2\.6\.7|2\.[78]\.\d/.test(v));
         const n = await numeros();
         notas.F1 = { numeros: n, tarjeta: await infoTarjeta('Crédito Agrícola') };
         check('el libre se recalcula: $50.00 − $25.00 del Internet (con lo que tiene) = $25.00', n.libre, 2500);

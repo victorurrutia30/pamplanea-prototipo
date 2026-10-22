@@ -9,6 +9,10 @@
 // el mismo monto; lo único nuevo es la cuenta de cada gasto, DATOS-3/F04), los saldos de las cuentas iguales, los números
 // «de antes» del cuadrito de novedades iguales a los que mostraba la versión vieja (DATOS-4), y lo mismo con Carlos, Rosa
 // y un set sintético que reproduce cada F (F01–F04, F10–F17, F21) creado con la versión vieja.
+// v2.8 (DATOS-1 a 5, que siguen vigentes; C-1): la copia es `antes-de-v2.8.0`; lo único nuevo en tus datos, además de la
+// cuenta de cada gasto, es dónde está cada ahorro (`donde`: dentro de tu cuenta, C-1). Los números «de antes» del
+// cuadrito son los de la versión vieja (con sus reglas). Si la regla nueva de la tarjeta (D-4) o los cobros con tarjeta
+// (C-7) cambian tu libre, la app muestra el número nuevo y el cuadrito lo dice con antes y después.
 // Uso: node herramientas/actualizar.mjs --ref=7c0d06e   (v2.5)   ·   --ref=ca97256   (v2.6)   [--puerto=8767]
 import { execSync, spawn } from 'node:child_process';
 import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
@@ -83,6 +87,15 @@ const desde27 = (v) => {
     return a > 2 || (a === 2 && b2 >= 7);
 };
 const NUEVA27 = desde27(NUEVA);
+const desde28 = (v) => {
+    const [a, b2] = numV(v);
+    return a > 2 || (a === 2 && b2 >= 8);
+};
+const NUEVA28 = desde28(NUEVA);
+/** v2.8: la clave del cuadrito de la versión nueva. */
+const NOV = NUEVA28 ? 'v2.8' : 'v2.7';
+/** v2.8: ¿esta línea del cuadrito dice que un número cambió? (v2.7: «Corregimos…»; v2.8: con antes y después). */
+const lineaCambio = (l) => (NUEVA28 ? /^(Tu libre era|Tu gasto de \S+ era|Lo que debes de .+ era)/.test(l) : l.startsWith('Corregimos'));
 const CLAVE_COPIA = 'pamplanea-uso:respaldo:antes-de-v' + numV(NUEVA).join('.');
 /** Lo que ve la persona (en la versión que esté abierta): saldos, libre, Mes y lo que debe de cada tarjeta. */
 const NUMEROS = `(() => { const s = P.st; const k = P.calc(); const [y, m] = MOTOR.partes(s.hoy); const mes = MOTOR.resumenMes(s, y, m); return { saldos: Object.fromEntries(s.lugares.map((l) => [l.id, MOTOR.saldoLugar(s, l.id)])), tienes: MOTOR.tienes(s), libre: k.libre, mes: [mes.salio, mes.entro], tarjetas: Object.fromEntries(s.tarjetas.map((t) => { const i = MOTOR.tarjetaInfo(s, t); const debe = i.debeHoy !== undefined ? i.debeHoy : i.ult.inicial && t.debeInicial !== null && t.debeInicial !== undefined ? t.debeInicial + i.debeTotal : null; return [t.id, debe !== null ? debe : i.debeTotal]; })) }; })()`;
@@ -103,7 +116,8 @@ function perdidas(viejo, nuevo) {
                 continue;
             }
             for (const c of Object.keys(x)) if (JSON.stringify(x[c]) !== JSON.stringify(y[c])) out.push(`${k} ${x.id}.${c}: ${JSON.stringify(x[c]).slice(0, 60)} → ${JSON.stringify(y[c]).slice(0, 60)}`);
-            for (const c of Object.keys(y)) if (!(c in x) && !(k === 'registros' && x.tipo === 'gasto' && c === 'lugar')) out.push(`${k} ${x.id}: campo nuevo ${c}`);
+            // DATOS-3: la cuenta de cada gasto; v2.8 (C-1): dónde está cada ahorro (dentro de tu cuenta).
+            for (const c of Object.keys(y)) if (!(c in x) && !(k === 'registros' && x.tipo === 'gasto' && c === 'lugar') && !(NUEVA28 && k === 'apartados' && c === 'donde')) out.push(`${k} ${x.id}: campo nuevo ${c}`);
         }
     }
     for (const c of ['nombre', 'inicio', 'configurado', 'persona', 'seq']) if (JSON.stringify(viejo[c]) !== JSON.stringify(nuevo[c])) out.push(`${c}: ${JSON.stringify(viejo[c])} → ${JSON.stringify(nuevo[c])}`);
@@ -150,6 +164,7 @@ const SINTETICO = `(() => {
     return s;
 })()`;
 
+let libreNuevo = null;
 try {
     // ------------------------------------------------------------ 1. La v2.5, con todo lo de una persona de la familia.
     await servir(v25);
@@ -219,8 +234,9 @@ try {
     await esperar(800);
     check('la versión nueva y solo su caché', [await ev('window.VERSION_PROTOTIPO'), await ev('caches.keys()')], (x) => x[0] === NUEVA && x[1].includes(CACHE) && x[1].length === 1);
     if (NUEVA27) {
-        // v2.7 (Parte D): el cuadrito de novedades sale una vez; se cierra para seguir.
-        check('v2.7: el cuadrito de novedades', await texto('#nov-t'), '¡PamPlanea se puso al día! ✨');
+        // v2.7 (Parte D): el cuadrito de novedades sale una vez; se cierra para seguir. v2.8: el de la v2.8.
+        check(NUEVA28 ? 'v2.8: el cuadrito de novedades' : 'v2.7: el cuadrito de novedades', await texto('#nov-t'), NUEVA28 ? '¡PamPlanea está más clara! ✨' : '¡PamPlanea se puso al día! ✨');
+        informe.datos.lineasNovedades = await ev(`[...document.querySelectorAll('.nov-lista li')].map((li) => li.innerText.trim())`);
         await b.captura(path.join(salida, '3a-novedades.png'));
         await clic('[data-fk="nov-ok"]');
     }
@@ -237,17 +253,25 @@ try {
         const u0 = antes['pamplanea-uso:v1'];
         const u1 = despues['pamplanea-uso:v1'];
         check('cero pérdidas: cada registro, pago, cuenta, ahorro y tarjeta sigue igual (DATOS-5)', perdidas(u0.st, u1.st), []);
-        check('cada gasto guarda la cuenta donde aparece hoy (DATOS-3, F04)', u1.st.registros.filter((r) => r.tipo === 'gasto').every((r) => r.lugar === ((u0.st.medios.find((m) => m.id === r.medio) || {}).lugar || null)), true);
+        check('cada gasto guarda la cuenta donde aparece hoy (DATOS-3, F04)', u1.st.registros.filter((r) => r.tipo === 'gasto').every((r) => r.lugar === (r.lugar !== undefined && u0.st.registros.find((x) => x.id === r.id)?.lugar !== undefined ? u0.st.registros.find((x) => x.id === r.id).lugar : (u0.st.medios.find((m) => m.id === r.medio) || {}).lugar || null)), true);
+        // v2.8 (C-1): tus ahorros de antes quedan «dentro de» una de tus cuentas (ya se restaban de tu libre).
+        if (NUEVA28) check('v2.8: cada ahorro queda dentro de una de tus cuentas (C-1)', u1.st.apartados.every((a) => a.donde && u1.st.lugares.some((l) => l.id === a.donde.lugar)), true);
         const resto = (u) => ({ ...sinHoy(u), st: null, version: null, novedades: null });
         check('lo demás de tus datos (nombre, métricas, respuestas): igual', Object.keys({ ...resto(u0), ...resto(u1) }).filter((k) => JSON.stringify(resto(u0)[k]) !== JSON.stringify(resto(u1)[k])).map((k) => `${k}: ${JSON.stringify(resto(u0)[k])} → ${JSON.stringify(resto(u1)[k])}`), []);
         const nuevos = await ev(NUMEROS);
         check('los saldos de tus cuentas: iguales', nuevos.saldos, viejos.Prueba.saldos);
-        const n = u1.novedades && u1.novedades['v2.7'];
+        const n = u1.novedades && u1.novedades[NOV];
         check('DATOS-4: los números «de antes» son los que mostraba la versión vieja', n && n.antes && [n.antes.mes.salio, n.antes.mes.entro, n.antes.libre, Object.fromEntries(n.antes.tarjetas.map((t) => [t.id, t.debe]))], [viejos.Prueba.mes[0], viejos.Prueba.mes[1], viejos.Prueba.libre, viejos.Prueba.tarjetas]);
+        // v2.8: si tu libre cambió con las reglas nuevas, se ve el número nuevo y el cuadrito lo dijo con antes y después.
+        if (NUEVA28 && n && n.despues) {
+            libreNuevo = await ev(`MOTOR.dinero(${n.despues.libre})`);
+            check('v2.8: tu libre es el de ahora (el del cuadrito)', nuevos.libre, n.despues.libre);
+            check('v2.8: si un número cambió, el cuadrito lo dice con antes y después (y si no, no)', (informe.datos.lineasNovedades || []).some(lineaCambio), n.antes.mes.salio !== n.despues.mes.salio || n.antes.libre !== n.despues.libre || n.antes.tarjetas.some((t) => t.debe !== n.despues.tarjetas.find((x) => x.id === t.id).debe));
+        }
     }
     check('el progreso de «Aprender a usarla»: igual', despues['pamplanea-entrenamiento'], antes['pamplanea-entrenamiento']);
     check('la prueba guiada y el teléfono: iguales', [despues['pamplanea-proto-v2:notas'], despues['pamplanea-proto-v2:dispositivo']], [antes['pamplanea-proto-v2:notas'], antes['pamplanea-proto-v2:dispositivo']]);
-    check('se abre con tus datos y el mismo libre', [await ev('P.modo'), await texto('.portada-n'), await texto('#btn-ayuda')], ['uso', libreAntes, 'Ayuda']);
+    check('se abre con tus datos y el mismo libre (v2.8: el de ahora, si cambió con D-4 o C-7)', [await ev('P.modo'), await texto('.portada-n'), await texto('#btn-ayuda')], ['uso', libreNuevo || libreAntes, 'Ayuda']);
     await b.captura(path.join(salida, '3-v26-con-datos.png'));
     // Lo que se ve con lo guardado.
     await clic('#btn-ayuda');
@@ -269,7 +293,7 @@ try {
     await clic('#btn-ayuda');
     await clic('[data-fk="ay-g-salir"]');
     await clic('[data-fk="ay-usar"]');
-    check('de vuelta a tus datos, igual', [await ev('P.modo'), await texto('.portada-n')], ['uso', libreAntes]);
+    check('de vuelta a tus datos, igual', [await ev('P.modo'), await texto('.portada-n')], ['uso', libreNuevo || libreAntes]);
     // ------------------------------------------------------------ v2.7 (DATOS-5): Carlos, Rosa y el set sintético.
     if (NUEVA27) {
         const principal = await ev(`localStorage.getItem('pamplanea-uso:v1')`);
@@ -288,17 +312,19 @@ try {
             check(`${nombre}: cero pérdidas`, perdidas(viejo.st, g['pamplanea-uso:v1'].st), []);
             const nuevos = await ev(NUMEROS);
             check(`${nombre}: los saldos de sus cuentas, iguales`, nuevos.saldos, viejos[nombre].saldos);
-            const n = g['pamplanea-uso:v1'].novedades['v2.7'];
+            const n = g['pamplanea-uso:v1'].novedades[NOV];
             check(`${nombre}: los números «de antes» son los que mostraba la versión vieja (DATOS-4)`, [n.antes.mes.salio, n.antes.mes.entro, n.antes.libre, Object.fromEntries(n.antes.tarjetas.map((t) => [t.id, t.debe]))], [viejos[nombre].mes[0], viejos[nombre].mes[1], viejos[nombre].libre, viejos[nombre].tarjetas]);
             const cambio = n.antes.mes.salio !== n.despues.mes.salio || n.antes.libre !== n.despues.libre || n.antes.tarjetas.some((t) => t.debe !== n.despues.tarjetas.find((x) => x.id === t.id).debe);
-            check(`${nombre}: si un número cambió, el cuadrito lo dice (y si no, no)`, r.lineas.some((l) => l.startsWith('Corregimos')), cambio);
-            if (nombre === 'Sintética') {
+            check(`${nombre}: si un número cambió, el cuadrito lo dice (y si no, no)`, r.lineas.some(lineaCambio), cambio);
+            if (nombre === 'Sintética' && !desde27(VIEJA)) {
                 check('Sintética: F01 — el gasto del mes ya no cuenta $20 dos veces', n.antes.mes.salio - n.despues.mes.salio, 2000);
                 check('Sintética: F02/F03 — lo que debe de Visa: $2,050 → $1,900', [n.antes.tarjetas.find((t) => t.id === 't900').debe, n.despues.tarjetas.find((t) => t.id === 't900').debe], [205000, 190000]);
                 // F04: cambiar después la cuenta del débito no mueve lo de antes.
                 const antesF04 = await ev(`MOTOR.saldoLugar(P.st, 'agricola')`);
                 await ev(`P.cambiar((s) => { s.medios.find((m) => m.id === 'debito').lugar = 'efectivo'; }, { aviso: null }); true`);
                 check('Sintética: F04 — cambiar la cuenta del débito después no mueve lo de antes', await ev(`MOTOR.saldoLugar(P.st, 'agricola')`), antesF04);
+            }
+            if (nombre === 'Sintética') {
                 check('Sintética: F12 — lo de $50 de $100 marcado «pagado» en la v2.6.7 sigue igual (no se cambia solo)', await ev(`MOTOR.ocurrenciasPago(P.st, MOTOR.pago(P.st, 'p900'), '2026-01-01', P.st.hoy).map((o) => o.estado + ' ' + o.monto).slice(-1)`), ['pagado 5000']);
             }
         }
@@ -311,7 +337,7 @@ try {
     await apagar();
     await b.ir(base);
     await esperar(900);
-    check('sin internet: la versión nueva con tus datos', [await ev('window.VERSION_PROTOTIPO'), await ev('P.modo'), await texto('.portada-n'), await ev('document.fonts.check("16px Instrument Sans")')], [NUEVA, 'uso', libreAntes, true]);
+    check('sin internet: la versión nueva con tus datos', [await ev('window.VERSION_PROTOTIPO'), await ev('P.modo'), await texto('.portada-n'), await ev('document.fonts.check("16px Instrument Sans")')], [NUEVA, 'uso', libreNuevo || libreAntes, true]);
     await b.captura(path.join(salida, '6-sin-internet.png'));
 } catch (e) {
     informe.fallos.push('excepción: ' + e.message);

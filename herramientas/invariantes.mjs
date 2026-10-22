@@ -15,6 +15,16 @@
 //  I12 sin espacio para la copia por versión: quedan la original y las 2 más recientes, y se avisa (DATOS-1)
 // Y una fila por cada arreglo de la Parte B que no está arriba: F13, F14, F17, F21, F22, F23.
 // Y P3: la nota del cuadre en Anotar (P-3): antes, el mismo día (con cada respuesta) y después.
+// v2.8 «Más claro», una fila por cada parte 2 a 9 de E1 (y la de los datos):
+//  V2 el ejemplo de Libre de 01 §23.2 (D-3): $385, pupusas → $365, súper → sigue en $385
+//  V3 ahorros (C-1): dentro / aparte, «Ya lo guardé», «Usé de mi ahorro»; usar parte deja el resto (D-9, U16)
+//  V4 gastos variables (C-3): tope por quincena, consumo sin restar dos veces, «¿Ya terminaste?», «Te pasaste»
+//  V5 tarjeta con una sola regla (D-4, U01) y cobros con tarjeta dentro de su pago (C-7)
+//  V6 «¿Qué día vence tu próximo pago?» (D-5, F09)
+//  V7 la cuota termina sola en $0 con aviso y «Me prestaron» en un paso (D-9)
+//  V8 «¿Es tu quincena?» a ±10 % y ±3 días (C-5) y «recibí 50 en efectivo» → Efectivo
+//  V9 anotar un pago se conecta con tu plan (C-4, P-1)
+//  V10 tus datos de la v2.7 en la v2.8 (DATOS-1 a 5, C-1)
 // Uso: node herramientas/invariantes.mjs [--base=http://…/] [--puerto=9961] [--solo=I01,F13] [--raiz=<otra copia>]
 //      (--raiz: las mismas filas sobre otra copia, por ejemplo la v2.6.7 sacada de git, para ver cuáles fallaban antes)
 import { mkdir } from 'node:fs/promises';
@@ -228,7 +238,8 @@ await filaDe('I05', 'Pagar $50 de una cuota de $100 deja $50 pendientes (formula
     check('pagar lo que falta lo completa: pagado $100', [fin.estado, fin.monto], ['pagado', 10000]);
     // Por Anotar.
     await ev(`__armar((st) => __internet(st))`);
-    const a = await ev(`__anotar('internet 50')`);
+    // v2.8 (C-4, P-1): «¿Es tu pago de Internet?» — «Sí, es ese».
+    const a = await ev(`__anotar('internet 50', { cualPlan: 'si' })`);
     check('Anotar lo guardó', a.abierta, false);
     await parcial('Anotar');
     // Corregir en Mes: $100 pagados que en realidad fueron $50.
@@ -276,7 +287,8 @@ await filaDe('I08', 'Pagar Internet ($100, venció el 20) por Anotar, el formula
     const resultado = () => ev(`(() => { const k = P.calc(); const o = MOTOR.ocurrenciasPago(P.st, P.st.pagos[0], '2026-10-20', '2026-10-20')[0]; return { libre: k.libre, banco: __saldo('banco'), estado: o.estado, pagos: P.st.registros.filter((x) => x.pago === 'internet').map((x) => [x.monto, x.medio, x.lugar]), mes: __mes().salio }; })()`);
     const res = {};
     await ev(`__armar((st) => __internet(st))`);
-    await ev(`__anotar('internet 100')`);
+    // v2.8 (C-4, P-1): Anotar pregunta «¿Es tu pago de Internet?»: la persona contesta «Sí, es ese».
+    await ev(`__anotar('internet 100', { cualPlan: 'si' })`);
     res.anotar = await resultado();
     await ev(`__armar((st) => __internet(st))`);
     await ev(`P.abrirHoja('pagado', { tipoPago: 'pago', id: 'internet', fecha: '2026-10-20' }); true`);
@@ -521,7 +533,9 @@ await filaDe('I12', 'Sin espacio para la copia por versión: quedan la original 
     await esperar(300);
     const r = await ev(`({ modo: P.modo, bloq: P.modos.bloqueado(), nombre: P.st.nombre, copias: Object.keys(localStorage).filter((k) => k.startsWith('pamplanea-uso:respaldo:')).sort(), aviso: !!document.getElementById('cf-t') })`);
     check('abre con tus datos (no falla)', [r.modo, r.bloq, r.nombre], ['uso', false, 'Marta']);
-    check('quedan la original, las 2 más recientes y la nueva', r.copias, ['pamplanea-uso:respaldo:antes-de-v2.4.0', 'pamplanea-uso:respaldo:antes-de-v2.6.0', 'pamplanea-uso:respaldo:antes-de-v2.6.5', 'pamplanea-uso:respaldo:antes-de-v2.7.0']);
+    // (La nueva es la de la versión que abre: desde la v2.8, «antes-de-v2.8.0».)
+    const nueva = 'pamplanea-uso:respaldo:antes-de-v' + (/v(\d+\.\d+\.\d+)/.exec(await ev('window.VERSION_PROTOTIPO')) || [])[1];
+    check('quedan la original, las 2 más recientes y la nueva', r.copias, ['pamplanea-uso:respaldo:antes-de-v2.4.0', 'pamplanea-uso:respaldo:antes-de-v2.6.0', 'pamplanea-uso:respaldo:antes-de-v2.6.5', nueva]);
     check('(con espacio después de limpiar, no hace falta avisar)', r.aviso, false);
     // Ni así cabe: se avisa en Hoy y la app sigue con tus datos.
     await sembrar(-0.6);
@@ -599,7 +613,7 @@ await filaDe('P3', 'La nota del cuadre en Anotar (P-3): antes del cuadre no camb
     check('mismo día «Después»: se guarda', await guardar(), false);
     check('mismo día «Después»: tu Efectivo baja $3 ($72.00)', await ev(`__saldo('efectivo')`), e0 - 800);
     // Un ingreso del mismo día también pregunta (y «Después» lo suma).
-    // (Anotar todavía lleva «recibí 50 en efectivo» a tu banco: se elige el Efectivo, como lo haría la persona.)
+    // (v2.8: «recibí 50 en efectivo» ya llega a Efectivo; elegirlo otra vez no cambia nada.)
     await abrirAnotar('recibí 50 en efectivo');
     await ev(`P.acciones.anotarValor({ campo: 'lugar', v: 'efectivo' }); true`);
     await esperar(100);
@@ -616,6 +630,278 @@ await filaDe('P3', 'La nota del cuadre en Anotar (P-3): antes del cuadre no camb
     check('después: ni nota ni pregunta', [await ev(`!!document.getElementById('nota-cuadre')`), await ev(`!!document.getElementById('l-orden')`)], [false, false]);
     check('después: se guarda y tu Banco Agrícola baja $10', [await guardar(), await ev(`__saldo('banco')`)], [false, b0 - 1000]);
     check('centavos enteros', [await ev(`__saldo('efectivo')`), await ev(`__saldo('banco')`)].every(entero), true);
+});
+
+// ================================================================== v2.8 «Más claro»: una fila por cada parte 2 a 9 de E1
+/** v2.8: el estado del ejemplo de 01 §23.2 (D-3): $1,000 en tus cuentas con $300 de ahorro dentro y lo que falta del plan. */
+const EJEMPLO_385 = `(st) => {
+    st.lugares[0].cuadre = { fecha: '2026-10-15', seq: 1, monto: 10000 };
+    st.lugares[1].cuadre = { fecha: '2026-10-15', seq: 2, monto: 94000 };
+    st.lugares = st.lugares.slice(0, 2);
+    st.registros = [
+        { id: 'r1', seq: 1, tipo: 'cuadre', fecha: '2026-10-15', lugar: 'efectivo', monto: 10000, esperado: 10000, primero: true },
+        { id: 'r2', seq: 2, tipo: 'cuadre', fecha: '2026-10-15', lugar: 'banco', monto: 94000, esperado: 94000, primero: true },
+        { id: 'r5', seq: 5, tipo: 'gasto', fecha: '2026-10-18', monto: 4000, nombre: 'Súper', categoria: 'super', emoji: '🛒', medio: 'debito', lugar: 'banco', anotado: true },
+    ];
+    st.inicio = '2026-10-15';
+    st.ingresos[0].llegadas = { '2026-10-15': { monto: 60000, enCuadre: true } };
+    const pago = (id, nombre, emoji, monto, dia) => ({ id, nombre, emoji, categoria: 'servicios', monto, estimado: false, frecuencia: 'mensual', dia, medio: 'debito', avisos: [{ tipo: 'antes', dias: 1, on: true }, { tipo: 'vence', on: true }], desde: '2026-10-15', creado: '2026-10-15', hechos: {}, previos: [] });
+    st.pagos = [pago('luz', 'Luz', '💡', 3000, 25), pago('internet', 'Internet', '🌐', 2500, 28)];
+    st.variables = [{ id: 'v1', nombre: 'Súper', emoji: '🛒', categoria: 'super', tope: 15000, medio: 'debito', desde: '2026-10-15', creado: '2026-10-15', cierres: {}, activo: true }];
+    st.apartados = [{ id: 'ap1', nombre: 'Emergencias', emoji: '🛟', portada: 'emergencia-paraguas', monto: 30000, meta: null, metaFecha: null, historial: [], donde: { lugar: 'banco' }, programado: { monto: 5000, desde: '2026-10-15' } }];
+    __tarjeta(st, { desde: '2026-10-15', pagoUsual: 10000, estados: [{ corte: '2026-10-05', total: 0, minimo: 0, aPagar: 0, opcion: 'total', vence: '2026-10-27', inicial: true, esperarCorte: true }] });
+}`;
+const libre = () => ev(`P.calc().libre`);
+
+// ------------------------------------------------------------------ V2 (D-3): el ejemplo de 01 §23.2
+await filaDe('V2', 'Libre (D-3, 01 §23.2): $1,000 − $300 de ahorro − falta del plan $315 = $385; pupusas $20 → $365; súper $20 → sigue en $385', async () => {
+    await ev(`__armar(${EJEMPLO_385})`);
+    const k = await ev(`(() => { const k = P.calc(); return { tienes: k.tienes, ahorro: k.apartado, fijos: k.porPagar, variables: k.faltaVariables, programado: k.faltaProgramado, tarjeta: k.enTarjetas, libre: k.libre }; })()`);
+    check('dinero en cuentas: $1,000', k.tienes, 100000);
+    check('ahorro dentro de una cuenta: $300 (se resta) → $700', k.tienes - k.ahorro, 70000);
+    check('falta del plan: luz 30 + internet 25 + súper 110 de 150 + ahorro 50 + tarjeta 100 = $315', [k.fijos, k.variables, k.programado, k.tarjeta], [5500, 11000, 5000, 10000]);
+    check('Libre $385', k.libre, 38500);
+    check('centavos enteros', Object.values(k).every(entero), true);
+    await ev(`P.irTab('hoy'); true`);
+    check('Hoy dice $385.00', await texto('.portada-n'), '$385.00');
+    // Alternativa A (desde $385): pupusas $20 → $365 (cuentas bajan; no es parte del plan).
+    const a = await ev(`__anotar('pupusas 20 efectivo')`);
+    check('A: Anotar lo guardó', a.abierta, false);
+    check('A: pupusas $20 → Libre $365', await libre(), 36500);
+    // Alternativa B (desde $385 otra vez): súper $20 → sigue en $385 (el súper baja de $110 a $90).
+    await ev(`__armar(${EJEMPLO_385})`);
+    await ev(`{ P.acciones.anotar(); const q = document.getElementById('anotar-q'); q.value = 'súper 20'; q.dispatchEvent(new Event('input', { bubbles: true })); P.acciones.anotarValor({ campo: 'medio', v: 'debito' }); } true`);
+    await esperar(80);
+    check('B: Anotar dice que es de tu gasto variable y que tu libre no baja', await texto('#nota-variable'), (t) => typeof t === 'string' && t.includes('Súper') && t.includes('te quedan $90.00 de $150.00') && t.includes('Tu libre no baja'));
+    await foto('V2-super-variable');
+    await ev(`P.acciones.anotarGuardar(); true`);
+    const b = await ev(`(() => { const k = P.calc(); return { libre: k.libre, falta: k.variables[0].falta, banco: __saldo('banco') }; })()`);
+    check('B: súper $20 → sigue en $385', b.libre, 38500);
+    check('B: el súper baja de $110 a $90 y el banco $20', [b.falta, b.banco], [9000, 88000]);
+    // Un ingreso variable esperado no cuenta hasta que llega.
+    await ev(`__armar((st) => { (${EJEMPLO_385})(st); st.ingresos.push({ id: 'venta', nombre: 'Ventas', emoji: '🏪', categoria: 'venta', monto: 20000, aprox: true, frecuencia: 'unico', fecha: '2026-10-24', lugar: 'efectivo', principal: false, extra: true, desde: '2026-10-15', llegadas: {} }); })`);
+    check('un ingreso variable esperado no sube tu libre hasta que llega', await libre(), 38500);
+});
+
+// ------------------------------------------------------------------ V3 (C-1, D-9 U16)
+await filaDe('V3', 'Ahorros (C-1): dentro se resta, aparte solo se registra; «Ya lo guardé»; «Usé de mi ahorro» vuelve a Libre; usar parte deja el resto', async () => {
+    await ev(`__armar()`);
+    const l0 = await libre();
+    await ev(`P.cambiar((s) => P.crearAhorro(s, { nombre: 'Casa', monto: 20000, donde: 'banco' }), { aviso: null }); true`);
+    check('«¿Dónde está?» dentro de Banco Agrícola: $200 se restan', l0 - (await libre()), 20000);
+    await ev(`P.cambiar((s) => P.crearAhorro(s, { nombre: 'Alcancía', monto: 5000, donde: 'aparte' }), { aviso: null }); true`);
+    check('aparte: solo se registra (tu libre no cambia)', l0 - (await libre()), 20000);
+    check('aparte: tus cuentas no cambian', await ev(`MOTOR.tienes(P.st)`), 220000);
+    // Ahorro programado: cuenta en tu plan hasta «Ya lo guardé»; al guardarlo, tu libre no cambia otra vez.
+    await ev(`P.cambiar((s) => { const a = s.apartados.find((x) => x.nombre === 'Casa'); a.programado = { monto: 5000, desde: '2026-10-15' }; }, { aviso: null }); true`);
+    const lp = await libre();
+    check('ahorro programado $50: baja tu libre (es parte de tu plan)', l0 - 20000 - lp, 5000);
+    await ev(`P.cambiar((s) => P.guardarProgramado(s, s.apartados.find((x) => x.nombre === 'Casa').id), { aviso: null }); true`);
+    check('«Ya lo guardé»: el ahorro sube $50 y tu libre no cambia', [await ev(`P.st.apartados.find((x) => x.nombre === 'Casa').monto`), await libre()], [25000, lp]);
+    check('«Ya lo guardé» una sola vez por quincena', await ev(`MOTOR.programadoInfo(P.st)[0].falta`), 0);
+    // Aparte con ahorro programado: el dinero sale de una cuenta y tu libre tampoco cambia otra vez.
+    await ev(`P.cambiar((s) => { const a = s.apartados.find((x) => x.nombre === 'Alcancía'); a.programado = { monto: 1000, desde: '2026-10-15' }; }, { aviso: null }); true`);
+    const la = await libre();
+    const ef = await ev(`__saldo('efectivo')`);
+    await ev(`P.cambiar((s) => P.guardarProgramado(s, s.apartados.find((x) => x.nombre === 'Alcancía').id, { lugar: 'efectivo' }), { aviso: null }); true`);
+    check('aparte «Ya lo guardé»: sale $10 de tu efectivo y tu libre no cambia', [ef - (await ev(`__saldo('efectivo')`)), await libre(), await ev(`P.st.apartados.find((x) => x.nombre === 'Alcancía').monto`)], [1000, la, 6000]);
+    // «Usé de mi ahorro» devuelve el dinero a Libre (dentro: tu cuenta no cambia; aparte: llega a una cuenta).
+    const lu = await libre();
+    await ev(`P.cambiar((s) => P.apartarEn(s, s.apartados.find((x) => x.nombre === 'Casa').id, 3000, 'liberar'), { aviso: null }); true`);
+    check('«Usé de mi ahorro» $30 (dentro): tu libre sube $30', (await libre()) - lu, 3000);
+    const lu2 = await libre();
+    const ef2 = await ev(`__saldo('efectivo')`);
+    await ev(`P.cambiar((s) => P.apartarEn(s, s.apartados.find((x) => x.nombre === 'Alcancía').id, 2000, 'liberar', { lugar: 'efectivo' }), { aviso: null }); true`);
+    check('«Usé de mi ahorro» $20 (aparte): llega a tu efectivo y tu libre sube $20', [(await ev(`__saldo('efectivo')`)) - ef2, (await libre()) - lu2], [2000, 2000]);
+    // D-9 (U16): usar parte de un ahorro con fecha deja el resto (antes se cerraba y lo demás volvía a tu libre).
+    await ev(`__armar((st) => st.apartados.push({ id: 'lap', nombre: 'Laptop', emoji: '💻', portada: 'tecnologia-laptop', monto: 60000, meta: 60000, metaFecha: '2026-11-30', historial: [], donde: { lugar: 'banco' } }))`);
+    await ev(`__anotar('mouse 100 débito', { usarApartado: 'lap' })`);
+    check('usar $100 de $600: quedan $500 en el ahorro (no se cierra)', await ev(`(P.st.apartados.find((x) => x.id === 'lap') || {}).monto ?? null`), 50000);
+    check('montos enteros', await ev(`P.st.apartados.every((a) => Number.isInteger(a.monto))`), true);
+});
+
+// ------------------------------------------------------------------ V4 (C-3)
+await filaDe('V4', 'Gastos variables (C-3): tope por quincena que se renueva; cada gasto lo consume una vez; «¿Ya terminaste?»; «Te pasaste»', async () => {
+    const conVariable = `(st) => { st.variables = [{ id: 'v1', nombre: 'Gasolina', emoji: '⛽', categoria: 'transporte', tope: 10000, medio: 'efectivo', desde: '2026-10-15', creado: '2026-10-15', cierres: {}, activo: true }]; }`;
+    await ev(`__armar(${conVariable})`);
+    const l0 = await libre();
+    check('el tope cuenta en tu plan: $100', await ev(`P.calc().faltaVariables`), 10000);
+    await ev(`__anotar('gasolina 30 efectivo')`);
+    await ev(`__anotar('bus 1 efectivo')`);
+    const x = await ev(`(() => { const v = MOTOR.variablesInfo(P.st)[0]; return { anotado: v.anotado, falta: v.falta }; })()`);
+    check('«gasolina 30» lo consume; «bus 1» no (no se llama Gasolina)', [x.anotado, x.falta], [3000, 7000]);
+    check('tu libre baja solo $1 (la gasolina ya estaba en tu plan)', l0 - (await libre()), 100);
+    // La quincena siguiente se renueva: el 30 (con tu quincena), otra vez $100.
+    check('se renueva la quincena siguiente: $100 en la próxima', await ev(`P.calc().proxima.saleVariables`), 10000);
+    // «¿Ya terminaste?» se pregunta en los últimos días de la quincena.
+    check('el 21 todavía no pregunta', await ev(`MOTOR.preguntarVariable(P.st, MOTOR.variablesInfo(P.st)[0])`), false);
+    await ev(`P.st.hoy = '2026-10-28'; true`);
+    check('el 28 (antes de tu quincena del 30) pregunta', await ev(`MOTOR.preguntarVariable(P.st, MOTOR.variablesInfo(P.st)[0])`), true);
+    const l28 = await libre();
+    await ev(`P.cambiar((s) => P.cerrarVariable(s, 'v1', 'listo'), { aviso: null }); true`);
+    check('«Sí, ya terminé»: los $70 que sobraron vuelven a tu libre', (await libre()) - l28, 7000);
+    await ev(`__armar(${conVariable})`);
+    await ev(`P.st.hoy = '2026-10-28'; true`);
+    const lf = await libre();
+    await ev(`P.cambiar((s) => P.cerrarVariable(s, 'v1', 'falta'), { aviso: null }); true`);
+    check('«Me falta»: sigue en tu plan', [await libre(), await ev(`MOTOR.preguntarVariable(P.st, MOTOR.variablesInfo(P.st)[0])`)], [lf, false]);
+    // Gastar de más: «Te pasaste $Z», sin culpa (y no resta dos veces).
+    await ev(`__armar(${conVariable})`);
+    const lp = await libre();
+    await ev(`__anotar('gasolina 130 efectivo')`);
+    const p = await ev(`(() => { const v = MOTOR.variablesInfo(P.st)[0]; return { pasado: v.pasado, falta: v.falta }; })()`);
+    check('te pasaste $30 y ya no falta nada', [p.pasado, p.falta], [3000, 0]);
+    check('tu libre baja solo lo que pasaste del tope ($30)', lp - (await libre()), 3000);
+});
+
+// ------------------------------------------------------------------ V5 (D-4, C-7)
+await filaDe('V5', 'Tarjeta con una sola regla (D-4): lo que pagas normalmente y después el estado, con el ingreso de antes del vencimiento; Netflix no resta aparte (C-7)', async () => {
+    // Antes del primer estado de cuenta: lo que pagas normalmente ($100), vence el 25 (antes de tu quincena del 30): con lo que tienes.
+    await ev(`__armar((st) => __tarjeta(st, { desde: '2026-10-15', pagoUsual: 10000, estados: [{ corte: '2026-10-05', total: 0, minimo: 0, aPagar: 0, opcion: 'total', vence: '2026-10-25', inicial: true, esperarCorte: true }] }))`);
+    const sin = await ev(`(() => { const k = P.calc(); return { tarjeta: k.enTarjetas, libre: k.libre }; })()`);
+    check('antes del estado de cuenta: cuenta lo que pagas normalmente ($100)', sin.tarjeta, 10000);
+    // Si vence después de tu quincena del 30, se cubre con esa quincena: hoy no baja tu libre.
+    await ev(`__armar((st) => __tarjeta(st, { desde: '2026-10-15', pagoUsual: 10000, estados: [{ corte: '2026-10-05', total: 0, minimo: 0, aPagar: 0, opcion: 'total', vence: '2026-11-05', inicial: true, esperarCorte: true }] }))`);
+    check('vence el 5 nov: se paga con tu quincena del 30 (hoy no baja)', await ev(`P.calc().enTarjetas`), 0);
+    // Después del estado de cuenta: el monto del estado, también con el ingreso de antes de que venza (no con lo que tienes).
+    await ev(`__armar((st) => __tarjeta(st, { desde: '2026-09-01', estados: [{ corte: '2026-10-05', total: 25000, minimo: 2500, aPagar: 25000, opcion: 'total', vence: '2026-11-05', seq: 9 }] }))`);
+    const ec = await ev(`(() => { const k = P.calc(); const t = k.tarjetas[0]; return { tarjeta: k.enTarjetas, conIngreso: t.conIngreso, proxima: k.proxima.salePagos }; })()`);
+    check('estado de cuenta $250 que vence el 5 nov: con tu quincena del 30', [ec.tarjeta, ec.conIngreso, ec.proxima], [0, 25000, 25000]);
+    // Se puede cambiar de quincena (V2-87): pagarlo con lo que tienes ahora.
+    await ev(`P.cambiar((s) => { s.tarjetas[0].asignaciones = { '2026-11-05': [{ de: 'ahora', monto: 25000 }] }; }, { aviso: null }); true`);
+    check('cambiado a «lo que tienes ahora»: queda reservado hoy', await ev(`(() => { const k = P.calc(); return k.reservadoPagos; })()`), 25000);
+    // C-7: Netflix ($10) se cobra en la tarjeta: no resta aparte (va dentro del pago de la tarjeta).
+    await ev(`__armar((st) => { __tarjeta(st, { desde: '2026-10-15', pagoUsual: 10000, estados: [{ corte: '2026-10-05', total: 0, minimo: 0, aPagar: 0, opcion: 'total', vence: '2026-10-25', inicial: true, esperarCorte: true }] }); __internet(st, { id: 'netflix', nombre: 'Netflix', emoji: '🎬', categoria: 'suscripciones', monto: 1000, dia: 24, medio: 'mt50', tipoPago: 'suscripcion' }); })`);
+    const n = await ev(`(() => { const k = P.calc(); return { fijos: k.porPagar, tarjeta: k.enTarjetas }; })()`);
+    check('Netflix en la tarjeta no resta aparte (solo la tarjeta, $100)', [n.fijos, n.tarjeta], [0, 10000]);
+    check('la ficha de la tarjeta lo tiene como suyo', await ev(`MOTOR.tarjetaDePago(P.st, P.st.pagos[0]).id`), 't50');
+    // Al cobrarse en la tarjeta tampoco resta aparte: sube lo que debes, no tu libre (va dentro del pago de la tarjeta).
+    const l7 = await ev(`[P.calc().libre, MOTOR.tarjetaInfo(P.st, P.st.tarjetas[0]).debeTotal]`);
+    await ev(`P.cambiar((s) => P.marcarPagado(s, 'netflix', '2026-10-24', { monto: 1000, medio: 'mt50', fecha: '2026-10-21' }), { aviso: null }); true`);
+    const l8 = await ev(`[P.calc().libre, MOTOR.tarjetaInfo(P.st, P.st.tarjetas[0]).debeTotal]`);
+    check('cobrado: tu libre igual y lo que debes de la tarjeta sube $10', [l8[0] - l7[0], l8[1] - l7[1]], [0, 1000]);
+});
+
+// ------------------------------------------------------------------ V6 (D-5, F09)
+await filaDe('V6', 'Vencimiento (D-5, F09): se pregunta «¿Qué día vence tu próximo pago?»; corte el 5 y pago el 25 → el 25 de este mes', async () => {
+    await ev(`__armar()`);
+    await ev(`P.abrirHoja('nuevaDeuda', { tipoInicial: 'tarjeta' }); true`);
+    await escribir('#f-nombre', 'Visa');
+    check('la pregunta', await ev(`document.querySelector('label[for="f-pagoDia"]').textContent.trim()`), '¿Qué día vence tu próximo pago?');
+    await escribir('#f-corte', '5');
+    await escribir('#f-pagoDia', '25');
+    check('la fecha completa a la vista: el 25 de octubre', await texto('#vence-linea'), (t) => typeof t === 'string' && t.includes('25 de octubre'));
+    await foto('V6-vence');
+    await ev(`P.acciones.nuevaDeudaOk(); true`);
+    const t = await ev(`(() => { const t = P.st.tarjetas.at(-1); const i = MOTOR.tarjetaInfo(P.st, t); return { vence: i.vence, desfase: t.desfase, sig: MOTOR.ocurrenciasTarjeta(P.st, '2026-10-21', '2026-12-31').map((o) => o.fecha) }; })()`);
+    check('vence el 25 de octubre (no el 25 de noviembre)', t.vence, '2026-10-25');
+    check('corte y pago el mismo mes (desfase 0)', t.desfase, 0);
+    // «Es el de noviembre»: la persona lo dice; no se adivina.
+    await ev(`__armar()`);
+    await ev(`P.abrirHoja('nuevaDeuda', { tipoInicial: 'tarjeta' }); true`);
+    await escribir('#f-nombre', 'Visa');
+    await escribir('#f-corte', '5');
+    await escribir('#f-pagoDia', '25');
+    await clic('[data-fk="vence-otro"]');
+    await ev(`P.acciones.nuevaDeudaOk(); true`);
+    check('elegido el de noviembre: vence el 25 de noviembre', await ev(`MOTOR.tarjetaInfo(P.st, P.st.tarjetas.at(-1)).vence`), '2026-11-25');
+    // Una tarjeta de antes (sin desfase) conserva su fecha.
+    await ev(`__armar((st) => __tarjeta(st))`);
+    check('una tarjeta de antes conserva su fecha (25 nov)', await ev(`MOTOR.tarjetaInfo(P.st, P.st.tarjetas[0]).vence`), '2026-11-25');
+});
+
+// ------------------------------------------------------------------ V7 (D-9)
+await filaDe('V7', 'Deudas (D-9): la cuota termina sola en $0 con aviso; «Me prestaron» registra la deuda y la entrada en un paso', async () => {
+    await ev(`__armar((st) => __internet(st, { id: 'coop', nombre: 'Préstamo cooperativa', emoji: '🏦', categoria: 'cuotas', monto: 5000, dia: 20, medio: 'debito', tipoDeuda: 'prestamo', deuda: { debe: 5000 } }))`);
+    await ev(`P.cambiar((s) => P.marcarPagado(s, 'coop', '2026-10-20', { monto: 5000, medio: 'debito', fecha: '2026-10-21' }), { aviso: 'Pagado' }); true`);
+    const r = await ev(`(() => { const p = P.st.pagos[0]; return { debe: p.deuda.debe, hasta: p.hasta, terminada: !!p.terminada, despues: MOTOR.ocurrenciasPago(P.st, p, '2026-10-21', '2027-03-31').length, toast: P.ui.toast && P.ui.toast.texto }; })()`);
+    check('debes $0: la cuota termina sola (ya no sale después)', [r.debe, r.hasta, r.terminada, r.despues], [0, '2026-10-20', true, 0]);
+    check('con aviso', r.toast, '¡Terminaste de pagar Préstamo cooperativa! Ya no sale en tu plan.');
+    await ev(`P.deshacerUltimo(); true`);
+    check('deshacer la vuelve a poner', await ev(`[!!P.st.pagos[0].terminada, P.st.pagos[0].hasta ?? null]`), [false, null]);
+    // «Me prestaron 200 mi mamá en efectivo»: la deuda ($200) y la entrada a tu efectivo, en un solo paso.
+    await ev(`__armar()`);
+    const ef = await ev(`__saldo('efectivo')`);
+    const l0 = await libre();
+    const a = await ev(`__anotar('me prestaron 200 mi mamá en efectivo')`);
+    check('Anotar lo guardó', a.abierta, false);
+    const d = await ev(`(() => { const p = P.st.pagos.at(-1); const r = P.st.registros.at(-1); return { tipoDeuda: p.tipoDeuda, debe: p.deuda.debe, nombre: p.nombre, entrada: [r.tipo, r.monto, r.lugar, r.prestamo === p.id], mes: MOTOR.resumenMes(P.st, 2026, 10).totalPrestamos, entro: MOTOR.resumenMes(P.st, 2026, 10).ingresos.some((x) => x.prestamo) }; })()`);
+    check('la deuda: «Préstamo de Mamá», debes $200', [d.tipoDeuda, d.debe, d.nombre], ['prestamo', 20000, 'Préstamo de Mamá']);
+    check('la entrada: $200 a tu efectivo, ligada a la deuda', d.entrada, ['ingreso', 20000, 'efectivo', true]);
+    check('tu efectivo sube $200 y tu libre también', [(await ev(`__saldo('efectivo')`)) - ef, (await libre()) - l0], [20000, 20000]);
+    check('en Mes no es un ingreso: va aparte como préstamo', [d.mes, d.entro], [20000, false]);
+});
+
+// ------------------------------------------------------------------ V8 (C-5 y «recibí 50 en efectivo»)
+await filaDe('V8', '«Me llegó dinero» (C-5): a ±10 % y ±3 días de tu quincena pregunta «¿Es tu quincena?»; si no, es un extra; «recibí 50 en efectivo» llega a Efectivo', async () => {
+    await ev(`__armar((st) => { st.ingresos[0].llegadas = {}; st.registros = st.registros.filter((r) => r.tipo !== 'ingreso'); })`);
+    await ev(`P.st.hoy = '2026-10-14'; true`);
+    const cerca = await ev(`(() => { const d = MOTOR.entender(P.st, 'me pagaron 560'); return { ref: d.ingresoRef && d.ingresoRef.fecha, preguntar: d.preguntarIngreso, faltan: MOTOR.faltan(P.st, d) }; })()`);
+    check('$560 (−7 %) un día antes: «¿Es tu quincena?» (no se asume)', [cerca.ref, cerca.preguntar, cerca.faltan.includes('cualIngreso')], ['2026-10-15', true, true]);
+    check('$500 (−17 %): es un extra', await ev(`MOTOR.entender(P.st, 'me pagaron 500').ingresoRef`), null);
+    await ev(`P.st.hoy = '2026-10-10'; true`);
+    check('$600 cinco días antes: es un extra', await ev(`MOTOR.entender(P.st, 'me pagaron 600').ingresoRef`), null);
+    await ev(`P.st.hoy = '2026-10-14'; true`);
+    await ev(`{ P.acciones.anotar(); const q = document.getElementById('anotar-q'); q.value = 'me pagaron 600'; q.dispatchEvent(new Event('input', { bubbles: true })); } true`);
+    await esperar(80);
+    check('la pregunta se ve', await texto('#l-cualIngreso'), (t) => typeof t === 'string' && t.startsWith('¿Es tu quincena'));
+    await ev(`P.cerrarHoja({ sinFoco: true }); true`);
+    // «recibí 50 en efectivo» llega a Efectivo (antes iba al banco).
+    await ev(`__armar()`);
+    check('«recibí 50 en efectivo» → Efectivo', await ev(`MOTOR.entender(P.st, 'recibí 50 en efectivo').lugar`), 'efectivo');
+    check('«recibí 50 en agrícola» → Banco Agrícola', await ev(`MOTOR.entender(P.st, 'recibí 50 en agrícola').lugar`), 'banco');
+    const ef = await ev(`__saldo('efectivo')`);
+    await ev(`__anotar('recibí 50 en efectivo')`);
+    check('guardado: tu efectivo sube $50', (await ev(`__saldo('efectivo')`)) - ef, 5000);
+});
+
+// ------------------------------------------------------------------ V9 (C-4, P-1)
+await filaDe('V9', 'Anotar un pago (C-4, P-1): «¿Es tu pago de Internet?», «¿De cuál de tus préstamos?», «¿Qué pagaste?» y «Es nuevo»; nunca un duplicado en silencio', async () => {
+    await ev(`__armar((st) => __internet(st))`);
+    const r1 = await ev(`__anotar('internet 100')`);
+    check('«internet 100» no se guarda sin contestar', [r1.abierta, r1.errores.includes('cualPlan')], [true, true]);
+    check('pregunta «¿Es tu pago de Internet del 20 de octubre?»', await texto('#l-cualPlan'), '¿Es tu pago de Internet del 20 de octubre?');
+    await foto('V9-es-tu-pago');
+    await clic('[data-fk="plan-si"]');
+    await ev(`P.acciones.anotarGuardar(); true`);
+    check('«Sí, es ese»: queda pagado (un solo gasto, ligado)', await ev(`[MOTOR.ocurrenciasPago(P.st, P.st.pagos[0], '2026-10-20', '2026-10-20')[0].estado, P.st.registros.filter((r) => r.tipo === 'gasto').map((r) => r.pago)]`), ['pagado', ['internet']]);
+    await ev(`__armar((st) => __internet(st))`);
+    await ev(`__anotar('internet 100', { cualPlan: 'nuevo' })`);
+    check('«No, es un gasto nuevo»: un gasto sin ligar y tu internet sigue pendiente', await ev(`[MOTOR.ocurrenciasPago(P.st, P.st.pagos[0], '2026-10-20', '2026-10-20')[0].estado, P.st.registros.filter((r) => r.tipo === 'gasto').map((r) => r.pago || null)]`), ['vencido', [null]]);
+    // Dos préstamos que se parecen: «¿De cuál de tus préstamos?».
+    await ev(`__armar((st) => { __internet(st, { id: 'p1', nombre: 'Préstamo cooperativa', emoji: '🏦', categoria: 'cuotas', monto: 4500, dia: 25, tipoDeuda: 'prestamo', deuda: { debe: 50000 } }); __internet(st, { id: 'p2', nombre: 'Préstamo banco', emoji: '🏦', categoria: 'cuotas', monto: 6000, dia: 28, tipoDeuda: 'prestamo', deuda: { debe: 90000 } }); })`);
+    await ev(`{ P.acciones.anotar(); const q = document.getElementById('anotar-q'); q.value = 'pagué el préstamo 45'; q.dispatchEvent(new Event('input', { bubbles: true })); } true`);
+    await esperar(80);
+    check('«¿De cuál de tus préstamos?»', await texto('#l-cualPlan'), '¿De cuál de tus préstamos?');
+    await clic('[data-fk="plan-p-p1"]');
+    await ev(`P.acciones.anotarGuardar(); true`);
+    check('el de la cooperativa: lo que debes baja $45', await ev(`[P.st.pagos[0].deuda.debe, P.st.pagos[1].deuda.debe]`), [45500, 90000]);
+    // «pagué 35» sin decir qué: «¿Qué pagaste?» con lo que tienes por pagar.
+    await ev(`__armar((st) => __internet(st))`);
+    await ev(`{ P.acciones.anotar(); const q = document.getElementById('anotar-q'); q.value = 'pagué 35'; q.dispatchEvent(new Event('input', { bubbles: true })); } true`);
+    await esperar(80);
+    check('«¿Qué pagaste?» con tu internet y «Es nuevo»', [await texto('#l-cualPlan'), await ev(`!!document.querySelector('[data-fk="plan-pago-internet"]') && !!document.querySelector('[data-fk="plan-nuevo"]')`)], ['¿Qué pagaste?', true]);
+    await ev(`P.cerrarHoja({ sinFoco: true }); true`);
+    check('«pagué 5 del bus» no pregunta (es una compra)', await ev(`!!MOTOR.entender(P.st, 'pagué 5 del bus').planPreguntar`), false);
+});
+
+// ------------------------------------------------------------------ V10 (datos: la actualización a la v2.8)
+await filaDe('V10', 'Tus datos de la v2.7 en la v2.8: copia intacta «antes-de-v2.8.0», tus ahorros dentro de tu cuenta y tu libre igual', async () => {
+    await ev(`__armar((st) => st.apartados.push({ id: 'ap1', nombre: 'Emergencias', emoji: '🛟', portada: 'emergencia-paraguas', monto: 20000, meta: null, metaFecha: null, historial: [] }))`);
+    const st = await ev(`JSON.stringify(P.st)`);
+    const libreAntes = await libre();
+    const guardado = JSON.stringify({ esquema: 2, creado: '2026-10-01T10:00:00.000Z', st: JSON.parse(st), tab: 'hoy', tema: null, introVista: true, nombre: '', metricas: {}, feedback: [], version: 'Prototipo v2.7.0 · 2026-10-21', novedades: { 'v2.7': { visto: '2026-10-21T10:00:00.000Z' } } });
+    await ev(`P.sinGuardar = true; localStorage.clear(); localStorage.setItem('pamplanea-modo', JSON.stringify({ modo: 'uso', notaAvisos: true })); localStorage.setItem('pamplanea-uso:v1', ${js(guardado)}); true`);
+    await abrirApp();
+    await esperar(400);
+    const r = await ev(`(() => { const c = JSON.parse(localStorage.getItem('pamplanea-uso:respaldo:antes-de-v2.8.0') || 'null'); const u = JSON.parse(localStorage.getItem('pamplanea-uso:v1')); return { copia: c && JSON.stringify(c.datos), donde: u.st.apartados[0].donde, version: u.version, libre: P.calc().libre, nov: !!document.getElementById('capa-novedades') }; })()`);
+    check('la copia intacta por versión', r.copia, guardado);
+    check('tus ahorros quedan «dentro de» tu banco (el que tiene más)', r.donde, { lugar: 'banco' });
+    check('tu libre no cambia', r.libre, libreAntes);
+    check('lo guardó la v2.8', r.version, (v) => typeof v === 'string' && v.startsWith('Prototipo v2.8.0'));
+    check('sale el cuadrito de novedades', r.nov, true);
+    await ev(`P.sinGuardar = true; localStorage.clear(); true`);
+    await abrirApp();
 });
 
 const resultado = { version: await ev('window.VERSION_PROTOTIPO').catch(() => null), filas: filas.map((f) => ({ id: f.id, ok: f.ok, nombre: f.nombre, checks: f.checks.length, malas: f.checks.filter((c) => !c.ok) })), resumen: `${filas.filter((f) => f.ok).length} de ${filas.length} filas bien`, fallos, errores: b.errores, fallidas: b.fallidas };

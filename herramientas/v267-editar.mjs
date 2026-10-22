@@ -234,13 +234,16 @@ if (partes.includes(3)) {
         await guardar('deuda-ok');
         const id = await ev(`P.st.tarjetas.find((x) => x.nombre === 'Visa Cuscatlán').id`);
         const l0 = await libre();
+        const q0 = await ev(`P.calc().proxima.salePagos`);
         await irA('midinero', 'tarjeta', id);
         await clic('[data-fk="editar-tarjeta"]', 400);
         check('trae su estado de cuenta', [await valor('#f-ecTotal'), await valor('#f-ecMinimo'), await hay('#f-usualNueva')], ['300.00', '25.00', false]);
         await escribir('#f-ecTotal', '320');
         await guardar('deuda-ok');
         check('el pago de contado nuevo (eligió «Todo»): $320', await ev(`P.st.tarjetas.find((x) => x.id === ${js(id)}).estados.at(-1).aPagar`), 32000);
-        check('Hoy: el libre baja $20', l0 - (await libre()), 2000);
+        // v2.8 (D-4, U01): el estado de cuenta (vence el 5 nov) se paga con la quincena del 30: hoy el libre no cambia y
+        // esa quincena paga $20 más (antes: el libre bajaba $20).
+        check('Hoy: el libre no cambia y la quincena del 30 paga $20 más', [l0 - (await libre()), (await ev(`P.calc().proxima.salePagos`)) - q0], [0, 2000]);
         check('la ficha lo dice', await texto('#pantalla'), contiene('$320.00'));
     });
 }

@@ -1,4 +1,6 @@
-// PRUEBA v2.7 (Parte D): el cuadrito de novedades. Con datos guardados como los guarda la v2.6.7 (esquema 2, sin la
+// PRUEBA v2.7 (Parte D): el cuadrito de novedades. v2.8 (brief v2.8, E2.10, APROBADO por Victor 2026-10-22): es el
+// cuadrito de la v2.8 («¡PamPlanea está más clara! ✨»): Mi plan, los ahorros, los gastos variables y, si cambió algún
+// número, una línea con antes y después. A quien viene de la v2.6.7 le toca un solo cuadrito, con lo de la v2.7 si cabe. Con datos guardados como los guarda la v2.6.7 (esquema 2, sin la
 // versión que los guardó) y la fecha del teléfono fija (21 oct 2026):
 //  A) sale una vez con datos de la v2.6.7; al cerrarlo no vuelve, ni al recargar (y el cierre queda guardado)
 //  B) no sale a quien empieza de cero (ni después de su Primer día) ni en el modo de ejemplos
@@ -70,7 +72,7 @@ await seccion('A una vez', async () => {
     await sembrar();
     await abrirApp();
     check('sale al abrir con los datos de la v2.6.7', await hay(), true);
-    check('título amable', await ev(`document.getElementById('nov-t').innerText.trim()`), '¡PamPlanea se puso al día! ✨');
+    check('título amable', await ev(`document.getElementById('nov-t').innerText.trim()`), '¡PamPlanea está más clara! ✨');
     check('cierre: «Tus datos están completos y a salvo.» y «¡Entendido!»', await ev(`[document.querySelector('.nov-cierre').innerText.trim(), document.querySelector('[data-fk="nov-ok"]').innerText.trim()]`), ['Tus datos están completos y a salvo.', '¡Entendido!']);
     await foto('A-novedades');
     await b.tamano(1440, 900, { movil: false, toque: false });
@@ -80,7 +82,7 @@ await seccion('A una vez', async () => {
     await ev(`document.querySelector('[data-fk="nov-ok"]').click(); true`);
     await esperar(300);
     check('al cerrarlo se va', await hay(), false);
-    check('y queda guardado con tus datos', await ev(`!!JSON.parse(localStorage.getItem('pamplanea-uso:v1')).novedades['v2.7'].visto`), true);
+    check('y queda guardado con tus datos', await ev(`!!JSON.parse(localStorage.getItem('pamplanea-uso:v1')).novedades['v2.8'].visto`), true);
     await abrirApp();
     check('al recargar no vuelve', await hay(), false);
     await ev(`P.modos.cambiar('entrenamiento'); true`);
@@ -118,15 +120,16 @@ await seccion('C líneas', async () => {
     await sembrar(`s.tarjetas = []; s.medios = s.medios.filter((m) => !m.tarjeta); s.pagos = []; s.registros = s.registros.filter((r) => r.tipo !== 'cargoTarjeta' && r.tipo !== 'pagoTarjeta' && !r.pago);`);
     await abrirApp();
     const sin = await lineas();
-    // v2.7 (A): sin el teclado propio, la línea de los montos es solo la de los miles.
-    check('sin tarjeta ni pagos: solo lo de los montos', sin, ['Ya puedes anotar montos grandes, como 1,200.']);
+    // v2.8: las tres de la v2.8 (tiene ahorros) y, de la v2.7, la de los montos (sin pagos ni tarjeta).
+    check('sin tarjeta ni pagos: Mi plan, ahorros, variables y lo de los montos', sin, ['Pagos ahora se llama Mi plan: ahí ves lo que viene.', 'Tus ahorros ya no se mezclan con lo que puedes gastar.', 'El súper y la gasolina pueden ser gastos variables.', 'Ya puedes anotar montos grandes, como 1,200.']);
     await foto('C-sin-tarjeta');
     // Con tarjeta y pagos, sin números corregidos (Ana tal cual, con otro nombre).
     await sembrar();
     await abrirApp();
     const con = await lineas();
-    check('con tarjeta y pagos: la de la cuota y la de la tarjeta', con, ['Ya puedes anotar montos grandes, como 1,200.', 'Si pagas parte de una cuota, te mostramos cuánto falta.', 'Tus abonos a la tarjeta ahora bajan lo que debes.']);
-    check('sin números corregidos: ninguna línea de «Corregimos»', con.some((l) => l.startsWith('Corregimos')), false);
+    // v2.8 (D-4, U01): con la regla nueva de la tarjeta, los $15 de intereses de BAC van con la quincena del 30: su libre
+    // sube $15, y el cuadrito lo dice con antes y después (en vez de lo de la v2.7, que ya no cabe).
+    check('con tarjeta y pagos: las de la v2.8 y su libre antes y después', con, ['Pagos ahora se llama Mi plan: ahí ves lo que viene.', 'Tus ahorros ya no se mezclan con lo que puedes gastar.', 'El súper y la gasolina pueden ser gastos variables.', 'Tu libre era $270.60 y ahora es $285.60.']);
     // Con números que estaban mal en la v2.6.7: F01 (un gasto anotado después de cuadrar) y F02 (un abono a «lo que debo hoy»).
     await sembrar(`
         s.tarjetas.push({ id: 't70', nombre: 'Visa', emoji: '💳', tipo: 'tarjeta', corte: 5, pagoDia: 25, cupo: null, interesesAnio: 0, desde: '2026-10-10', pagoUsual: 10000, debeInicial: 200000, estados: [{ corte: '2026-10-05', total: 0, minimo: 0, aPagar: 0, opcion: 'total', vence: '2026-11-25', inicial: true, esperarCorte: true }] });
@@ -139,10 +142,10 @@ await seccion('C líneas', async () => {
         reg({ tipo: 'gasto', fecha: '2026-10-19', monto: 2000, nombre: 'Pupusas', categoria: 'comida', emoji: '🫓', medio: 'efectivo' });`);
     await abrirApp();
     const corr = await lineas();
-    const n = await ev(`JSON.parse(localStorage.getItem('pamplanea-uso:v1')).novedades['v2.7']`);
+    const n = await ev(`JSON.parse(localStorage.getItem('pamplanea-uso:v1')).novedades['v2.8']`);
     check('DATOS-4: el gasto de octubre bajó $20 (ya no cuenta el gasto dos veces)', n.antes.mes.salio - n.despues.mes.salio, 2000);
     check('DATOS-4: lo que debes de Visa: $2,000 → $1,900', [n.antes.tarjetas.find((t) => t.id === 't70').debe, n.despues.tarjetas.find((t) => t.id === 't70').debe], [200000, 190000]);
-    check('una sola línea «Corregimos…» con los dos números', corr.filter((l) => l.startsWith('Corregimos')), (x) => x.length === 1 && x[0].startsWith('Corregimos unos números: tu gasto de octubre es $') && x[0].includes('lo que debes de Visa es $1,900.00'));
+    check('una sola línea con antes y después de los números', corr.filter((l) => l.startsWith('Tu libre era')), (x) => x.length === 1 && x[0].includes('tu gasto de octubre, $') && x[0].includes('lo que debes de Visa, $1,900.00'));
     await foto('C-con-correccion');
 });
 
@@ -150,10 +153,11 @@ await seccion('C líneas', async () => {
 await seccion('D accesible', async () => {
     const todas = [...(await lineas()), await ev(`document.querySelector('.nov-cierre').innerText.trim()`)];
     check('máximo 5 líneas (con el cierre)', todas.length, (x) => x <= 5);
+    check('termina con «Tus datos están completos y a salvo.»', todas.at(-1), 'Tus datos están completos y a salvo.');
     check('20 palabras o menos cada una', todas.filter((l) => l.split(/\s+/).length > 20), []);
     check('sin palabras técnicas', todas.filter((l) => TECNICAS.test(l)), []);
     const r = await ev(`(() => { const d = document.querySelector('.nov'); return { rol: d.getAttribute('role'), modal: d.getAttribute('aria-modal'), titulo: document.getElementById(d.getAttribute('aria-labelledby'))?.innerText.trim(), foco: document.activeElement.dataset.fk, atras: document.getElementById('vista').inert, anim: getComputedStyle(d).animationName }; })()`);
-    check('diálogo con título', [r.rol, r.modal, r.titulo], ['dialog', 'true', '¡PamPlanea se puso al día! ✨']);
+    check('diálogo con título', [r.rol, r.modal, r.titulo], ['dialog', 'true', '¡PamPlanea está más clara! ✨']);
     check('el foco está adentro y lo de atrás no se toca', [r.foco, r.atras], ['nov-ok', true]);
     check('con «reducir movimiento» nada se mueve', r.anim, 'none');
     await b.enviar('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9 });
@@ -174,7 +178,7 @@ await seccion('E atrás', async () => {
     await ev(`history.back(); true`);
     await esperar(500);
     check('atrás lo cierra (no sale de la app)', [await hay(), await ev(`location.pathname.endsWith('telefono.html')`)], [false, true]);
-    check('y cuenta como visto', await ev(`!!JSON.parse(localStorage.getItem('pamplanea-uso:v1')).novedades['v2.7'].visto`), true);
+    check('y cuenta como visto', await ev(`!!JSON.parse(localStorage.getItem('pamplanea-uso:v1')).novedades['v2.8'].visto`), true);
 });
 
 const resultado = { version: await ev('window.VERSION_PROTOTIPO').catch(() => null), checks, fallos, errores: b.errores, fallidas: b.fallidas };

@@ -110,20 +110,21 @@ for (const tema of temas) {
 
     await caso('C05', async () => {
         await cargar('caso=C05', tema);
-        check('libre antes', await libre(), '$270.60');
-        check('incluye tarjeta', await texto('.portada-v'), 'Incluye tarjeta $245.00, vence el 5 de noviembre');
+        // v2.8 (D-4, U01): los $15 de intereses del estado de cuenta de BAC van con la quincena del 30: el libre de Ana sube $15.
+        check('libre antes', await libre(), '$285.60');
+        check('incluye tarjeta', await texto('.portada-v'), 'Incluye tarjeta $230.00, vence el 5 de noviembre');
         check('próxima quincena (V2-35)', await texto('.proy'), contiene('Próxima quincena (30)'));
-        check('próxima quincena: números', await texto('.proy'), contiene('ingreso ~$600 · pagos ~$55 · te quedarían ~$545'));
+        check('próxima quincena: números', await texto('.proy'), contiene('ingreso ~$600 · pagos ~$70 · te quedarían ~$530'));
         check('sin reserva automática', await ev('document.body.textContent.includes("Ya separa")'), false);
         await clic('[data-fk="nav-anotar"]');
         await escribir('#anotar-q', 'pupusas 6');
         await foto('c05-entendi');
         await clic('[data-fk="anotar-guardar"]');
         await foto('c05-guardado');
-        check('libre después', await libre(), '$264.60');
+        check('libre después', await libre(), '$279.60');
         check('toast', await texto('.toast'), contiene('Guardado'));
         await clic('[data-fk="toast-deshacer"]');
-        check('deshacer', await libre(), '$270.60');
+        check('deshacer', await libre(), '$285.60');
         return {};
     });
 
@@ -165,8 +166,10 @@ for (const tema of temas) {
         await escribir('#f-minimo', '25');
         await clic('[data-fk="hoja-ok"]');
         await clic('[data-fk="hoja-ok"]');
-        check('libre con todo', await libre(), '$315.60');
-        check('incluye tarjeta', await texto('.portada-v'), 'Incluye tarjeta $245.00, vence el 5 nov');
+        // v2.8 (D-4, U01): el estado de cuenta ($245, vence el 5 nov) se paga con la quincena del 30, como cualquier pago:
+        // hoy tu libre no baja (antes: $315.60) y el número lo dice.
+        check('libre con todo', await libre(), '$560.60');
+        check('incluye tarjeta', await texto('.portada-v'), 'Tarjeta $245.00 del 5 nov: se paga con tu quincena del 30');
         await cargar('caso=C16', tema);
         await clic('[data-fk="aviso-ver"]');
         await clic('[data-fk="estado-bac"]');
@@ -175,7 +178,7 @@ for (const tema of temas) {
         await clic('[data-fk="hoja-ok"]');
         await clic('[data-fk="ec-minimo"]');
         await clic('[data-fk="hoja-ok"]');
-        check('libre con mínimo', await libre(), '$535.60');
+        check('libre con mínimo (v2.8, D-4: también con la quincena del 30)', await libre(), '$560.60');
         await clic('[data-fk="nav-midinero"]');
         await clic('[data-fk="md-deudas"]');
         await clic('[data-fk="t-bac"]');
@@ -247,7 +250,7 @@ for (const tema of temas) {
         await clic('[data-fk="usar-ok"]');
         await foto('c23-logro');
         await clic('[data-fk="logro-hoy"]');
-        check('libre igual', await libre(), '$270.60');
+        check('libre igual', await libre(), '$285.60');
         await clic('[data-fk="nav-midinero"]');
         await clic('[data-fk="md-cuentas"]');
         check('banco baja', await texto('[data-fk="l-agricola"] .fila-m'), '$855.60');
@@ -280,7 +283,7 @@ for (const tema of temas) {
     await caso('C30', async () => {
         await cargar('caso=C30', tema);
         await fotoLarga('c30-hoy');
-        check('libre inicio', await libre(), '$250.60');
+        check('libre inicio', await libre(), '$265.60');
         check('red c en el aviso agrupado', await texto('.aviso-hoy'), contiene('2 avisos para hoy', 'tu ahorro Regalo'));
         await clic('[data-fk="nav-anotar"]');
         await escribir('#anotar-q', 'regalo mamá 20');
@@ -288,13 +291,13 @@ for (const tema of temas) {
         check('pregunta ahorro', await texto('#anotar-preg'), contiene('¿Lo tomas de tu ahorro Regalo?'));
         await clic('[data-fk="usar-no"]');
         await clic('[data-fk="anotar-guardar"]');
-        check('libre tras olvidar', await libre(), '$230.60');
+        check('libre tras olvidar', await libre(), '$245.60');
         await clic('[data-fk="aviso-ver"]');
         await clic('[data-fk="ven-si-regalo"]');
         await foto('c30-ya-lo-use');
         await clic('[data-fk="yl-ok"]');
         await foto('c30-cerrado');
-        check('libre arreglado (c)', await libre(), '$250.60');
+        check('libre arreglado (c)', await libre(), '$265.60');
         await clic('[data-fk="nav-midinero"]');
         await clic('[data-fk="md-ahorros"]');
         check('logro regalo', await texto('section[aria-labelledby=md-logros]'), contiene('Regalo'));
@@ -312,7 +315,7 @@ for (const tema of temas) {
         await foto('c30-mes-tomar');
         await clic('[data-fk="hoja-ok"]');
         await clic('[data-fk="nav-hoy"]');
-        check('libre arreglado (b)', await libre(), '$250.60');
+        check('libre arreglado (b)', await libre(), '$265.60');
         // Liberarlo sin usar: queda «Cerrado», no Logro (V2-31 #3).
         await cargar('caso=C30', tema);
         await clic('[data-fk="aviso-ver"]');
@@ -356,7 +359,7 @@ for (const tema of temas) {
         check('tarjeta en próxima', await texto('.linea'), contiene('Crédito Cuscatlán'));
         await fotoLarga('c31-pagos-proxima');
         await clic('[data-fk="nav-hoy"]');
-        check('libre baja 25', await libre(), '$245.60');
+        check('libre baja 25', await libre(), '$260.60');
         check('estado de cuenta: se pide en el siguiente corte', await ev('document.body.textContent.includes("Crédito Cuscatlán cortó el 20")'), false);
         await clic('[data-fk="nav-midinero"]');
         await clic('[data-fk="md-deudas"]');
@@ -390,7 +393,7 @@ for (const tema of temas) {
         await clic('[data-fk="md-cuentas"]');
         check('banco igual', await texto('[data-fk="l-agricola"] .fila-m'), '$1,455.60');
         await clic('[data-fk="nav-hoy"]');
-        check('libre igual', await libre(), '$270.60');
+        check('libre igual', await libre(), '$285.60');
         await clic('[data-fk="portada"]');
         await foto('c32-desglose');
         await clic('[data-fk="desglose-ok"]');
@@ -412,7 +415,7 @@ for (const tema of temas) {
         check('banco baja', await texto('[data-fk="l-agricola"] .fila-m'), '$855.60');
         check('sin reserva de la tarjeta', await ev('P.calc().reservadoTarjetas'), 0);
         await clic('[data-fk="nav-hoy"]');
-        check('libre igual tras pagar', await libre(), '$270.60');
+        check('libre igual tras pagar', await libre(), '$285.60');
         return {};
     });
 
@@ -460,7 +463,7 @@ for (const tema of temas) {
         await clic('[data-fk="hoja-ok"]');
         check('toast sube', await texto('.toast'), contiene('Tu libre sube $35.00'));
         await clic('[data-fk="nav-hoy"]');
-        check('libre sube', await libre(), '$305.60');
+        check('libre sube', await libre(), '$320.60');
         await clic('[data-fk="nav-midinero"]');
         await clic('[data-fk="md-deudas"]');
         await clic('[data-fk="t-bac"]');
@@ -476,8 +479,9 @@ for (const tema of temas) {
         await clic('[data-fk="nav-anotar"]');
         await escribir('#anotar-q', 'me pagaron 600');
         await foto('frase-me-pagaron');
-        // v2.6.5 (V2-81): la misma pregunta (V2-29 #10), con las palabras nuevas.
-        check('pregunta adelantada', await texto('#anotar-preg'), contiene('¿Es tu quincena del 30?', 'Todavía no es el 30', 'Sí, marcarla como recibida', 'No, es otro ingreso'));
+        // v2.8 (C-5): a 9 días de tu quincena ya no se pregunta «¿Es tu quincena?» (solo a ±10 % y ±3 días): es un extra.
+        // (La pregunta, a ±3 días: invariantes V8 y v265.)
+        check('9 días antes: no pregunta (es un extra)', await texto('#anotar-preg'), (t) => !String(t || '').includes('¿Es tu quincena'));
         await escribir('#anotar-q', 'aparté 20 luz');
         await foto('frase-aparte-luz');
         check('pregunta luz', await texto('#anotar-preg'), contiene('La luz ya está en tus pagos y se descuenta sola. ¿La ahorras igual?'));
@@ -518,8 +522,8 @@ try {
     await esperar(400);
     await b.ir(base + 'telefono.html');
     await esperar(300);
-    // v2.4.1: al saltar el recorrido, los ejemplos vuelven al inicio: $270.60 − $6.
-    check('guardado al volver', await libre(), '$264.60');
+    // v2.4.1: al saltar el recorrido, los ejemplos vuelven al inicio: $285.60 − $6 (v2.8, D-4).
+    check('guardado al volver', await libre(), '$279.60');
     check('sin bienvenida al volver', await hay('.ay'), false);
     await fotoT('vuelve-guardado');
     // v2.6 (V2-60): reiniciar los ejemplos y «Mis notas» son herramientas de Victor: solo con ?victor=1.
@@ -528,7 +532,7 @@ try {
     await clic('#btn-ayuda');
     await fotoT('ayuda-victor');
     await clic('[data-fk="ay-reiniciar"]');
-    check('reiniciar', await libre(), '$270.60');
+    check('reiniciar', await libre(), '$285.60');
     await clic('#btn-ayuda');
     await escribir('#ay-nombre', 'Persona de prueba');
     await escribir('#ay-nota', 'Me gustó el número grande');

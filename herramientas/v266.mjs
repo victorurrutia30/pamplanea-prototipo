@@ -297,7 +297,10 @@ if (partes.includes('b')) {
     await seccion('B2 corte antes del registro (10), pago el 14', async () => {
         await primerDia('2026-10-19');
         await tarjetaMiDinero({ corte: '10', usual: '100' });
-        check('sin pregunta (vence el 14 nov)', await hay('#antes-t'), false);
+        // v2.8 (D-5, F09): «¿Qué día vence tu próximo pago?» el 14 con corte el 10: el del 14 oct es de ese corte (ya no se
+        // infiere «el corte más un mes»). Como ya pasó, se pregunta (V2-85); «Sí» espera el siguiente, el 14 nov.
+        check('pregunta por el del 14 oct (D-5)', await pregunta(), 'El de octubre (14 oct), ¿ya lo pagaste?');
+        await clic('[data-fk="deuda-ok"]', 400);
         check('guardada', await ocTarjeta('Crédito Agrícola'), ['2026-11-14:pendiente:10000']);
     });
     await seccion('B3 con su último estado de cuenta (corte 25, pago 14, $100)', async () => {
@@ -324,7 +327,8 @@ if (partes.includes('b')) {
     await seccion('B4 editar el corte y el pago (V2-57) sin crear un pago vencido', async () => {
         await primerDia('2026-10-19');
         await tarjetaMiDinero({ corte: '10', pago: '20', usual: '100' });
-        check('antes: vence el 20 nov', await ocTarjeta('Crédito Agrícola'), ['2026-11-20:pendiente:10000']);
+        // v2.8 (D-5, F09): su próximo pago es el 20 de este mes (antes, «el corte más un mes»: 20 nov).
+        check('antes: vence el 20 oct (D-5)', await ocTarjeta('Crédito Agrícola'), ['2026-10-20:pendiente:10000']);
         const n0 = await numeros();
         await ev(`P.abrirHoja('nuevaDeuda', { tarjetaId: P.st.tarjetas[0].id }); true`);
         await esperar(300);
@@ -334,7 +338,8 @@ if (partes.includes('b')) {
         check('pregunta por el del 14 oct', await pregunta(), 'El de octubre (14 oct), ¿ya lo pagaste?');
         await clic('[data-fk="deuda-ok"]', 400);
         check('después: vence el 14 nov (ningún vencido)', await ocTarjeta('Crédito Agrícola'), ['2026-11-14:pendiente:10000']);
-        check('el libre igual', (await numeros()).libre, n0.libre);
+        // v2.8 (D-5): antes vencía el 20 oct (con lo que tienes); ahora el 14 nov, con la quincena del 30: el libre sube $100.
+        check('el libre: sube los $100 que ahora paga la quincena del 30', (await numeros()).libre - n0.libre, 10000);
     });
 }
 

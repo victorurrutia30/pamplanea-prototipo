@@ -276,7 +276,10 @@ try {
     };
     const a = limpiarV1(v1);
     const g = structuredClone(guardado);
-    for (const k of ['lugares', 'medios', 'pagos', 'registros', 'apartados', 'ingresos']) check('igual: ' + k, JSON.stringify(g.st[k]), JSON.stringify(a.st[k]));
+    // v2.8 (C-1): lo único nuevo en tus ahorros es dónde están (`donde`: dentro de tu cuenta); lo demás, igual.
+    const sinDonde = (lista) => (lista || []).map(({ donde, ...x }) => x);
+    for (const k of ['lugares', 'medios', 'pagos', 'registros', 'apartados', 'ingresos']) check('igual: ' + k, JSON.stringify(k === 'apartados' ? sinDonde(g.st[k]) : g.st[k]), JSON.stringify(a.st[k]));
+    check('v2.8 (C-1): tus ahorros quedan dentro de una de tus cuentas', g.st.apartados.every((x) => x.donde && g.st.lugares.some((l) => l.id === x.donde.lugar)), true);
     for (const k of ['nombre', 'metricas', 'feedback', 'feedbackEnDias', 'creado', 'introVista']) check('igual: ' + k, JSON.stringify(k === 'metricas' ? { ...g[k], dias: g[k].dias.slice(0, 2) } : g[k]), JSON.stringify(a[k]));
     check('migrado: libre $95.00 hasta el 29', [await texto('.portada-n'), await texto('.portada-h')], ['$95.00', 'Hasta tu quincena del 29 · en 9 días']);
     check('migrado: sin avisos rojos', await hay('#pantalla .nota--atencion'), false);

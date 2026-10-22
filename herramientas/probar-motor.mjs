@@ -20,11 +20,13 @@ const a = M.calcular(ana);
 igual('Ana tienes', a.tienes, 149560);
 igual('Ana apartado', a.apartado, 90000);
 igual('Ana por pagar (luz vencida)', a.porPagar, 3500);
-igual('Ana tarjeta', a.enTarjetas, 29000);
-igual('Ana libre (sin reserva automática)', a.libre, 27060);
+// v2.8 (D-4, U01): el estado de cuenta de BAC ($245, vence el 5 nov) se paga como cualquier pago: los $230 que anotaste en
+// compras siguen saliendo de lo que tienes y los $15 de intereses van con tu quincena del 30 (antes: $290 y $270.60).
+igual('Ana tarjeta', a.enTarjetas, 27500);
+igual('Ana libre (sin reserva automática)', a.libre, 28560);
 igual('Ana días', a.hz.dias, 9);
-igual('Ana por día', a.porDia, 3000);
-igual('Ana próxima quincena', [a.proxima.clave, a.proxima.entra, a.proxima.pagos, a.proxima.quedan], ['2026-10-30', 60000, 5500, 54500]);
+igual('Ana por día', a.porDia, 3100);
+igual('Ana próxima quincena (v2.8 D-4: con los $15 de la tarjeta)', [a.proxima.clave, a.proxima.entra, a.proxima.pagos, a.proxima.quedan], ['2026-10-30', 60000, 7000, 53000]);
 igual('Ana efectivo', M.saldoLugar(ana, 'efectivo'), 4000);
 igual('Ana banco', M.saldoLugar(ana, 'agricola'), 145560);
 igual('Ana sin avisos', a.avisos.map((x) => x.tipo), []);

@@ -17,6 +17,8 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { abrir, esperar } from './cdp.mjs';
 
+// v2.8 (D-4, U01): el libre de Ana al inicio es $285.60 (los $15 de intereses de BAC van con la quincena del 30; antes $270.60).
+const LIBRE_ANA = 28560;
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const args = Object.fromEntries(process.argv.slice(2).map((a) => a.replace(/^--/, '').split('=')));
 const base = args.base || pathToFileURL(root).href + '/';
@@ -276,7 +278,7 @@ try {
         await foto('A-pregunta');
         await clic('[data-fk="tour-saltar"]');
         await esperar(300);
-        check('«Ahora no»: cierra sin tocar los ejemplos', [await ev('P.tour.activo'), await ev('P.calc().libre')], [false, 27060]);
+        check('«Ahora no»: cierra sin tocar los ejemplos', [await ev('P.tour.activo'), await ev('P.calc().libre')], [false, LIBRE_ANA]);
         check('menú: «Aprender a usarla», sin «4 minutos»', await ev('(() => { P.abrirHoja("menu"); const t = document.querySelector(".hoja").innerText; P.cerrarHoja(); return t; })()'), (x) => x.includes('Aprender a usarla') && x.includes('Lo esencial y capítulos cortos') && !x.includes('minutos'));
     }
 
@@ -293,7 +295,7 @@ try {
         check('fijo: al final, «Empezar con mis datos» y «Aprender más»', [await texto('#tour-t'), await ev('[...document.querySelectorAll(".tour-card .btn")].map((e) => e.innerText.trim())'), await texto('[data-fk="tour-mirar"]')], ['¡Listo! Ya sabes lo esencial', ['Empezar con mis datos', 'Aprender más'], null]); // V2-69 #36: sin «Seguir mirando los ejemplos»
         await ev('P.acciones.tourFin({ v: "mirar" }); true');
         await esperar(400);
-        check('fijo: al terminar, los ejemplos como al inicio', [await ev('P.calc().libre'), await ev('!!P.st.recorrido'), await texto('.toast')], (x) => x[0] === 27060 && x[1] === false && x[2].includes('Listo, dejé los ejemplos como al inicio'));
+        check('fijo: al terminar, los ejemplos como al inicio', [await ev('P.calc().libre'), await ev('!!P.st.recorrido'), await texto('.toast')], (x) => x[0] === LIBRE_ANA && x[1] === false && x[2].includes('Listo, dejé los ejemplos como al inicio'));
         // «Aprende más»: la marca de hecho.
         await ev('P.ayuda.abrir("aprendeMas"); true');
         await esperar(300);
@@ -331,7 +333,7 @@ try {
         await pintado('paso', 2);
         await clic('[data-fk="tour-salir"]');
         await esperar(400);
-        check('Salir: guarda el paso y los ejemplos vuelven', [await ev('P.tour.activo'), await ev('P.modos.entrenamiento().caps["fijo:esencial"]'), await ev('P.calc().libre'), await texto('.toast')], (x) => x[0] === false && x[1].paso === 2 && !x[1].hecho && x[2] === 27060 && x[3].includes('como al inicio'));
+        check('Salir: guarda el paso y los ejemplos vuelven', [await ev('P.tour.activo'), await ev('P.modos.entrenamiento().caps["fijo:esencial"]'), await ev('P.calc().libre'), await texto('.toast')], (x) => x[0] === false && x[1].paso === 2 && !x[1].hecho && x[2] === LIBRE_ANA && x[3].includes('como al inicio'));
         check('Hoy: «Sigue donde te quedaste»', await texto('section[aria-labelledby="tour-seguir-t"]'), contiene('Sigue donde te quedaste', '«Lo esencial» (fecha fija): vas en el paso 3 de 6'));
         await foto('C-hoy-seguir');
         await clic('[data-fk="tour-hoy-seguir"]');
@@ -403,7 +405,7 @@ try {
                 await recorrerCap(version, id, { quietud: 'corta' });
                 await clic('[data-fk="tour-mas"]');
                 await esperar(400);
-                check(`${version} ${id}: al terminar, los ejemplos como al inicio`, [await ev('!!P.st.recorrido'), await ev('P.calc().libre')], [false, version === 'fijo' ? 27060 : 8000]);
+                check(`${version} ${id}: al terminar, los ejemplos como al inicio`, [await ev('!!P.st.recorrido'), await ev('P.calc().libre')], [false, version === 'fijo' ? LIBRE_ANA : 8000]);
                 check(`${version} ${id}: «Aprender más» vuelve a los capítulos con su marca`, [await ev('P.tour.activo'), await texto(`[data-fk="cap-${id}"] .cap-estado`)], [false, 'Hecho']);
             }
             check(`${version}: los 5 capítulos hechos`, await texto('#am-mas'), 'Aprende más · 5 de 5 hechos');
@@ -431,7 +433,7 @@ try {
         check('#27 en Pagos → Próxima', await texto('.per-res'), (x) => x.includes('Pagas ~$191 · tus ventas cuentan cuando las anotas') && !x.includes('~$0'));
         // Con ingreso fijo, igual que antes.
         await abrirApp('persona=ana');
-        check('#27 con quincena, sin cambio', await texto('.proy-l'), 'ingreso ~$600 · pagos ~$55 · te quedarían ~$545');
+        check('#27 con quincena, sin cambio (v2.8, D-4: con los $15 de BAC)', await texto('.proy-l'), 'ingreso ~$600 · pagos ~$70 · te quedarían ~$530');
 
         actual = 'E V2-59 #28';
         await abrirApp('persona=rosa');

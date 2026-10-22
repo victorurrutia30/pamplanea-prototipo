@@ -176,14 +176,17 @@ try {
         await escribir('#f-corte', '5');
         await clic('[data-fk="deuda-ok"]');
         await esperar(200);
-        check('corte 5: cortó el 5, el pago sigue el 10 nov', await estadoT(), { corte: '2026-10-05', vence: '2026-11-10', pagos: ['2026-11-10'], aviso: false });
-        check('la ficha lo dice', [await texto('#pantalla header, #pantalla .pg-head'), await texto('#pantalla .nota--info')], (x) => x[0].includes('Corte el 5 · pago el 10') && x[1].includes('Cortó el 5 de octubre'));
+        // v2.8 (D-5, F09): el pago sigue el 10 nov (ya pagaste el del 10 oct); con corte el 5, ese pago es del corte del 5 nov
+        // (corte y pago el mismo mes), ya no «el corte más un mes».
+        check('corte 5: el pago sigue el 10 nov (del corte del 5 nov)', await estadoT(), { corte: '2026-11-05', vence: '2026-11-10', pagos: ['2026-11-10'], aviso: false });
+        check('la ficha lo dice', [await texto('#pantalla header, #pantalla .pg-head'), await texto('#pantalla .nota--info')], (x) => x[0].includes('Corte el 5 · pago el 10') && x[1].includes('Corta el 5 de noviembre'));
         await foto('tarjeta-corte-5');
         await clic('[data-fk="editar-tarjeta"]');
         await escribir('#f-pagoDia', '20');
         await clic('[data-fk="deuda-ok"]');
         await esperar(200);
-        check('pago 20: su pago en Pagos el 20 nov', await estadoT(), { corte: '2026-10-05', vence: '2026-11-20', pagos: ['2026-11-20'], aviso: false });
+        // v2.8 (D-5, F09): «¿Qué día vence tu próximo pago?» el 20: el 20 de este mes (antes, el corte más un mes: 20 nov).
+        check('pago 20: su próximo pago, el 20 oct', await estadoT(), { corte: '2026-10-05', vence: '2026-10-20', pagos: ['2026-10-20'], aviso: false });
         // Un estado de cuenta ya anotado no se modifica.
         await abrirApp('persona=ana');
         const antesBac = await ev('JSON.stringify(P.st.tarjetas.find((t) => t.id === "bac").estados)');

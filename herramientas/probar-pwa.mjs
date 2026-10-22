@@ -59,7 +59,8 @@ try {
     await b.evaluar('document.querySelector("[data-fk=tour-saltar]").click(); true');
     await b.evaluar(anotarPupusas);
     await esperar(500);
-    check('entrenamiento anotado', await b.evaluar('document.querySelector(".portada-n").textContent'), '$264.60');
+    // v2.8 (D-4, U01): el libre de Ana sube $15 (los intereses de BAC van con la quincena del 30): $285.60 − $6.
+    check('entrenamiento anotado', await b.evaluar('document.querySelector(".portada-n").textContent'), '$279.60');
     // …y «Usarla con mis datos» con sus propios datos (se arman directo: el primer día se prueba en recorrer-modos).
     await b.evaluar('{ P.modos.cambiar("uso"); P.ayuda.cerrar(); const s = DATOS.crearAna(); Object.assign(s, { persona: "uso", hoy: P.modos.hoy(), nombre: "Prueba" }); P.cargar(s, { tab: "hoy" }); P.modos.guardarUso(); } true');
     await b.evaluar(anotarPupusas.replace('"pupusas 6"', '"pupusas 9"'));
@@ -90,7 +91,7 @@ try {
     check('datos reales tras actualizar', [await b.evaluar('P.modo'), await b.evaluar('document.querySelector(".portada-n")?.textContent'), await b.evaluar('JSON.parse(localStorage.getItem("pamplanea-uso:v1")).esquema')], ['uso', libre, 2]);
     await b.evaluar('P.modos.cambiar("entrenamiento"); true');
     await esperar(500);
-    check('ejemplos intactos tras actualizar', await b.evaluar('document.querySelector(".portada-n")?.textContent'), '$264.60');
+    check('ejemplos intactos tras actualizar', await b.evaluar('document.querySelector(".portada-n")?.textContent'), '$279.60');
 } catch (e) {
     informe.fallos.push('excepción: ' + e.message);
 }

@@ -232,7 +232,8 @@ try {
         check('un caso se abre', await ev('P.caso && P.caso.id'), 'C05');
         await clic('#btn-ayuda');
         await clic('[data-fk="ay-reiniciar"]');
-        check('reiniciar los ejemplos', await texto('.portada-n'), '$270.60');
+        // v2.8 (D-4, U01): los $15 de intereses de BAC van con la quincena del 30 (antes: $270.60).
+        check('reiniciar los ejemplos', await texto('.portada-n'), '$285.60');
         // Con tus datos: las herramientas no se ofrecen (cargarían ejemplos encima); solo «Ir a los ejemplos».
         await limpio('?victor=1');
         await ponerUso({ conFeedback: false });

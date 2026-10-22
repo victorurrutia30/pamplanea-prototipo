@@ -381,7 +381,9 @@ caso('C-02', 'C', 'Pagar la tarjeta desde el banco: baja el banco y la deuda; no
     if (d.libre !== a.libre) f.push(`el libre cambió ${a.libre} → ${d.libre}`);
     return f;
 });
-caso('C-03', 'C', 'Suscripción que se cobra en la tarjeta: cuenta una vez; al marcarla queda como compra en la tarjeta, no del banco', 'P1', async () => {
+// v2.8 (C-7): un cobro automático con tarjeta no resta aparte: va dentro del pago de la tarjeta (antes contaba una vez como
+// pago de la lista). Ahora: no está entre lo que pagas con lo que tienes, y al marcarla sube lo que debes sin mover tu libre.
+caso('C-03', 'C', 'Suscripción que se cobra en la tarjeta: no resta aparte (C-7); al marcarla queda como compra en la tarjeta, no del banco', 'P1', async () => {
     await cargar();
     await ev(`(() => { P.crearPago(P.st, { nombre: 'Spotify', emoji: '🎵', categoria: 'suscripciones', monto: 599, frecuencia: 'mensual', dia: 25, medio: 'bac', tipoPago: 'suscripcion' }); P.render(); return true; })()`);
     const a = await ev('QA.dinero()');
@@ -389,7 +391,7 @@ caso('C-03', 'C', 'Suscripción que se cobra en la tarjeta: cuenta una vez; al m
     await ev(`(() => { const p = QA.pago('Spotify'); const o = QA.ocurrencia(p); P.acciones.pagado({ tipo: 'pago', id: p.id, fecha: o.fecha }); QA.confirmar(); if (P.ui.hoja) P.acciones.pagadoGuardar(); return true; })()`);
     const d = await ev('QA.dinero()');
     const f = [];
-    if (veces !== 1) f.push(`antes de pagarla cuenta ${veces} veces`);
+    if (veces !== 0) f.push(`antes de pagarla cuenta ${veces} veces aparte (C-7: va dentro del pago de la tarjeta)`);
     if (d.lugares.agricola !== a.lugares.agricola || d.lugares.efectivo !== a.lugares.efectivo) f.push('salió del banco o del efectivo');
     if (d.tarjetas.bac.compras - a.tarjetas.bac.compras !== 599) f.push('no quedó como compra en la tarjeta');
     if (d.libre !== a.libre) f.push(`el libre cambió al marcarla (${a.libre} → ${d.libre}): contada dos veces o ninguna`);
@@ -421,7 +423,8 @@ caso('C-05', 'C', 'Cuota de préstamo: sale del medio elegido, baja lo que debes
 caso('C-07', 'C', 'Anotar algo que ya es un pago de la lista («luz 35»): se marca ese pago, no se duplica', 'P1', async () => {
     await cargar();
     const a = await ev('QA.dinero()');
-    const d0 = await ev(`QA.anotar('luz 35')`);
+    // v2.8 (C-4, P-1): Anotar pregunta «¿Es tu pago de Luz?»; la persona contesta «Sí, es ese».
+    const d0 = await ev(`QA.anotar('luz 35', { cualPlan: 'si' })`);
     const d = await ev('QA.dinero()');
     const f = [];
     if (!d0 || d0.tipo !== 'pagado') f.push(`lo entendió como ${d0 && d0.tipo}`);
@@ -432,7 +435,7 @@ caso('C-07', 'C', 'Anotar algo que ya es un pago de la lista («luz 35»): se ma
 });
 caso('C-07b', 'C', 'Anotar otra vez un pago ya pagado del mes avisa que ya está pagado', 'P3', async () => {
     await cargar();
-    await ev(`QA.anotar('luz 35'); true`);
+    await ev(`QA.anotar('luz 35', { cualPlan: 'si' }); true`);
     const d0 = await ev(`(() => { P.acciones.anotar(); const q = document.getElementById('anotar-q'); q.value = 'luz 35'; q.dispatchEvent(new Event('input', { bubbles: true })); const r = { tipo: P.ui.hoja.d && P.ui.hoja.d.tipo, aviso: document.getElementById('anotar-preg')?.innerText || '' }; P.cerrarHoja(); return r; })()`);
     return /ya (la |lo )?(marcaste|pagaste|está pagad)/i.test(d0.aviso) ? [] : [`lo toma como ${d0.tipo} sin avisar que la luz de octubre ya está pagada`];
 });
@@ -454,7 +457,8 @@ caso('C-08', 'C', 'Ingresos con su tipo: venta, remesa que llegó, adelanto; una
 });
 caso('C-09', 'C', '«me pagaron 600» pregunta si es la quincena o un extra (V2-29 #10) y cuenta una sola vez', 'P2', async () => {
     await cargar();
-    const d0 = await ev(`(() => { P.acciones.anotar(); const q = document.getElementById('anotar-q'); q.value = 'me pagaron 600'; q.dispatchEvent(new Event('input', { bubbles: true })); return { tipo: P.ui.hoja.d.tipo, pregunta: document.getElementById('anotar-preg')?.innerText || '' }; })()`);
+    // v2.8 (C-5): se pregunta a ±10 % y ±3 días de la quincena: aquí, el 28 (dos días antes de la del 30).
+    const d0 = await ev(`(() => { P.st.hoy = '2026-10-28'; P.acciones.anotar(); const q = document.getElementById('anotar-q'); q.value = 'me pagaron 600'; q.dispatchEvent(new Event('input', { bubbles: true })); return { tipo: P.ui.hoja.d.tipo, pregunta: document.getElementById('anotar-preg')?.innerText || '' }; })()`);
     // v2.6.5 (V2-81): la misma pregunta, con las palabras nuevas: «¿Es tu quincena del 30?» [Sí, marcarla como recibida] [No, es otro ingreso].
     return /¿Es tu quincena del 30\?/.test(d0.pregunta) && /marcarla como recibida/.test(d0.pregunta) && /otro ingreso/.test(d0.pregunta) ? [] : ['no pregunta si es la quincena o un extra: ' + d0.pregunta.slice(0, 120)];
 });

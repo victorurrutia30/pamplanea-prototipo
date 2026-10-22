@@ -178,6 +178,9 @@ if (partes.includes('a')) {
         // «luz 35»: la conexión de siempre: marca la vencida (12 oct).
         await anotar('luz 35');
         check('«luz 35» marca la luz del 12 de octubre', await ev(`({ tipo: P.ui.hoja.d.tipo, ocurrencia: P.ui.hoja.d.ocurrencia, boton: document.querySelector('[data-fk="anotar-guardar"]')?.innerText.trim() })`), { tipo: 'pagado', ocurrencia: '2026-10-12', boton: 'Marcar pagado' });
+        // v2.8 (C-4, P-1): primero «¿Es tu pago de Luz del 12 de octubre?» — «Sí, es ese».
+        check('pregunta «¿Es tu pago de Luz del 12 de octubre?»', await texto('#l-cualPlan'), '¿Es tu pago de Luz del 12 de octubre?');
+        await clic('[data-fk="plan-si"]', 300);
         await clic('[data-fk="anotar-guardar"]', 600);
         check('pagada la de octubre', await estadoPago('luz', '2026-10-12'), 'pagado');
         // «colegio 20»: el de octubre ya está pagado; el próximo es el 5 de noviembre: lo ofrece, sin suponer.
@@ -219,16 +222,23 @@ if (partes.includes('b')) {
     });
     await seccion('B2 «Recibí» de tipo Salario', async () => {
         await conDatos();
+        // v2.8 (C-5): «¿Es tu quincena?» se pregunta a ±10 % y ±3 días: el 21, a 9 días de la del 30, es un extra; el 28, sí.
+        const recibiSalario = async (monto) => {
+            await clic('[data-fk="nav-anotar"]', 300);
+            await clic('[data-fk="atajo-ingreso"]', 300);
+            await escribir('#f-monto', monto);
+            if (await hay('[data-fk="op-categoriaIngreso-salario"]')) await clic('[data-fk="op-categoriaIngreso-salario"]', 300);
+            else {
+                await clic('[data-fk="chip-nombre"]', 300);
+                await clic('[data-fk="op-categoriaIngreso-salario"]', 300);
+            }
+        };
+        await recibiSalario('600');
+        check('el 21 (9 días antes): no pregunta, es un extra', await texto('#capa-hoja'), (t) => !/¿Es tu quincena/.test(String(t)));
+        await ev(`P.cerrarHoja({ sinFoco: true }); P.st.hoy = '2026-10-28'; P.render(); true`);
         const n0 = await numeros();
         const ingresosAntes = await ev('P.st.ingresos.length');
-        await clic('[data-fk="nav-anotar"]', 300);
-        await clic('[data-fk="atajo-ingreso"]', 300);
-        await escribir('#f-monto', '300');
-        if (await hay('[data-fk="op-categoriaIngreso-salario"]')) await clic('[data-fk="op-categoriaIngreso-salario"]', 300);
-        else {
-            await clic('[data-fk="chip-nombre"]', 300);
-            await clic('[data-fk="op-categoriaIngreso-salario"]', 300);
-        }
+        await recibiSalario('580');
         check('pregunta «¿Es tu quincena del 30?»', await texto('#capa-hoja'), (t) => /¿Es tu quincena del 30\?/.test(String(t)) && /Sí, marcarla como recibida/.test(String(t)) && /No, es otro ingreso/.test(String(t)));
         await foto('B2-es-tu-quincena');
         await clic('[data-fk="cual-esperado"]', 300);
@@ -237,21 +247,16 @@ if (partes.includes('b')) {
         const n1 = await numeros();
         notas.recibiSalario = { antes: n0, despues: n1 };
         check('con «Sí»: la del 30 queda recibida y NO hay un ingreso nuevo', [await estadoIngreso('quincena', '2026-10-30'), await ev('P.st.ingresos.length')], ['llego', ingresosAntes]);
-        check('lo que llegó: $300', await ev(`P.st.ingresos.find((i) => i.id === 'quincena').llegadas['2026-10-30'].monto`), 30000);
+        check('lo que llegó: $580', await ev(`P.st.ingresos.find((i) => i.id === 'quincena').llegadas['2026-10-30'].monto`), 58000);
         // Otra vez «Recibí» Salario: ya estaba recibida: lo dice.
-        await clic('[data-fk="nav-anotar"]', 300);
-        await clic('[data-fk="atajo-ingreso"]', 300);
-        await escribir('#f-monto', '300');
-        if (await hay('[data-fk="op-categoriaIngreso-salario"]')) await clic('[data-fk="op-categoriaIngreso-salario"]', 300);
-        else {
-            await clic('[data-fk="chip-nombre"]', 300);
-            await clic('[data-fk="op-categoriaIngreso-salario"]', 300);
-        }
+        await recibiSalario('580');
         check('ya recibida: «Ya marcaste tu quincena del 30 como recibida. ¿Es otro ingreso?»', await texto('#capa-hoja'), (t) => /Ya marcaste tu quincena del 30 como recibida\. ¿Es otro ingreso\?/.test(String(t)));
         await foto('B2-ya-recibida');
     });
     await seccion('B3 «me pagaron 600» (V2-29 #10, con las palabras nuevas)', async () => {
         await conDatos();
+        // v2.8 (C-5): «¿Es tu quincena?» se pregunta a ±10 % y ±3 días: el 21, a 9 días de la del 30, es un extra; el 28, sí.
+        await ev(`P.st.hoy = '2026-10-28'; P.render(); true`);
         await clic('[data-fk="nav-anotar"]', 300);
         await escribir('#anotar-q', 'me pagaron 600');
         await esperar(300);
