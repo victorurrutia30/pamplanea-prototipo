@@ -35,6 +35,7 @@
 // Ajuste 3 «Formularios claros» (APROBADO por Victor, 2026-10-22):
 //  V17 FM-1 nada duplicado · V18 FM-2 «+ Ingreso» nunca ofrece Salario · V19 FM-3 «Es mi quincena → Ya llegó» no duplica
 //  V20 FM-5 archivar una categoría no cambia montos ni historial · V21 FM-7 «Gasté» en un gasto variable lo consume
+// Ajuste 4 (APROBADO por Victor, 2026-10-22): V22 «¿En qué?» sin nombres repetidos · V23 «Gasté» sin texto no trae nada elegido
 // Uso: node herramientas/invariantes.mjs [--base=http://…/] [--puerto=9961] [--solo=I01,F13] [--raiz=<otra copia>]
 //      (--raiz: las mismas filas sobre otra copia, por ejemplo la v2.6.7 sacada de git, para ver cuáles fallaban antes)
 import { mkdir } from 'node:fs/promises';
@@ -355,7 +356,9 @@ await filaDe('I09', 'Una copia dañada o de una versión futura no toca los dato
 // ------------------------------------------------------------------ I10 (F16)
 await filaDe('I10', 'Corregir un gasto que salió de un ahorro: el gasto y el ahorro cambian juntos', async () => {
     await ev(`__armar((st) => st.apartados.push({ id: 'ap1', nombre: 'Útiles', emoji: '🐷', portada: 'general-alcancia', monto: 5000, meta: null, metaFecha: null, historial: [] }))`);
-    await ev(`__anotar('cuadernos 20 efectivo', { usarApartado: 'ap1' })`);
+    // Ajuste 4 (punto 6, APROBADO por Victor 2026-10-22): «cuadernos» no dice en qué fue: se elige (Educación).
+    const rI10 = await ev(`__anotar('cuadernos 20 efectivo', { usarApartado: 'ap1', enQue: 'educacion' })`);
+    check('se guarda (con «¿En qué?» elegido)', rI10, (x) => x && !x.abierta);
     const antes = await ev(`({ ahorro: P.st.apartados[0].monto, libre: P.calc().libre })`);
     check('el ahorro baja a $30', antes.ahorro, 3000);
     const reg = await ev(`P.st.registros.find((x) => x.tipo === 'gasto').id`);
@@ -368,7 +371,8 @@ await filaDe('I10', 'Corregir un gasto que salió de un ahorro: el gasto y el ah
     check('el libre no cambia (salió del ahorro)', r.libre, antes.libre);
     // Con crédito: lo reservado para pagar la tarjeta es lo usado.
     await ev(`__armar((st) => { __tarjeta(st, { desde: '2026-09-01', estados: [{ corte: '2026-10-05', total: 0, minimo: 0, aPagar: 0, opcion: 'total', vence: '2026-10-25' }] }); st.apartados.push({ id: 'ap1', nombre: 'Útiles', emoji: '🐷', portada: 'general-alcancia', monto: 5000, meta: null, metaFecha: null, historial: [] }); })`);
-    await ev(`__anotar('mochila 20 crédito cuscatlán', { usarApartado: 'ap1' })`);
+    // Ajuste 4 (punto 6): «mochila» no dice en qué fue: se elige (Otros).
+    await ev(`__anotar('mochila 20 crédito cuscatlán', { usarApartado: 'ap1', enQue: 'otros' })`);
     const reg2 = await ev(`P.st.registros.find((x) => x.tipo === 'gasto').id`);
     await ev(`P.abrirHoja('editarRegistro', { id: ${js(reg2)} }); true`);
     await escribir('#f-monto', '35');
@@ -727,7 +731,8 @@ await filaDe('V3', 'Ahorros (C-1): dentro se resta, aparte solo se registra; «Y
     check('«Usé de mi ahorro» $20 (aparte): llega a tu efectivo y tu libre sube $20', [(await ev(`__saldo('efectivo')`)) - ef2, (await libre()) - lu2], [2000, 2000]);
     // D-9 (U16): usar parte de un ahorro con fecha deja el resto (antes se cerraba y lo demás volvía a tu libre).
     await ev(`__armar((st) => st.apartados.push({ id: 'lap', nombre: 'Laptop', emoji: '💻', portada: 'tecnologia-laptop', monto: 60000, meta: 60000, metaFecha: '2026-11-30', historial: [], donde: { lugar: 'banco' } }))`);
-    await ev(`__anotar('mouse 100 débito', { usarApartado: 'lap' })`);
+    // Ajuste 4 (punto 6): «mouse» no dice en qué fue: se elige (Tecnología).
+    await ev(`__anotar('mouse 100 débito', { usarApartado: 'lap', enQue: 'tecnologia' })`);
     check('usar $100 de $600: quedan $500 en el ahorro (no se cierra)', await ev(`(P.st.apartados.find((x) => x.id === 'lap') || {}).monto ?? null`), 50000);
     check('montos enteros', await ev(`P.st.apartados.every((a) => Number.isInteger(a.monto))`), true);
 });
@@ -1316,6 +1321,59 @@ await filaDe('V21', 'FM-7: «Gasté» muestra primero tus gastos variables; eleg
     check('lo consume: llevas $40 de $150', await ev(`(() => { const x = MOTOR.variablesInfo(P.st).find((y) => y.v.id === 'v1'); return [x.anotado, x.falta]; })()`), [4000, 11000]);
     check('tu libre no baja', await libre(), libre0);
     check('el gasto dice de qué gasto variable es', await ev(`P.st.registros.filter((r) => r.tipo === 'gasto').map((r) => [r.nombre, r.monto, r.variable])`), [['Súper', 4000, 'v1']]);
+});
+
+// ------------------------------------------------------------------ V22 (ajuste 4: «¿En qué?» sin nombres repetidos)
+await filaDe('V22', 'Ajuste 4: en «¿En qué?» nunca hay dos opciones con el mismo nombre; tus gastos variables primero, en 4 líneas con «Más…» y «Otra»', async () => {
+    await ev(`__armar((st) => { st.variables = [{ id: 'v1', nombre: 'súper', emoji: '🛒', categoria: 'super', tope: 15000, medio: 'debito', desde: '2026-10-15', creado: '2026-10-15', cierres: {}, activo: true }, { id: 'v2', nombre: 'Comida', emoji: '🍽️', categoria: 'comida', tope: 8000, medio: 'efectivo', desde: '2026-10-15', creado: '2026-10-15', cierres: {}, activo: true }]; for (let i = 0; i < 3; i++) st.registros.push({ id: 'rs' + i, seq: 20 + i, tipo: 'gasto', fecha: '2026-10-1' + i, monto: 500, nombre: 'Medicina', categoria: 'salud', emoji: '💊', medio: 'efectivo' }); st.seq = 40; })`);
+    const ver = () => ev(`(() => { const g = document.querySelector('.chips--enque'); const vis = [...g.children].filter((b) => b.style.display !== 'none'); const nombres = [...g.children].filter((b) => !b.hasAttribute('data-fijo')).map((b) => MOTOR.normalizar(b.querySelector('span').textContent)); return { lineas: new Set(vis.map((b) => b.offsetTop)).size, todos: nombres, unicos: new Set(nombres).size, visibles: vis.map((b) => b.dataset.v), fijos: vis.filter((b) => b.hasAttribute('data-fijo')).map((b) => b.dataset.fk) }; })()`);
+    // Gasté
+    await ev(`P.acciones.anotar(); P.acciones.anotarAtajo({ v: 'gasto' }); true`);
+    await esperar(200);
+    let r = await ver();
+    check('Gasté: ningún nombre dos veces (súper y Comida solo como gastos variables)', [r.todos.length, r.unicos, r.todos.filter((x) => x === 'super' || x === 'comida').length], [r.unicos, r.unicos, 2]);
+    check('primero tus gastos variables y después la que más usaste (Salud)', r.visibles.slice(0, 3), ['var:v1', 'var:v2', 'salud']);
+    check('máximo 4 líneas, con «Más…» y «Otra» a la vista', [r.lineas <= 4, r.fijos], [true, ['op-enQue-mas', 'op-enQue-otra']]);
+    await clic('[data-fk="op-enQue-mas"]');
+    r = await ver();
+    check('«Más…» las despliega todas (sin repetir)', [r.visibles.length - 2, r.unicos], [r.unicos, r.unicos]);
+    // Anotar con texto
+    await ev(`P.cerrarHoja({ sinFoco: true }); P.acciones.anotar(); (() => { const q = document.getElementById('anotar-q'); q.value = 'súper 40'; q.dispatchEvent(new Event('input', { bubbles: true })); })(); P.acciones.anotarEditar({ campo: 'nombre' }); true`);
+    await esperar(200);
+    r = await ver();
+    check('Anotar con texto: tampoco se repite; «súper 40» elige tu gasto variable', [r.todos.length === r.unicos, await ev(`[...document.querySelectorAll('[data-campo="enQue"][aria-pressed="true"]')].map((b) => b.dataset.v)`)], [true, ['var:v1']]);
+    // «Corregir» un gasto
+    await ev(`P.cerrarHoja({ sinFoco: true }); P.abrirHoja('editarRegistro', { id: 'rs0' }); true`);
+    await esperar(200);
+    r = await ver();
+    check('«Corregir» un gasto: tampoco se repite', r.todos.length, r.unicos);
+    await ev(`P.cerrarHoja({ sinFoco: true }); true`);
+});
+
+// ------------------------------------------------------------------ V23 (ajuste 4: no asumir en «Gasté»)
+await filaDe('V23', 'Ajuste 4: «Gasté» sin texto no trae nada elegido en «¿En qué?»; sin elegir no se guarda («Elige en qué»)', async () => {
+    const hay = (sel) => ev(`!!document.querySelector(${js(sel)})`);
+    await ev(`__armar()`);
+    const n0 = await ev(`P.st.registros.length`);
+    await ev(`P.acciones.anotar(); P.acciones.anotarAtajo({ v: 'gasto' }); true`);
+    await esperar(200);
+    check('nada elegido (antes venía «Otros»)', await ev(`[...document.querySelectorAll('[data-campo="enQue"][aria-pressed="true"]')].length`), 0);
+    check('sin el texto ni «¿Qué pasó?»: el título es «Gasté» y está «Atrás»', [await hay('#anotar-q'), await texto('#hoja-t'), await hay('[data-fk="anotar-atras"]'), /¿Qué pasó\?/.test(await texto('.hoja'))], [false, 'Gasté', true, false]);
+    await escribir('#f-monto', '12');
+    await escribir('#f-nombre', 'Algo');
+    await clic('[data-fk="op-medio-efectivo"]');
+    await clic('[data-fk="anotar-guardar"]');
+    check('sin elegir no se guarda: «Elige en qué»', [await texto('#err-enQue'), await ev(`P.st.registros.length`)], ['Elige en qué', n0]);
+    await clic('[data-fk="op-enQue-otros"]');
+    await clic('[data-fk="anotar-guardar"]');
+    check('al elegir, se guarda', await ev(`P.st.registros.filter((r) => r.tipo === 'gasto').map((r) => [r.nombre, r.monto, r.categoria])`), [['Algo', 1200, 'otros']]);
+    // Lo que se entiende del texto sí viene elegido; «Atrás» vuelve al texto.
+    await ev(`P.acciones.anotar(); (() => { const q = document.getElementById('anotar-q'); q.value = 'pupusas 6'; q.dispatchEvent(new Event('input', { bubbles: true })); })(); P.acciones.anotarAtajo({ v: 'gasto' }); true`);
+    await esperar(200);
+    check('«pupusas 6» y luego Gasté: se conserva y viene Comida', [await ev('P.ui.hoja.d.monto'), await ev(`[...document.querySelectorAll('[data-campo="enQue"][aria-pressed="true"]')].map((b) => b.dataset.v)`)], [600, ['comida']]);
+    await clic('[data-fk="anotar-atras"]');
+    check('«Atrás»: otra vez el texto («¿Qué quieres anotar?»)', [await ev(`document.getElementById('anotar-q')?.value`), await texto('label[for="anotar-q"]')], ['pupusas 6', '¿Qué quieres anotar?']);
+    await ev(`P.cerrarHoja({ sinFoco: true }); true`);
 });
 
 const resultado = { version: await ev('window.VERSION_PROTOTIPO').catch(() => null), filas: filas.map((f) => ({ id: f.id, ok: f.ok, nombre: f.nombre, checks: f.checks.length, malas: f.checks.filter((c) => !c.ok) })), resumen: `${filas.filter((f) => f.ok).length} de ${filas.length} filas bien`, fallos, errores: b.errores, fallidas: b.fallidas };

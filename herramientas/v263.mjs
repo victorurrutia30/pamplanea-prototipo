@@ -135,7 +135,7 @@ try {
         check('cuatro cuadros del mismo estilo', await ev(`[...document.querySelectorAll('.hoja .opciones-grandes .opcion-g .opcion-g-t')].map((e) => e.textContent.trim())`), ['Cuota de un préstamo', 'Suscripción', 'Facturas y servicios', 'Otro']);
         check('«¿Cuál?» todavía no sale (primero el grupo)', await ev(`document.querySelectorAll('[data-fk^="op-frecuente-"]').length`), 0);
         await clic('[data-fk="np-servicios"]');
-        check('«Facturas y servicios»: sus opciones', await ev(`[...document.querySelectorAll('[data-fk^="op-frecuente-"]')].map((e) => e.textContent.trim())`), ['Luz', 'Agua', 'Internet', 'Cable', 'Plan de celular', 'Gas (cilindro)', 'Tasas municipales (basura)', 'Vigilancia o cuota de colonia', 'Otra']);
+        check('«Facturas y servicios»: sus opciones', await ev(`[...document.querySelectorAll('[data-fk^="op-frecuente-"]')].map((e) => e.textContent.trim())`), ['Luz', 'Agua', 'Internet', 'Cable', 'Plan de celular', 'Gas (cilindro)', 'Vigilancia o cuota de colonia', 'Otra']); // Ajuste 4 (punto 1): sin «Tasas municipales».
         await foto('B-servicios');
         await clic('[data-fk="op-frecuente-internet"]');
         await escribir('#f-monto', '30');

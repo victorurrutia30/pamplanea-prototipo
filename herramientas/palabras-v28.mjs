@@ -147,7 +147,8 @@ const PROHIBIDAS = /\b(apart(ar|ado|ados|ada|adas|é|aste|amos|aron)|reserv(ar|a
 // D-2 corregida, APROBADO por Victor 2026-10-22) tampoco «¿Siempre es el mismo monto?»: fijo o variable no se decide por el monto.
 // Ajuste 3 (FM-8, APROBADO por Victor 2026-10-22): «pago» como sustantivo solo para deudas: tampoco «Otro pago», «¿Cuál pago?» ni
 // «¿Qué pago?».
-const YA_NO = /\blo pago yo\b|¿\s*c[oó]mo le dices\s*\?|siempre es el mismo monto|\botro pago\b|¿\s*cu[aá]l pago\s*\?|¿\s*qu[eé] pago\s*\?/i;
+// Ajuste 4 (APROBADO por Victor 2026-10-22): tampoco «¿Qué pasó?» ni «Tasas municipales».
+const YA_NO = /\blo pago yo\b|¿\s*c[oó]mo le dices\s*\?|siempre es el mismo monto|\botro pago\b|¿\s*cu[aá]l pago\s*\?|¿\s*qu[eé] pago\s*\?|¿\s*qu[eé] pas[oó]\s*\?|tasas municipales/i;
 const malas = [];
 const errores = [];
 for (const x of textos) {
