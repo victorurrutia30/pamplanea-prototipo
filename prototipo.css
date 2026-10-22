@@ -1395,6 +1395,14 @@ button.fila-main:active {
     min-width: 0;
     flex: 1;
 }
+/* v2.8 («no asumir»): las cuentas de un ahorro de antes, una por renglón, y «Aparte» al final. */
+.p28-cuentas {
+    display: grid;
+    gap: 8px;
+}
+.p28-sube {
+    margin: 0;
+}
 .antes-caso-t .fila-m {
     font-variant-numeric: tabular-nums;
     font-weight: 600;

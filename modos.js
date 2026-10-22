@@ -134,12 +134,13 @@
         for (const r of st.registros) if (r && r.tipo === 'gasto' && r.lugar === undefined) r.lugar = M.lugarGasto(st, r);
         // v2.8 (C-1): tus ahorros de antes pasan a «dentro de [tu cuenta]»: ya se restaban de tu libre, así que no cambia.
         // Solo se agrega dónde están (el banco con más dinero; si no hay banco, la cuenta con más). Nada cambia de nombre.
+        // «No asumir» (APROBADO por Victor, 2026-10-22): esa cuenta queda como supuesta (`supuesto`) y Hoy pregunta una vez.
         if (Array.isArray(st.apartados) && Array.isArray(st.lugares)) {
             let cuenta;
             for (const a of st.apartados) {
                 if (!a || typeof a !== 'object' || a.donde !== undefined) continue;
                 if (cuenta === undefined) cuenta = st.lugares.length ? M.cuentaAhorros({ ...st, registros: st.registros }) : null;
-                a.donde = { lugar: cuenta };
+                a.donde = { lugar: cuenta, supuesto: true };
             }
         }
     }
@@ -859,8 +860,9 @@
     // ------------------------------------------------------------------ v2.8: las preguntas de una sola vez (E2.7)
     /**
      * v2.8 (D-2, D-5): a quien viene de una versión anterior, una sola vez y con sus datos: por cada gasto fijo que parece
-     * variable (súper, gasolina, comida, mercado), «¿«Súper» cambia cada quincena?»; y por cada tarjeta, «¿Qué día vence tu
-     * próximo pago de [tarjeta]?». Nada cambia sin respuesta; lo contestado queda en tus datos (`preguntas28`).
+     * variable (súper, gasolina, comida, mercado), «¿«Súper» cambia cada quincena?»; por cada tarjeta, «¿Qué día vence tu
+     * próximo pago de [tarjeta]?»; y por cada ahorro de antes, «Tu ahorro [nombre], ¿en qué cuenta está?» («no asumir»,
+     * APROBADO por Victor, 2026-10-22). Nada cambia sin respuesta; lo contestado queda en tus datos (`preguntas28`).
      */
     const PALABRAS_VARIABLE = new Set(['super', 'supermercado', 'despensa', 'gasolina', 'comida', 'mercado', 'transporte', 'combustible']);
     const pareceVariable = (p) => ['super', 'comida', 'mercado'].includes(p.categoria) || M.normalizar(p.nombre || '').split(' ').some((w) => PALABRAS_VARIABLE.has(w));
@@ -871,7 +873,7 @@
         if (p.frecuencia === 'mensual' && cada === 'semana') return Math.round((p.monto * 12) / 52);
         return p.monto;
     }
-    const preguntas = { oculta: false };
+    const preguntas = { oculta: false, aparte: null };
     function preguntas28() {
         if (P.modo !== 'uso' || !uso || !P.st || !P.st.configurado || P.st.persona !== 'uso' || !(uso.novedades && uso.novedades['v2.8'])) return [];
         const st = P.st;
@@ -893,12 +895,26 @@
             const otra = antes >= st.hoy ? antes : despues;
             out.push({ clave: 'vence:' + t.id, tipo: 'vence', tarjeta: t, actual, otra });
         }
+        // Mientras no conteste, el ahorro sigue dentro de la cuenta supuesta y su libre no cambia.
+        for (const a of st.apartados || []) {
+            if (!a || !a.donde || a.donde === 'aparte' || !a.donde.supuesto || hechas['ahorro:' + a.id]) continue;
+            out.push({ clave: 'ahorro:' + a.id, tipo: 'ahorro', ahorro: a, actual: M.lugarAhorro(st, a) });
+        }
         return out;
     }
     function preguntasHoy() {
         const lista = preguntas28();
         if (!lista.length || preguntas.oculta) return '';
         const fila = (q) => {
+            if (q.tipo === 'ahorro') {
+                const a = q.ahorro;
+                const l = q.actual ? M.lugar(P.st, q.actual) : null;
+                // «Aparte» se confirma antes: su libre sube por ese monto (ese dinero no está en sus cuentas).
+                const botones = preguntas.aparte === q.clave
+                    ? `<p class="txt p28-sube" id="p28-sube-${a.id}" tabindex="-1"><strong>Tu libre sube ${M.dinero(a.monto)} porque ese dinero no está en tus cuentas.</strong></p><div class="acciones-2" role="group" aria-label="${esc(a.nombre)}"><button type="button" class="btn" data-a="pregunta28Aparte" data-id="${esc(q.clave)}" data-v="no" data-fk="p28-ah-volver-${a.id}">No, volver</button><button type="button" class="btn btn--prim" data-a="pregunta28" data-id="${esc(q.clave)}" data-v="aparte" data-fk="p28-ah-aparte-ok-${a.id}">Sí, está aparte</button></div>`
+                    : `<div class="p28-cuentas" role="group" aria-label="${esc(a.nombre)}">${P.st.lugares.map((x) => `<button type="button" class="btn${x.id === q.actual ? ' btn--prim' : ''}" data-a="pregunta28" data-id="${esc(q.clave)}" data-v="lugar:${esc(x.id)}" data-fk="p28-ah-${a.id}-${esc(x.id)}">${esc(x.nombre)}</button>`).join('')}<button type="button" class="btn" data-a="pregunta28Aparte" data-id="${esc(q.clave)}" data-v="si" data-fk="p28-ah-${a.id}-aparte">Aparte (no está en una cuenta)</button></div>`;
+                return `<li class="p28-caso"><div class="p28-caso-t">${P.caja(a.emoji || '🐷')}<span class="fila-txt"><span class="fila-t">Tu ahorro ${esc(a.nombre)}, ¿en qué cuenta está?</span><span class="fila-s">Tiene ${M.dinero(a.monto)}. ${l ? `Hoy lo contamos dentro de ${esc(l.nombre)}.` : 'Hoy lo contamos dentro de tus cuentas.'}</span></span></div>${botones}</li>`;
+            }
             if (q.tipo === 'variable') {
                 const p = q.pago;
                 return `<li class="p28-caso"><div class="p28-caso-t">${P.caja(p.emoji || '🛒')}<span class="fila-txt"><span class="fila-t">¿«${esc(p.nombre)}» cambia ${esc(P.cadaVez())}?</span><span class="fila-s">Como gasto variable, su tope sería ${M.dinero(q.tope)} ${esc(P.cadaPlan())}.</span></span></div><div class="acciones-2" role="group" aria-label="${esc(p.nombre)}"><button type="button" class="btn" data-a="pregunta28" data-id="${esc(q.clave)}" data-v="no" data-fk="p28-no-${p.id}">No, queda fijo</button><button type="button" class="btn btn--prim" data-a="pregunta28" data-id="${esc(q.clave)}" data-v="si" data-fk="p28-si-${p.id}">Pasarlo a gasto variable</button></div></li>`;
@@ -915,8 +931,20 @@
         const q = preguntas28().find((x) => x.clave === d.id);
         if (!q) return;
         let aviso = 'Listo';
+        preguntas.aparte = null;
         P.cambiar((s) => {
             s.preguntas28 = { ...(s.preguntas28 || {}), [q.clave]: { respuesta: d.v, fecha: s.hoy } };
+            if (q.tipo === 'ahorro') {
+                // «Aparte»: el dinero no está en sus cuentas (no se mueve nada): deja de restarse y su libre sube.
+                // Una cuenta: queda dentro de esa (la que dijo); su libre no cambia.
+                const a = M.apartado(s, q.ahorro.id);
+                const antes = JSON.stringify(a.donde);
+                if (d.v === 'aparte') a.donde = 'aparte';
+                else a.donde = { lugar: String(d.v).replace(/^lugar:/, '') };
+                if (JSON.stringify(a.donde) !== antes) a.historial.unshift({ fecha: s.hoy, tipo: 'donde', monto: 0, donde: a.donde });
+                const l = a.donde === 'aparte' ? null : M.lugar(s, a.donde.lugar);
+                aviso = a.donde === 'aparte' ? `Listo: ${a.nombre} está aparte. Tu libre subió ${M.dinero(a.monto)}` : `Listo: ${a.nombre} está dentro de ${l ? l.nombre : 'tu cuenta'}`;
+            }
             if (q.tipo === 'variable' && d.v === 'si') {
                 const v = P.fijoAVariable(s, q.pago.id, { tope: q.tope });
                 aviso = v ? `${v.nombre} ahora es gasto variable` : aviso;
@@ -937,11 +965,19 @@
                 } else t.desfase = M.desfaseDesde(q.actual, t.corte);
                 aviso = `Listo: tu pago de ${P.nombreTarjeta(t)} vence el ${M.fechaCorta(d.v)}`;
             }
-        }, { aviso: () => aviso, claves: ['pregunta28:' + q.tipo + ':' + (d.v === 'si' || d.v === 'no' ? d.v : 'fecha')] });
+        }, { aviso: () => aviso, claves: ['pregunta28:' + q.tipo + ':' + (q.tipo === 'ahorro' ? (d.v === 'aparte' ? 'aparte' : 'cuenta') : d.v === 'si' || d.v === 'no' ? d.v : 'fecha')] });
         guardarUso();
         P.render({ foco: preguntas28().length ? '#p28-t' : '#pantalla h1' });
     };
+    /** «Aparte (no está en una cuenta)»: primero dice cuánto sube su libre; «Sí, está aparte» lo confirma. */
+    P.acciones.pregunta28Aparte = (d) => {
+        const q = preguntas28().find((x) => x.clave === d.id);
+        if (!q) return;
+        preguntas.aparte = d.v === 'no' ? null : q.clave;
+        P.render({ foco: d.v === 'no' ? `[data-fk="p28-ah-${q.ahorro.id}-aparte"]` : `#p28-sube-${q.ahorro.id}` });
+    };
     P.acciones.pregunta28Luego = () => {
+        preguntas.aparte = null;
         preguntas.oculta = true;
         P.render({ foco: '#pantalla h1' });
     };
