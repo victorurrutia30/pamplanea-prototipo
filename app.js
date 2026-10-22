@@ -43,7 +43,8 @@
         esc, icon, emo, caja, montoHtml, sr, plural,
     });
     function uiInicial(tab = 'hoy') {
-        return { tab, stack: [], hoja: null, toast: null, banner: null, scroll: {}, pagosVista: 'actual', pagosMes: null, mesVista: null, mesFiltro: 'todo', mesCategoria: null, descartados: {}, ob: null };
+        // v2.8 (C-9): Mi plan abre en sus secciones. `window.__pagosModo` solo lo ponen las pruebas que miran el calendario.
+        return { tab, stack: [], hoja: null, toast: null, banner: null, scroll: {}, pagosVista: 'actual', pagosModo: typeof window.__pagosModo === 'string' ? window.__pagosModo : null, pagosMes: null, mesVista: null, mesFiltro: 'todo', mesCategoria: null, descartados: {}, ob: null };
     }
     P.cargar = function (st, { tab = 'hoy', pantalla = null } = {}) {
         P.st = st;
@@ -339,7 +340,7 @@
                 <span class="fila-txt"><span class="fila-t">${esc(nombre)}</span><span class="fila-s">${enLinea ? marcaMov('pago') : ''}<span>${avisoOn}${esc(sub)}</span></span>${marca ? `<span class="fila-s">${marca}</span>` : ''}${partesTxt}</span>
                 <span class="fila-m">${montoHtml(o.parcial && o.estado !== 'arrastrado' ? o.parcial.falta : o.monto, 'pago', { aprox: o.estimado && !o.parcial })}${o.estimado && !o.parcial ? '<span class="fila-s">estimado</span>' : ''}</span>
             </button>
-            ${puedePagar ? `<button type="button" class="btn btn--sm${espera ? ' btn--espera' : ''}" data-a="pagado" data-tipo="${esTarjeta ? 'tarjeta' : 'pago'}" data-id="${esTarjeta ? o.tarjeta.id : o.pago.id}" data-fecha="${o.fecha}" data-fk="pagado-${fk}" aria-label="${espera ? `Marcar ${esc(nombre)} como pagado: primero el del ${esc(P.diaMes(sig.fecha))}` : `Marcar ${esc(nombre)} como pagado`}">Pagado</button>` : ''}
+            ${puedePagar ? `<button type="button" class="btn btn--sm${espera ? ' btn--espera' : ''}" data-a="pagado" data-tipo="${esTarjeta ? 'tarjeta' : 'pago'}" data-id="${esTarjeta ? o.tarjeta.id : o.pago.id}" data-fecha="${o.fecha}" data-fk="pagado-${fk}" aria-label="${espera ? `Marcar ${esc(nombre)} como pagado: primero el del ${esc(P.diaMes(sig.fecha))}` : `Marcar ${esc(nombre)} como pagado`}">Ya lo pagué</button>` : ''}
             ${pagadoHoy ? `<button type="button" class="btn btn--sm" data-a="pagoDeshacer" data-id="${o.pago.id}" data-fecha="${o.fecha}" data-fk="deshacer-${fk}" aria-label="Deshacer: ${esc(nombre)} ya no está pagado">Deshacer</button>` : ''}
         </li>`;
     }
@@ -356,7 +357,7 @@
             const k = M.categoria(r.categoria);
             emoji = r.emoji || D.EMOJI_NOMBRE[M.normalizar(r.nombre || '').split(' ')[0]] || (r.pago && M.pago(st, r.pago)?.emoji) || k.emoji;
             const m = M.medio(st, r.medio);
-            sub = [fecha, m ? m.nombre : '', r.pago ? 'de Pagos' : ''].filter(Boolean).join(' · ');
+            sub = [fecha, m ? m.nombre : '', r.pago ? 'de Mi plan' : ''].filter(Boolean).join(' · ');
             monto = montoHtml(r.monto, 'gasto');
         } else if (r.tipo === 'ingreso') {
             emoji = r.emoji || M.categoria(r.categoria).emoji;
@@ -465,9 +466,9 @@
         if (partes.length === 1) {
             const x = partes[0];
             if (!M.esFundado(st, x.de)) return `Con ${etiquetaFuente(x.de)}`;
-            return o.fecha >= hz.fecha && o.estado !== 'vencido' ? 'Reservado de lo que tienes ahora' : 'Con lo que tienes ahora';
+            return o.fecha >= hz.fecha && o.estado !== 'vencido' ? 'Ya contado de lo que tienes ahora' : 'Con lo que tienes ahora';
         }
-        return M.capital(partes.map((x) => (M.esFundado(st, x.de) ? `reservando ${dinero(x.monto)} de lo que tienes ahora` : `${dinero(x.monto)} con ${etiquetaFuente(x.de)}`)).join(' · '));
+        return M.capital(partes.map((x) => (M.esFundado(st, x.de) ? `${dinero(x.monto)} de lo que tienes ahora` : `${dinero(x.monto)} con ${etiquetaFuente(x.de)}`)).join(' · '));
     }
     P.textoPartes = textoPartes;
     /** ¿La persona cambió con qué lo paga (o lo repartió)? Entonces se dice en la fila. */
@@ -507,7 +508,8 @@
         // V2-59 (#27): sin ingreso fijo y sin nada esperado, no se dice «entra ~$0»: las ventas cuentan cuando se anotan.
         if (P.variable() && !x.entra) return `pagas ${dinero(x.pagos, { aprox: true })} · tus ventas cuentan cuando las anotas`;
         const quedan = x.quedan >= 0 ? `te quedarían ${dinero(x.quedan, { aprox: true })}` : `te faltarían ${dinero(-x.quedan, { aprox: true })}`;
-        return `ingreso ${dinero(x.entra, { aprox: true })} · pagos ${dinero(x.pagos, { aprox: true })} · ${quedan}`;
+        // v2.8 (D-2): «pago» se dice solo para deudas: lo que sale de tu plan son tus gastos.
+        return `ingreso ${dinero(x.entra, { aprox: true })} · gastos ${dinero(x.pagos, { aprox: true })} · ${quedan}`;
     }
     /** ¿Se marca en color de «falta»? Para quien vende, no tener nada esperado no es un faltante (V2-59 #27). */
     P.faltaPeriodo = (x) => x.deficit > 0 && !(P.variable() && !x.entra);
@@ -547,7 +549,7 @@
         const x = k.proxima;
         if (!x || (!x.entra && !x.pagos)) return '';
         const inc = incluyePeriodo(x);
-        return `<button type="button" class="proy" data-a="irProxima" data-fk="proyeccion" aria-label="${esc(tituloPeriodo(x, k.hz))}: ${esc(lineaPeriodo(x))}${inc ? '. ' + esc(inc) : ''}. Ver en Pagos">
+        return `<button type="button" class="proy" data-a="irProxima" data-fk="proyeccion" aria-label="${esc(tituloPeriodo(x, k.hz))}: ${esc(lineaPeriodo(x))}${inc ? '. ' + esc(inc) : ''}. Ver el calendario">
             <span class="proy-t">${icon('calendar-days', 'ico-s')}${esc(tituloPeriodo(x, k.hz))}</span>
             <span class="proy-l${P.faltaPeriodo(x) ? ' proy-l--falta' : ''}">${esc(lineaPeriodo(x))}</span>
             ${inc ? `<span class="proy-s">${esc(inc)}</span>` : ''}
@@ -577,7 +579,7 @@
                 const no = btn('No, después veo', `data-a="sugerenciaNo" data-id="${x.clave}" data-v="${x.deficit}" data-fk="at-sug-no"`);
                 // Faltante solo por fechas: «¿Lo pagas con…?» (el pago que vence antes) o «Reservar $51» (solo lo que falta).
                 const acciones = x.soloFechas
-                    ? (x.primero ? btn(`Pagarlo con ${a.fuente === 'ahora' ? 'lo que tienes' : etiquetaFuente(a.fuente)}`, `data-a="hoja" data-hoja="pagarCon"${x.primero.tarjeta ? ' data-de-tarjeta="si"' : ''} data-id="${x.primero.pago.id}" data-fecha="${x.primero.fecha}" data-sugerida="${a.fuente}" data-fk="at-sug-pagar"`, true) : '') + btn(`Reservar ${dinero(x.deficit)}`, `data-a="hoja" data-hoja="reservar" data-id="${x.clave}" data-fecha="${a.fuente}" data-fk="at-sug-si"`, !x.primero) + no
+                    ? (x.primero ? btn(`Pagarlo con ${a.fuente === 'ahora' ? 'lo que tienes' : etiquetaFuente(a.fuente)}`, `data-a="hoja" data-hoja="pagarCon"${x.primero.tarjeta ? ' data-de-tarjeta="si"' : ''} data-id="${x.primero.pago.id}" data-fecha="${x.primero.fecha}" data-sugerida="${a.fuente}" data-fk="at-sug-pagar"`, true) : '') + btn(`Dejar listos ${dinero(x.deficit)}`, `data-a="hoja" data-hoja="reservar" data-id="${x.clave}" data-fecha="${a.fuente}" data-fk="at-sug-si"`, !x.primero) + no
                     : btn(`Sí, ${dinero(x.deficit)}`, `data-a="hoja" data-hoja="reservar" data-id="${x.clave}" data-fecha="${a.fuente}" data-fk="at-sug-si"`, true) + no;
                 items.push({ id: 'sug-' + x.clave, nivel: 'ambar', pago: true, ...textoSugerencia(a), corto: x.clave === 'despues' && !x.soloFechas ? `${P.variable() ? 'pagas ' + dinero(x.pagos, { aprox: true }) : 'te faltarían ' + dinero(x.deficit, { aprox: true })} ${hz.modo === 'quince' ? 'en los 15 días siguientes' : 'el próximo mes'}` : `te faltarían ${dinero(x.deficit, { aprox: true })} el ${M.partes(x.soloFechas ? x.cuando : x.clave)[2]}`, acciones });
             } else if (a.tipo === 'sinIngreso') {
@@ -620,7 +622,8 @@
             else if (o.estado === 'pendiente') (o.fecha === st.hoy ? hoyL : manana).push(o);
         }
         const nombreO = (o) => (o.tarjeta ? o.tarjeta.nombre : o.pago.nombre);
-        const pagadoBtn = (o, fk) => btn('Pagado', `data-a="pagado" data-tipo="${o.tarjeta ? 'tarjeta' : 'pago'}" data-id="${o.tarjeta ? o.tarjeta.id : o.pago.id}" data-fecha="${o.fecha}" data-fk="${fk}" aria-label="Marcar ${esc(nombreO(o))} como pagado"`, true);
+        // v2.8 (C-4): «Ya lo pagué» lo vuelve gasto.
+        const pagadoBtn = (o, fk) => btn('Ya lo pagué', `data-a="pagado" data-tipo="${o.tarjeta ? 'tarjeta' : 'pago'}" data-id="${o.tarjeta ? o.tarjeta.id : o.pago.id}" data-fecha="${o.fecha}" data-fk="${fk}" aria-label="Marcar ${esc(nombreO(o))} como pagado"`, true);
         const grupo = (lista, id, uno, varios, corto) => {
             if (!lista.length) return;
             const total = M.suma(lista, (o) => o.monto || 0);
@@ -692,7 +695,7 @@
             const nombre = semanal ? 'con tu próximo pago' : p.frecuencia === 'quincenal' ? 'la próxima quincena' : `con tu próximo ${p.nombre.toLowerCase()}`;
             return { titulo: `${M.capital(nombre)} te faltarían ${dinero(x.deficit, { aprox: true })}. ¿Guardas algo ${fuente}?`, texto: `${M.capital(cual)} recibes ${caen} y ${quePagas}.` };
         }
-        return { titulo: `${M.capital(cual)} recibes ${caen} y ${quePagas}: te faltarían ${dinero(x.deficit, { aprox: true })}.`, texto: `¿Reservas algo ${fuente}?` };
+        return { titulo: `${M.capital(cual)} recibes ${caen} y ${quePagas}: te faltarían ${dinero(x.deficit, { aprox: true })}.`, texto: `¿Dejas algo listo ${fuente}?` };
     }
     P.textoSugerencia = textoSugerencia;
     /** El aviso de Hoy: uno solo (V2-42). */
@@ -732,8 +735,7 @@
         // v2.6.7 (V2-87): si lo que pagas normalmente sale de lo que tienes es porque vence antes de tu próximo ingreso: se dice.
         if (ultimaTarjeta) lineas.push(`<span class="portada-v">Incluye tarjeta ${dinero(ultimaTarjeta.porPagarAhora + ultimaTarjeta.estimadoAhora, { aprox: ultimaTarjeta.estimadoAhora > 0 })}, ${ultimaTarjeta.vence < st.hoy ? 'venció' : 'vence'} el ${ultimaTarjeta.dosPagos || ultimaTarjeta.vence.slice(0, 7) === st.hoy.slice(0, 7) ? P.diaPago(ultimaTarjeta, ultimaTarjeta.vence) : M.fechaCorta(ultimaTarjeta.vence)}${ultimaTarjeta.estimadoAhora > 0 && ultimaTarjeta.vence >= st.hoy && hz.ingreso && !hz.esHoy && !hz.atrasada ? ` (antes de tu ${esc(nombreIngreso(hz))})` : ''}</span>`);
         else if (tarjetaConIngreso) lineas.push(`<span class="portada-v">Tarjeta ${dinero(tarjetaConIngreso.conIngreso, { aprox: !!tarjetaConIngreso.ult.inicial })} del ${esc(M.fechaCorta(tarjetaConIngreso.vence))}: se paga con ${esc(P.fuentesTarjeta(tarjetaConIngreso))}</span>`);
-        const reservado = k.reservadoPagos + k.reservadoProxima;
-        if (reservado > 0) lineas.push(`<span class="portada-v">Ya reservas ${dinero(reservado)} para lo que viene</span>`);
+        // v2.8 (C-2, C-8): lo que ya tienes contado para lo que viene se explica en «¿De dónde sale?», no aquí.
         if (k.inactivo >= 10) lineas.push(`<span class="portada-v">Con lo último que anotaste, ${esc(M.haceDias(M.ultimaActividad(st), st.hoy))}</span>`);
         const portada = `<div class="portada app-home-pattern">
                 <svg class="app-home-pattern-art" viewBox="0 0 320 180" preserveAspectRatio="xMaxYMax meet" aria-hidden="true" focusable="false">${ART.circles}</svg>
@@ -757,18 +759,15 @@
         // v2.4: retomar el recorrido donde se quedó (entrenamiento).
         if (P.tour && P.tour.tarjetaHoy) tarjetasAviso.push(P.tour.tarjetaHoy());
 
-        // Próximos pagos: los que vienen. Los vencidos están en el aviso (V2-55: no se repiten aquí).
+        // v2.8 (C-8): Hoy muestra el número, lo que viene (máximo 3) y Anotar. Los vencidos están en el aviso (V2-55).
+        // Cómo quedas la próxima quincena va en Mi plan; lo anotado, en Mes.
         const proximos = proximosPagos(3);
         const pagosHtml = tarjetaSeccion(
-            'Próximos pagos',
-            proximos.length ? `<ul class="lista">${filasProximos(proximos, hz, k)}</ul>` : `<p class="vacio">No tienes pagos por delante. ${enlaceAccion('Agregar un pago', 'hoja', 'data-hoja="nuevoPago" data-fk="vacio-pago"')}</p>`,
-            { id: 'h-pagos', accion: enlaceAccion('Ver todos', 'irTab', 'data-tab="pagos" data-fk="ver-pagos"') },
+            'Lo que viene',
+            proximos.length ? `<ul class="lista">${filasProximos(proximos, hz, k)}</ul>` : `<p class="vacio">Nada por delante en tu plan. ${enlaceAccion('Agregar un gasto fijo', 'hoja', 'data-hoja="nuevoPago" data-fk="vacio-pago"')}</p>`,
+            { id: 'h-pagos', accion: enlaceAccion('Ver mi plan', 'irTab', 'data-tab="pagos" data-fk="ver-pagos"') },
         );
-
-        // Últimos anotados: solo si la persona anota.
-        const anotados = st.registros.filter((r) => ['gasto', 'ingreso', 'mover', 'pagoTarjeta'].includes(r.tipo) && r.fecha <= st.hoy).sort((a, b) => (a.fecha === b.fecha ? b.seq - a.seq : a.fecha < b.fecha ? 1 : -1)).slice(0, 3);
-        const anotaAlgo = st.registros.some((r) => r.anotado || r.nuevo);
-        const ultimosHtml = anotaAlgo && anotados.length ? tarjetaSeccion('Últimos anotados', `<ul class="lista">${anotados.map((r) => filaRegistro(r)).join('')}</ul>`, { id: 'h-ult', accion: enlaceAccion('Ver historial', 'irTab', 'data-tab="mes" data-fk="ver-historial"') }) : '';
+        const anotarHtml = `<div class="hoy-anotar"><button type="button" class="btn btn--prim btn--48 btn--full" data-a="anotar" data-fk="hoy-anotar">${icon('plus', 'ico-s')}Anotar</button></div>`;
 
         return `<div class="pg pg--hoy">
             <header class="hoy-head">
@@ -777,16 +776,31 @@
             </header>
             ${portada}
             ${P.qTexto('libre')}
-            ${proyeccionHtml(k) ? `<div class="proy-w">${proyeccionHtml(k)}${P.qBtn('proxima')}</div>${P.qTexto('proxima')}` : ''}
             ${P.tipHtml('hoy')}
             ${P.modos && P.modos.revisionHoy ? P.modos.revisionHoy() : ''}
+            ${P.modos && P.modos.preguntasHoy ? P.modos.preguntasHoy() : ''}
+            ${cierreVariables(k)}
             ${avisoHoy(atencion(k))}
             ${tarjetasAviso.join('')}
             ${pagosHtml}
-            ${ultimosHtml}
+            ${anotarHtml}
         </div>`;
     };
 
+    /**
+     * v2.8 (C-3): antes de tu próximo ingreso, por cada gasto variable que no has cerrado: «Ibas a gastar $X y anotaste $Y.
+     * ¿Ya terminaste?» (Sí / Me falta / Se me olvidó anotar). Si te pasaste, se dice sin culpa.
+     */
+    function cierreVariables(k) {
+        const st = P.st;
+        const lista = k.variables.filter((x) => M.preguntarVariable(st, x));
+        if (!lista.length) return '';
+        return lista
+            .slice(0, 2)
+            .map((x) => `<section class="card card--aviso" aria-labelledby="vc-${x.v.id}"><div class="aviso-cab">${caja(x.v.emoji)}<div><h2 class="card-t" id="vc-${x.v.id}">Ibas a gastar ${dinero(x.tope)} en ${esc(x.v.nombre)} y anotaste ${dinero(x.anotado)}. ¿Ya terminaste?</h2><p class="txt">Si ya terminaste, los ${dinero(x.falta)} que sobran vuelven a tu libre.</p></div></div><div class="chips"><button type="button" class="chip" data-a="variableCierre" data-id="${x.v.id}" data-v="listo" data-fk="vc-listo-${x.v.id}">Sí, ya terminé</button><button type="button" class="chip" data-a="variableCierre" data-id="${x.v.id}" data-v="falta" data-fk="vc-falta-${x.v.id}">Me falta</button><button type="button" class="chip" data-a="variableCierre" data-id="${x.v.id}" data-v="anotar" data-fk="vc-anotar-${x.v.id}">Se me olvidó anotar</button></div></section>`)
+            .join('');
+    }
+    P.cierreVariables = cierreVariables;
     /**
      * Las filas de Próximos pagos; lo que vence desde el próximo ingreso va tras un separador. v2.4.1: la tarjeta
      * va antes (se paga con lo que ya tienes, V2-07; V2-87: salvo lo que pagas normalmente, que va con su ingreso) y, sin
@@ -891,12 +905,12 @@
             for (const o of M.ocurrenciasPago(st, p, desde, hasta)) {
                 if (p.activo === false && !o.hecho) continue;
                 if (o.estado === 'vencido') continue;
-                items.push({ fecha: o.fecha, html: filaPago(o, hz, { conBoton: false, enLinea: true }) });
+                items.push({ fecha: o.fecha, deuda: !!(p.tipoDeuda || p.descuento), html: filaPago(o, hz, { conBoton: false, enLinea: true }) });
             }
         }
         for (const o of M.ocurrenciasTarjeta(st, desde, hasta)) {
             if (o.estado === 'vencido') continue;
-            items.push({ fecha: o.fecha, html: filaPago(o, hz, { conBoton: false, enLinea: true }) });
+            items.push({ fecha: o.fecha, deuda: true, html: filaPago(o, hz, { conBoton: false, enLinea: true }) });
         }
         for (const ing of st.ingresos.filter((i) => i.activo !== false)) {
             for (const o of M.ocurrenciasIngreso(st, ing, desde, hasta)) {
@@ -914,12 +928,13 @@
         const grupos = [];
         for (const it of items) {
             let g = grupos.at(-1);
-            if (!g || g.fecha !== it.fecha) grupos.push((g = { fecha: it.fecha, filas: [], hoy: false, ing: 0, pag: 0 }));
+            if (!g || g.fecha !== it.fecha) grupos.push((g = { fecha: it.fecha, filas: [], hoy: false, ing: 0, pag: 0, gas: 0 }));
             if (it.hoy) g.hoy = true;
             else {
                 g.filas.push(it.html);
                 if (it.ingreso) g.ing++;
-                else g.pag++;
+                else if (it.deuda) g.pag++;
+                else g.gas++;
             }
         }
         if (!grupos.length) return '<p class="vacio">Nada en estas fechas.</p>';
@@ -928,7 +943,8 @@
                 const conMes = `${M.diaCorto(g.fecha)} ${M.MESES_CORTOS[M.partes(g.fecha)[1] - 1]}`;
                 const etiqueta = g.fecha === st.hoy ? `Hoy · ${conMes}` : M.capital(conMes);
                 const cuerpo = g.filas.length ? `<ul class="lista card">${g.filas.join('')}</ul>` : g.hoy ? '<p class="hoy-marca-t">Nada que pagar hoy.</p>' : '';
-                const marcas = g.ing || g.pag ? `<span class="dia-marcas" aria-hidden="true">${g.ing ? '<span class="dia-marca dia-marca--ingreso">+ Ingreso</span>' : ''}${g.pag ? `<span class="dia-marca dia-marca--pago">− ${g.pag === 1 ? 'Pago' : g.pag + ' pagos'}</span>` : ''}</span>` : '';
+                // v2.8 (D-2): «Pago» solo para deudas (y tarjetas); lo demás es «Gasto».
+                const marcas = g.ing || g.pag || g.gas ? `<span class="dia-marcas" aria-hidden="true">${g.ing ? '<span class="dia-marca dia-marca--ingreso">+ Ingreso</span>' : ''}${g.gas ? `<span class="dia-marca dia-marca--pago">− ${g.gas === 1 ? 'Gasto' : g.gas + ' gastos'}</span>` : ''}${g.pag ? `<span class="dia-marca dia-marca--pago">− ${g.pag === 1 ? 'Pago' : g.pag + ' pagos'}</span>` : ''}</span>` : '';
                 return `<div class="grupo${g.fecha === st.hoy ? ' grupo--hoy' : ''}"><div class="grupo-cab"><h3 class="grupo-t">${esc(etiqueta)}</h3>${marcas}</div>${cuerpo}</div>`;
             })
             .join('');
@@ -944,7 +960,7 @@
         if (vista === 'actual') {
             // Los mismos montos que el desglose de Hoy: lo de la tarjeta cubierto por un ahorro va en «reservado».
             const res = k.reservadoPagos + k.reservadoProxima + k.reservadoTarjetas;
-            return `<div class="per-res"><p class="per-res-l">Con lo que tienes: por pagar ${dinero(k.porPagar + k.enTarjetas - k.reservadoTarjetas)}${res ? ` · reservado ${dinero(res)}` : ''} · libre <strong>${dinero(k.libre)}</strong></p></div>`;
+            return `<div class="per-res"><p class="per-res-l">Con lo que tienes: por pagar ${dinero(k.porPagar + k.enTarjetas - k.reservadoTarjetas)}${res ? ` · ya contado ${dinero(res)}` : ''} · libre <strong>${dinero(k.libre)}</strong></p></div>`;
         }
         if (vista === 'mes') {
             // V2-55: el mes completo, con las mismas ocurrencias del motor que se ven abajo (y las vencidas de ese mes).
@@ -953,7 +969,7 @@
             if (!r.entra && !r.pagos && !r.tarjetasSinMonto) return '';
             const ap = { aprox: r.aprox };
             const queda = r.queda >= 0 ? `queda ${dinero(r.queda, ap)}` : `faltan ${dinero(-r.queda, ap)}`;
-            return `<div class="per-res${r.queda < 0 ? ' per-res--falta' : ''}"><p class="per-res-l">Ingresos ${dinero(r.entra, ap)} · pagos ${dinero(r.pagos, ap)}${r.tarjetasSinMonto ? ' + tus tarjetas' : ''} · ${queda}</p><p class="fila-s">Tus ingresos y tus pagos de ${esc(M.MESES[m - 1])}. Sin tus gastos del día a día (esos están en la pestaña Mes).</p></div>`;
+            return `<div class="per-res${r.queda < 0 ? ' per-res--falta' : ''}"><p class="per-res-l">Ingresos ${dinero(r.entra, ap)} · gastos ${dinero(r.pagos, ap)}${r.tarjetasSinMonto ? ' + tus tarjetas' : ''} · ${queda}</p><p class="fila-s">Tus ingresos y tu plan de ${esc(M.MESES[m - 1])}. Sin tus gastos del día a día (esos están en la pestaña Mes).</p></div>`;
         }
         if (vista !== 'proxima') return '';
         const x = k.periodos.find((y) => y.clave === rango.desde) || (k.proxima && k.proxima.inicio <= rango.desde && rango.desde <= k.proxima.fin ? k.proxima : null);
@@ -987,8 +1003,79 @@
         return `Con ${cual} de antes de que venza`;
     }
     P.textoRegla = textoRegla;
-    /** V2-39: la lista completa de lo que pagas y te pagan: nombre, monto, frecuencia, con qué se paga y con qué ingreso. */
+    /** v2.8 (C-9): de dónde sale cada cosa de tu plan: «sale de: Agrícola», «se cobra en: Visa», «se descuenta de: tu salario». */
+    function saleDe(st, x) {
+        const t = M.tarjetaDePago(st, x);
+        if (t) return `se cobra en: ${P.nombreTarjeta(t)}`;
+        if (x.descuento) return `se descuenta de: ${(M.ingreso(st, x.descuento)?.nombre || 'tu salario').toLowerCase()}`;
+        const m = M.medio(st, x.medio);
+        const l = m && m.lugar ? M.lugar(st, m.lugar) : null;
+        return l ? `sale de: ${l.nombre}` : m ? `sale de: ${m.nombre}` : 'sale de: elige con qué pagas';
+    }
+    P.saleDe = saleDe;
+    /** v2.8 (C-10): una tarjeta se puede llamar por su apodo. */
+    P.nombreTarjeta = (t) => (t && t.apodo ? t.apodo : t ? t.nombre : '');
+    /** v2.8 (C-3): «por quincena», «por semana» o «por mes» (cómo te pagan). */
+    P.cadaPlan = (st = P.st) => ({ quincena: 'por quincena', semana: 'por semana', catorcena: 'cada 2 semanas', mes: 'por mes', quince: 'cada 15 días' })[M.periodoPlan(st).cada] || 'cada vez que te pagan';
+    /** v2.8 (C-1, C-3): «cada quincena», «cada semana», «cada mes»… (quien no cobra por quincena nunca lee «quincena»). */
+    P.cadaVez = (st = P.st) => ({ quincena: 'cada quincena', semana: 'cada semana', catorcena: 'cada 2 semanas', mes: 'cada mes', quince: 'cada 15 días' })[M.periodoPlan(st).cada] || 'cada vez que te pagan';
+    /** v2.8 (C-1, C-3): «esta quincena», «esta semana», «este mes»… */
+    P.estePlan = (st = P.st) => ({ quincena: 'esta quincena', semana: 'esta semana', catorcena: 'estas 2 semanas', mes: 'este mes', quince: 'estos 15 días' })[M.periodoPlan(st).cada] || 'hasta tu próximo ingreso';
+    /** «Cada quincena» con mayúscula (para títulos y botones). */
+    P.cadaVezT = (st = P.st) => { const t = P.cadaVez(st); return t.charAt(0).toUpperCase() + t.slice(1); };
+    /**
+     * v2.8 (C-9): «Mi plan»: Ingresos · Gastos fijos · Gastos variables · Ahorro programado · Pagos de deudas. Cada fila dice de
+     * dónde sale y toca para abrirla. «Pago» se dice solo para deudas (D-2).
+     */
     function misPagos() {
+        const st = P.st;
+        const hz = M.horizonte(st);
+        const k = P.calc();
+        const activos = st.pagos.filter((p) => p.activo !== false);
+        const fila = (fk, a, emoji, titulo, lineas, monto) => `<li class="fila"><button type="button" class="fila-main" ${a} data-fk="${fk}">${caja(emoji)}<span class="fila-txt"><span class="fila-t">${titulo}</span>${lineas.filter(Boolean).map((l) => `<span class="fila-s">${l}</span>`).join('')}</span><span class="fila-m">${monto}</span></button></li>`;
+        const filaPagoLista = (p) => {
+            const prox = M.ocurrenciasPago(st, p, M.sumarDias(st.hoy, -62), M.sumarDias(st.hoy, 400)).find((o) => o.estado === 'pendiente' || o.estado === 'vencido');
+            const proxTxt = prox ? `${prox.estado === 'vencido' ? 'Venció' : 'Próximo'}: ${M.fechaCorta(prox.fecha)}${prox.parcial ? ` · faltan ${dinero(prox.parcial.falta)}` : ''}` : p.terminada ? `Terminaste de pagarla el ${M.fechaCorta(p.terminada.fecha)}` : p.sinCuota ? 'Sin cuota fija · tócala para ponerle una' : 'Sin fechas por delante';
+            const debe = p.deuda && Number.isInteger(p.deuda.debe) ? ` · debes ${dinero(p.deuda.debe, { aprox: true })}` : '';
+            return fila(`mp-${p.id}`, `data-a="abrir" data-tipo="pago" data-id="${p.id}"`, p.emoji, esc(p.nombre), [esc(p.sinCuota ? 'Sin cuota fija' : textoFrecuencia(p, { corto: true })) + esc(debe), esc(saleDe(st, p)), esc(proxTxt)], p.sinCuota ? '' : `${montoHtml(p.monto, 'pago', { aprox: p.estimado })}${p.frecuencia !== 'mensual' && alMes(p) ? `<span class="fila-s">${esc(dinero(alMes(p), { aprox: true }))} al mes</span>` : ''}`);
+        };
+        const ingresos = st.ingresos.filter((i) => i.activo !== false).map((i) => {
+            const prox = M.ocurrenciasIngreso(st, i, i.desde, M.sumarDias(st.hoy, 400)).find((o) => o.estado !== 'llego' && o.estado !== 'noLlego');
+            return fila(`mp-i-${i.id}`, `data-a="abrir" data-tipo="ingreso" data-id="${i.id}"`, i.emoji, `${esc(i.nombre)}${i.principal ? ' <span class="pronto">Principal</span>' : ''}`, [esc(textoFrecuencia(i)), esc(`llega a: ${M.lugar(st, i.lugar)?.nombre || '—'}`), esc(`${i.principal ? 'Tu libre se calcula hasta que llegue' : 'Suma cuando llega'}${prox ? ` · próximo: ${M.fechaCorta(prox.fecha)}` : ''}`)], montoHtml(i.monto, 'esperado', { aprox: i.aprox }));
+        });
+        const fijos = activos.filter((p) => !p.tipoDeuda && !p.descuento).map(filaPagoLista);
+        const variables = k.variables.map((x) => {
+            const m = M.medio(st, x.v.medio);
+            const l = m && m.lugar ? M.lugar(st, m.lugar) : null;
+            const estado = x.listo ? `Ya terminaste ${P.estePlan()} · te sobró ${dinero(x.sobro)}` : x.pasado ? `Te pasaste ${dinero(x.pasado)}` : `te quedan ${dinero(x.falta)}`;
+            return fila(`mp-v-${x.v.id}`, `data-a="abrir" data-tipo="variable" data-id="${x.v.id}"`, x.v.emoji, esc(x.v.nombre), [esc(`Tope ${dinero(x.tope)} ${P.cadaPlan()} · llevas ${dinero(x.anotado)}`), esc(`${estado} · sale de: ${l ? l.nombre : m ? m.nombre : '—'}`)], montoHtml(x.tope, null));
+        });
+        const programado = M.programados(st).map((a) => {
+            const x = k.programado.find((y) => y.a.id === a.id);
+            const donde = M.ahorroAparte(a) ? 'va a: aparte' : `va a: dentro de ${M.lugar(st, M.lugarAhorro(st, a))?.nombre || 'tu cuenta'}`;
+            return fila(`mp-a-${a.id}`, `data-a="abrir" data-tipo="apartado" data-id="${a.id}"`, a.emoji, esc(a.nombre), [esc(`${dinero(a.programado.monto)} ${P.cadaPlan()} · ${donde}`), esc(x && x.guardado ? `Ya lo guardaste ${P.estePlan()} ✓` : x && x.falta ? 'Toca «Ya lo guardé» cuando lo guardes' : 'Ya llegaste a tu meta')], montoHtml(a.programado.monto, null));
+        });
+        const deudas = activos.filter((p) => p.tipoDeuda || p.descuento).map(filaPagoLista);
+        const tarjetas = st.tarjetas.map((t) => {
+            const info = M.tarjetaInfo(st, t);
+            const cobros = st.pagos.filter((p) => p.activo !== false && M.tarjetaDePago(st, p)?.id === t.id);
+            const l = M.lugar(st, M.pagoTarjetaPropuesto(st, t).lugar);
+            const cuanto = info.porPagarEstado ? montoHtml(info.porPagarEstado, 'pago') : info.estimado ? `${montoHtml(info.estimado, null, { aprox: true })}<span class="fila-s">estimado</span>` : '<span class="monto monto--pend">Por confirmar</span>';
+            return fila(`mp-t-${t.id}`, `data-a="abrir" data-tipo="tarjeta" data-id="${t.id}"`, t.emoji, esc(P.nombreTarjeta(t)), [esc(`Vence el ${M.fechaCorta(info.vence)} · ${info.ult.inicial ? 'lo que pagas normalmente' : 'tu estado de cuenta'}`), esc(`se paga desde: ${l ? l.nombre : '—'}${info.conIngreso > 0 ? ` · con ${P.fuentesTarjeta(info)}` : ''}`), cobros.length ? esc(`Incluye ${P.lista(cobros.map((p) => p.nombre))}`) : ''], cuanto);
+        });
+        const seccion = (titulo, id, filas, vacio, boton) => tarjetaSeccion(`${titulo} <span class="contador">${filas.length}</span>`, `${filas.length ? `<ul class="lista">${filas.join('')}</ul>` : `<p class="vacio">${vacio}</p>`}${boton ? `<div class="card-pie">${boton}</div>` : ''}`, { id });
+        const btn = (txt, a, fk) => `<button type="button" class="btn btn--full" ${a} data-fk="${fk}">${icon('plus', 'ico-s')}${txt}</button>`;
+        const entraMes = M.suma(st.ingresos.filter((i) => i.activo !== false), (i) => alMes(i));
+        const salesMes = M.suma(activos.filter((p) => !p.descuento && !M.pagoEnTarjeta(st, p)), (p) => alMes(p)) + M.suma(k.variables, (x) => x.tope * (P.cadaPlan() === 'por quincena' ? 2 : P.cadaPlan() === 'por semana' ? 4 : 1));
+        return `<div class="per-res"><p class="per-res-l">Al mes, más o menos: ingresos ${dinero(entraMes, { aprox: true })} · tu plan ${dinero(salesMes, { aprox: true })}${st.tarjetas.length ? ' + tus tarjetas' : ''}</p><p class="fila-s">Toca cualquiera para verlo o cambiarlo.</p></div>
+            ${seccion('Ingresos', 'mp-ingresos', ingresos, 'Todavía no tienes ingresos esperados.', btn('Ingreso', 'data-a="hoja" data-hoja="nuevoIngreso"', 'nuevo-ingreso'))}
+            ${seccion('Gastos fijos', 'mp-gastos-fijos', fijos, 'Agrega la luz, el alquiler o el colegio.', btn('Gasto fijo', 'data-a="hoja" data-hoja="nuevoPago"', 'nuevo-pago'))}
+            ${seccion('Gastos variables', 'mp-gastos-variables', variables, `El súper o la gasolina: les pones un tope y se renueva ${P.cadaVez()}.`, btn('Gasto variable', 'data-a="hoja" data-hoja="nuevoPago" data-id="" data-fecha="variable"', 'nuevo-variable'))}
+            ${seccion('Ahorro programado', 'mp-ahorro-programado', programado, `Lo que guardas ${P.cadaVez()} en un ahorro.`, btn('Ahorro programado', 'data-a="hoja" data-hoja="programar"', 'nuevo-programado'))}
+            ${seccion('Pagos de deudas', 'mp-pagos-de-deudas', [...deudas, ...tarjetas], 'Tus cuotas, préstamos y tarjetas.', btn('Deuda o tarjeta', 'data-a="hoja" data-hoja="nuevaDeuda"', 'nuevo-deuda'))}`;
+    }
+    /** V2-39 (antes de la v2.8): la lista completa de lo que pagas y te pagan. */
+    function misPagosV27() {
         const st = P.st;
         const hz = M.horizonte(st);
         const activos = st.pagos.filter((p) => p.activo !== false);
@@ -1001,7 +1088,7 @@
             return `<li class="fila"><button type="button" class="fila-main" data-a="abrir" data-tipo="pago" data-id="${p.id}" data-fk="mp-${p.id}">${caja(p.emoji)}<span class="fila-txt"><span class="fila-t">${esc(p.nombre)}</span><span class="fila-s">${esc(textoFrecuencia(p, { corto: true }))}</span><span class="fila-s">${esc(conQue)}</span><span class="fila-s">${esc(proxTxt)}</span></span><span class="fila-m">${montoHtml(p.monto, 'pago', { aprox: p.estimado })}${p.frecuencia !== 'mensual' && alMes(p) ? `<span class="fila-s">${esc(dinero(alMes(p), { aprox: true }))} al mes</span>` : ''}</span></button></li>`;
         };
         const grupos = [
-            ['Pagos fijos', activos.filter((p) => !p.tipoDeuda && p.tipoPago !== 'suscripcion' && !p.descuento)],
+            ['Gastos fijos', activos.filter((p) => !p.tipoDeuda && p.tipoPago !== 'suscripcion' && !p.descuento)],
             ['Cuotas y préstamos', activos.filter((p) => p.tipoDeuda && !p.descuento)],
             ['Suscripciones', activos.filter((p) => p.tipoPago === 'suscripcion')],
             ['Descuentos del salario', activos.filter((p) => p.descuento)],
@@ -1053,23 +1140,28 @@
         // Corrección v2.3.1: «Más adelante» empieza después del periodo «Próxima» (un ingreso de una vez se ve solo en el periodo de su fecha).
         const finMasAdelante = vista === 'mes' && rango.hasta > per.proxima.hasta ? rango.hasta : per.proxima.hasta;
         const extras = st.ingresos.filter((i) => i.frecuencia === 'unico' && i.activo !== false).flatMap((i) => M.ocurrenciasIngreso(st, i, M.sumarDias(finMasAdelante, 1), M.sumarDias(st.hoy, 400)).filter((o) => o.estado === 'esperado'));
-        // V2-39: dos vistas: el calendario por periodo y la lista completa.
-        const modo = P.ui.pagosModo === 'lista' ? 'lista' : 'calendario';
-        const vistas = `<div class="app-tabs tabs-2 pagos-modo" role="tablist" aria-label="Cómo ver tus pagos">${[['calendario', 'Calendario'], ['lista', 'Mis pagos e ingresos']].map(([v, t]) => `<button type="button" class="app-tab" role="tab" aria-selected="${modo === v}" data-a="pagosModo" data-v="${v}" data-fk="modo-${v}">${t}</button>`).join('')}</div>`;
+        // v2.8 (C-9): «Mi plan» abre en sus secciones; el calendario de quincenas se conserva como la otra vista.
+        const modo = P.ui.pagosModo === 'calendario' ? 'calendario' : 'lista';
+        const vistas = `<div class="app-tabs tabs-2 pagos-modo" role="tablist" aria-label="Cómo ver tu plan">${[['lista', 'Mi plan'], ['calendario', 'Calendario']].map(([v, t]) => `<button type="button" class="app-tab" role="tab" aria-selected="${modo === v}" data-a="pagosModo" data-v="${v}" data-fk="modo-${v}">${t}</button>`).join('')}</div>`;
+        const venc = vencidos.length ? tarjetaSeccion(`Por confirmar <span class="contador">${vencidos.length}</span>`, `<p class="txt txt--card">Ya pasó su fecha. ¿Los pagaste?</p><ul class="lista">${vencidos.map((o) => filaPago(o, hz)).join('')}</ul>`, { id: 'p-venc', cls: 'card--venc' }) : '';
+        // v2.8 (C-8): cómo quedas la próxima quincena (antes en Hoy) está aquí, arriba de tu plan.
+        const proy = proyeccionHtml(k) ? `<div class="proy-w">${proyeccionHtml(k)}${P.qBtn('proxima')}</div>${P.qTexto('proxima')}` : '';
         if (modo === 'lista') {
             return `<div class="pg">
-            ${encabezado('Pagos', 'Qué pagas y cuándo te pagan')}
+            ${encabezado('Mi plan', 'Lo que viene y de dónde sale')}
             ${P.tipHtml('pagos')}
             ${vistas}
-            <div class="acciones-2 acciones-2--top"><button type="button" class="btn btn--prim" data-a="hoja" data-hoja="nuevoPago" data-fk="nuevo-pago">${icon('plus', 'ico-s')}Pago</button><button type="button" class="btn" data-a="hoja" data-hoja="nuevoIngreso" data-fk="nuevo-ingreso">${icon('plus', 'ico-s')}Ingreso esperado</button></div>
+            ${proy}
+            ${venc}
             ${misPagos()}
         </div>`;
         }
         return `<div class="pg">
-            ${encabezado('Pagos', 'Qué pagas y cuándo te pagan')}
+            ${encabezado('Mi plan', 'Lo que viene y de dónde sale')}
             ${P.tipHtml('pagos')}
             ${vistas}
-            <div class="acciones-2 acciones-2--top"><button type="button" class="btn btn--prim" data-a="hoja" data-hoja="nuevoPago" data-fk="nuevo-pago">${icon('plus', 'ico-s')}Pago</button><button type="button" class="btn" data-a="hoja" data-hoja="nuevoIngreso" data-fk="nuevo-ingreso">${icon('plus', 'ico-s')}Ingreso esperado</button></div>
+            ${proy}
+            <div class="acciones-2 acciones-2--top"><button type="button" class="btn btn--prim" data-a="hoja" data-hoja="nuevoPago" data-fk="nuevo-pago">${icon('plus', 'ico-s')}Gasto fijo</button><button type="button" class="btn" data-a="hoja" data-hoja="nuevoIngreso" data-fk="nuevo-ingreso">${icon('plus', 'ico-s')}Ingreso esperado</button></div>
             ${vencidos.length ? tarjetaSeccion(`Por confirmar <span class="contador">${vencidos.length}</span>`, `<p class="txt txt--card">Ya pasó su fecha. ¿Los pagaste?</p><ul class="lista">${vencidos.map((o) => filaPago(o, hz)).join('')}</ul>`, { id: 'p-venc', cls: 'card--venc' }) : ''}
             <div class="app-tabs tabs-3" role="tablist" aria-label="Periodo">${tabs}</div>
             ${mesNav}
@@ -1083,9 +1175,10 @@
     /** «Atrás» dice a dónde vuelve: la pantalla anterior o la pestaña. */
     P.atrasDe = (defecto) => {
         const previo = P.ui.stack.at(-2);
-        const nombres = { cuentas: 'Cuentas', ahorros: 'Ahorros', deudas: 'Deudas', pago: 'Atrás', tarjeta: 'Atrás', ingreso: 'Atrás', lugar: 'Atrás', apartado: 'Atrás', misPagos: 'Pagos' };
+        const nombres = { cuentas: 'Cuentas', ahorros: 'Ahorros', deudas: 'Deudas', pago: 'Atrás', tarjeta: 'Atrás', ingreso: 'Atrás', lugar: 'Atrás', apartado: 'Atrás', variable: 'Atrás', misPagos: 'Mi plan' };
         if (previo) return nombres[previo.tipo] || 'Atrás';
-        return { hoy: 'Hoy', pagos: 'Pagos', midinero: 'Mi dinero', mes: 'Mes' }[P.ui.tab] || defecto;
+        // v2.8 (D-1): la pestaña se llama «Mi plan».
+        return { hoy: 'Hoy', pagos: 'Mi plan', midinero: 'Mi dinero', mes: 'Mes' }[P.ui.tab] || defecto;
     };
     /** v2.6.7 (agregado v2.6.7 #3): la misma frase en Deudas, la ficha de la tarjeta y Mi dinero. */
     P.POR_CONFIRMAR = 'por confirmar con tu estado de cuenta';
@@ -1116,11 +1209,11 @@
         const k = P.calc();
         const deuda = deudaTotal(st);
         const resumen = `<section class="total" aria-labelledby="md-total">
-                <div class="total-cab"><div><h2 class="total-l" id="md-total">Tienes</h2><p class="total-n">${dinero(k.tienes)}</p><p class="total-s">Ahorros ${dinero(k.apartado)} · ${textoDebes(deuda)}</p></div><svg class="total-art" viewBox="0 0 200 150" aria-hidden="true" focusable="false">${ART.illus.cuentas}</svg></div>
+                <div class="total-cab"><div><h2 class="total-l" id="md-total">Tienes</h2><p class="total-n">${dinero(k.tienes)}</p><p class="total-s">Ahorros ${dinero(k.apartado + k.aparte)} · ${textoDebes(deuda)}</p></div><svg class="total-art" viewBox="0 0 200 150" aria-hidden="true" focusable="false">${ART.illus.cuentas}</svg></div>
             </section>`;
         const lugaresTxt = st.lugares.length > 2 ? plural(st.lugares.length, 'lugar', 'lugares') : st.lugares.map((l) => `${l.nombre} ${dinero(M.saldoLugar(st, l.id))}`).join(' · ');
         const listos = st.apartados.filter((a) => a.meta && a.monto >= a.meta).length;
-        const ahorrosTxt = st.apartados.length ? `${plural(st.apartados.length, 'ahorro', 'ahorros')}${listos ? ` · ${plural(listos, 'lista para usar', 'listos para usar')}` : ''}` : 'Ponle nombre a una parte de tu dinero';
+        const ahorrosTxt = st.apartados.length ? `${plural(st.apartados.length, 'ahorro', 'ahorros')}${listos ? ` · ${plural(listos, 'lista para usar', 'listos para usar')}` : ''}${k.aparte ? ` · ${dinero(k.aparte)} aparte` : ''}` : 'Lo que ya tienes guardado';
         const proxDeuda = (() => {
             const lista = [];
             for (const t of st.tarjetas) {
@@ -1140,7 +1233,7 @@
             ${reparticion(k)}
             <ul class="puertas" aria-label="Tu dinero por partes">
                 ${puerta('cuentas', 'wallet', 'Cuentas', dinero(k.tienes), lugaresTxt + ' · cuadrar, mover y con qué pagas', 'md-cuentas')}
-                ${puerta('ahorros', 'circle-plus', 'Ahorros', dinero(k.apartado), ahorrosTxt, 'md-ahorros')}
+                ${puerta('ahorros', 'circle-plus', 'Ahorros', dinero(k.apartado + k.aparte), ahorrosTxt, 'md-ahorros')}
                 ${puerta('deudas', 'receipt-text', 'Deudas', deuda.total > 0 || !deuda.cuantas ? dinero(deuda.total, { aprox: deuda.aprox }) : `${dinero(deuda.cuotasSinSaldo)} al mes`, deuda.cuantas ? `${deuda.total > 0 ? '' : 'En cuotas; anota cuánto debes en cada una. '}${proxDeuda ? 'Lo próximo: ' + proxDeuda.t : plural(deuda.cuantas, 'deuda', 'deudas')}` : 'Tarjetas, préstamos y casa comercial', 'md-deudas')}
             </ul>
         </div>`;
@@ -1181,12 +1274,14 @@
         const st = P.st;
         const k = P.calc();
         const fuera = Math.max(0, k.tienes - k.apartado);
+        // v2.8 (C-1): cada ahorro dice dónde está: dentro de una cuenta (se resta de tu libre) o aparte (solo se registra).
+        const donde = (a) => (M.ahorroAparte(a) ? 'Aparte' : `Dentro de ${M.lugar(st, M.lugarAhorro(st, a))?.nombre || 'tu cuenta'}`);
         const apHtml = st.apartados
             .map((a) => {
                 const lista = a.meta && a.monto >= a.meta;
                 const vencido = a.metaFecha && a.metaFecha < st.hoy && a.monto > 0;
                 const meta = vencido ? `Era para el ${M.partes(a.metaFecha)[2]} · ¿ya lo usaste?` : a.meta ? (lista ? `<span>${emo('🎉', 14)} ¡Lista para usar!</span>` : `${Math.floor((a.monto * 100) / a.meta)} % de ${dinero(a.meta)}`) : 'Sin meta';
-                return `<li class="fila fila--ap"><button type="button" class="fila-main" data-a="abrir" data-tipo="apartado" data-id="${a.id}" data-fk="a-${a.id}">${recorte(a)}<span class="fila-txt"><span class="fila-t">${emo(a.emoji, 16)} ${esc(a.nombre)}</span><span class="fila-s">${meta}</span>${a.meta ? barra(a.monto, a.meta, 'Avance de ' + a.nombre) : ''}</span><span class="fila-m">${montoHtml(a.monto)}</span></button></li>`;
+                return `<li class="fila fila--ap"><button type="button" class="fila-main" data-a="abrir" data-tipo="apartado" data-id="${a.id}" data-fk="a-${a.id}">${recorte(a)}<span class="fila-txt"><span class="fila-t">${emo(a.emoji, 16)} ${esc(a.nombre)}</span><span class="fila-s">${esc(donde(a))} · ${meta}</span>${a.meta ? barra(a.monto, a.meta, 'Avance de ' + a.nombre) : ''}</span><span class="fila-m">${montoHtml(a.monto)}</span></button></li>`;
             })
             .join('');
         const logros = st.logros.length
@@ -1196,16 +1291,16 @@
             ? tarjetaSeccion('Cerrados', `<ul class="lista">${st.cerrados.map((l) => `<li class="fila"><div class="fila-main fila-main--quieta">${caja('🔒')}<span class="fila-txt"><span class="fila-t">${esc(l.nombre)}</span><span class="fila-s">Cerrado sin usar el ${esc(M.fechaLarga(l.fecha))} · ${dinero(l.monto)} volvieron a tu libre</span></span></div></li>`).join('')}</ul>`, { id: 'md-cerrados' })
             : '';
         return `<div class="pg">
-            ${encabezado('Ahorros', 'Le pones nombre a una parte de tu dinero', { atras: P.atrasDe('Mi dinero') })}
+            ${encabezado('Ahorros', 'Lo que ya tienes guardado', { atras: P.atrasDe('Mi dinero') })}
             ${P.tipHtml('ahorros')}
             <section class="total" aria-labelledby="ah-total">
-                <div class="total-cab"><div><div class="total-l-w"><h2 class="total-l" id="ah-total">En ahorros</h2>${P.qBtn('ahorros')}</div><p class="total-n">${dinero(k.apartado)}</p><p class="total-s">Fuera de ahorros: ${dinero(fuera)}</p></div><svg class="total-art" viewBox="0 0 200 150" aria-hidden="true" focusable="false">${ART.illus.ahorros}</svg></div>
+                <div class="total-cab"><div><div class="total-l-w"><h2 class="total-l" id="ah-total">En ahorros</h2>${P.qBtn('ahorros')}</div><p class="total-n">${dinero(k.apartado + k.aparte)}</p><p class="total-s">Dentro de tus cuentas ${dinero(k.apartado)}${k.aparte ? ` · aparte ${dinero(k.aparte)}` : ''} · fuera de ahorros ${dinero(fuera)}</p></div><svg class="total-art" viewBox="0 0 200 150" aria-hidden="true" focusable="false">${ART.illus.ahorros}</svg></div>
                 ${P.qTexto('ahorros')}
-                <button type="button" class="btn btn--prim btn--48 btn--full" data-a="hoja" data-hoja="apartar" data-fk="md-apartar">${icon('plus', 'ico-s')}Ahorrar</button>
+                <div class="acciones-2"><button type="button" class="btn btn--prim btn--48" data-a="hoja" data-hoja="apartar" data-fk="md-apartar">${icon('plus', 'ico-s')}Guardé en un ahorro</button><button type="button" class="btn btn--48" data-a="hoja" data-hoja="programar" data-fk="md-programar">${icon('calendar-days', 'ico-s')}${P.cadaVezT()}</button></div>
             </section>
-            <div class="nota nota--info" role="note">${icon('info')}<p>Tus ahorros siguen en tu banco o efectivo; solo les pones nombre. No cuentan en tu libre.</p></div>
+            <div class="nota nota--info" role="note">${icon('info')}<p>Dentro de una cuenta, tu ahorro no cuenta en tu libre. Aparte, solo lo registramos.</p></div>
             ${k.sinCubrir > 0 ? `<div class="nota nota--ambar" role="note">${icon('triangle-alert')}<p><strong>Faltan ${dinero(k.sinCubrir)} para cubrir tus ahorros.</strong> Después de tus pagos no te alcanza para todo lo que guardaste.</p></div>` : ''}
-            ${tarjetaSeccion(`Tus ahorros <span class="contador">${dinero(k.apartado)}</span>`, st.apartados.length ? `<ul class="lista">${apHtml}</ul>` : `<div class="vacio vacio--ilus"><svg class="app-illustration vacio-art" viewBox="0 0 200 150" aria-hidden="true" focusable="false">${ART.illus.ahorros}</svg><p>Todavía no tienes ahorros. Ahorrar aquí es ponerle nombre a una parte de tu dinero: sigue en tu banco o efectivo.</p></div>`, { id: 'md-ap' })}
+            ${tarjetaSeccion(`Tus ahorros <span class="contador">${dinero(k.apartado + k.aparte)}</span>`, st.apartados.length ? `<ul class="lista">${apHtml}</ul>` : `<div class="vacio vacio--ilus"><svg class="app-illustration vacio-art" viewBox="0 0 200 150" aria-hidden="true" focusable="false">${ART.illus.ahorros}</svg><p>Todavía no tienes ahorros. Puede estar dentro de tu banco o efectivo, o aparte.</p></div>`, { id: 'md-ap' })}
             ${logros}${cerrados}
         </div>`;
     };
@@ -1236,8 +1331,8 @@
         return `<div class="pg">
             ${encabezado('Deudas', 'Tarjetas, préstamos y casa comercial', { atras: P.atrasDe('Mi dinero') })}
             ${P.tipHtml('deudas')}
-            <section class="card ficha-cifra ficha-cifra--q" aria-label="Lo que debes">${P.qBtn('deudas')}<p class="fila-s">${deuda.total > 0 || !deuda.sinSaldo ? `Debes en total${deuda.sinSaldo ? ' (lo que tienes anotado)' : ''}` : 'Pagas en cuotas'}</p><p class="cifra">${deuda.total > 0 || !deuda.sinSaldo ? dinero(deuda.total, { aprox: deuda.aprox }) : `${dinero(deuda.cuotasSinSaldo)} al mes`}</p><p class="fila-s">${deuda.sinSaldo ? `${plural(deuda.sinSaldo, 'cuota no tiene', 'cuotas no tienen')} «cuánto debes» anotado. ` : ''}Su pago aparece solo en Pagos. El disponible de una tarjeta nunca suma a tu libre: es dinero prestado.</p>${P.qTexto('deudas')}</section>
-            ${tarjetaSeccion('Tus deudas', `${filas.length ? `<ul class="lista">${filas.join('')}</ul>` : '<p class="vacio">Si tienes una tarjeta, una cuota o un préstamo, agrégalo aquí y su pago aparece solo en Pagos.</p>'}<div class="card-pie"><button type="button" class="btn btn--full" data-a="hoja" data-hoja="nuevaDeuda" data-fk="md-deuda">${icon('plus', 'ico-s')}${filas.length ? 'Agregar otra deuda o tarjeta' : 'Agregar una deuda o tarjeta'}</button></div>`, { id: 'md-deudas-lista' })}
+            <section class="card ficha-cifra ficha-cifra--q" aria-label="Lo que debes">${P.qBtn('deudas')}<p class="fila-s">${deuda.total > 0 || !deuda.sinSaldo ? `Debes en total${deuda.sinSaldo ? ' (lo que tienes anotado)' : ''}` : 'Pagas en cuotas'}</p><p class="cifra">${deuda.total > 0 || !deuda.sinSaldo ? dinero(deuda.total, { aprox: deuda.aprox }) : `${dinero(deuda.cuotasSinSaldo)} al mes`}</p><p class="fila-s">${deuda.sinSaldo ? `${plural(deuda.sinSaldo, 'cuota no tiene', 'cuotas no tienen')} «cuánto debes» anotado. ` : ''}Su pago aparece solo en Mi plan. El disponible de una tarjeta nunca suma a tu libre: es dinero prestado.</p>${P.qTexto('deudas')}</section>
+            ${tarjetaSeccion('Tus deudas', `${filas.length ? `<ul class="lista">${filas.join('')}</ul>` : '<p class="vacio">Si tienes una tarjeta, una cuota o un préstamo, agrégalo aquí y su pago aparece solo en Mi plan.</p>'}<div class="card-pie"><button type="button" class="btn btn--full" data-a="hoja" data-hoja="nuevaDeuda" data-fk="md-deuda">${icon('plus', 'ico-s')}${filas.length ? 'Agregar otra deuda o tarjeta' : 'Agregar una deuda o tarjeta'}</button></div>`, { id: 'md-deudas-lista' })}
             ${P.modo === 'uso' ? `<button type="button" class="link link--start" data-a="obCompletar" data-fk="md-completar">${icon('list-checks', 'ico-s')}Completar tu Primer día</button>` : ''}
         </div>`;
     };
@@ -1252,7 +1347,7 @@
         const res = (st.reservasTarjeta || []).find((x) => x.id === l.reserva);
         const t = M.tarjeta(st, m.tarjeta);
         const info = t ? M.tarjetaInfo(st, t) : null;
-        if (res && info && info.reservado > 0) return `Usado con ${m.nombre} · ${dinero(Math.min(res.monto, info.reservado))} reservados para tu pago del ${P.diaPago(info, info.venceCompras)}`;
+        if (res && info && info.reservado > 0) return `Usado con ${m.nombre} · ${dinero(Math.min(res.monto, info.reservado))} listos para tu pago del ${P.diaPago(info, info.venceCompras)}`;
         return `Usado con ${m.nombre} · ya pagaste la tarjeta`;
     }
     P.textoUsoLogro = textoUsoLogro;
@@ -1272,7 +1367,7 @@
         const partes = [
             ['ap', 'ahorros', ap],
             ['pg', 'por pagar', pg],
-            ['gu', 'reservado para pagos', gu],
+            ['gu', 'ya contado para pagos', gu],
             ['li', 'libre', k.libre],
         ].filter(([, , m]) => m > 0);
         const frase = `Tienes ${dinero(k.tienes)} = ${partes.length ? partes.map(([, t, m]) => `${t} ${dinero(m)}`).join(' + ') : 'libre $0.00'}`;
@@ -1314,7 +1409,7 @@
         const maximo = Math.max(r.totalFijos, ...r.porCategoria.map((x) => x.total), r.tarjetaSinDetalle, r.sinDetalleSalio, 1);
         const filaCat = (id, emoji, nombre, total, nota, filtro) =>
             `<li class="fila fila--cat"><button type="button" class="fila-main" data-a="mesCategoria" data-id="${filtro}" data-fk="cat-${filtro}" aria-pressed="${P.ui.mesCategoria === filtro}">${caja(emoji)}<span class="fila-txt"><span class="fila-t">${esc(nombre)}</span>${nota ? `<span class="fila-s">${esc(nota)}</span>` : ''}<span class="cat-barra" aria-hidden="true"><span style="width:${Math.max(4, Math.round((total * 100) / maximo))}%"></span></span></span><span class="fila-m">${montoHtml(total)}</span></button></li>`;
-        if (r.totalFijos) filas.push(filaCat('fijos', '🧾', 'Pagos fijos', r.totalFijos, `${plural(r.fijos.length, 'pago', 'pagos')} de Pagos`, 'fijos'));
+        if (r.totalFijos) filas.push(filaCat('fijos', '🧾', 'Gastos fijos', r.totalFijos, `${plural(r.fijos.length, 'gasto', 'gastos')} de Mi plan`, 'fijos'));
         for (const c of r.porCategoria) {
             const k = M.categoria(c.id);
             filas.push(filaCat(c.id, k.emoji, k.nombre, c.total, plural(c.n, 'anotado', 'anotados'), c.id));
@@ -1344,7 +1439,7 @@
         const chips = [['todo', 'Todo'], ['gastos', 'Gastos'], ['ingresos', 'Ingresos'], ['movimientos', 'Movimientos']]
             .map(([v, t]) => `<button type="button" class="chip" aria-pressed="${filtro === v}" data-a="mesFiltro" data-v="${v}" data-fk="mf-${v}">${filtro === v ? icon('check', 'ico-xs') : ''}${t}</button>`)
             .join('');
-        const catChip = cat ? `<button type="button" class="chip chip--quitar" aria-pressed="true" data-a="mesCategoria" data-id="${cat}" data-fk="mf-cat">${esc(cat === 'fijos' ? 'Pagos fijos' : cat === 'tarjeta' ? 'Tarjeta sin detalle' : cat === 'cuadre' ? 'Sin detalle' : M.categoria(cat).nombre)} ${icon('x', 'ico-xs')}${sr('Quitar filtro')}</button>` : '';
+        const catChip = cat ? `<button type="button" class="chip chip--quitar" aria-pressed="true" data-a="mesCategoria" data-id="${cat}" data-fk="mf-cat">${esc(cat === 'fijos' ? 'Gastos fijos' : cat === 'tarjeta' ? 'Tarjeta sin detalle' : cat === 'cuadre' ? 'Sin detalle' : M.categoria(cat).nombre)} ${icon('x', 'ico-xs')}${sr('Quitar filtro')}</button>` : '';
         const historial = `<section class="historial" aria-labelledby="mes-hist"><div class="hist-cab"><h2 class="card-t" id="mes-hist">Historial</h2><p class="fila-s">Toca uno para corregirlo</p></div>
             <div class="chips chips--scroll" role="group" aria-label="Filtrar historial">${chips}${catChip}</div>
             ${grupos.length ? grupos.map((g) => `<div class="grupo"><h3 class="grupo-t">${esc(M.capital(M.diaCorto(g.fecha)))}</h3><ul class="lista card">${g.filas.join('')}</ul></div>`).join('') : '<p class="vacio">Nada con este filtro.</p>'}</section>`;
@@ -1355,6 +1450,7 @@
             <section class="card resumen" aria-label="Resumen del mes">
                 <div class="resumen-dos"><div><p class="fila-s">Entró</p><p class="resumen-n">${montoHtml(r.entro, 'ingreso')}</p></div><div><p class="fila-s">Salió</p><p class="resumen-n resumen-n--salio">${dinero(-r.salio)}</p></div></div>
                 ${comparacion ? `<p class="txt">${esc(comparacion)}</p>` : ''}
+                ${r.totalPrestamos ? `<p class="fila-s" data-fk="mes-prestamos">Te prestaron ${dinero(r.totalPrestamos)}: es una deuda, no cuenta como ingreso.</p>` : ''}
                 ${suscripciones.length ? `<button type="button" class="link link--start" data-a="irMisPagos" data-fk="mes-suscripciones">${icon('receipt-text', 'ico-s')}Pagas ${esc(dinero(M.suma(suscripciones, (p) => alMes(p)), { aprox: true }))} al mes en suscripciones</button>` : ''}
             </section>
             ${enque}
@@ -1399,7 +1495,7 @@
         const ing = p.descuento ? M.ingreso(st, p.descuento) : null;
         // v2.7 (F21): esta versión no manda notificaciones ni correos ni avisa a una hora: avisa al abrir la app.
         const avisoTexto = (a) => (a.tipo === 'recibo' ? `Revisar el recibo · el ${a.dia}` : a.tipo === 'antes' ? 'Un día antes' : 'El día que vence');
-        const atrasTexto = P.atrasDe('Pagos');
+        const atrasTexto = P.atrasDe('Mi plan');
         const estadoProx = ing
             ? `<p class="fila-s">Se descuenta solo de ${esc(ing.nombre.toLowerCase())}: al confirmar que llegó, queda pagado. No baja tu libre otra vez.</p>`
             : recien
@@ -1407,13 +1503,13 @@
                 <div class="acciones-2"><button type="button" class="btn btn--48" data-a="pagoDeshacer" data-id="${p.id}" data-fecha="${recien.fecha}" data-fk="ficha-deshacer">Deshacer</button></div></div>`
               : prox
                 ? `<div class="ficha-prox"><p class="fila-s">${prox.estado === 'vencido' ? 'Venció' : 'Próximo'}: ${esc(M.capital(M.fechaLarga(prox.fecha)))}${prox.parcial ? ` · pagaste ${dinero(prox.parcial.pagado)}, faltan ${dinero(prox.parcial.falta)}` : prox.estado === 'vencido' ? ' · por confirmar' : ''}</p>
-                <div class="acciones-2"><button type="button" class="btn btn--48" data-a="saltar" data-id="${p.id}" data-fecha="${prox.fecha}" data-fk="saltar">${p.frecuencia === 'unico' ? 'Saltar' : 'Saltar esta vez'}</button><button type="button" class="btn btn--prim btn--48" data-a="pagado" data-tipo="pago" data-id="${p.id}" data-fecha="${prox.fecha}" data-fk="ficha-pagado">Pagado</button></div></div>`
+                <div class="acciones-2"><button type="button" class="btn btn--48" data-a="saltar" data-id="${p.id}" data-fecha="${prox.fecha}" data-fk="saltar">${p.frecuencia === 'unico' ? 'Saltar' : 'Saltar esta vez'}</button><button type="button" class="btn btn--prim btn--48" data-a="pagado" data-tipo="pago" data-id="${p.id}" data-fecha="${prox.fecha}" data-fk="ficha-pagado">Ya lo pagué</button></div></div>`
                 : '<p class="fila-s">No hay pagos por delante.</p>';
         // V2-34: con qué ingreso lo pagas (cada ocurrencia).
         let pagasCon = '';
         if (prox && !ing) {
             const partes = M.asignacion(st, p, prox.fecha, prox.monto, hz);
-            const filas = partes.map((x) => `<li><span>${M.esFundado(st, x.de) ? (prox.fecha >= hz.fecha && prox.estado !== 'vencido' ? 'Reservado de lo que tienes ahora' : 'Con lo que tienes ahora') : `Con ${esc(etiquetaFuente(x.de))}`}</span><span>${dinero(x.monto, { aprox: prox.estimado })}</span></li>`).join('');
+            const filas = partes.map((x) => `<li><span>${M.esFundado(st, x.de) ? (prox.fecha >= hz.fecha && prox.estado !== 'vencido' ? 'Ya contado de lo que tienes ahora' : 'Con lo que tienes ahora') : `Con ${esc(etiquetaFuente(x.de))}`}</span><span>${dinero(x.monto, { aprox: prox.estimado })}</span></li>`).join('');
             const regla = p.pagarCon && p.pagarCon.modo === 'antes' ? 'Siempre con el día de pago anterior.' : p.pagarCon && p.pagarCon.modo === 'parejo' ? 'Siempre repartido parejo entre tus días de pago.' : '';
             const opciones = M.fuentesPara(st, prox.fecha, hz).length > 1;
             pagasCon = tarjetaSeccion('Lo pagas con', `${P.qTexto('pagasCon')}<div class="dato"><p class="fila-s">${esc(M.capital(M.fechaLarga(prox.fecha)))}${regla ? ' · ' + esc(regla) : ''}</p><ul class="mini-desglose">${filas}</ul></div>${opciones ? `<div class="card-pie"><button type="button" class="link" data-a="hoja" data-hoja="pagarCon" data-id="${p.id}" data-fecha="${prox.fecha}" data-fk="pagar-con">Cambiar o repartir</button></div>` : '<p class="fila-s">Vence antes de tu próximo ingreso: sale de lo que ya tienes.</p>'}`, { id: 'f-con', accion: P.qBtn('pagasCon') });
@@ -1446,12 +1542,41 @@
             ${pagasCon}
             ${esDeuda}
             ${p.deuda || tipoDeuda ? tarjetaSeccion('Lo que debes', `<div class="dato"><p class="cifra cifra--s">${debe ? dinero(p.deuda.debe, { aprox: true }) : 'Sin anotar'}</p><p class="fila-s">Opcional. Baja con cada «Pagado».</p></div><div class="card-pie"><button type="button" class="link" data-a="hoja" data-hoja="deuda" data-id="${p.id}" data-fk="deuda">${debe ? 'Actualizar lo que debo' : 'Anotar cuánto debo'}</button></div>`, { id: 'f-deuda' }) : ''}
-            ${ing ? '' : tarjetaSeccion('Avisos', `<ul class="lista">${(p.avisos || []).map((a, i) => `<li class="fila fila--switch"><span class="fila-txt"><span class="fila-t">${esc(avisoTexto(a))}</span><span class="fila-s">Te avisamos al abrir la app</span></span><button type="button" class="switch" role="switch" aria-checked="${!!(a.on)}" data-a="avisoSwitch" data-id="${p.id}" data-i="${i}" data-fk="sw-${i}" aria-label="${esc(avisoTexto(a))}"><span></span></button></li>`).join('')}</ul>`, { id: 'f-avisos' })}
+            ${ing ? '' : tarjetaSeccion('Avísame', `<ul class="lista">${(p.avisos || []).map((a, i) => `<li class="fila fila--switch"><span class="fila-txt"><span class="fila-t">${esc(avisoTexto(a))}</span><span class="fila-s">Te avisamos al abrir la app</span></span><button type="button" class="switch" role="switch" aria-checked="${!!(a.on)}" data-a="avisoSwitch" data-id="${p.id}" data-i="${i}" data-fk="sw-${i}" aria-label="${esc(avisoTexto(a))}"><span></span></button></li>`).join('')}</ul>`, { id: 'f-avisos' })}
             ${tarjetaSeccion('Historial', historia.length ? `<ul class="lista">${historia.map(filaHist).join('')}</ul>` : '<p class="vacio">Todavía no hay pagos.</p>', { id: 'f-hist' })}
             <div class="pie-acciones"><button type="button" class="btn btn--full" data-a="hoja" data-hoja="${tipoDeuda && !ing && p.frecuencia === 'mensual' ? 'nuevaDeuda' : 'editarPago'}" data-id="${p.id}" data-fk="editar-pago">${icon('pencil', 'ico-s')}Editar</button><button type="button" class="btn btn--full btn--peligro-txt" data-a="hoja" data-hoja="yaNoAplica" data-id="${p.id}" data-fk="ya-no">${icon('ban', 'ico-s')}Ya no aplica</button></div>
         </div>`;
     };
 
+    /**
+     * v2.8 (C-3): la ficha de un gasto variable: su tope por quincena, lo que llevas, lo que te queda (o cuánto te pasaste),
+     * los gastos que lo consumieron y «¿Ya terminaste?» (Sí / Me falta / Se me olvidó anotar).
+     */
+    S.variable = function ({ id }) {
+        const st = P.st;
+        const k = P.calc();
+        const x = k.variables.find((y) => y.v.id === id);
+        if (!x) return S.pagos();
+        const v = x.v;
+        const m = M.medio(st, v.medio);
+        const l = m && m.lugar ? M.lugar(st, m.lugar) : null;
+        const per = x.periodo;
+        const estado = x.listo ? `<p class="estado estado--ok">Ya terminaste ${P.estePlan()} ✓</p><p class="fila-s">Te sobraron ${dinero(x.sobro)}: volvieron a tu libre.</p>` : x.pasado ? `<p class="txt"><strong>Te pasaste ${dinero(x.pasado)}.</strong> Pasa; la próxima quincena empieza de nuevo.</p>` : `<p class="txt">Te quedan <strong>${dinero(x.falta)}</strong>. Ya están contados en tu plan: gastarlos no baja tu libre.</p>`;
+        const cierre = !x.listo && x.falta > 0 ? `<div class="pregunta" role="group" aria-labelledby="var-q"><p class="campo-l" id="var-q">Ibas a gastar ${dinero(x.tope)} y anotaste ${dinero(x.anotado)}. ¿Ya terminaste?</p><div class="chips"><button type="button" class="chip" data-a="variableCierre" data-id="${v.id}" data-v="listo" data-fk="var-listo">Sí, ya terminé</button><button type="button" class="chip" data-a="variableCierre" data-id="${v.id}" data-v="falta" data-fk="var-falta">Me falta</button><button type="button" class="chip" data-a="variableCierre" data-id="${v.id}" data-v="anotar" data-fk="var-anotar">Se me olvidó anotar</button></div></div>` : '';
+        return `<div class="pg">
+            ${encabezado(`${emo(v.emoji, 28)} ${esc(v.nombre)}`, `Gasto variable · ${esc(P.cadaPlan())} · sale de: ${esc(l ? l.nombre : m ? m.nombre : '—')}`, { atras: P.atrasDe('Mi plan') })}
+            <section class="card ficha-cifra" aria-label="Tu tope">
+                <p class="fila-s">Tope ${esc(P.cadaPlan())}</p>
+                <p class="cifra">${dinero(x.tope)}</p>
+                <p class="fila-s">Del ${esc(M.fechaLarga(per.inicio))} al ${esc(M.fechaLarga(per.fin))} llevas ${dinero(x.anotado)}.</p>
+                ${barra(Math.min(x.anotado, x.tope), x.tope, 'Lo que llevas de ' + v.nombre)}
+                ${estado}
+            </section>
+            ${cierre}
+            ${tarjetaSeccion(P.estePlan().charAt(0).toUpperCase() + P.estePlan().slice(1), x.gastos.length ? `<ul class="lista">${x.gastos.slice().reverse().map((r) => filaRegistro(r)).join('')}</ul>` : '<p class="vacio">Todavía no anotas nada de esto en esta quincena.</p>', { id: 'var-gastos' })}
+            <div class="pie-acciones"><button type="button" class="btn btn--full" data-a="hoja" data-hoja="editarVariable" data-id="${v.id}" data-fk="editar-variable">${icon('pencil', 'ico-s')}Editar</button><button type="button" class="btn btn--full btn--peligro-txt" data-a="variableQuitar" data-id="${v.id}" data-fk="variable-quitar">${icon('ban', 'ico-s')}Ya no aplica</button></div>
+        </div>`;
+    };
     S.tarjeta = function ({ id }) {
         const st = P.st;
         const t = M.tarjeta(st, id);
@@ -1472,13 +1597,20 @@
         let pagasCon = '';
         if (info.comoPago > 0) {
             const hz = M.horizonte(st);
-            const filas = info.partes.map((x) => `<li><span>${M.esFundado(st, x.de) ? (info.reservadoComo ? 'Reservado de lo que tienes ahora' : 'Con lo que tienes ahora') : `Con ${esc(etiquetaFuente(x.de))}`}</span><span>${dinero(x.monto, { aprox: !!ult.inicial })}</span></li>`).join('');
+            const filas = info.partes.map((x) => `<li><span>${M.esFundado(st, x.de) ? (info.reservadoComo ? 'Ya contado de lo que tienes ahora' : 'Con lo que tienes ahora') : `Con ${esc(etiquetaFuente(x.de))}`}</span><span>${dinero(x.monto, { aprox: !!ult.inicial })}</span></li>`).join('');
             const compras = info.deCompras > 0 ? `<li><span>Con lo que tienes ahora (tus compras de este ciclo)</span><span>${dinero(info.deCompras)}</span></li>` : '';
             const opciones = M.fuentesPara(st, info.vence, hz).length > 1;
-            pagasCon = tarjetaSeccion('Lo pagas con', `${P.qTexto('pagasCon')}<div class="dato"><p class="fila-s">${esc(M.capital(M.fechaLarga(info.vence)))} · ${ult.inicial ? 'lo que pagas normalmente' : 'tu estado de cuenta'}</p><ul class="mini-desglose">${filas}${compras}</ul></div>${opciones ? `<div class="card-pie"><button type="button" class="link" data-a="hoja" data-hoja="pagarCon" data-de-tarjeta="si" data-id="${t.id}" data-fecha="${info.vence}" data-fk="t-pagar-con">Cambiar o repartir</button></div>` : '<p class="fila-s">Vence antes de tu próximo ingreso: sale de lo que ya tienes.</p>'}`, { id: 't-con', accion: P.qBtn('pagasCon') });
+            // v2.8 (C-7): si dos quincenas llegan antes de que venza, se sugiere repartirlo (sin hacerlo sola).
+            const quincenas = M.fuentesPara(st, info.vence, hz).filter((f) => f !== 'ahora' && !M.esFundado(st, f) && !M.esUnico(f));
+            const mitad = Math.floor(info.comoPago / 2);
+            const sugerencia = quincenas.length >= 2 && info.partes.length === 1 ? `<div class="nota nota--consejo" role="note">${icon('lightbulb')}<p>Puedes repartir este pago entre dos ${M.periodoPlan(st).cada === 'quincena' ? 'quincenas' : 'ingresos'}: ${dinero(mitad)} y ${dinero(info.comoPago - mitad)}. Tú decides.</p></div>` : '';
+            pagasCon = tarjetaSeccion('Lo pagas con', `${P.qTexto('pagasCon')}<div class="dato"><p class="fila-s">${esc(M.capital(M.fechaLarga(info.vence)))} · ${ult.inicial ? 'lo que pagas normalmente' : 'tu estado de cuenta'}</p><ul class="mini-desglose">${filas}${compras}</ul></div>${sugerencia}${opciones ? `<div class="card-pie"><button type="button" class="link" data-a="hoja" data-hoja="pagarCon" data-de-tarjeta="si" data-id="${t.id}" data-fecha="${info.vence}" data-fk="t-pagar-con">Cambiar o repartir</button></div>` : '<p class="fila-s">Vence antes de tu próximo ingreso: sale de lo que ya tienes.</p>'}`, { id: 't-con', accion: P.qBtn('pagasCon') });
         }
+        // v2.8 (C-10, C-7): sus cobros recurrentes («Netflix $10, se cobra el 5»): van dentro del pago de la tarjeta.
+        const cobros = st.pagos.filter((p) => p.activo !== false && M.tarjetaDePago(st, p)?.id === t.id);
+        const cobrosHtml = tarjetaSeccion(`Se cobra en esta tarjeta <span class="contador">${cobros.length}</span>`, `${cobros.length ? `<ul class="lista">${cobros.map((p) => `<li class="fila"><button type="button" class="fila-main" data-a="abrir" data-tipo="pago" data-id="${p.id}" data-fk="t-cobro-${p.id}">${caja(p.emoji)}<span class="fila-txt"><span class="fila-t">${esc(p.nombre)} ${dinero(p.monto, { aprox: p.estimado })}, se cobra ${esc(p.frecuencia === 'mensual' ? 'el ' + p.dia : textoFrecuencia(p).toLowerCase())}</span><span class="fila-s">Va dentro del pago de la tarjeta: no resta aparte.</span></span></button></li>`).join('')}</ul>` : '<p class="vacio">Nada se cobra solo en esta tarjeta. Una suscripción con esta tarjeta aparece aquí.</p>'}`, { id: 't-cobros' });
         return `<div class="pg">
-            ${encabezado(`${emo(t.emoji, 28)} ${esc(t.nombre)}`, t.corte ? `Corte el ${t.corte} · pago el ${t.pagoDia}` : `Pago el ${t.pagoDia} · día de corte por anotar`, { atras: atrasTexto })}
+            ${encabezado(`${emo(t.emoji, 28)} ${esc(P.nombreTarjeta(t))}`, `${t.apodo ? esc(t.nombre) + ' · ' : ''}${t.corte ? `Corte el ${t.corte} · pago el ${t.pagoDia}` : `Pago el ${t.pagoDia} · día de corte por anotar`}`, { atras: atrasTexto })}
             <section class="card ficha-cifra" aria-label="Lo que debes">
                 <p class="fila-s">Debes en total</p>
                 <p class="cifra">${debeAprox !== null ? dinero(debeAprox, { aprox: true }) : info.usual ? 'Por confirmar' : dinero(info.debeTotal)}</p>
@@ -1490,12 +1622,13 @@
                     ${info.resto ? `<li><span>Sigue como deuda</span><span>${dinero(info.resto)}</span></li>` : ''}
                 </ul>
                 ${info.cupoLibre !== null ? `<p class="cupo"><strong>Disponible ${dinero(info.cupoLibre)}</strong> <span class="fila-s">de tu límite de crédito de ${dinero(t.cupo)}. El disponible nunca suma a tu libre: es dinero prestado.</span></p>` : ''}
-                <p class="fila-s">Las compras con tarjeta bajan tu libre el día que las haces.</p>
-                ${info.reservado ? `<div class="nota nota--ok" role="note">${icon('check')}<p><strong>${dinero(info.reservado)} reservados para tu pago del ${esc(P.diaPago(info, info.venceCompras))}</strong>${info.reservas.length ? ` (de tu ahorro ${esc(info.reservas.map((r) => r.de).join(', '))})` : ''}. Ya no cuentan en tu libre.</p></div>` : ''}
+                <p class="fila-s">Las compras con tarjeta bajan tu libre el día que las haces; lo que se cobra solo va dentro de su pago.</p>
+                ${info.reservado ? `<div class="nota nota--ok" role="note">${icon('check')}<p><strong>${dinero(info.reservado)} de tu ahorro ${esc(info.reservas.map((r) => r.de).join(', '))} ya están para tu pago del ${esc(P.diaPago(info, info.venceCompras))}.</strong> No cuentan en tu libre.</p></div>` : ''}
                 ${info.porPagarEstado || info.estimado || info.reservado ? `<button type="button" class="btn btn--prim btn--48 btn--full" data-a="pagado" data-tipo="tarjeta" data-id="${t.id}" data-fecha="${info.vence}" data-fk="t-pagar">${icon('arrow-left-right', 'ico-s')}Pagar tarjeta</button>` : ''}
                 ${pendiente}
             </section>
             ${pagasCon}
+            ${cobrosHtml}
             ${ult.inicial ? '' : tarjetaSeccion(`Estado de cuenta del ${M.partes(ult.corte)[2]} ${M.MESES_CORTOS[M.partes(ult.corte)[1] - 1]}`, estadoTxt, { id: 't-est' })}
             ${info.resto ? `<div class="nota nota--consejo" role="note">${icon('lightbulb')}<p><strong>Sobre lo que sigue como deuda:</strong> no calculamos los intereses. Van a aparecer como diferencia en tu próximo estado de cuenta y ahí te diremos cuánto fue. Abonar un poco más que el mínimo ya ayuda.</p></div>` : ''}
             <div class="nota nota--info" role="note">${icon('lightbulb')}<p>Este año pagaste ${dinero(t.interesesAnio || 0)} en intereses. Pagar el total cada mes es lo que menos te cuesta.</p></div>
@@ -1538,6 +1671,11 @@
         const atrasTexto = P.atrasDe('Mi dinero');
         const vencido = a.metaFecha && a.metaFecha < st.hoy && a.monto > 0;
         const metaTxt = a.meta ? (lista ? `${emo('🎉', 16)} ¡Lista para usar! Juntaste ${dinero(a.monto)} de ${dinero(a.meta)}.` : `${Math.floor((a.monto * 100) / a.meta)} % de ${dinero(a.meta)} · faltan ${dinero(a.meta - a.monto)}${a.metaFecha ? ` para el ${M.fechaLarga(a.metaFecha)}` : ''}`) : 'Sin meta: ahorras a tu ritmo.';
+        // v2.8 (C-1): «¿Dónde está?» y su ahorro programado («Ya lo guardé»).
+        const aparte = M.ahorroAparte(a);
+        const dondeTxt = aparte ? 'Aparte: solo lo registramos.' : `Dentro de ${esc(M.lugar(st, M.lugarAhorro(st, a))?.nombre || 'tu cuenta')}: no cuenta en tu libre.`;
+        const prog = M.programadoInfo(st).find((y) => y.a.id === a.id);
+        const progHtml = tarjetaSeccion(P.cadaVezT(), a.programado ? `<div class="dato"><p class="dato-n">${dinero(a.programado.monto)} ${esc(P.cadaPlan())}</p><p class="fila-s">${prog && prog.guardado ? `Ya lo guardaste ${P.estePlan()} ✓` : prog && prog.falta ? 'Está en tu plan hasta que lo guardes.' : 'Ya llegaste a tu meta.'}</p></div>${prog && prog.falta ? `<div class="card-pie"><button type="button" class="btn btn--prim btn--full" data-a="programadoGuardado" data-id="${a.id}" data-fk="ap-ya-guarde">${icon('check', 'ico-s')}Ya lo guardé</button></div>` : ''}<div class="card-pie"><button type="button" class="link" data-a="hoja" data-hoja="programar" data-id="${a.id}" data-fk="ap-programar">Cambiar cuánto guardo</button></div>` : `<p class="txt txt--card">¿Guardas algo ${P.cadaVez()}? Así queda en tu plan.</p><div class="card-pie"><button type="button" class="link" data-a="hoja" data-hoja="programar" data-id="${a.id}" data-fk="ap-programar">Guardar ${P.cadaVez()}</button></div>`, { id: 'ap-prog' });
         const avisoVencido = vencido ? `<div class="nota nota--atencion" role="note">${icon('clock')}<div><p><strong>Era para el ${esc(M.fechaLarga(a.metaFecha))}. ¿Ya lo usaste?</strong> Si ya lo gastaste, lo cerramos sin anotar otro gasto.</p><button type="button" class="btn btn--sm" data-a="hoja" data-hoja="yaLoUse" data-id="${a.id}" data-fk="ap-yalouse">Sí, ya lo gasté</button></div></div>` : '';
         return `<div class="pg">
             ${encabezado(`${emo(a.emoji, 28)} ${esc(a.nombre)}`, 'Ahorro', { atras: atrasTexto })}
@@ -1547,13 +1685,14 @@
                 <div class="ficha-ap-cuerpo">
                     <p class="txt">${metaTxt}</p>
                     ${a.meta ? barra(a.monto, a.meta, 'Avance de ' + a.nombre) : ''}
-                    <div class="acciones-2"><button type="button" class="btn btn--48" data-a="hoja" data-hoja="apartar" data-id="${a.id}" data-fk="ap-mas">${icon('plus', 'ico-s')}Ahorrar más</button><button type="button" class="btn btn--prim btn--48" data-a="hoja" data-hoja="usar" data-id="${a.id}" data-fk="ap-usar" ${a.monto ? '' : 'disabled'}>Usar</button></div>
-                    <div class="acciones-2"><button type="button" class="btn" data-a="hoja" data-hoja="liberar" data-id="${a.id}" data-fk="ap-liberar" ${a.monto ? '' : 'disabled'}>Liberar</button><button type="button" class="btn" data-a="hoja" data-hoja="moverApartado" data-id="${a.id}" data-fk="ap-mover" ${a.monto && st.apartados.length > 1 ? '' : 'disabled'}>Mover a otro</button></div>
+                    <div class="acciones-2"><button type="button" class="btn btn--48" data-a="hoja" data-hoja="apartar" data-id="${a.id}" data-fk="ap-mas">${icon('plus', 'ico-s')}Guardé más</button><button type="button" class="btn btn--prim btn--48" data-a="hoja" data-hoja="liberar" data-id="${a.id}" data-fk="ap-liberar" ${a.monto ? '' : 'disabled'}>Usé de mi ahorro</button></div>
+                    <div class="acciones-2"><button type="button" class="btn" data-a="hoja" data-hoja="usar" data-id="${a.id}" data-fk="ap-usar" ${a.monto && !aparte ? '' : 'disabled'}>Pagué algo con él</button><button type="button" class="btn" data-a="hoja" data-hoja="moverApartado" data-id="${a.id}" data-fk="ap-mover" ${a.monto && st.apartados.filter((x) => M.ahorroAparte(x) === aparte).length > 1 ? '' : 'disabled'}>Mover a otro</button></div>
                 </div>
             </section>
-            <div class="nota nota--info" role="note">${icon('info')}<p>Tus ahorros siguen en tu banco o efectivo (${esc(st.lugares.map((l) => l.nombre).join(' y '))}); solo les pones nombre.</p></div>
+            <div class="nota nota--info" role="note">${icon('info')}<div><p><strong>¿Dónde está?</strong> ${dondeTxt}</p><button type="button" class="link" data-a="hoja" data-hoja="dondeAhorro" data-id="${a.id}" data-fk="ap-donde">Cambiar</button></div></div>
+            ${progHtml}
             ${tarjetaSeccion('Meta', `<div class="dato"><p class="dato-n">${a.meta ? dinero(a.meta) : 'Sin meta'}</p><p class="fila-s">${a.metaFecha ? 'Para el ' + esc(M.fechaLarga(a.metaFecha)) : 'Sin fecha'}</p></div><div class="card-pie"><button type="button" class="link" data-a="hoja" data-hoja="meta" data-id="${a.id}" data-fk="ap-meta">${a.meta ? 'Editar nombre y meta' : 'Editar nombre o ponerle meta'}</button></div>`, { id: 'ap-meta-t' })}
-            ${tarjetaSeccion('Historial', a.historial.length ? `<ul class="lista">${a.historial.map((h) => `<li class="fila"><div class="fila-main fila-main--quieta">${caja(h.tipo === 'usar' ? '🎉' : h.tipo === 'liberar' ? '🔓' : '🐷')}<span class="fila-txt"><span class="fila-t">${h.tipo === 'apartar' ? 'Ahorraste' : h.tipo === 'liberar' ? 'Sacaste' : h.tipo === 'usar' ? 'Lo usaste' : h.tipo === 'devuelto' ? 'Volvió de un gasto que eliminaste' : h.tipo === 'corregido' ? (h.monto >= 0 ? 'Corregiste un gasto: usaste más' : 'Corregiste un gasto: volvió al ahorro') : h.tipo === 'entra' ? 'Llegó de ' + esc(h.de) : 'Pasaste a ' + esc(h.a)}</span><span class="fila-s">${esc(M.capital(M.fechaLarga(h.fecha)))}</span></span><span class="fila-m">${montoHtml(Math.abs(h.monto), 'neutro')}</span></div></li>`).join('')}</ul>` : '<p class="vacio">Todavía nada.</p>', { id: 'ap-hist' })}
+            ${tarjetaSeccion('Historial', a.historial.length ? `<ul class="lista">${a.historial.map((h) => `<li class="fila"><div class="fila-main fila-main--quieta">${caja(h.tipo === 'usar' ? '🎉' : h.tipo === 'liberar' ? '🔓' : h.tipo === 'donde' ? '📍' : '🐷')}<span class="fila-txt"><span class="fila-t">${h.tipo === 'apartar' ? 'Guardaste' : h.tipo === 'liberar' ? 'Usaste (volvió a tu libre)' : h.tipo === 'usar' ? 'Pagaste algo con él' : h.tipo === 'inicial' ? 'Ya tenías' : h.tipo === 'donde' ? (h.donde === 'aparte' ? 'Lo pasaste a aparte' : 'Lo pasaste dentro de ' + esc(M.lugar(st, h.donde && h.donde.lugar)?.nombre || 'tu cuenta')) : h.tipo === 'devuelto' ? 'Volvió de un gasto que eliminaste' : h.tipo === 'corregido' ? (h.monto >= 0 ? 'Corregiste un gasto: usaste más' : 'Corregiste un gasto: volvió al ahorro') : h.tipo === 'entra' ? 'Llegó de ' + esc(h.de) : 'Pasaste a ' + esc(h.a)}</span><span class="fila-s">${esc(M.capital(M.fechaLarga(h.fecha)))}</span></span><span class="fila-m">${montoHtml(Math.abs(h.monto), 'neutro')}</span></div></li>`).join('')}</ul>` : '<p class="vacio">Todavía nada.</p>', { id: 'ap-hist' })}
         </div>`;
     };
 
@@ -1561,7 +1700,7 @@
         const st = P.st;
         const ing = M.ingreso(st, id);
         if (!ing) return S.pagos();
-        const atrasTexto = P.atrasDe('Pagos');
+        const atrasTexto = P.atrasDe('Mi plan');
         // V2-81: el que toca marcar (el primero que todavía no llegó).
         const prox = M.porRecibir(st, ing);
         // Recién recibido (su día todavía no pasa, o se marcó hoy): «Recibido ✓» con «Deshacer», sin otro «Ya llegó».
@@ -1621,7 +1760,7 @@
                     <li class="fila"><div class="fila-main fila-main--quieta">${caja('🔔')}<span class="fila-txt"><span class="fila-t">Avisos para ambos</span><span class="fila-s">Nadie se queda sin saber que vence la luz.</span></span></div></li>
                 </ul>
             </section>
-            <p class="txt">Por ahora, el salario de tu pareja entra como ingreso esperado en Pagos.</p>
+            <p class="txt">Por ahora, el salario de tu pareja entra como ingreso esperado en Mi plan.</p>
             <button type="button" class="btn btn--prim btn--48 btn--full" data-a="interesInvitar" data-fk="inv-interes" ${st.interesInvitar ? 'disabled' : ''}>${st.interesInvitar ? `${icon('check', 'ico-s')}Te avisaremos` : 'Me interesa'}</button>
         </div>`;
     };

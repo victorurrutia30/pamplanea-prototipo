@@ -1369,10 +1369,13 @@ button.fila-main:active {
     color: var(--color-success);
 }
 /* v2.6.6 (V2-86): «Revisemos unos pagos de antes de que empezaras»: cada caso con su fecha, su monto y sus dos respuestas. */
-.antes-lista {
+.antes-lista,
+.p28-lista {
     display: grid;
     gap: 10px;
 }
+/* v2.8 (E2.7): las preguntas de una vez, con el mismo aspecto que la revisión de lo de antes de empezar. */
+.p28-caso,
 .antes-caso {
     display: grid;
     gap: 10px;
@@ -1381,11 +1384,13 @@ button.fila-main:active {
     border-radius: 16px;
     background: var(--color-surface-2);
 }
+.p28-caso-t,
 .antes-caso-t {
     display: flex;
     align-items: center;
     gap: 10px;
 }
+.p28-caso-t .fila-txt,
 .antes-caso-t .fila-txt {
     min-width: 0;
     flex: 1;
@@ -3913,4 +3918,9 @@ html.con-hazlo .mask {
     display: flex;
     align-items: center;
     gap: 8px;
+}
+
+/* v2.8 (C-8): Hoy termina con el botón para anotar. */
+.hoy-anotar {
+    margin: 4px 0 8px;
 }

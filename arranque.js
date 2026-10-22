@@ -288,7 +288,8 @@
         const { icon } = P;
         const nav = document.getElementById('nav');
         const enlace = (tab, ic, t) => `<button type="button" class="nav-l" data-a="tab" data-tab="${tab}" data-fk="nav-${tab}"><span class="nav-i">${icon(ic)}</span><span class="nav-t">${t}</span></button>`;
-        nav.innerHTML = `${enlace('hoy', 'house', 'Hoy')}${enlace('pagos', 'calendar-clock', 'Pagos')}<button type="button" class="nav-mas" data-a="anotar" data-fk="nav-anotar" aria-label="Anotar" aria-haspopup="dialog"><span class="nav-circ">${icon('plus')}</span><span class="nav-t">Anotar</span></button>${enlace('midinero', 'wallet', 'Mi dinero')}${enlace('mes', 'chart-pie', 'Mes')}`;
+        // v2.8 (D-1): Hoy · Mi plan · (+) · Mi dinero · Mes. «Mi plan» reemplaza a Pagos (C-9); por dentro sigue siendo `pagos`.
+        nav.innerHTML = `${enlace('hoy', 'house', 'Hoy')}${enlace('pagos', 'list-checks', 'Mi plan')}<button type="button" class="nav-mas" data-a="anotar" data-fk="nav-anotar" aria-label="Anotar" aria-haspopup="dialog"><span class="nav-circ">${icon('plus')}</span><span class="nav-t">Anotar</span></button>${enlace('midinero', 'wallet', 'Mi dinero')}${enlace('mes', 'chart-pie', 'Mes')}`;
         // Para revisiones automáticas: #caso=C05&tema=ancla-oscuro (no guarda nada).
         const h = new URLSearchParams(location.hash.slice(1));
         const g = P.almacen.leer(CLAVE_APP, null);

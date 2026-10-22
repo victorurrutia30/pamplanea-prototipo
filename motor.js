@@ -191,7 +191,9 @@
         const lugarId = d.tipo === 'gasto' ? medio(st, d.medio)?.lugar || null : d.lugar;
         const l = lugarId ? lugar(st, lugarId) : null;
         if (!l || !l.cuadre || fecha > l.cuadre.fecha) return null;
-        return { lugar: l, cuadre: l.cuadre, caso: fecha < l.cuadre.fecha ? 'antes' : 'mismoDia' };
+        // v2.8 (pendiente 4): si ese cuadre es el de tu Primer día, lo del mismo día cuenta como después (y se puede cambiar).
+        const primerDia = !!st.registros.find((r) => r.tipo === 'cuadre' && r.lugar === l.id && r.seq === l.cuadre.seq && r.primero);
+        return { lugar: l, cuadre: l.cuadre, caso: fecha < l.cuadre.fecha ? 'antes' : 'mismoDia', primerDia };
     }
     /**
      * v2.7 (D-8, F01): lo anotado DESPUÉS de un cuadre pero con fecha de ANTES explica la diferencia de ese cuadre: no se
@@ -688,7 +690,7 @@
         }
         const inicio = h.inicioPeriodo || corteAntes(st, sumarDias(st.hoy, 1)) || inicioDe(st);
         const fin = h.fecha > st.hoy ? sumarDias(h.fecha, -1) : st.hoy;
-        return { clave: inicio, inicio, fin, cada: p.frecuencia === 'quincenal' ? 'quincena' : p.frecuencia === 'semanal' ? 'semana' : p.frecuencia === 'catorcenal' ? 'catorcena' : 'periodo' };
+        return { clave: inicio, inicio, fin, cada: p.frecuencia === 'quincenal' ? 'quincena' : p.frecuencia === 'semanal' ? 'semana' : p.frecuencia === 'catorcenal' ? 'catorcena' : p.frecuencia === 'mensual' ? 'mes' : 'periodo' };
     }
     /** v2.8 (C-3): los gastos variables que siguen activos. */
     const variablesActivas = (st) => (st.variables || []).filter((v) => v && v.activo !== false);
@@ -1561,7 +1563,7 @@
         if (d.tipo === 'ingreso' && !d.lugar) f.push('lugar');
         // v2.7 (P-3): del mismo día que el último cuadre de esa cuenta: ¿antes o después de contar? No se asume.
         const cu = cuadreAnotar(st, d);
-        if (cu && cu.caso === 'mismoDia' && !d.ordenCuadre) f.push('ordenCuadre');
+        if (cu && cu.caso === 'mismoDia' && !d.ordenCuadre && !cu.primerDia) f.push('ordenCuadre');
         if (d.tipo === 'ingreso' && d.ingresoRef && d.preguntarIngreso && !d.cualIngreso) f.push('cualIngreso');
         if (d.tipo === 'apartar' && d.pagoParecido && d.apartarIgual !== 'si') f.push('apartarIgual');
         if ((d.tipo === 'apartar' || d.tipo === 'liberar') && !d.apartado) f.push('apartado');

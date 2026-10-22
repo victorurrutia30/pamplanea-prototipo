@@ -856,6 +856,95 @@
         P.render({ foco: '#ra-t' });
     };
 
+    // ------------------------------------------------------------------ v2.8: las preguntas de una sola vez (E2.7)
+    /**
+     * v2.8 (D-2, D-5): a quien viene de una versión anterior, una sola vez y con sus datos: por cada gasto fijo que parece
+     * variable (súper, gasolina, comida, mercado), «¿«Súper» cambia cada quincena?»; y por cada tarjeta, «¿Qué día vence tu
+     * próximo pago de [tarjeta]?». Nada cambia sin respuesta; lo contestado queda en tus datos (`preguntas28`).
+     */
+    const PALABRAS_VARIABLE = new Set(['super', 'supermercado', 'despensa', 'gasolina', 'comida', 'mercado', 'transporte', 'combustible']);
+    const pareceVariable = (p) => ['super', 'comida', 'mercado'].includes(p.categoria) || M.normalizar(p.nombre || '').split(' ').some((w) => PALABRAS_VARIABLE.has(w));
+    /** El tope que se propone: lo mismo por quincena (un gasto de cada mes con quincena: la mitad). */
+    function topePropuesto(st, p) {
+        const cada = M.periodoPlan(st).cada;
+        if (p.frecuencia === 'mensual' && cada === 'quincena') return Math.round(p.monto / 2);
+        if (p.frecuencia === 'mensual' && cada === 'semana') return Math.round((p.monto * 12) / 52);
+        return p.monto;
+    }
+    const preguntas = { oculta: false };
+    function preguntas28() {
+        if (P.modo !== 'uso' || !uso || !P.st || !P.st.configurado || P.st.persona !== 'uso' || !(uso.novedades && uso.novedades['v2.8'])) return [];
+        const st = P.st;
+        const hechas = st.preguntas28 || {};
+        const out = [];
+        for (const p of st.pagos) {
+            if (p.activo === false || p.tipoDeuda || p.descuento || p.frecuencia === 'unico' || !Number.isInteger(p.monto) || !pareceVariable(p) || hechas['variable:' + p.id]) continue;
+            out.push({ clave: 'variable:' + p.id, tipo: 'variable', pago: p, tope: topePropuesto(st, p) });
+        }
+        for (const t of st.tarjetas) {
+            if (!t.corte || hechas['vence:' + t.id]) continue;
+            const info = M.tarjetaInfo(st, t);
+            const actual = info.vence;
+            // Si su pago ya venció (lo de antes de empezar, o por confirmar), primero se contesta eso.
+            if (actual < st.hoy) continue;
+            const [y, m] = M.partes(actual);
+            const antes = M.fechaDe(...M.mesMas(y, m, -1), t.pagoDia);
+            const despues = M.fechaDe(...M.mesMas(y, m, 1), t.pagoDia);
+            const otra = antes >= st.hoy ? antes : despues;
+            out.push({ clave: 'vence:' + t.id, tipo: 'vence', tarjeta: t, actual, otra });
+        }
+        return out;
+    }
+    function preguntasHoy() {
+        const lista = preguntas28();
+        if (!lista.length || preguntas.oculta) return '';
+        const fila = (q) => {
+            if (q.tipo === 'variable') {
+                const p = q.pago;
+                return `<li class="p28-caso"><div class="p28-caso-t">${P.caja(p.emoji || '🛒')}<span class="fila-txt"><span class="fila-t">¿«${esc(p.nombre)}» cambia ${esc(P.cadaVez())}?</span><span class="fila-s">Como gasto variable, su tope sería ${M.dinero(q.tope)} ${esc(P.cadaPlan())}.</span></span></div><div class="acciones-2" role="group" aria-label="${esc(p.nombre)}"><button type="button" class="btn" data-a="pregunta28" data-id="${esc(q.clave)}" data-v="no" data-fk="p28-no-${p.id}">No, queda fijo</button><button type="button" class="btn btn--prim" data-a="pregunta28" data-id="${esc(q.clave)}" data-v="si" data-fk="p28-si-${p.id}">Pasarlo a gasto variable</button></div></li>`;
+            }
+            const t = q.tarjeta;
+            const ch = (f, fk) => `<button type="button" class="btn${f === q.actual ? ' btn--prim' : ''}" data-a="pregunta28" data-id="${esc(q.clave)}" data-v="${f}" data-fk="${fk}">${esc(M.capital(M.fechaLarga(f)))}</button>`;
+            return `<li class="p28-caso"><div class="p28-caso-t">${P.caja(t.emoji || '💳')}<span class="fila-txt"><span class="fila-t">¿Qué día vence tu próximo pago de ${esc(P.nombreTarjeta(t))}?</span><span class="fila-s">Hoy lo tenemos el ${esc(M.fechaLarga(q.actual))}.</span></span></div><div class="acciones-2" role="group" aria-label="${esc(t.nombre)}">${ch(q.otra, 'p28-otra-' + t.id)}${ch(q.actual, 'p28-actual-' + t.id)}</div><button type="button" class="link" data-a="hoja" data-hoja="nuevaDeuda" data-id="${t.id}" data-fk="p28-otro-${t.id}">Es otro día</button></li>`;
+        };
+        return `<section class="card card--aviso aviso-p28" aria-labelledby="p28-t"><div class="aviso-cab">${P.caja('🗒️')}<div><h2 class="card-t" id="p28-t" tabindex="-1">${lista.length === 1 ? 'Una pregunta sobre tu plan' : `${lista.length} preguntas sobre tu plan`}</h2><p class="txt">Una sola vez. Nada cambia sin tu respuesta.</p></div></div>
+            <ul class="p28-lista">${lista.map(fila).join('')}</ul>
+            <div class="acciones-2"><button type="button" class="btn" data-a="pregunta28Luego" data-fk="p28-luego">Ahora no</button></div></section>`;
+    }
+    P.acciones.pregunta28 = (d) => {
+        const q = preguntas28().find((x) => x.clave === d.id);
+        if (!q) return;
+        let aviso = 'Listo';
+        P.cambiar((s) => {
+            s.preguntas28 = { ...(s.preguntas28 || {}), [q.clave]: { respuesta: d.v, fecha: s.hoy } };
+            if (q.tipo === 'variable' && d.v === 'si') {
+                const v = P.fijoAVariable(s, q.pago.id, { tope: q.tope });
+                aviso = v ? `${v.nombre} ahora es gasto variable` : aviso;
+            } else if (q.tipo === 'variable') aviso = `${q.pago.nombre} queda fijo`;
+            if (q.tipo === 'vence') {
+                // v2.8 (D-5): la fecha que dijo manda (y cuántos meses hay de su corte a su pago).
+                const t = M.tarjeta(s, q.tarjeta.id);
+                const ult = t.estados.at(-1);
+                if (d.v !== q.actual) {
+                    const info = M.tarjetaInfo(s, t);
+                    t.desfase = M.desfaseDesde(d.v, t.corte);
+                    if (ult.inicial) ult.vence = d.v;
+                    else if (!info.pendiente && ult.vence === q.actual) ult.vence = d.v;
+                    if (t.asignaciones && t.asignaciones[q.actual]) {
+                        t.asignaciones[d.v] = t.asignaciones[q.actual];
+                        delete t.asignaciones[q.actual];
+                    }
+                } else t.desfase = M.desfaseDesde(q.actual, t.corte);
+                aviso = `Listo: tu pago de ${P.nombreTarjeta(t)} vence el ${M.fechaCorta(d.v)}`;
+            }
+        }, { aviso: () => aviso, claves: ['pregunta28:' + q.tipo + ':' + (d.v === 'si' || d.v === 'no' ? d.v : 'fecha')] });
+        guardarUso();
+        P.render({ foco: preguntas28().length ? '#p28-t' : '#pantalla h1' });
+    };
+    P.acciones.pregunta28Luego = () => {
+        preguntas.oculta = true;
+        P.render({ foco: '#pantalla h1' });
+    };
     function tarjetasHoy() {
         if (P.modo !== 'uso' || !uso || !P.st.configurado) return [];
         const out = [];
@@ -1038,7 +1127,7 @@
             { id: 'fechas', lista: 'Qué días la abriste con tus datos (del primero al último) y cuántos fueron', lineas: [dias.length ? `Fechas: del ${fechaCorta(dias[0])} al ${fechaCorta(dias.at(-1))} · abrí la app ${dias.length} ${dias.length === 1 ? 'día' : 'días'}` : 'Fechas: todavía no la uso con mis datos'] },
             { id: 'aprender', lista: 'Si la instalaste y qué hiciste en «Aprender a usarla»', lineas: [`Instalada: ${m.instalada || instalada() ? 'sí' : 'no'} · Entrenamiento: ${P.tour && P.tour.resumen ? P.tour.resumen() : e.tour === 'hecho' ? 'hice el recorrido' : e.tour === 'saltado' ? 'salté el recorrido' : 'no lo hice'}${practicas ? `, ${practicas} ${practicas === 1 ? 'ejemplo practicado' : 'ejemplos practicados'}` : ''}`] },
             { id: 'uso', lista: 'Cuántas veces anotaste, marcaste «Pagado», cuadraste y usaste «Reparte» y «Pongámonos al día»', lineas: [`Lo que hice: ${m.anotaciones} ${m.anotaciones === 1 ? 'anotación' : 'anotaciones'} · ${m.pagados} ${m.pagados === 1 ? 'pago marcado' : 'pagos marcados'} como Pagado · ${m.cuadres} ${m.cuadres === 1 ? 'cuadre' : 'cuadres'} · Reparte ${m.reparte} ${m.reparte === 1 ? 'vez' : 'veces'} · Pongámonos al día ${m.alDia} ${m.alDia === 1 ? 'vez' : 'veces'}`] },
-            { id: 'pantallas', lista: 'Las 5 pantallas que más abriste (solo cuáles, como «Hoy» o «Pagos»)', lineas: [`Pantallas que más usé: ${top.length ? top.join(' · ') : '—'}`] },
+            { id: 'pantallas', lista: 'Las 5 pantallas que más abriste (solo cuáles, como «Hoy» o «Mi plan»)', lineas: [`Pantallas que más usé: ${top.length ? top.join(' · ') : '—'}`] },
             { id: 'noEntendio', lista: 'Cuántas veces la app no te entendió al anotar (no lo que escribiste)', lineas: [`Veces que la app no me entendió al anotar: ${m.noEntendio}`] },
         ];
         if (u.feedback.length) {
@@ -1481,6 +1570,8 @@
         avisoPorId,
         tarjetasHoy,
         revisionHoy,
+        preguntasHoy,
+        preguntas28,
         casosAntes,
         CLAVE_RESPALDO_ANTES,
         menuExtra,
