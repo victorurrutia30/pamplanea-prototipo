@@ -91,7 +91,7 @@ Versión visible en la app y en la guía: **«Prototipo v2.8.0 · 2026-10-22»**
 - **Gasto variable:** su ficha dice el tope, lo que llevas, lo que te queda (o «Te pasaste $Z»), los gastos de esta quincena y «¿Ya terminaste?» (Sí / Me falta / Se me olvidó anotar). En los últimos 3 días de la quincena la misma pregunta sale en Hoy.
 - **C-8 · Hoy simple:** el número (con «¿De dónde sale?»), un solo aviso, **Lo que viene** (máximo 3, con «Ya lo pagué») y el botón **Anotar**. «Próxima quincena» pasó a Mi plan; «Últimos anotados», a Mes; «Ya reservas…» se explica en «¿De dónde sale?».
 - **C-4:** el botón de un gasto de tu plan dice **«Ya lo pagué»**; la ficha trae **«Avísame»**.
-- **C-10 / C-7 · la ficha de la tarjeta:** su **apodo** (editable en «Editar»: «¿Cómo le dices?»), **«Se cobra en esta tarjeta»** («Netflix $10.00, se cobra el 24 · va dentro del pago de la tarjeta: no resta aparte») y, si dos quincenas llegan antes de que venza, la sugerencia «Puedes repartir este pago entre dos quincenas: $X y $Y. Tú decides.» (repartir es «Cambiar o repartir», nunca solo).
+- **C-10 / C-7 · la ficha de la tarjeta:** su **apodo** (editable en «Editar»; desde el ajuste del 2026-10-22 se llama «Alias (opcional)»), **«Se cobra en esta tarjeta»** («Netflix $10.00, se cobra el 24 · va dentro del pago de la tarjeta: no resta aparte») y, si dos quincenas llegan antes de que venza, la sugerencia «Puedes repartir este pago entre dos quincenas: $X y $Y. Tú decides.» (repartir es «Cambiar o repartir», nunca solo).
 - **C-1 · Ahorros en Mi dinero:** el total dice cuánto hay dentro de tus cuentas y cuánto aparte; cada ahorro dice «Dentro de Banco Agrícola» o «Aparte». Botones «Guardé en un ahorro» y «Cada quincena». En la ficha: «Guardé más», **«Usé de mi ahorro»** (vuelve a tu libre; el de aparte llega a la cuenta que digas), «Pagué algo con él» (solo los de dentro), «Mover a otro» (entre los del mismo lugar), **«¿Dónde está?» · Cambiar** y «Cada quincena» con **«Ya lo guardé»**. Un ahorro nuevo pregunta «¿Dónde está?».
 - **C-2:** ninguna pantalla, ayuda, glosario ni entrenamiento dice «apartar», «apartado», «reservar» ni «Pagos» como pestaña (`herramientas/palabras-v28.mjs` revisa 565 textos con tus datos y con Ana, Carlos y Rosa; sobre la v2.7 encuentra 65). «Reservar $51» es «Dejar listos $51»; «Reservado de lo que tienes» es «Ya contado de lo que tienes». La reserva se explica solo en «¿De dónde sale?». El intérprete sigue aceptando «aparté».
 - **Preguntas de una sola vez** (a quien viene de la v2.7 o de antes, con sus datos, en Hoy): por cada gasto fijo que parece variable (súper, gasolina, comida, mercado) «¿«Súper» cambia cada quincena?» (**Pasarlo a gasto variable** / **No, queda fijo**), por cada tarjeta «¿Qué día vence tu próximo pago de [tarjeta]?» con dos fechas y «Es otro día», y **por cada ahorro de antes «Tu ahorro [nombre], ¿en qué cuenta está?»** («no asumir»): sus cuentas (la de hoy resaltada) y «Aparte (no está en una cuenta)». Una cuenta: queda dentro de esa y Libre igual. «Aparte»: primero «Tu libre sube $300.00 porque ese dinero no está en tus cuentas.» con «No, volver» / «Sí, está aparte»; al confirmar, Libre sube ese monto y tus cuentas no cambian (no se mueve dinero). Nada cambia sin respuesta; «Ahora no» las guarda para la próxima vez (`invariantes` V11).
@@ -130,6 +130,7 @@ Versión visible en la app y en la guía: **«Prototipo v2.8.0 · 2026-10-22»**
 | P-3 y pendiente 4 · Primer día «Después» | Sí | `viaje-v23`, `v266`, `invariantes` P3 |
 | DATOS-1 a 5 | Sí | `invariantes` V10 e I12, `actualizar` (c640e4e y d702de0) |
 | «No asumir» · ahorros de antes | Sí | `invariantes` V11, `novedades`, `actualizar` |
+| «¿Con qué lo pagas?» y «¿De qué banco o cooperativa?» + «Alias» (ajuste) | Sí | `invariantes` V12, `palabras-v28`, `v262`, `v267-editar` (T1, T2, T7 y T10), QUÉ DEBO PROBAR |
 
 ### Pruebas de E2 y al terminar
 
@@ -142,6 +143,28 @@ Versión visible en la app y en la guía: **«Prototipo v2.8.0 · 2026-10-22»**
   - `capturas-v28` a 390×844 y 1440×900 con el código final (revisadas como imágenes; ahora incluyen la pregunta de un ahorro y «Aparte»).
 - **Ninguna baja frente a la línea base** (37 de 37 en d702de0).
 - **QUÉ DEBO PROBAR, verificado antes de escribirlo:** un guion hizo el Primer día en la v2.7 (copia de d702de0) y cada paso en la v2.8, con la fecha del 22 y del 26 de octubre: $685 → $585 → (Emergencias: «Aparte» dice «Tu libre sube $300.00…», «No, volver», «Banco Agrícola») $585 → $435 → $385 → $385 → $385 → $365 → $365 → $365 → $465, sin fallos.
+
+### Ajuste antes de validar (2026-10-22)
+
+- **Lo que cambió** (las decisiones de arriba, APROBADO por Victor 2026-10-22):
+  - **Gasto fijo** (Primer día, «Completar tu Primer día», «+ Gasto fijo», «Editar» y «acuérdame…» en Anotar): «¿Con qué lo pagas?» sin nada elegido. Sin respuesta no se guarda («Elige con qué lo pagas»). Con un banco o una tarjeta, «¿Se cobra solo?» (Sí, se cobra solo / No, yo lo pago). La suscripción ya no se va sola a la tarjeta, ni la luz al banco. Lo guardado no cambia.
+  - **Tarjetas y cuentas de banco:** «¿De qué banco o cooperativa?» (Agrícola, Cuscatlán, BAC, Davivienda, Promerica, Hipotecaria, Fedecrédito y «Otro» con su nombre) y «Alias (opcional)» con «Así la verás en la app.», igual al crear (Primer día y Mi dinero) y al editar.
+- **Pruebas** (una a la vez, con la memoria primero: entre 4.4 y 5.9 GB libres):
+  - las 37 por archivo, en verde: `v25` en tres partes, `v266` y `v267` en dos;
+  - `actualizar --ref=c640e4e` (48 comprobaciones) y `--ref=d702de0` (45): 0 fallos;
+  - `invariantes`: **31 de 31**. La fila nueva V12 da 0 de 1 sobre a1e9341;
+  - `palabras-v28`: 605 textos, 0 frases prohibidas. Sobre a1e9341 encuentra 12 («No, lo pago yo» y «¿Cómo le dices?»);
+  - **ninguna baja frente a la línea base**;
+  - capturas a 390×844 en `capturas-v28` (9, 9b, 10 y 11), revisadas como imágenes.
+- **Pruebas que esperaban lo de antes**, actualizadas citando la decisión (no se borró ninguna; eligen lo mismo que antes se ponía solo):
+  - `v262`, `v267-editar` (T1, T2, T3, T6, T7 y T10), `entrega2-v23`, `v231` y `aceptacion-v23`;
+  - `recorrer-v2`, `recorrer-sets`, `recorrer-modos`, `v241`, `v25`, `v265`, `v266`, `v267`;
+  - `qa-v261` (A-L1, E-02 y F-01) e `invariantes` (F14 y V6);
+  - `formularios-v265`: «Alias (opcional)» es la frase aprobada, no una pregunta.
+- **QUÉ DEBO PROBAR, verificado antes de escribirlo:** un guion repitió la preparación (Primer día en la v2.7 y las 10 pruebas en a1e9341). Después hizo las 3 nuevas con el código final, el 22 y el 26 de octubre, sin fallos:
+  - $465 → Agua $12 el 29, con Débito Agrícola y «Sí, se cobra solo»: $453;
+  - alias «Mi BAC»: $453;
+  - «Cooperativa del trabajo» (alias «La cooperativa») con $50: $503.
 
 ### Decisiones técnicas — REVISAR (v2.8)
 
@@ -166,6 +189,11 @@ Versión visible en la app y en la guía: **«Prototipo v2.8.0 · 2026-10-22»**
 19. **«¿Dónde está?» · Cambiar:** pasar un ahorro de dentro a aparte saca el dinero de su cuenta (y al revés lo pone); entre dos cuentas solo cambia el nombre. Tu libre no cambia. *(Se ve.)*
 20. **Apodo:** se ve en la ficha, en Mi plan y en la pregunta de una vez; en lo demás sigue el nombre de la tarjeta.
 21. **Lo de las pruebas:** las que miran el calendario de quincenas abren «Calendario» primero (o usan `window.__pagosModo`, solo para pruebas, como `__fechaPrueba`).
+22. **«¿Se cobra solo?» también se contesta antes de guardar** («Elige si se cobra solo»); el ajuste lo pedía solo para «¿Con qué lo pagas?». Al editar, lo guardado viene elegido (sin cobro automático = «No, yo lo pago»). *(Se ve: QUÉ DEBO PROBAR 1.)*
+23. **Qué se ofrece en «¿Con qué lo pagas?»:** en «+ Gasto fijo», «Editar» y Anotar, tus medios de pago, como antes (Efectivo, Débito Agrícola, Crédito BAC). En el Primer día, tus cuentas y tarjetas (Banco Agrícola, la tarjeta por su alias). «¿Se cobra solo?» sale con un débito, una transferencia o una tarjeta de crédito; no con Efectivo ni con una billetera.
+24. **El gasto variable** sigue trayendo elegido el primer medio, como antes (no estaba en el ajuste).
+25. **Alias de una cuenta de banco:** la cuenta se llama como su alias y guarda de qué banco es (`banco`), solo si tiene alias; sin alias no se guarda nada nuevo. Su débito se llama como el banco («Débito Cooperativa del trabajo»). «Otro» pide el nombre también en el paso 2 del Primer día.
+26. **Primer día:** si quitas la tarjeta o la cuenta con que pagabas un gasto fijo, al seguir se vuelve a preguntar «¿Con qué lo pagas?». Un Primer día empezado antes del ajuste, con «No, lo pago yo», también lo pregunta.
 
 ### PENDIENTE (lo vi y no lo toqué)
 
