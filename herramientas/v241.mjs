@@ -139,6 +139,9 @@ try {
         await clic('[data-fk="cual-extra"]');
         check('«No, es otro ingreso»: un adelanto nuevo', await ev('[P.ui.hoja.d.tipo, P.ui.hoja.d.adelanto, P.ui.hoja.d.nombre]'), ['ingreso', true, 'Adelanto de salario']);
         await foto('anotar-adelanto');
+        // v2.7 (P-3): llega a una cuenta que contó hoy: pregunta si fue antes o después de contar; «Después» (suma hoy).
+        await ev(`document.querySelector('[data-fk="orden-despues"]')?.click(); true`);
+        await esperar(150);
         await clic('[data-fk="anotar-guardar"]');
         await esperar(300);
         check('suma hoy y pregunta de qué quincena', [await calc('k.tienes') - tienes0, await texto('#hoja-t')], [10000, '¿De qué quincena te lo descuentan?']);

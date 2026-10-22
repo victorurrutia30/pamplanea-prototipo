@@ -551,7 +551,9 @@ if (partes.includes('f')) {
         check('copia interna antes de corregir (con la tarjeta sin contestar)', await ev(`(() => { const c = JSON.parse(localStorage.getItem('pamplanea-uso:respaldo-antes-de-empezar')); return !!c && !c.st.tarjetas[0].estados.at(-1).antes; })()`), true);
         await foto('F1-si');
         // «Deshacer»: las respuestas vuelven atrás, pero lo anotado después de contestar se queda.
-        await ev(`(() => { P.acciones.anotar(); const q = document.getElementById('anotar-q'); q.value = 'pupusas 5'; q.dispatchEvent(new Event('input', { bubbles: true })); P.acciones.anotarGuardar(); return true; })()`);
+        // v2.7 (P-3): es del mismo día que su Primer día (su primer cuadre): pregunta antes o después de contar; «Después».
+        check('(P-3: pregunta si fue antes o después de contar)', await ev(`(() => { P.acciones.anotar(); const q = document.getElementById('anotar-q'); q.value = 'pupusas 5'; q.dispatchEvent(new Event('input', { bubbles: true })); return !!document.querySelector('[data-fk="orden-despues"]'); })()`), true);
+        await ev(`(() => { P.acciones.anotarValor({ campo: 'ordenCuadre', v: 'despues' }); P.acciones.anotarGuardar(); return true; })()`);
         await esperar(400);
         await ev(`P.irTab('hoy'); true`);
         await esperar(300);

@@ -96,6 +96,9 @@ try {
     // Anota un gasto: baja el libre y lo que tiene, igual.
     await clic('[data-fk="nav-anotar"]');
     await escribir('#anotar-q', 'pupusas 5');
+    // v2.7 (P-3): es el mismo día de su primer cuadre (el Primer día): pregunta si fue antes o después de contar; «Después».
+    check('pupusas: pregunta si fue antes o después de contar', await texto('#l-orden'), '¿Fue antes o después de contar tu dinero?');
+    await clic('[data-fk="orden-despues"]');
     await clic('[data-fk="anotar-guardar"]');
     check('pupusas: libre $90.00', await texto('.portada-n'), '$90.00');
     await coherente('tras pupusas');
