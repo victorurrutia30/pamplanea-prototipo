@@ -453,8 +453,102 @@
         else if (abrirIntro && !uso.introVista) P.ayuda.abrir('introUso');
         else if (listo) abrirNovedades();
     }
-    /** v2.7 (Parte D): el cuadrito de novedades (una sola vez). */
-    function abrirNovedades() {}
+    // ------------------------------------------------------------------ v2.7 (Parte D): el cuadrito de novedades
+    /**
+     * APROBADO por Victor (2026-10-21): «les saldrá un cuadrito de una vez nada más explicando súper friendly el update,
+     * solo lo importante que deban saber, nada techy». Sale UNA vez, al abrir con sus datos de antes (no a quien empieza
+     * de cero ni con los ejemplos). Hasta 5 líneas de 20 palabras o menos, solo las que le tocan a esa persona; si al
+     * actualizar cambió un número porque estaba mal (DATOS-4), una línea lo dice, sin culpa.
+     */
+    const palabras = (t) => String(t).trim().split(/\s+/).filter(Boolean).length;
+    function lineaCorreccion(n, st) {
+        if (!n || !n.antes || !n.despues) return null;
+        const cambios = [];
+        const { antes, despues } = n;
+        if (antes.mes.salio !== despues.mes.salio) cambios.push({ que: `tu gasto de ${M.MESES[despues.mes.m - 1]}`, monto: despues.mes.salio });
+        for (const t of despues.tarjetas) {
+            const a = antes.tarjetas.find((x) => x.id === t.id);
+            if (a && a.debe !== t.debe) cambios.push({ que: `lo que debes de ${(st.tarjetas.find((x) => x.id === t.id) || t).nombre}`, monto: t.debe });
+        }
+        if (antes.libre !== despues.libre) cambios.push({ que: 'tu libre', monto: despues.libre });
+        if (!cambios.length) return null;
+        if (cambios.length === 1) return `Corregimos ${cambios[0].que}: ahora es ${dinero(cambios[0].monto)}.`;
+        // Una sola línea: lo que quepa en 20 palabras (primero el gasto del mes, luego lo que debes, luego el libre).
+        for (let i = cambios.length; i > 1; i--) {
+            const lista = cambios.slice(0, i).map((c) => `${c.que} es ${dinero(c.monto)}`);
+            const t = `Corregimos unos números: ${lista.slice(0, -1).join(', ')} y ${lista.at(-1)}.`;
+            if (palabras(t) <= 20) return t;
+        }
+        return `Corregimos ${cambios[0].que}: ahora es ${dinero(cambios[0].monto)}.`;
+    }
+    /** Las líneas del cuadrito para esta persona (cada una con 20 palabras o menos; a lo más 5 con el cierre). */
+    function lineasNovedades(u) {
+        const st = u.st;
+        const n = u.novedades && u.novedades['v2.7'];
+        const lineas = ['Escribir montos es más fácil: escribe 25 y son $25. Y ya puedes anotar 1,200.'];
+        if (st.pagos.some((p) => p.activo !== false)) lineas.push('Si pagas parte de una cuota, te mostramos cuánto falta.');
+        if (st.tarjetas.length) lineas.push('Tus abonos a la tarjeta ahora bajan lo que debes.');
+        const correccion = lineaCorreccion(n, st);
+        if (correccion) lineas.push(correccion);
+        return lineas.slice(0, 4);
+    }
+    const NOV_CIERRE = 'Tus datos están completos y a salvo.';
+    let novPrevio = null;
+    function novedadesPendientes() {
+        if (P.modo !== 'uso' || bloqueo || !uso || !uso.st || !uso.st.configurado || uso.st.persona !== 'uso') return false;
+        const n = uso.novedades && uso.novedades['v2.7'];
+        return !!n && !n.visto;
+    }
+    function abrirNovedades() {
+        if (!novedadesPendientes() || document.getElementById('nov-t')) return;
+        // Después de lo que ya esté abierto (Ayuda o una hoja), no encima.
+        if ((P.ayuda && P.ayuda.abierto) || (P.ui && P.ui.hoja)) return;
+        const lineas = lineasNovedades(uso);
+        novPrevio = document.activeElement;
+        const capa = Object.assign(document.createElement('div'), { id: 'capa-novedades', className: 'capa-novedades' });
+        capa.innerHTML = `<div class="nov-fondo"></div><section class="nov" role="dialog" aria-modal="true" aria-labelledby="nov-t" aria-describedby="nov-x">
+            <h2 class="nov-t" id="nov-t" tabindex="-1">¡PamPlanea se puso al día! ✨</h2>
+            <ul class="nov-lista" id="nov-x">${lineas.map((l) => `<li>${icon('check', 'ico-xs')}<span>${esc(l)}</span></li>`).join('')}</ul>
+            <p class="nov-cierre">${esc(NOV_CIERRE)}</p>
+            <button type="button" class="btn btn--prim btn--48 btn--full" data-a="novedadesOk" data-fk="nov-ok">¡Entendido!</button>
+        </section>`;
+        document.getElementById('app').appendChild(capa);
+        for (const id of ['vista', 'nav', 'aviso-proto', 'capa-hoja', 'capa-banner', 'capa-toast', 'tarea-bar']) {
+            const el = document.getElementById(id);
+            if (el) el.inert = true;
+        }
+        document.querySelector('[data-fk="nov-ok"]').focus({ preventScroll: true });
+        P.emitir('novedades:abierto');
+    }
+    function cerrarNovedades() {
+        const capa = document.getElementById('capa-novedades');
+        if (!capa) return;
+        capa.remove();
+        for (const id of ['vista', 'nav', 'aviso-proto', 'capa-hoja', 'capa-banner', 'capa-toast', 'tarea-bar']) {
+            const el = document.getElementById(id);
+            if (el) el.inert = ['vista', 'nav'].includes(id) && !!(P.ui && P.ui.hoja);
+        }
+        // Una sola vez: queda guardado con tus datos (al recargar no vuelve).
+        if (uso && uso.novedades && uso.novedades['v2.7']) uso.novedades['v2.7'].visto = new Date().toISOString();
+        guardarUso();
+        const el = novPrevio && novPrevio.isConnected ? novPrevio : document.querySelector('#pantalla h1');
+        if (el) el.focus({ preventScroll: true });
+        novPrevio = null;
+        P.emitir('novedades:cerrado');
+    }
+    P.acciones.novedadesOk = () => cerrarNovedades();
+    // Con el cuadrito abierto: Escape lo cierra y Tab no sale de él (antes que Ayuda y las hojas).
+    window.addEventListener(
+        'keydown',
+        (e) => {
+            if (!document.getElementById('capa-novedades') || (e.key !== 'Escape' && e.key !== 'Tab')) return;
+            e.preventDefault();
+            e.stopPropagation();
+            if (e.key === 'Escape') return cerrarNovedades();
+            document.querySelector('[data-fk="nov-ok"]').focus({ preventScroll: true });
+        },
+        true,
+    );
     /**
      * v2.7 (DATOS-2): con lo guardado dañado o de una versión más nueva, la app muestra «Tus datos están a salvo» con
      * las formas de recuperarlos. `uso` queda vacío y NUNCA se guarda (guardarUso lo revisa); lo de abajo no se ve.
@@ -1367,6 +1461,9 @@
         copiasInternas,
         numerosVisibles,
         congelar,
+        lineasNovedades: () => (uso && uso.st ? lineasNovedades(uso) : []),
+        novedadesPendientes,
+        abrirNovedades,
         iniciar() {
             const pintarApp = P.render;
             P.render = (...args) => {
@@ -1389,6 +1486,8 @@
             } else if (A.elegir && !P.enGuia) P.ayuda.abrir('elegir');
             else if (P.modo === 'uso' && !P.enGuia && infoRecuperar()) P.ayuda.abrir('recuperar');
             else if (P.modo === 'uso' && uso && !uso.introVista) P.ayuda.abrir('introUso');
+            // v2.7 (Parte D): el cuadrito de novedades, una sola vez, con sus datos de antes.
+            else if (P.modo === 'uso') abrirNovedades();
         },
     });
 })();
