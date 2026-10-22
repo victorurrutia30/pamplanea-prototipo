@@ -143,17 +143,21 @@ try {
     // V2-39: Pagos con dos vistas.
     actual = 'pagos';
     await clic('[data-fk="nav-pagos"]');
-    // v2.8 (C-9): «Mi plan» con sus secciones (abre ahí) y el calendario que ya existía.
-    check('dos vistas', await ev('[...document.querySelectorAll(".pagos-modo .app-tab")].map((x) => x.textContent)'), ['Mi plan', 'Calendario']);
-    await clic('[data-fk="modo-lista"]');
+    // Ajuste 5 «Mi plan más ligero» (APROBADO por Victor 2026-10-22, punto 2): sin las pestañas «Mi plan | Calendario»;
+    // abre por fecha y abajo está «Ver por tipo ›», con sus secciones plegadas (punto 9: «Deudas»).
+    check('dos vistas: por fecha y «Ver por tipo»', [await ev('document.querySelectorAll(".pagos-modo").length'), await texto('[data-fk="ver-tipo"]')], [0, 'Ver por tipo']);
+    await clic('[data-fk="ver-tipo"]');
+    for (const s of ['ingresos', 'fijos', 'variables', 'ahorro', 'deudas']) await clic(`[data-fk="sec-${s}"]`);
     await foto('mis-pagos');
-    check('lista completa', await texto('#pantalla'), contiene('Ingresos', 'Quincena', 'Gastos fijos', 'Gastos variables', 'Ahorro programado', 'Pagos de deudas', 'Préstamo Liss', 'Netflix', 'sale de:'));
+    check('lista completa', await texto('#pantalla'), contiene('Ingresos', 'Quincena', 'Gastos fijos', 'Gastos variables', 'Ahorro programado', 'Deudas', 'Préstamo Liss', 'Netflix', 'sale de:'));
     await clic('[data-fk="mp-p6"]').catch(() => null);
 
     // V2-47: «+ Pago» → Suscripción; Mes lo suma. v2.8 (APROBADO por Victor, 2026-10-22): «¿Con qué lo pagas?» ya no
     // viene con la tarjeta de crédito (nunca se elige la cuenta por el tipo de gasto): la persona la elige.
     actual = 'suscripcion';
     await clic('[data-fk="nav-pagos"]');
+    // Ajuste 5 (punto 1, APROBADO por Victor 2026-10-22): un solo «+ Agregar» abre los mismos formularios.
+    await clic('[data-fk="plan-agregar"]');
     await clic('[data-fk="nuevo-pago"]');
     await clic('[data-fk="np-suscripcion"]');
     await clic('[data-fk="op-servicio-spotify"]');

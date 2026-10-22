@@ -54,9 +54,9 @@ async function coherente(nota) {
     const desglose = await ev('document.querySelector(".d-total .d-m")?.textContent');
     await clic('[data-fk="desglose-ok"]');
     await clic('[data-fk="nav-pagos"]');
-    await clic('[data-fk="modo-calendario"]');
+    // Ajuste 5 (punto 4, APROBADO por Victor 2026-10-22): Mi plan → Esta quincena dice «Tu libre», el mismo número de Hoy.
     await clic('[data-fk="tab-actual"]');
-    const pagos = await ev('document.querySelector(".per-res-l strong")?.textContent');
+    const pagos = await ev('document.querySelector(".plan-res-n")?.textContent');
     await clic('[data-fk="nav-midinero"]');
     const md = await ev(`(() => { const ley = [...document.querySelectorAll('.reparto-ley li')].map((li) => [li.children[1].textContent, li.children[2].textContent]); const libre = ley.find((x) => x[0] === 'Libre'); return { libre: libre ? libre[1] : '$0.00', partes: ley, frase: document.querySelector('.reparto-frase')?.textContent }; })()`);
     const k = await ev('(() => { const k = P.calc(); return { tienes: k.tienes, libre: k.libre, faltaPagos: k.faltaPagos, ahorros: k.apartado, oblig: k.obligaciones }; })()');
@@ -125,8 +125,10 @@ try {
     await clic('[data-fk="rep-listo"]');
     check('adelantado: el libre no sube', await texto('.portada-n'), libre28);
     // v2.8 (C-8): cómo quedas la próxima quincena ya no está en Hoy: está arriba de Mi plan («gastos», D-2).
-    await ev(`P.irTab('pagos'); true`);
-    check('adelantado: la próxima lo cuenta', await texto('.proy'), (x) => x.includes('ingreso ~$1,163') && x.includes('$566.00 de tu pareja, que ya llegó'));
+    // Ajuste 5 (punto 4): está en Mi plan → Próxima («Entra ~$X · Sale ~$Y»).
+    await ev(`P.ui.pagosVista = 'proxima'; P.irTab('pagos'); true`);
+    check('adelantado: la próxima lo cuenta', await texto('.plan-res'), (x) => x.includes('Entra ~$1,163') && x.includes('$566.00 de tu pareja, que ya llegó'));
+    await ev(`P.ui.pagosVista = 'actual'; true`);
     await ev(`P.irTab('hoy'); true`);
     await coherente('pareja adelantada');
 

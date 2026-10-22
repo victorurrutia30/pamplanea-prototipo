@@ -4204,6 +4204,30 @@
      * FM-5: «Mis categorías» (Mi plan): las que creaste con «Otra». Se renombran, cambian de ícono o se archivan; nunca se
      * borran. Archivada no sale al crear y lo que ya anotaste con ella no cambia.
      */
+    /**
+     * v2.8 (ajuste 5, punto 1): «+ Agregar» de Mi plan: un solo botón para los mismos formularios de siempre. Al cerrar el
+     * formulario, el foco vuelve a «+ Agregar».
+     */
+    H.agregar = {
+        html() {
+            const op = (fk, emoji, t, s, datos) => `<li class="fila"><button type="button" class="fila-main" data-a="agregarAbrir" ${datos} data-fk="${fk}">${caja(emoji)}<span class="fila-txt"><span class="fila-t">${t}</span><span class="fila-s">${esc(s)}</span></span>${icon('chevron-right', 'ico-s')}</button></li>`;
+            return {
+                titulo: 'Agregar a tu plan',
+                cuerpo: `<ul class="lista card">
+                    ${op('nuevo-ingreso', '💵', 'Ingreso', 'Una remesa, un bono, lo que te llega', 'data-hoja="nuevoIngreso"')}
+                    ${op('nuevo-pago', '🧾', 'Gasto fijo', 'La luz, el alquiler, el colegio', 'data-hoja="nuevoPago"')}
+                    ${op('nuevo-variable', '🛒', 'Gasto variable', 'El súper o la gasolina, con un tope', 'data-hoja="nuevoPago" data-id="" data-fecha="variable"')}
+                    ${op('nuevo-programado', '🐷', 'Ahorro programado', `Lo que guardas ${P.cadaVez()}`, 'data-hoja="programar"')}
+                    ${op('nuevo-deuda', '💳', 'Deuda o tarjeta', 'Un préstamo, una cuota o tu tarjeta', 'data-hoja="nuevaDeuda"')}
+                    ${op('mp-categorias', '🏷️', 'Mis categorías', 'Cámbiales el nombre o archívalas', 'data-hoja="categorias"')}
+                </ul>`,
+            };
+        },
+    };
+    P.acciones.agregarAbrir = (d) => {
+        P.acciones.hoja(d);
+        if (P.ui.hoja) P.ui.hoja.disparador = 'plan-agregar';
+    };
     H.categorias = {
         html() {
             const st = P.st;

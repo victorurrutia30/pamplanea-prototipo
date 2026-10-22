@@ -32,10 +32,11 @@ for (const tema of ['serena-claro', 'serena-oscuro', 'ancla-claro', 'ancla-oscur
     Object.assign(r, await b.evaluar(medir([['lo pagas con', '#f-con ~ .mini-desglose li span, section[aria-labelledby=f-con] .mini-desglose li span'], ['cambiar o repartir', '[data-fk=pagar-con]']])));
     await b.evaluar('P.irTab("pagos"); true');
     await esperar(150);
-    Object.assign(r, await b.evaluar(medir([['resumen del periodo', '.per-res-l'], ['pestaña elegida', '.pagos-modo .app-tab[aria-selected=true]'], ['pestaña sin elegir', '.pagos-modo .app-tab[aria-selected=false]']])));
-    await b.evaluar('P.ui.pagosModo = "lista"; P.render(); true');
+    // Ajuste 5 «Mi plan más ligero»: el resumen del periodo, «Por confirmar», las filas de una línea y «Ver por tipo».
+    Object.assign(r, await b.evaluar(medir([['resumen del periodo', '.plan-res-l'], ['resumen: fechas', '.plan-res-r'], ['resumen: ¿de dónde sale?', '.plan-res-mas'], ['por confirmar', '.plan-conf'], ['fila: mes', '.pl-fila:not(.pl-fila--hoy) .pl-dia-m'], ['fila: hoy', '.pl-fila--hoy .pl-dia-m'], ['fila: marca', '.pl-e'], ['pestaña elegida', '.tabs-3 .app-tab[aria-selected=true]'], ['pestaña sin elegir', '.tabs-3 .app-tab[aria-selected=false]']])));
+    await b.evaluar('P.ui.pagosModo = "tipo"; P.ui.planAbiertas = { ingresos: true }; P.render(); true');
     await esperar(150);
-    Object.assign(r, await b.evaluar(medir([['lista: detalle', 'section[aria-labelledby=mp-ingresos] .fila-s'], ['lista: principal', '.pronto']])));
+    Object.assign(r, await b.evaluar(medir([['lista: detalle', 'section[aria-labelledby=mp-ingresos] .fila-s'], ['lista: principal', '.pronto'], ['por tipo: total', '.pt-total']])));
     await b.evaluar('P.irTab("midinero"); true');
     await esperar(150);
     Object.assign(r, await b.evaluar(medir([['puerta título', '.puerta-t'], ['puerta cifra', '.puerta-n'], ['puerta detalle', '.puerta .fila-s']])));

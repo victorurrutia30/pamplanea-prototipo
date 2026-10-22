@@ -103,6 +103,8 @@ try {
     await clic('[data-fk="pn-listo"]');
     // Lo demás, como lo agregaría él en Pagos.
     await clic('[data-fk="nav-pagos"]');
+    // Ajuste 5 (punto 1, APROBADO por Victor 2026-10-22): un solo «+ Agregar» abre los mismos formularios.
+    await clic('[data-fk="plan-agregar"]');
     await clic('[data-fk="nuevo-ingreso"]');
     // Ajuste 3 (FM-2, APROBADO por Victor 2026-10-22): «+ Ingreso» ofrece solo extras; el salario de la pareja va como «Otro» (los mismos días).
     await clic('[data-fk="op-tipoIng-otro"]');
@@ -111,6 +113,7 @@ try {
     await foto('victor-ingreso-pareja');
     check('pareja: los mismos días (14 y 29)', await ev('[P.ui.hoja.frecuencia, P.ui.hoja.qModo, P.ui.hoja.d1, P.ui.hoja.d2]'), ['quincenal', 'otros', '14', '29']);
     await clic('[data-fk="hoja-ok"]');
+    await clic('[data-fk="plan-agregar"]');
     await clic('[data-fk="nuevo-pago"]');
     await escribir('#f-nombre', 'Pago de mi mama');
     await escribir('#f-monto', '160');
@@ -120,6 +123,7 @@ try {
     await clic('[data-fk="op-medio-efectivo"]');
     await clic('[data-fk="hoja-ok"]');
     for (const [nombre, cuota] of [['Préstamo Liss', '156'], ['Préstamo', '79']]) {
+        await clic('[data-fk="plan-agregar"]');
         await clic('[data-fk="nuevo-pago"]');
         await clic('[data-fk="np-cuota"]');
         await esperar(150);
@@ -130,6 +134,7 @@ try {
         await clic('[data-fk="deuda-ok"]');
     }
     // Cuchubal quincenal: próxima fecha el 23 (días 8 y 23).
+    await clic('[data-fk="plan-agregar"]');
     await clic('[data-fk="nuevo-pago"]');
     // Ajuste 3 (FM-4, APROBADO por Victor 2026-10-22): «¿Cuál?» sale después de elegir el grupo («Otro»).
     await clic('[data-fk="np-otro"]');
@@ -156,9 +161,10 @@ try {
     check('sin avisos rojos', await hay('#pantalla .nota--atencion'), false);
     check('sin avisos en el motor', k.avisos, []);
     // v2.8 (C-8): cómo quedas la próxima quincena ya no está en Hoy: está arriba de Mi plan («gastos», D-2).
-    await ev(`P.irTab('pagos'); true`);
-    check('proyección', await texto('.proy'), contiene('Próxima quincena (29)', 'ingreso ~$1,163 · gastos ~$713 · te quedarían ~$450', 'incluye ~$566 de tu pareja'));
-    await ev(`P.irTab('hoy'); true`);
+    // Ajuste 5 (punto 4): la próxima quincena está en Mi plan → Próxima, en su resumen.
+    await ev(`P.ui.pagosVista = 'proxima'; P.irTab('pagos'); true`);
+    check('proyección', await texto('.plan-res'), contiene('Del 29 oct al 13 nov', 'Entra ~$1,163 · Sale ~$713', 'Te quedarían', '~$450', 'Incluye ~$566 de tu pareja'));
+    await ev(`P.ui.pagosVista = 'actual'; P.irTab('hoy'); true`);
     check('proyección (números)', k.prox, { clave: '2026-10-29', entra: 116300, pagos: 71300, quedan: 45000, deficit: 0 });
     check('sin llegadas inventadas', await ev('P.st.ingresos.flatMap((i) => Object.keys(i.llegadas))'), []);
     check('inicio = hoy', await ev('P.st.inicio'), '2026-10-17');
@@ -167,16 +173,18 @@ try {
     check('desglose', await texto('.hoja'), contiene('Tienes', '$120.00', 'Cuchubal', '$25.00', 'Libre', '$95.00', 'Próxima quincena (29)'));
     await clic('[data-fk="desglose-ok"]');
     await ev(`P.irTab('pagos'); true`);
-    await clic('[data-fk="proyeccion"]');
+    // Ajuste 5 (punto 3): «Próxima» es una pestaña de Mi plan (ya no hay tarjeta de la proyección).
+    await clic('[data-fk="tab-proxima"]');
     await foto('victor-pagos-proxima');
-    check('la proyección lleva a Pagos → Próxima', await ev('[P.ui.tab, P.ui.pagosVista]'), ['pagos', 'proxima']);
-    check('Pagos → Próxima: mismos números', await texto('.per-res'), contiene('Ingreso ~$1,163 · gastos ~$713 · te quedarían ~$450'));
+    check('Mi plan → Próxima', await ev('[P.ui.tab, P.ui.pagosVista]'), ['pagos', 'proxima']);
+    check('Pagos → Próxima: mismos números', await texto('.plan-res'), contiene('Entra ~$1,163 · Sale ~$713', '~$450'));
     await clic('[data-fk="tab-actual"]');
-    check('esta quincena sin llegadas del 14', await texto('.linea'), (x) => !String(x).includes('Llegó'));
-    check('«Más adelante» solo el aguinaldo', await ev('(() => { const g = [...document.querySelectorAll(".grupo")].find((x) => x.querySelector(".grupo-t")?.textContent === "Más adelante"); return g ? [...g.querySelectorAll(".fila-t")].map((x) => x.textContent) : []; })()'), ['Aguinaldo']);
+    check('esta quincena sin llegadas del 14', await texto('.pl-lista'), (x) => !String(x).includes('Llegó'));
+    check('«Más adelante» solo el aguinaldo', await ev('(() => { const g = [...document.querySelectorAll(".pl-bloque")].find((x) => x.querySelector(".pl-h")?.textContent.startsWith("Más adelante")); return g ? [...g.querySelectorAll(".pl-n")].map((x) => x.textContent) : []; })()'), ['Aguinaldo']);
     await foto('victor-pagos-esta');
-    // Un estimado se escribe «~$597», nunca «+~$597».
-    check('sin «+~»', await ev('document.body.textContent.includes("+~")'), false);
+    // Ajuste 5 (puntos 6 y 11): en la lista por fecha todo ingreso lleva «+», también el estimado («+~$597»), para que no
+    // dependa solo del color. Un pago nunca «−~». En la ficha sigue «~$597».
+    check('ingresos con «+»; nunca «−~»', await ev('[document.body.textContent.includes("−~"), [...document.querySelectorAll(".pl-fila .monto--ingreso")].every((m) => m.textContent.includes("+"))]'), [false, true]);
     await ev(`P.abrir("ingreso", "quincena"); true`);
     check('ficha del ingreso sin «+~»', await texto('.cifra'), '~$597');
     await clic('[data-fk="atras"]');
@@ -202,8 +210,10 @@ try {
     informe.numeros.repartido = { libre: await texto('.portada-n'), linea: await texto('.portada-s') };
     check('libre con $100 reservados', await texto('.portada-n'), '$0.00');
     check('faltante exacto', await texto('.portada-s'), 'Te faltan $5.00 para cubrir lo que viene');
-    await ev(`P.irTab('pagos'); true`);
-    check('próxima quincena: gastos ~$613 (en Mi plan, C-8)', await texto('.proy'), contiene('gastos ~$613', 'te quedarían ~$550'));
+    // Ajuste 5 (punto 4): Mi plan → Próxima.
+    await ev(`P.ui.pagosVista = 'proxima'; P.irTab('pagos'); true`);
+    check('próxima quincena: sale ~$613 (Mi plan → Próxima)', await texto('.plan-res'), contiene('Sale ~$613', '~$550'));
+    await ev(`P.ui.pagosVista = 'actual'; true`);
     await ev(`P.irTab('hoy'); true`);
     await foto('repartir-hoy');
     await clic('[data-fk="toast-deshacer"]').catch(() => null);

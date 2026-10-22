@@ -129,6 +129,8 @@ try {
         actual = 'B cuadros (V2-66)';
         await enUso();
         await clic('[data-fk="nav-pagos"]');
+        // Ajuste 5 (punto 1, APROBADO por Victor 2026-10-22): un solo «+ Agregar» abre los mismos formularios.
+        await clic('[data-fk="plan-agregar"]');
         await clic('[data-fk="nuevo-pago"]');
         // Ajuste 3 (APROBADO por Victor, 2026-10-22): FM-4 «Facturas y servicios» (con el plan de celular, el gas, las tasas y la vigilancia)
         // y «Otro» (FM-8: «pago» solo para deudas); «¿Cuál?» sale solo después de elegir un grupo, con «Otra» (FM-5).
@@ -143,6 +145,7 @@ try {
         await ev('P.acciones.nuevoPagoOk(); true');
         await esperar(300);
         check('de un toque: «Internet» con su categoría y su emoji', await ev(`(() => { const p = P.st.pagos.filter((x) => x.nombre === 'Internet').at(-1); return p ? [p.categoria, p.emoji] : null; })()`), ['servicios', '🌐']);
+        await clic('[data-fk="plan-agregar"]');
         await clic('[data-fk="nuevo-pago"]');
         await clic('[data-fk="np-otro"]');
         check('«Otro»: lo de la casa y el nombre libre', [await ev(`[...document.querySelectorAll('[data-fk^="op-frecuente-"]')].map((e) => e.textContent.trim())`), await ev(`!!document.getElementById('f-nombre')`)], [['Alquiler', 'Colegio o universidad', 'Cuchubal', 'Seguro', 'Ayuda a la familia', 'Otra'], true]);

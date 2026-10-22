@@ -36,6 +36,8 @@
 //  V17 FM-1 nada duplicado · V18 FM-2 «+ Ingreso» nunca ofrece Salario · V19 FM-3 «Es mi quincena → Ya llegó» no duplica
 //  V20 FM-5 archivar una categoría no cambia montos ni historial · V21 FM-7 «Gasté» en un gasto variable lo consume
 // Ajuste 4 (APROBADO por Victor, 2026-10-22): V22 «¿En qué?» sin nombres repetidos · V23 «Gasté» sin texto no trae nada elegido
+// Ajuste 5 «Mi plan más ligero» (APROBADO por Victor, 2026-10-22): V24 «Tu libre» de Mi plan = Hoy · V25 nada se pierde
+//  frente al Mi plan de 509aef4 (y recuerda la vista) · V26 «+ Agregar» abre los 6 formularios
 // Uso: node herramientas/invariantes.mjs [--base=http://…/] [--puerto=9961] [--solo=I01,F13] [--raiz=<otra copia>]
 //      (--raiz: las mismas filas sobre otra copia, por ejemplo la v2.6.7 sacada de git, para ver cuáles fallaban antes)
 import { mkdir } from 'node:fs/promises';
@@ -232,7 +234,10 @@ const parcial = async (como) => {
     check(`${como}: quedan $50 pendientes (parcial)`, [r.estado, r.monto, r.parcial], ['vencido', 5000, [5000, 5000, 10000]]);
     check(`${como}: el libre cuenta lo que falta`, r.enLibre, [5000]);
     await ev(`P.irTab('pagos'); true`);
-    check(`${como}: Pagos dice «Parcial · faltan $50.00»`, await texto('#pantalla'), contiene('Parcial · faltan $50.00'));
+    // Ajuste 5 (punto 5): lo vencido está en «⚠ 1 por confirmar ›», que abre la lista con sus botones de siempre.
+    check(`${como}: Mi plan dice «1 por confirmar»`, await texto('[data-fk="plan-por-confirmar"]'), '1 por confirmar');
+    await ev(`P.abrir('porConfirmar'); true`);
+    check(`${como}: «Por confirmar» dice «Parcial · faltan $50.00»`, await texto('#pantalla'), contiene('Parcial · faltan $50.00'));
     return r;
 };
 await filaDe('I05', 'Pagar $50 de una cuota de $100 deja $50 pendientes (formulario, Anotar y Mes)', async () => {
@@ -277,7 +282,8 @@ await filaDe('I06', 'Un segundo estado de cuenta no marca el anterior como «pag
     check('el nuevo: pendiente $250', r.find((x) => x[0] === '2026-11-25'), ['2026-11-25', 'pendiente', 25000]);
     check('ningún abono inventado', await ev(`P.st.registros.filter((x) => x.tipo === 'pagoTarjeta').length`), 0);
     await ev(`P.irTab('pagos'); P.ui.pagosVista = 'mes'; P.ui.pagosMes = '2026-09'; P.render(); true`);
-    check('Pagos (septiembre) no dice «Pagado ✓»', await ev(`[...document.querySelectorAll('#pantalla .fila--pago')].filter((li) => li.innerText.includes('Crédito Cuscatlán')).map((li) => li.innerText.replace(/\\s+/g, ' '))`), (x) => Array.isArray(x) && x.every((t) => !t.includes('Pagado ✓')));
+    // Ajuste 5 (punto 6): una línea por fila; lo pagado lleva ✓ (y «Pagado» para el lector de pantalla).
+    check('Pagos (septiembre) no lo da por pagado', await ev(`[...document.querySelectorAll('#pantalla .pl-fila')].filter((li) => li.innerText.includes('Crédito Cuscatlán')).map((li) => li.innerText.replace(/\\s+/g, ' '))`), (x) => Array.isArray(x) && x.length > 0 && x.every((t) => !t.includes('✓') && !t.includes('Pagado')));
 });
 
 // ------------------------------------------------------------------ I07 (F10)
@@ -1374,6 +1380,106 @@ await filaDe('V23', 'Ajuste 4: «Gasté» sin texto no trae nada elegido en «¿
     await clic('[data-fk="anotar-atras"]');
     check('«Atrás»: otra vez el texto («¿Qué quieres anotar?»)', [await ev(`document.getElementById('anotar-q')?.value`), await texto('label[for="anotar-q"]')], ['pupusas 6', '¿Qué quieres anotar?']);
     await ev(`P.cerrarHoja({ sinFoco: true }); true`);
+});
+
+// ================================================================== Ajuste 5 «Mi plan más ligero» (APROBADO por Victor, 2026-10-22)
+// ------------------------------------------------------------------ V24 (ajuste 5, punto 4)
+await filaDe('V24', 'Ajuste 5: «Tu libre» de Mi plan → Esta quincena es el mismo número de Hoy (D-3); Tienes − Sale = Tu libre', async () => {
+    let etiquetaHoy = null;
+    const igual = async (como, modo = 'fecha') => {
+        await ev(`P.ui.hoja && P.cerrarHoja({ sinFoco: true }); P.irTab('hoy'); true`);
+        const hoy = await texto('.portada-n');
+        etiquetaHoy = await texto('.portada-l');
+        await ev(`P.ui.pagosModo = ${js(modo)}; P.ui.pagosVista = 'actual'; P.irTab('pagos'); true`);
+        check(`${como}: Mi plan dice lo mismo que Hoy (${hoy})`, [await texto('.plan-res-n'), await ev(`MOTOR.dinero(P.calc().libre)`)], [hoy, hoy]);
+        return hoy;
+    };
+    await ev(`__armar(${EJEMPLO_385})`);
+    check('el ejemplo de $385', await igual('ejemplo de $385'), '$385.00');
+    check('«Tienes $1,000.00 · Sale $615.00» ($300 de ahorro + $315 de tu plan)', await texto('.plan-res-l'), 'Tienes $1,000.00 · Sale $615.00');
+    check('al tocarlo se abre «¿De dónde sale?»', await (async () => { await clic('[data-fk="plan-resumen"]'); return ev(`P.ui.hoja && P.ui.hoja.tipo`); })(), 'desglose');
+    await ev(`P.cerrarHoja({ sinFoco: true }); true`);
+    await igual('ejemplo de $385, por tipo', 'tipo');
+    await ev(`__anotar('pupusas 20 efectivo')`);
+    check('pupusas $20', await igual('pupusas $20'), '$365.00');
+    // Día de pago sin confirmar: Hoy dice «Libre por ahora»; Mi plan, «Tu libre por ahora», con el mismo número.
+    await ev(`__armar((st) => { st.hoy = '2026-10-30'; })`);
+    await igual('día de tu quincena, sin confirmar');
+    check('Hoy: «Libre por ahora»; Mi plan: «Tu libre por ahora»', [etiquetaHoy, await texto('.plan-res-e')], ['Libre por ahora', 'Tu libre por ahora']);
+    // Sin libre: $0.00 en los dos, y dice cuánto falta.
+    await ev(`__armar((st) => __internet(st, { monto: 500000, dia: 25 }))`);
+    check('sin libre', await igual('cuando no alcanza'), '$0.00');
+    check('dice cuánto falta, con ⚠ (no solo color)', [await texto('.plan-res-s'), await ev(`!!document.querySelector('.plan-res--falta .plan-res-e svg')`)], (x) => typeof x[0] === 'string' && x[0].startsWith('Te faltan') && x[1] === true);
+    await ev(`P.ui.pagosModo = null; true`);
+});
+
+// ------------------------------------------------------------------ V25 (ajuste 5: nada se pierde)
+/**
+ * Un plan completo: el ejemplo de $385 más Agua vencida (el 16), un préstamo, una remesa cada mes y un aguinaldo. Lo que
+ * mostraba el Mi plan de 509aef4 con este estado (sus secciones, «Por confirmar» y el calendario de cada pestaña), anotado
+ * de esa versión: tiene que estar todo en el nuevo. «Mis categorías» se movió a «+ Agregar» (punto 1, V26).
+ */
+const RICO = `(st) => {
+    (${EJEMPLO_385})(st);
+    const base = st.pagos[0];
+    st.pagos.push({ ...structuredClone(base), id: 'agua', nombre: 'Agua', emoji: '💧', monto: 1200, dia: 16 });
+    st.pagos.push({ ...structuredClone(base), id: 'coop', nombre: 'Préstamo cooperativa', emoji: '🏦', categoria: 'cuotas', monto: 4500, dia: 26, tipoDeuda: 'prestamo', deuda: { debe: 54000 } });
+    st.ingresos.push({ id: 'remesa', nombre: 'Remesa', emoji: '🌎', categoria: 'remesa', monto: 15000, aprox: true, frecuencia: 'mensual', dia: 28, lugar: 'banco', principal: false, extra: true, desde: '2026-10-15', llegadas: {} });
+    st.ingresos.push({ id: 'aguinaldo', nombre: 'Aguinaldo', emoji: '🎁', categoria: 'aguinaldo', monto: 30000, aprox: true, frecuencia: 'unico', fecha: '2026-12-12', lugar: 'banco', principal: false, extra: true, desde: '2026-10-15', llegadas: {} });
+}`;
+const ANTES_509 = {"tipo": ["mp-i-quincena", "mp-i-remesa", "mp-i-aguinaldo", "mp-luz", "mp-internet", "mp-agua", "mp-v-v1", "mp-a-ap1", "mp-coop", "mp-t-t50"], "venc": ["p-agua-2026-10-16"], "actual": ["i-quincena-2026-10-15", "p-luz-2026-10-25", "p-coop-2026-10-26", "t-t50-2026-10-27", "i-remesa-2026-10-28", "p-internet-2026-10-28", "x-aguinaldo"], "proxima": ["i-quincena-2026-10-30", "x-aguinaldo"], "mes2026-10": ["i-quincena-2026-10-15", "p-luz-2026-10-25", "p-coop-2026-10-26", "t-t50-2026-10-27", "i-remesa-2026-10-28", "p-internet-2026-10-28", "i-quincena-2026-10-30", "x-aguinaldo"], "mes2026-11": ["i-quincena-2026-11-15", "p-agua-2026-11-16", "p-luz-2026-11-25", "p-coop-2026-11-26", "i-remesa-2026-11-28", "p-internet-2026-11-28", "i-quincena-2026-11-30", "x-aguinaldo"]};
+await filaDe('V25', 'Ajuste 5: todo lo que mostraba el Mi plan anterior (509aef4) está en el nuevo; secciones plegadas; recuerda la vista', async () => {
+    const fks = (sel) => ev(`[...document.querySelectorAll(${js(sel)})].map((x) => x.dataset.fk).filter(Boolean)`);
+    const faltan = (antes, ahora) => antes.filter((x) => !ahora.includes(x));
+    await ev(`__armar(${RICO})`);
+    await ev(`P.ui.pagosModo = 'tipo'; P.ui.planAbiertas = {}; P.irTab('pagos'); true`);
+    check('por tipo: 5 secciones plegadas (aria-expanded)', await ev(`[...document.querySelectorAll('.pt-b')].map((b) => [b.querySelector('.pt-t').textContent, b.getAttribute('aria-expanded'), document.getElementById(b.getAttribute('aria-controls')).hidden])`), [['Ingresos', 'false', true], ['Gastos fijos', 'false', true], ['Gastos variables', 'false', true], ['Ahorro programado', 'false', true], ['Deudas', 'false', true]]);
+    check('con cuántos y el total de esta quincena: «Gastos fijos (3) $55.00» (Agua venció: está en «Por confirmar»)', await texto('[data-fk="sec-fijos"]'), (t) => typeof t === 'string' && t.includes('Gastos fijos') && t.includes('(3)') && t.endsWith('$55.00'));
+    await clic('[data-fk="sec-fijos"]');
+    check('al tocarla se abre (aria-expanded) y el foco se queda', [await ev(`document.querySelector('[data-fk="sec-fijos"]').getAttribute('aria-expanded')`), await ev(`document.getElementById('pt-fijos').hidden`), await ev(`document.activeElement.dataset.fk`)], ['true', false, 'sec-fijos']);
+    check('cada fila: máximo dos líneas, con «sale de» y el próximo', await ev(`[...document.querySelectorAll('#pt-fijos .fila-main')].map((b) => [b.querySelectorAll('.fila-s').length, b.querySelector('.pt-s').textContent])`), (x) => Array.isArray(x) && x.length === 3 && x.every(([n, t]) => n === 1 && t.startsWith('sale de: ') && /próximo|venció/.test(t)));
+    for (const s of ['ingresos', 'variables', 'ahorro', 'deudas']) await clic(`[data-fk="sec-${s}"]`, 80);
+    check('por tipo: están todas las filas de las secciones de antes', faltan(ANTES_509.tipo, await fks('#pantalla [data-fk^="mp-"]')), []);
+    await ev(`P.abrir('porConfirmar'); true`);
+    check('«Por confirmar»: lo mismo de antes, con sus botones', [faltan(ANTES_509.venc, await fks('#pantalla .fila-main')), await fks('#pantalla [data-a="pagado"]')], [[], ['pagado-p-agua-2026-10-16']]);
+    await ev(`P.atras(); true`);
+    for (const [v, mes] of [['actual'], ['proxima'], ['mes', '2026-10'], ['mes', '2026-11']]) {
+        await ev(`P.ui.pagosModo = 'fecha'; P.ui.pagosVista = ${js(v)}; P.ui.pagosMes = ${js(mes || null)}; P.render(); true`);
+        check(`por fecha (${mes || v}): está todo lo del calendario de antes`, faltan(ANTES_509[v + (mes || '')], await fks('#pantalla .pl-b')), []);
+    }
+    await ev(`P.ui.pagosVista = 'actual'; P.render(); true`);
+    check('«⚠ 1 por confirmar ›» en una línea', await texto('[data-fk="plan-por-confirmar"]'), '1 por confirmar');
+    check('gastos variables y ahorro programado, una línea cada uno', [await texto('[data-fk="pl-v-v1"]'), await texto('[data-fk="pl-a-ap1"]')], ['Súper te quedan $110.00 de $150.00', 'Emergencias $50.00 esta quincena']);
+    // Punto 2: se recuerda la última vista que elegiste (en este teléfono, sin tocar tus datos).
+    await ev(`P.ui.pagosModo = null; P.render(); true`);
+    await clic('[data-fk="ver-tipo"]');
+    await ev(`__armar(${RICO})`);
+    await ev(`P.irTab('pagos'); true`);
+    check('elegiste «Ver por tipo»: al volver, Mi plan abre por tipo', [await ev(`!!document.querySelector('.pt-sec')`), await ev(`!!document.querySelector('[data-fk="ver-fecha"]')`)], [true, true]);
+    await clic('[data-fk="ver-fecha"]');
+    await ev(`__armar(${RICO})`);
+    await ev(`P.irTab('pagos'); true`);
+    check('«Ver por fecha»: vuelve a abrir por fecha', [await ev(`!!document.querySelector('.pl-lista')`), await ev(`!!document.querySelector('[data-fk="ver-tipo"]')`)], [true, true]);
+});
+
+// ------------------------------------------------------------------ V26 (ajuste 5, punto 1)
+await filaDe('V26', 'Ajuste 5: un solo «+ Agregar» abre cada uno de los 6 formularios de siempre; al cerrar, el foco vuelve a él', async () => {
+    await ev(`__armar()`);
+    await ev(`P.ui.pagosModo = null; P.irTab('pagos'); true`);
+    check('un solo botón para agregar (sin los «+» de cada sección ni del calendario)', await ev(`[...document.querySelectorAll('#pantalla [data-fk^="nuevo-"], #pantalla [data-fk="mp-categorias"], #pantalla [data-fk="plan-agregar"]')].map((b) => b.dataset.fk)`), ['plan-agregar']);
+    const cuales = [['nuevo-ingreso', 'nuevoIngreso'], ['nuevo-pago', 'nuevoPago'], ['nuevo-variable', 'nuevoPago'], ['nuevo-programado', 'programar'], ['nuevo-deuda', 'nuevaDeuda'], ['mp-categorias', 'categorias']];
+    await clic('[data-fk="plan-agregar"]');
+    check('«Agregar a tu plan»: Ingreso · Gasto fijo · Gasto variable · Ahorro programado · Deuda o tarjeta · Mis categorías', [await texto('#hoja-t'), await ev(`[...document.querySelectorAll('.hoja [data-a="agregarAbrir"] .fila-t')].map((x) => x.textContent)`)], ['Agregar a tu plan', ['Ingreso', 'Gasto fijo', 'Gasto variable', 'Ahorro programado', 'Deuda o tarjeta', 'Mis categorías']]);
+    await ev(`P.cerrarHoja({ sinFoco: true }); true`);
+    for (const [fk, tipo] of cuales) {
+        await clic('[data-fk="plan-agregar"]');
+        await clic(`[data-fk="${fk}"]`);
+        const h = await ev(`({ tipo: P.ui.hoja && P.ui.hoja.tipo, fecha: P.ui.hoja && P.ui.hoja.fecha, titulo: document.getElementById('hoja-t')?.innerText.trim() })`);
+        check(`«${fk}» abre su formulario`, fk === 'nuevo-variable' ? [h.tipo, h.titulo] : h.tipo, fk === 'nuevo-variable' ? ['nuevoPago', 'Gasto variable'] : tipo);
+        await ev(`P.cerrarHoja(); true`);
+        await esperar(80);
+        check(`«${fk}»: al cerrar, el foco vuelve a «+ Agregar»`, await ev(`document.activeElement && document.activeElement.dataset.fk`), 'plan-agregar');
+    }
 });
 
 const resultado = { version: await ev('window.VERSION_PROTOTIPO').catch(() => null), filas: filas.map((f) => ({ id: f.id, ok: f.ok, nombre: f.nombre, checks: f.checks.length, malas: f.checks.filter((c) => !c.ok) })), resumen: `${filas.filter((f) => f.ok).length} de ${filas.length} filas bien`, fallos, errores: b.errores, fallidas: b.fallidas };

@@ -240,6 +240,8 @@ try {
         await foto('B4-tarjeta-estado');
         await clic('[data-fk="deuda-ok"]');
         await clic('[data-fk="nav-pagos"]');
+        // Ajuste 5 (punto 1, APROBADO por Victor 2026-10-22): un solo «+ Agregar» abre los mismos formularios.
+        await clic('[data-fk="plan-agregar"]');
         await clic('[data-fk="nuevo-pago"]');
         await clic('[data-fk="np-cuota"]');
         await esperar(150);

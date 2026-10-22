@@ -95,6 +95,8 @@ try {
         actual = 'V2-56 formulario';
         await usoQuincena();
         await clic('[data-fk="nav-pagos"]');
+        // Ajuste 5 (punto 1, APROBADO por Victor 2026-10-22): un solo «+ Agregar» abre los mismos formularios.
+        await clic('[data-fk="plan-agregar"]');
         await clic('[data-fk="nuevo-ingreso"]');
         check('empieza con «¿Qué es?»', await ev('[...document.querySelectorAll("[data-fk^=op-tipoIng-]")].map((e) => e.textContent.trim())'), ['Remesa', 'Aguinaldo', 'Quincena 25', 'Bono o comisión', 'Venta', 'Adelanto de salario', 'Otro']);
         check('«¿Qué es?» va primero', await ev('document.querySelector(".hoja-c .campo-l")?.textContent'), '¿Qué es?');

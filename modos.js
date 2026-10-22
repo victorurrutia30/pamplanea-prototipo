@@ -40,6 +40,9 @@
     /** v2.4: los consejos de la primera vez en cada pantalla (uso normal), una sola vez por pantalla y por teléfono. */
     const tipsVistos = () => pref().tips || {};
     const tipVisto = (pantalla) => guardarPref({ tips: { ...tipsVistos(), [pantalla]: true } });
+    /** v2.8 (ajuste 5): cómo ves Mi plan («fecha» o «tipo»), lo último que elegiste en este teléfono. No toca tus datos. */
+    const vistaPlan = () => pref().vistaPlan || null;
+    const guardarVistaPlan = (v) => guardarPref({ vistaPlan: v });
     /** La fecha REAL del teléfono. `window.__fechaPrueba` solo lo ponen las pruebas automáticas. */
     const hoy = () => (typeof window.__fechaPrueba === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(window.__fechaPrueba) ? window.__fechaPrueba : M.hoyLocal());
     const instalada = () => window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
@@ -1617,6 +1620,8 @@
         guardarEntrenamiento,
         tipsVistos,
         tipVisto,
+        vistaPlan,
+        guardarVistaPlan,
         hoy,
         cambiar: (modo, { aviso = null } = {}) => acc.modoCambiar({ v: modo, aviso }),
         /** v2.6: a los ejemplos sin aviso (la prueba guiada empieza enseguida); tus datos quedan guardados. */

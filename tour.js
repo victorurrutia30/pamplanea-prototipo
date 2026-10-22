@@ -42,6 +42,12 @@
         cerrarHoja();
         P.irTab('pagos');
     };
+    /** v2.8 (ajuste 5): tu próxima quincena está en Mi plan → Próxima, en su resumen. */
+    const irProximaPlan = () => {
+        cerrarHoja();
+        P.ui.pagosVista = 'proxima';
+        P.irTab('pagos');
+    };
     const grupo = (titulo) => [...document.querySelectorAll('.grupo')].find((g) => g.querySelector('.grupo-t')?.textContent === titulo) || null;
     /** Una tarjeta de la pantalla por su título («Lo pagas con», «Tus ahorros»…). */
     const seccion = (titulo) => () => [...document.querySelectorAll('#pantalla section.card')].find((s) => (s.querySelector('.card-t')?.textContent || '').trim().startsWith(titulo)) || null;
@@ -354,8 +360,8 @@
         cargar: preparar(() => ana(), 'fijo:proxima'),
         pasos: [
             // v2.8 (C-8): cómo quedas la próxima quincena está arriba de Mi plan.
-            { que: 'Esta es tu próxima quincena', g: 'proxima', ejemplo: ej.proxima, antes: irA('pagos'), sel: '.proy-w' },
-            { que: ej.aproxQue, g: 'aprox', ejemplo: ej.aprox, antes: irA('pagos'), sel: '.proy-w' },
+            { que: 'Esta es tu próxima quincena', g: 'proxima', ejemplo: ej.proxima, antes: irProximaPlan, sel: '.plan-res' },
+            { que: ej.aproxQue, g: 'aprox', ejemplo: ej.aprox, antes: irProximaPlan, sel: '.plan-res' },
             {
                 que: 'Aquí pasas lo que te sobra',
                 g: 'pasar',
@@ -455,7 +461,7 @@
         pasos: [
             { que: 'Aquí ves tu aguinaldo', g: 'aguinaldo', ejemplo: ej.aguinaldo, antes: abrirPagos, sel: () => grupo('Más adelante') },
             { que: 'Aquí ves la matrícula de enero', g: 'pagarConExtra', ejemplo: ej.matricula, antes: abrirEn('pagos', 'pago', 'matricula'), sel: seccion('Lo pagas con') },
-            { que: 'Aquí anotas un adelanto de salario', g: 'adelanto', antes: abrirPagos, sel: '[data-fk="nuevo-ingreso"]' },
+            { que: 'Aquí anotas un adelanto de salario', g: 'adelanto', antes: abrirPagos, sel: '[data-fk="plan-agregar"]' },
         ],
         pregunta: { p: 'Tu aguinaldo llega el 12 de diciembre. ¿Cuándo suma a tu libre?', ops: ['Desde hoy', 'El día que llega', 'En enero'], bien: 1, si: '¡Así es! Suma el día que llega, no antes.', casi: 'Casi: suma el día que llega. Antes no cuenta.', repaso: 0 },
     };
@@ -566,7 +572,7 @@
         persona: 'rosa',
         cargar: preparar(() => rosa(), 'variable:proximoMes'),
         pasos: [
-            { que: 'Así quedas el próximo mes', g: 'proxima', ejemplo: ej.proxima, antes: irA('pagos'), sel: '.proy-w' },
+            { que: 'Así quedas el próximo mes', g: 'proxima', ejemplo: ej.proxima, antes: irProximaPlan, sel: '.plan-res' },
             { que: 'Esta es la remesa que esperas', g: 'remesa', ejemplo: ej.remesa, antes: abrirPagos, sel: '[data-fk^="i-remesa-"]' },
             {
                 que: 'Cuando llegue, dilo aquí',
@@ -1185,7 +1191,7 @@
         cerrarHoja();
         bloquear(false);
         pintar();
-        P.ui.pagosModo = 'calendario';
+        P.ui.pagosModo = null;
         if (reiniciar && cap) P.cargarPersona(VERSIONES[cap.version].persona);
         if (avisar && reiniciar) P.avisar('Listo, dejé los ejemplos como al inicio para que practiques');
     }

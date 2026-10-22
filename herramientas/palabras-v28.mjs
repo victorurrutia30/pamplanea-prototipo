@@ -38,9 +38,11 @@ const RECORRER = `(async () => {
             cerrar(); P.irTab(tab); await espera(30); ver(quien + ' · ' + tab);
         }
         for (const [modo, vista] of [['calendario', 'actual'], ['calendario', 'proxima'], ['calendario', 'mes'], ['lista', 'actual']]) {
-            P.ui.pagosModo = modo; P.ui.pagosVista = vista; P.irTab('pagos'); await espera(30); ver(quien + ' · Mi plan ' + modo + ' ' + vista);
+            // Ajuste 5 (punto 9): «Ver por tipo» con sus secciones abiertas (plegadas no se leen).
+            P.ui.pagosModo = modo; P.ui.pagosVista = vista; P.ui.planAbiertas = { ingresos: true, fijos: true, variables: true, ahorro: true, deudas: true }; P.irTab('pagos'); await espera(30); ver(quien + ' · Mi plan ' + modo + ' ' + vista);
         }
-        const fichas = [['cuentas'], ['ahorros'], ['deudas'], ['avisos'], ['espacio'], ['aprende'],
+        // Ajuste 5 (punto 5): «Por confirmar» es su propia pantalla.
+        const fichas = [['cuentas'], ['ahorros'], ['deudas'], ['avisos'], ['espacio'], ['aprende'], ['porConfirmar'],
             ...st.pagos.map((p) => ['pago', p.id]), ...st.tarjetas.map((t) => ['tarjeta', t.id]), ...st.ingresos.map((i) => ['ingreso', i.id]),
             ...st.lugares.map((l) => ['lugar', l.id]), ...st.apartados.map((a) => ['apartado', a.id]), ...(st.variables || []).map((v) => ['variable', v.id])];
         for (const [tipo, id] of fichas) {

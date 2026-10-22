@@ -305,19 +305,18 @@ try {
         actual = 'D ingreso o pago';
         await enUso();
         await clic('[data-fk="nav-pagos"]');
-        // v2.8 (C-9): las marcas del día están en el calendario de Mi plan.
-        await clic('[data-fk="modo-calendario"]');
-        const dia = await ev(`(() => { const g = [...document.querySelectorAll('.grupo')].find((x) => x.querySelector('.fila--ingreso') && x.querySelector('.fila--pago')) || [...document.querySelectorAll('.grupo')].find((x) => x.querySelector('.fila--ingreso')); if (!g) return null; return { cab: g.querySelector('.grupo-cab')?.innerText.replace(/\\s+/g, ' '), filas: [...g.querySelectorAll('.fila')].map((f) => ({ ing: f.classList.contains('fila--ingreso'), marca: f.querySelector('.mov')?.innerText.trim(), monto: f.querySelector('.fila-m .monto')?.innerText.trim() })) }; })()`);
-        check('un día con ingreso: su marca «+ Ingreso»', dia && dia.cab, (t) => typeof t === 'string' && t.includes('+ Ingreso'));
-        check('el ingreso va primero y dice «Ingreso»', dia && dia.filas[0], (f) => f && f.ing && f.marca === 'Ingreso');
+        // Ajuste 5 «Mi plan más ligero» (APROBADO por Victor 2026-10-22, punto 6): una línea por fila. El signo dice si suma o
+        // resta («+» ingreso, «−» pago, «~» aproximado); ya no hay marcas del día ni «Pago»/«Ingreso» en cada fila.
+        await clic('[data-fk="tab-mes"]');
+        const orden = await ev(`(() => { let dia = null; const out = []; for (const li of document.querySelectorAll('.pl-lista .pl-fila')) { const n = li.querySelector('.pl-dia-n'); if (n) dia = n.textContent + li.querySelector('.pl-dia-m').textContent; const m = li.querySelector('.pl-m .monto'); if (m) out.push([dia, m.classList.contains('monto--ingreso') ? 'i' : 'p']); } return out; })()`);
+        check('el mismo día: primero lo que te cae', orden, (x) => x.length > 0 && x.some(([, t]) => t === 'i') && x.every(([d, t], i) => !(t === 'i' && i > 0 && x[i - 1][0] === d && x[i - 1][1] === 'p')));
         // Lo visible del monto (sin la etiqueta para el lector de pantalla, «Pago:» o «Ingreso:»).
         const visible = `(m) => (m ? [...m.childNodes].filter((n) => !(n.classList && n.classList.contains('sr-only'))).map((n) => n.textContent).join('').trim() : null)`;
-        const pagos = await ev(`[...document.querySelectorAll('.linea .fila--pago')].map((f) => ({ marca: f.querySelector('.mov')?.innerText.trim(), monto: (${visible})(f.querySelector('.fila-m .monto')) }))`);
-        check('cada pago dice «Pago» y su monto resta («−»)', pagos, (x) => x.length > 0 && x.every((p) => p.marca === 'Pago' && /^(−|~)/.test(p.monto)) && !x.some((p) => p.monto.includes('−~')));
-        const ingresos = await ev(`[...document.querySelectorAll('.linea .fila--ingreso .fila-m .monto')].map(${visible})`);
-        check('un ingreso que llegó suma («+») y un estimado no lleva «+~»', ingresos, (x) => x.length > 0 && x.every((m) => /^\+\$|^~\$/.test(m)) && !x.some((m) => m.includes('+~')));
-        // v2.8 (D-2): «Pago» solo para deudas y tarjetas; un gasto fijo se marca «− Gasto».
-        check('los días con pagos también tienen su marca', await ev(`[...document.querySelectorAll('.dia-marca--pago')].map((e) => e.textContent)`), (x) => x.length > 0 && x.every((t) => /^− (Pago|\d+ pagos|Gasto|\d+ gastos)$/.test(t)));
+        const pagos = await ev(`[...document.querySelectorAll('.pl-lista .pl-m .monto--pago')].map(${visible})`);
+        check('cada pago resta («−», o «~» si es aproximado), nunca «−~»', pagos, (x) => x.length > 0 && x.every((m) => /^(−|~|faltan)/.test(m)) && !x.some((m) => m.includes('−~')));
+        const ingresos = await ev(`[...document.querySelectorAll('.pl-lista .pl-m .monto--ingreso')].map(${visible})`);
+        check('todo ingreso suma («+», también el estimado: «+~»)', ingresos, (x) => x.length > 0 && x.every((m) => /^\+~?\$/.test(m)));
+        check('el lector de pantalla oye «Pago:» o «Ingreso…:» en cada monto', await ev(`[...document.querySelectorAll('.pl-lista .pl-m .monto')].map((m) => m.querySelector('.sr-only')?.textContent || '')`), (x) => x.length > 0 && x.every((t) => /^(Pago|Ingreso|Pagaste)/.test(t)));
         await foto('D-pagos-calendario');
         // Contraste de las marcas en los 4 temas (nunca solo color, y cuando hay color, ≥ 4.5:1).
         const minimo = await ev(`(async () => {
@@ -329,16 +328,18 @@ try {
             for (const tema of ['serena-claro', 'serena-oscuro', 'ancla-claro', 'ancla-oscuro']) {
                 P.aplicarTema(tema); P.render();
                 await new Promise((r) => setTimeout(r, 60));
-                for (const el of document.querySelectorAll('.mov, .dia-marca, .monto--pago, .monto--ingreso')) min = Math.min(min, ratio(rgba(getComputedStyle(el).color), fondo(el)));
+                for (const el of document.querySelectorAll('.mov, .dia-marca, .monto--pago, .monto--ingreso, .pl-e, .pl-dia-m, .pl-t')) min = Math.min(min, ratio(rgba(getComputedStyle(el).color), fondo(el)));
             }
             P.aplicarTema('serena-claro'); P.render();
             return Math.round(min * 100) / 100;
         })()`);
         check('contraste de las marcas ≥ 4.5:1 en los 4 temas', minimo, (x) => x >= 4.5);
-        await clic('[data-fk="modo-lista"]');
-        // v2.8 (C-9): «Mi plan» (antes «Mis pagos e ingresos»): sus secciones, con «Ingresos» y «tu plan».
-        check('«Mi plan»: «Ingresos», «ingresos … · tu plan …»', await texto('#pantalla'), (t) => t.includes('Ingresos') && /Al mes, más o menos: ingresos ~\$[\d,.]+ · tu plan ~\$/.test(t) && !/te entra|Lo que te pagan/i.test(t));
+        // Ajuste 5 (puntos 4 y 9): «Ver por tipo» con «Ingresos»; lo del mes («Al mes, más o menos…») está en la pestaña Mes:
+        // «Entra ~$X · Sale ~$Y».
+        await clic('[data-fk="ver-tipo"]');
+        check('«Ver por tipo»: «Ingresos»; Mes: «Entra … · Sale …»', await texto('#pantalla'), (t) => t.includes('Ingresos') && /Entra ~?\$[\d,.]+ · Sale ~?\$/.test(t) && !/te entra|Lo que te pagan/i.test(t));
         await foto('D-pagos-lista');
+        await clic('[data-fk="ver-fecha"]');
     }
 
     // ============================================================ E) V2-75 cuchubal: tu turno de recibir
@@ -372,7 +373,8 @@ try {
         for (const [nombre, accion] of [
             ['Hoy', `P.irTab('hoy')`],
             ['Pagos calendario', `P.ui.pagosModo = 'calendario'; P.irTab('pagos')`],
-            ['Pagos lista', `P.ui.pagosModo = 'lista'; P.irTab('pagos')`],
+            // Ajuste 5 (punto 9): «Ver por tipo», con sus secciones abiertas.
+            ['Pagos lista', `P.ui.pagosModo = 'lista'; P.ui.planAbiertas = { ingresos: true, fijos: true, variables: true, ahorro: true, deudas: true }; P.irTab('pagos')`],
             ['Mi dinero', `P.irTab('midinero')`],
             ['Deudas', `P.irTab('midinero'); P.abrir('deudas')`],
             ['Tarjeta', `P.irTab('midinero'); P.abrir('tarjeta', P.st.tarjetas[0].id)`],

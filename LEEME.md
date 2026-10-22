@@ -131,6 +131,19 @@ Versión visible en la app y en la guía: **«Prototipo v2.8.0 · 2026-10-22»**
      - c) las sugeridas que no has usado.
      - Al final, siempre a la vista: «Más…» (despliega todas) y «Otra» (crea categoría, FM-5). Si a) sola ocupa las 4 líneas, «Más…» trae el resto.
   6. **No asumir:** en Gasté, «¿En qué?» viene sin nada elegido (antes venía «Otros»). Si guardas sin elegir: «Elige en qué». Si el texto escrito permitió entenderlo («súper 40»), sí viene elegido.
+- **Ajuste 5 «Mi plan más ligero»: APROBADO por Victor (2026-10-22)**, al pegar el prompt «v2.8 — AJUSTE 5». De `509aef4` pasaron las pruebas 1, 2, 3 y 5; la 4 la reemplaza este ajuste. Frases literales:
+  - «En la pantalla de mi plan, me gustan lo que muestra y opciones que hay ahí, pero la siento muy cargada, específicamente calendario. Quiero que las mismas opciones sigan, la opción de esta quincena, próxima y mes, me gusta»
+  - «si, veamos opción A»
+  - «no es mejor esperar a que yo le confirme si todo está bien para que él actualice eso?»
+  - «que solo haga hasta el final que yo diga, todo aprobado y lancemos el prototipo y hace esas pruebas hasta entonces»
+- Decisiones (una línea cada una):
+  - **Opción A:** Mi plan se ve por fecha, con las mismas funciones; solo cambia cómo se ven.
+  - **C-9 AJUSTADA:** el «sale de» se ve en la ficha y en «Ver por tipo», no en cada fila de la lista por fecha.
+  - **Ajuste 4, punto 2 (los 3 botones del Calendario): REEMPLAZADO** por un solo «+ Agregar».
+  - **Modo ajuste** (hasta que Victor escriba «todo aprobado, lancemos»): en cada ajuste, decisiones en una línea, invariantes, las pruebas de las pantallas que cambian, el guion verificado con una fecha, push y reporte corto.
+  - **No en modo ajuste:** entrenamiento, ayuda, glosario, tour, consejos, cuadrito, batería completa, pruebas largas, capturas-v28, vista de computadora, LEEME largo, README, MATRIZ-QA, versión y caché. Van en «Pendiente para el cierre».
+  - **Única condición:** el entrenamiento y el tour no se rompen. Un paso que señala algo que ya no existe se salta sin error; el texto viejo está bien.
+- **Estado (wip, 2026-10-22):** Mi plan nuevo hecho; `invariantes` I05, I06, V24, V25 y V26 en verde. Faltan las 13 pruebas cortas, el guion y las 2 capturas: se detuvo por poca memoria.
 
 ### E1 — el cálculo y los datos
 

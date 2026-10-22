@@ -152,7 +152,8 @@ for (const id of practica) {
     await esperar(250);
     const vistos = new Set();
     for (const tab of ['hoy', 'pagos', 'pagos-lista', 'midinero', 'mes']) {
-        await ev(`P.ui.pagosModo = ${js(tab === 'pagos-lista' ? 'lista' : 'calendario')}; P.irTab(${js(tab.replace('-lista', ''))}); true`);
+        // Ajuste 5 (punto 9): «Ver por tipo» con sus secciones abiertas.
+        await ev(`P.ui.pagosModo = ${js(tab === 'pagos-lista' ? 'lista' : 'calendario')}; P.ui.planAbiertas = { ingresos: true, fijos: true, variables: true, ahorro: true, deudas: true }; P.irTab(${js(tab.replace('-lista', ''))}); true`);
         await esperar(120);
         for (const m of (await pantalla()).montos) vistos.add(m);
     }
