@@ -67,7 +67,7 @@ const SUSCRIPCIONES = [
 
 /** Pagos fijos frecuentes para el primer día y para entender «acuérdame…». */
 // v2.8 ajuste 3 (FM-4, APROBADO por Victor 2026-10-22): cada uno en su grupo (`grupo`), en el orden en que se ve. `etiqueta`: lo
-// que dice el botón cuando es más largo que el nombre con que se guarda.
+// que dice el botón cuando es más largo que el nombre con que se guarda. Ajuste 4: sale «Tasas municipales» (lo guardado no cambia).
 const PAGOS_FRECUENTES = [
     { id: 'luz', nombre: 'Luz', emoji: '💡', categoria: 'servicios', variable: true, grupo: 'servicio' },
     { id: 'agua', nombre: 'Agua', emoji: '💧', categoria: 'servicios', variable: true, grupo: 'servicio' },
@@ -75,7 +75,6 @@ const PAGOS_FRECUENTES = [
     { id: 'cable', nombre: 'Cable', emoji: '📺', categoria: 'servicios', grupo: 'servicio' },
     { id: 'telefono', nombre: 'Plan de celular', emoji: '📱', categoria: 'telefono', grupo: 'servicio' },
     { id: 'gas', nombre: 'Gas', etiqueta: 'Gas (cilindro)', emoji: '🔥', categoria: 'casa', grupo: 'servicio' },
-    { id: 'tasas', nombre: 'Tasas municipales', etiqueta: 'Tasas municipales (basura)', emoji: '🗑️', categoria: 'servicios', grupo: 'servicio' },
     { id: 'vigilancia', nombre: 'Vigilancia', etiqueta: 'Vigilancia o cuota de colonia', emoji: '🛡️', categoria: 'servicios', grupo: 'servicio' },
     { id: 'alquiler', nombre: 'Alquiler', emoji: '🏠', categoria: 'casa', grupo: 'otro' },
     { id: 'colegio', nombre: 'Colegio', etiqueta: 'Colegio o universidad', emoji: '🎓', categoria: 'educacion', grupo: 'otro' },

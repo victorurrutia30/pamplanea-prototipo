@@ -58,7 +58,15 @@
     const senalAnotar = (frase) => () => {
         if (!hoja('anotar')) return tocar('[data-fk="nav-anotar"]', 'Toca el botón + de abajo.');
         const q = document.getElementById('anotar-q');
-        if (q && M.normalizar(q.value.trim()) !== M.normalizar(frase)) return escribir('#anotar-q', frase, `Escribe «${frase}» en «¿Qué pasó?».`);
+        if (q && M.normalizar(q.value.trim()) !== M.normalizar(frase)) return escribir('#anotar-q', frase, `Escribe «${frase}» en «¿Qué quieres anotar?».`);
+        // v2.8 ajuste 4 (punto 6, APROBADO por Victor 2026-10-22): si no se entendió en qué fue, se elige en «¿En qué?».
+        const d = P.ui.hoja.d;
+        if (d && d.tipo === 'gasto' && d.enQueFalta) {
+            if (!document.querySelector('[data-fk^="op-enQue-"]')) return tocar('[data-fk="ch-nombre"]', 'Toca «¿En qué?».');
+            const otros = document.querySelector('[data-fk="op-enQue-otros"]');
+            if (otros && otros.style.display !== 'none') return tocar('[data-fk="op-enQue-otros"]', 'En «¿En qué?», elige Otros.');
+            return tocar('[data-fk="op-enQue-mas"]', 'Toca «Más…» para ver todas.');
+        }
         const boton = document.querySelector('[data-fk="anotar-guardar"]');
         return tocar('[data-fk="anotar-guardar"]', `Revisa lo que entendí y toca «${boton ? boton.textContent.trim() : 'Guardar'}».`);
     };

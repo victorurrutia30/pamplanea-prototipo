@@ -1335,6 +1335,8 @@
             d.categoria = k.id;
             d.nombre = nombreDe(palabras) || (k.id === 'otros' ? null : k.nombre);
             d.emoji = palabras.map((w) => D.EMOJI_NOMBRE[w]).find(Boolean) || k.emoji;
+            // v2.8 ajuste 4 (punto 6, no asumir): si no se entendió en qué fue (ni una categoría ni un gasto variable), se pregunta.
+            d.enQueFalta = k.id === 'otros' && !variablesActivas(st).some((v) => coincide(resto, v.nombre));
             if (!d.medio) {
                 const u = medioUsual(st, k.id);
                 d.medio = u.id;
@@ -1598,6 +1600,8 @@
         if (d.tipo === 'pagoTarjeta' && !d.lugar) f.push('lugar');
         if (d.tipo === 'gasto' && !d.medio) f.push('medio');
         if (d.tipo === 'gasto' && !d.nombre) f.push('nombre');
+        // v2.8 ajuste 4 (punto 6, no asumir): «¿En qué?» se elige (o se entiende del texto).
+        if (d.tipo === 'gasto' && d.enQueFalta && !d.soloDeudas && !d.pago) f.push('enQue');
         // v2.8 (D-2 corregida, Victor 2026-10-22): «Es nuevo»: «¿Cómo es?» (llega con fecha, lo voy gastando o solo esta vez).
         if (d.tipo === 'gasto' && d.cualPlan === 'nuevo' && !d.soloDeudas && !d.comoEs) f.push('comoEs');
         if (d.tipo === 'pago') {

@@ -1005,6 +1005,10 @@ button.fila-main:active {
     justify-content: center;
     padding: 8px;
 }
+/* v2.8 ajuste 4: Mi plan → Calendario, «+ Ingreso» debajo de «+ Gasto fijo» y «+ Gasto variable». */
+.btn-cal-ingreso {
+    margin-top: 8px;
+}
 .mp-categorias {
     margin: 4px 0 0;
     text-align: center;

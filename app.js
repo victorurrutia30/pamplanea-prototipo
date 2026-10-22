@@ -1162,7 +1162,7 @@
             ${P.tipHtml('pagos')}
             ${vistas}
             ${proy}
-            <div class="acciones-2 acciones-2--top"><button type="button" class="btn btn--prim" data-a="hoja" data-hoja="nuevoPago" data-fk="nuevo-pago">${icon('plus', 'ico-s')}Gasto fijo</button><button type="button" class="btn" data-a="hoja" data-hoja="nuevoIngreso" data-fk="nuevo-ingreso">${icon('plus', 'ico-s')}Ingreso esperado</button></div>
+            <div class="acciones-2 acciones-2--top"><button type="button" class="btn btn--prim" data-a="hoja" data-hoja="nuevoPago" data-fk="nuevo-pago">${icon('plus', 'ico-s')}Gasto fijo</button><button type="button" class="btn" data-a="hoja" data-hoja="nuevoPago" data-id="" data-fecha="variable" data-fk="nuevo-variable">${icon('plus', 'ico-s')}Gasto variable</button></div><button type="button" class="btn btn--full btn-cal-ingreso" data-a="hoja" data-hoja="nuevoIngreso" data-fk="nuevo-ingreso">${icon('plus', 'ico-s')}Ingreso</button>
             ${vencidos.length ? tarjetaSeccion(`Por confirmar <span class="contador">${vencidos.length}</span>`, `<p class="txt txt--card">Ya pasó su fecha. ¿Los pagaste?</p><ul class="lista">${vencidos.map((o) => filaPago(o, hz)).join('')}</ul>`, { id: 'p-venc', cls: 'card--venc' }) : ''}
             <div class="app-tabs tabs-3" role="tablist" aria-label="Periodo">${tabs}</div>
             ${mesNav}

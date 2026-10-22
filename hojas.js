@@ -471,15 +471,34 @@
             <div class="hoja-c">${c.cuerpo}</div>
             ${c.pie ? `<footer class="hoja-f">${c.nota ? `<p class="hoja-nota">${c.nota}</p>` : ''}<div class="hoja-acc">${c.pie}</div></footer>` : ''}
         </section></div>`;
+        // Ajuste 4 (punto 5): los grupos de chips con máximo de líneas (antes de volver al scroll de antes).
+        ajustarLineas(capa);
         if (!nueva) capa.querySelector('.hoja-c').scrollTop = scroll;
         capa.dataset.clave = clave;
         vista.inert = true;
         nav.inert = true;
         app.classList.add('con-hoja');
     };
+    /**
+     * v2.8 ajuste 4 (APROBADO por Victor, 2026-10-22), punto 5: un grupo de chips con `data-max-lineas` se queda en esas líneas: se esconden los últimos
+     * (nunca el elegido ni los fijos, «Más…» y «Otra»). Si no se escondió nada, «Más…» no hace falta.
+     */
+    function ajustarLineas(raiz) {
+        for (const g of (raiz || document).querySelectorAll('.chips[data-max-lineas]')) {
+            const max = Number(g.dataset.maxLineas);
+            const resto = [...g.children].filter((b) => !b.hasAttribute('data-fijo'));
+            for (const b of resto) b.style.display = '';
+            const lineas = () => new Set([...g.children].filter((b) => b.style.display !== 'none').map((b) => b.offsetTop)).size;
+            for (let i = resto.length - 1; i >= 0 && lineas() > max; i--) if (resto[i].getAttribute('aria-pressed') !== 'true') resto[i].style.display = 'none';
+            const mas = g.querySelector('[data-fijo="mas"]');
+            if (mas && mas.dataset.v === 'si') mas.style.display = resto.some((b) => b.style.display === 'none') ? '' : 'none';
+        }
+    }
+    P.ajustarLineas = ajustarLineas;
     const region = (id, html) => {
         const el = document.getElementById(id);
         if (el) el.innerHTML = html;
+        if (el) ajustarLineas(el);
     };
 
     // ------------------------------------------------------------------ piezas de formulario
@@ -530,6 +549,40 @@
      * v2.6.5 (V2-82): antes de crear un pago parecido a uno que ya tienes: «Ya tienes «Luz» el 12 por ~$35.00. ¿Es otro
      * pago?» [Ver el que tengo] [Sí, es otro]. La usan Anotar («Recordarme un pago»), «+ Pago» y «Editar».
      */
+    /**
+     * v2.8 ajuste 4 (APROBADO por Victor, 2026-10-22), puntos 3 y 5: «¿En qué?»: primero tus gastos variables con lo que les queda; después las
+     * categorías que más usaste (cuántos gastos en 60 días) y las sugeridas que no has usado. Nunca dos con el mismo nombre:
+     * si un gasto variable se llama como una categoría, la categoría suelta no sale. Lo elegido siempre se ve.
+     */
+    function opcionesEnQue(st, valor) {
+        const n = (t) => M.normalizar(t || '');
+        const vars = M.variablesInfo(st).map((x) => ({ v: 'var:' + x.v.id, t: x.v.nombre, e: x.v.emoji, s: x.pasado ? `te pasaste ${dinero(x.pasado)}` : `te quedan ${dinero(x.falta)}` }));
+        const vistos = new Set(vars.map((o) => n(o.t)));
+        const cats = [...D.CATEGORIAS.filter((k) => !['servicios', 'cuotas'].includes(k.id)).map((k) => ({ v: k.id, t: k.nombre, e: k.emoji })), ...P.categoriasDe(st, 'variable').map((c) => ({ v: 'p:' + c.id, t: c.nombre, e: c.emoji }))].filter((o) => !vistos.has(n(o.t)) && vistos.add(n(o.t)));
+        const desde = M.sumarDias(st.hoy, -60);
+        const cuenta = {};
+        for (const r of st.registros) if (r.tipo === 'gasto' && !r.pago && r.fecha >= desde && r.fecha <= st.hoy) cuenta[r.propia ? 'p:' + r.propia : r.categoria] = (cuenta[r.propia ? 'p:' + r.propia : r.categoria] || 0) + 1;
+        const usadas = cats.filter((o) => cuenta[o.v]).sort((a, b) => cuenta[b.v] - cuenta[a.v]);
+        const resto = [...usadas, ...cats.filter((o) => !cuenta[o.v])];
+        const elegida = resto.find((o) => o.v === valor);
+        return [...vars, ...(elegida ? [elegida] : []), ...resto.filter((o) => o !== elegida)];
+    }
+    P.opcionesEnQue = opcionesEnQue;
+    /** Los chips de «¿En qué?», con «Más…» (o «Menos») y «Otra» siempre a la vista al final. */
+    function chipsEnQue(st, h, { valor, mas = false, accion = 'anotarValor', otra = true }) {
+        const chip = (o, extra = '') => `<button type="button" class="chip" aria-pressed="${valor === o.v}" data-a="${accion}" data-campo="enQue" data-v="${esc(o.v)}" data-fk="op-enQue-${esc(o.v)}"${extra}>${valor === o.v ? icon('check', 'ico-xs') : ''}${o.e ? emo(o.e, 18) : ''}<span>${esc(o.t)}</span>${o.s ? `<span class="chip-s">${esc(o.s)}</span>` : ''}</button>`;
+        const botonMas = `<button type="button" class="chip chip--mas" aria-pressed="false" data-a="${accion}" data-campo="enQueMas" data-v="${mas ? 'no' : 'si'}" data-fk="op-enQue-${mas ? 'menos' : 'mas'}" data-fijo="mas">${mas ? 'Menos' : 'Más…'}</button>`;
+        return `<div class="campo-g" role="group" aria-labelledby="l-enQue"><p class="campo-l" id="l-enQue">¿En qué?</p><div class="chips chips--enque"${mas ? '' : ' data-max-lineas="4"'}>${opcionesEnQue(st, valor).map((o) => chip(o)).join('')}${botonMas}${otra ? chip({ v: 'otra', t: 'Otra', e: '🧾' }, ' data-fijo="otra"') : ''}</div>${error(h, 'enQue', 'Elige en qué')}</div>`;
+    }
+    /** Lo elegido en «¿En qué?» de un gasto de Anotar (punto 6: nada, si no se eligió ni se entendió del texto). */
+    function enQueDe(st, d) {
+        if (d.enQueFalta) return null;
+        if (d.variableElegido) return 'var:' + d.variableElegido;
+        if (d.propia) return 'p:' + d.propia;
+        if (d.otraCat) return 'otra';
+        const v = d.variableNo ? null : M.variableDe(st, { tipo: 'gasto', nombre: d.nombre, categoria: d.categoria, fecha: d.fecha });
+        return v ? 'var:' + v.id : d.categoria;
+    }
     function preguntaDuplicado(h, p, accion) {
         // v2.8 ajuste 3 (APROBADO por Victor, 2026-10-22), FM-1: «Ya tienes «Luz» (el 12, ~$35)» → «Editar el que tengo» / «Es otro distinto».
         const cuando = p.frecuencia === 'mensual' ? `el ${p.dia}` : p.frecuencia === 'semanal' ? `cada ${M.DIAS[p.diaSemana]}` : P.textoFrecuencia(p, { corto: true }).toLowerCase();
@@ -816,7 +869,9 @@
         d.nombre = base.nombre || null;
         d.monto = base.monto ?? null;
         if (tipo === 'gasto') {
-            d.categoria = 'otros';
+            // v2.8 ajuste 4 (APROBADO por Victor, 2026-10-22), punto 6 (no asumir): «¿En qué?» viene sin nada elegido.
+            d.categoria = null;
+            d.enQueFalta = true;
             d.medio = base.medio || (st.medios[0] && st.medios[0].id);
         }
         if (tipo === 'ingreso') {
@@ -864,7 +919,7 @@
     }
     function chipsDe(st, h) {
         const d = h.d;
-        const out = [chip('tipo', esc(TIPO_NOMBRE[d.tipo]), { abierto: h.editando === 'tipo', etiqueta: 'Qué pasó' })];
+        const out = [chip('tipo', esc(TIPO_NOMBRE[d.tipo]), { abierto: h.editando === 'tipo', etiqueta: 'Anotas' })];
         const montoChip = () => chip('monto', d.monto !== null ? dinero(d.monto) : '¿Cuánto?', { falta: d.monto === null, abierto: h.editando === 'monto', etiqueta: d.tipo === 'cuadre' ? 'Tienes ahora' : 'Monto' });
         const fechaChip = () => chip('fecha', `${icon('calendar-days', 'ico-xs')}${esc(M.capital(M.relativa(d.fecha, st.hoy)))}${d.fecha > st.hoy ? ' <span class="chip-s">futuro</span>' : ''}`, { abierto: h.editando === 'fecha', etiqueta: 'Cuándo' });
         const medioChip = () => {
@@ -873,7 +928,7 @@
         };
         if (d.tipo === 'gasto') {
             out.push(montoChip());
-            out.push(chip('nombre', d.nombre ? `${emo(d.emoji || '🧩', 16)} ${esc(d.nombre)}${d.categoria && d.categoria !== 'otros' && M.categoria(d.categoria).nombre !== d.nombre ? ` <span class="chip-s">${esc(M.categoria(d.categoria).nombre)}</span>` : ''}` : '¿En qué?', { falta: !d.nombre, abierto: h.editando === 'nombre', etiqueta: 'En qué' }));
+            out.push(chip('nombre', d.nombre ? `${emo(d.emoji || '🧩', 16)} ${esc(d.nombre)}${d.categoria && d.categoria !== 'otros' && M.categoria(d.categoria).nombre !== d.nombre ? ` <span class="chip-s">${esc(M.categoria(d.categoria).nombre)}</span>` : ''}` : '¿En qué?', { falta: !d.nombre || !!d.enQueFalta, abierto: h.editando === 'nombre', etiqueta: 'En qué' }));
             out.push(medioChip());
             out.push(fechaChip());
         } else if (d.tipo === 'pagado') {
@@ -927,7 +982,7 @@
     }
     function editorAnotar(st, h, campo) {
         const d = h.d;
-        if (campo === 'tipo') return opciones(h, { campo: 'tipo', label: '¿Qué pasó?', accion: 'anotarValor', valor: d.tipo, lista: Object.entries(TIPO_NOMBRE).filter(([k]) => !['pagado', 'liberar', 'pagoTarjeta'].includes(k) || k === d.tipo).map(([v, t]) => ({ v, t })) });
+        if (campo === 'tipo') return opciones(h, { campo: 'tipo', label: '¿Qué quieres anotar?', accion: 'anotarValor', valor: d.tipo, lista: Object.entries(TIPO_NOMBRE).filter(([k]) => !['pagado', 'liberar', 'pagoTarjeta'].includes(k) || k === d.tipo).map(([v, t]) => ({ v, t })) });
         if (campo === 'monto') {
             // V2-65: una pregunta concreta según lo que pasó (nunca «Tengo __ $»).
             const l = M.lugar(st, d.lugar);
@@ -950,10 +1005,7 @@
             if (d.tipo === 'ingreso') return opciones(h, { campo: 'categoriaIngreso', label: '¿Qué es?', accion: 'anotarValor', valor: d.ingresoRef ? 'esperado' : d.tipoIng ? 'tipo:' + d.tipoIng : null, lista: [...(d.ingresoRef ? [{ v: 'esperado', t: d.nombre, e: d.emoji }] : []), ...D.TIPOS_INGRESO.filter((x) => !x.principal).map((x) => ({ v: 'tipo:' + x.id, t: x.nombre, e: x.emoji })), { v: 'prestamo', t: 'Me prestaron', e: '🤝' }] });
             // FM-7: «¿En qué?»: primero tus gastos variables con lo que queda; después los tipos de gasto, tus categorías y «Otra» (FM-5).
             if (d.tipo === 'gasto' && !d.soloDeudas) {
-                const vars = M.variablesInfo(st).map((x) => ({ v: 'var:' + x.v.id, t: x.v.nombre, e: x.v.emoji, s: x.pasado ? `te pasaste ${dinero(x.pasado)}` : `te quedan ${dinero(x.falta)}` }));
-                const cats = [...D.CATEGORIAS.filter((k) => !['servicios', 'cuotas'].includes(k.id)).map((k) => ({ v: k.id, t: k.nombre, e: k.emoji })), ...P.categoriasDe(st, 'variable').map((c) => ({ v: 'p:' + c.id, t: c.nombre, e: c.emoji })), { v: 'otra', t: 'Otra', e: '🧾' }];
-                const valor = d.variableElegido ? 'var:' + d.variableElegido : d.propia ? 'p:' + d.propia : d.otraCat ? 'otra' : d.categoria;
-                return opciones(h, { campo: 'enQue', label: '¿En qué?', accion: 'anotarValor', valor, lista: [...vars, ...cats] }) + (d.otraCat ? P.nuevaCategoriaHtml(h, 'variable', { accion: 'anotarValor', catNombre: d.catNombre, catEmoji: d.catEmoji, catDup: d.catDup }) : '') + campoTexto(h, { campo: 'nombre', label: '¿Qué fue?', valor: d.nombre || '', placeholder: 'Ej. Pupusas', errorTexto: 'Escribe en qué fue' });
+                return chipsEnQue(st, h, { valor: enQueDe(st, d), mas: !!d.enQueMas }) + (d.otraCat ? P.nuevaCategoriaHtml(h, 'variable', { accion: 'anotarValor', catNombre: d.catNombre, catEmoji: d.catEmoji, catDup: d.catDup }) : '') + campoTexto(h, { campo: 'nombre', label: '¿Qué fue?', valor: d.nombre || '', placeholder: 'Ej. Pupusas', errorTexto: 'Escribe en qué fue' });
             }
             if (d.tipo === 'prestamo') return campoTexto(h, { campo: 'nombre', label: '¿Cómo se llama esta deuda?', valor: d.nombre || '', placeholder: 'Ej. Préstamo de mi mamá', errorTexto: 'Ponle un nombre' });
             // FM-8: «pago» como sustantivo, solo para deudas («¿Cuál pago?» → «¿Cuál?», «¿Qué pago?» → «¿Qué es?»).
@@ -1177,13 +1229,13 @@
             return `<p class="campo-l campo-l--sec">O empieza por aquí</p><div class="atajos">${ATAJOS.map(([t, txt, ic]) => `<button type="button" class="atajo" data-a="anotarAtajo" data-v="${t}" data-fk="atajo-${t}">${icon(ic)}<span>${txt}</span></button>`).join('')}</div>`;
         }
         if (!h.d.tipo) {
-            return `<div class="nota nota--info" role="note">${icon('circle-question-mark')}<p><strong>No entendí del todo.</strong> ¿Qué pasó? Elige y completo lo demás contigo.</p></div><div class="atajos">${ATAJOS.map(([t, txt, ic]) => `<button type="button" class="atajo" data-a="anotarAtajo" data-v="${t}" data-fk="atajo-${t}">${icon(ic)}<span>${txt}</span></button>`).join('')}</div>`;
+            return `<div class="nota nota--info" role="note">${icon('circle-question-mark')}<p><strong>No entendí del todo.</strong> Elige qué quieres anotar y completo lo demás contigo.</p></div><div class="atajos">${ATAJOS.map(([t, txt, ic]) => `<button type="button" class="atajo" data-a="anotarAtajo" data-v="${t}" data-fk="atajo-${t}">${icon(ic)}<span>${txt}</span></button>`).join('')}</div>`;
         }
         const faltan = M.faltan(st, h.d).filter((f) => f !== 'frecuencia');
         // v2.7: las preguntas nuevas (varios, fecha, tarjeta) se contestan en su recuadro, no en un editor aparte.
         // v2.8 (C-4, P-1): «¿Es tu pago de…?» también se contesta en su recuadro.
         const enPregunta = (f) => f === 'catNombre' || f === 'comoEs' || f === 'varios' || f === 'ordenCuadre' || f === 'fechaFutura' || f === 'cualPlan' || (f === 'fecha' && h.d.fechaDudosa) || (f === 'tarjeta' && !h.d.tarjeta);
-        const abiertos = h.modo === 'form' ? camposAnotar(h.d) : [...new Set([...(h.editando ? [h.editando] : []), ...(h.d.montoDudoso ? ['monto'] : []), ...(h.intento ? faltan.filter((f) => !enPregunta(f)) : [])])];
+        const abiertos = h.modo === 'form' ? camposAnotar(h.d) : [...new Set([...(h.editando ? [h.editando] : []), ...(h.d.montoDudoso ? ['monto'] : []), ...(h.intento ? faltan.filter((f) => !enPregunta(f)).map((f) => (f === 'enQue' ? 'nombre' : f)) : [])])];
         return `<p class="campo-l campo-l--sec" id="anotar-entendi">${h.modo === 'form' ? 'Completa los datos' : 'Entendí esto. Toca cualquier dato para cambiarlo.'}</p>
             ${h.modo === 'form' ? '' : `<div class="chips chips--datos" id="anotar-chips" role="group" aria-labelledby="anotar-entendi">${chipsDe(st, h)}</div>`}
             ${h.d.tipo === 'ingreso' ? botonYaLlego(st, h.d) : ''}
@@ -1233,13 +1285,16 @@
         html(h) {
             const st = P.st;
             const ctx = h.ctxMedio ? M.medio(st, h.ctxMedio) : h.ctxLugar ? M.lugar(st, h.ctxLugar) : h.ctxApartado ? M.apartado(st, h.ctxApartado) : null;
+            // v2.8 ajuste 4 (APROBADO por Victor, 2026-10-22), punto 4: sin tipo, «¿Qué quieres anotar?» («Ej. pupusas 6»). Con un botón (Gasté, Me
+            // llegó dinero…), el texto y su nota se van: el título es el del botón y solo quedan sus datos («Atrás» vuelve al texto).
+            const conBoton = h.modo === 'form' && h.d && h.d.tipo;
             return {
-                titulo: 'Anotar',
-                cuerpo: `${P.tipHtml('anotar')}${ctx ? `<p class="contexto">${emo(ctx.emoji, 16)} Desde ${esc(ctx.nombre)}</p>` : ''}
-                    <label class="campo-l" for="anotar-q">¿Qué pasó?</label>
+                titulo: conBoton ? (h.d.soloDeudas ? 'Pagué una deuda' : TIPO_NOMBRE[h.d.tipo] || 'Anotar') : 'Anotar',
+                cuerpo: `${conBoton ? `<button type="button" class="atras atras--hoja" data-a="anotarAtras" data-fk="anotar-atras">${icon('chevron-left')}<span>Atrás</span></button>` : P.tipHtml('anotar')}${ctx ? `<p class="contexto">${emo(ctx.emoji, 16)} Desde ${esc(ctx.nombre)}</p>` : ''}
+                    ${conBoton ? '' : `<label class="campo-l" for="anotar-q">¿Qué quieres anotar?</label>
                     <div class="campo campo--grande"><input id="anotar-q" data-campo="texto" type="text" autocomplete="off" autocapitalize="sentences" enterkeyhint="done" spellcheck="false" placeholder="${esc(EJEMPLOS[0])}" value="${esc(h.texto)}" aria-describedby="anotar-mic"></div>
-                    <p class="campo-ayuda" id="anotar-mic">${icon('mic', 'ico-s')}Puedes dictar: toca el micrófono de tu teclado.</p>
-                    ${h.intento && h.errores.includes('tipo') ? `<p class="campo-error" id="err-tipo">${icon('triangle-alert')}<span>Escribe qué pasó o elige una opción</span></p>` : ''}
+                    <p class="campo-ayuda" id="anotar-mic">${icon('mic', 'ico-s')}Puedes dictar: toca el micrófono de tu teclado.</p>`}
+                    ${h.intento && h.errores.includes('tipo') ? `<p class="campo-error" id="err-tipo">${icon('triangle-alert')}<span>Escribe qué quieres anotar o elige una opción</span></p>` : ''}
                     <div id="anotar-cuerpo">${cuerpoAnotar(st, h)}</div>`,
                 pie: pie2('anotarGuardar', P.textoGuardarAnotar(h.d), { fk: 'anotar-guardar' }),
             };
@@ -1291,6 +1346,8 @@
                     const w = claveNombre(el.value);
                     const k = D.CATEGORIAS.find((x) => x.palabras.includes(w));
                     if (k && !h.manual.categoria) h.d.categoria = k.id;
+                    // Punto 6 (ajuste 4): lo escrito que se entiende (una categoría o un gasto variable) cuenta como elegido.
+                    if (k || M.variableDe(st, { tipo: 'gasto', nombre: el.value, categoria: h.d.categoria, fecha: h.d.fecha })) h.d.enQueFalta = false;
                     h.d.emoji = D.EMOJI_NOMBRE[w] || M.categoria(h.d.categoria).emoji;
                 }
                 // V2-83: si escribe otro nombre, el frecuente elegido deja de verse marcado; V2-82: se vuelve a revisar si ya lo tiene.
@@ -1328,14 +1385,18 @@
         if (top && top.tipo === 'tarjeta') datos.ctxMedio = P.st.medios.find((x) => x.tarjeta === top.id)?.id;
         if (top && top.tipo === 'apartado') datos.ctxApartado = top.id;
         P.abrirHoja('anotar', datos);
-        let i = 0;
+        // Ajuste 4 (punto 4): el ejemplo queda fijo, «Ej. pupusas 6».
         clearInterval(rotador);
-        rotador = setInterval(() => {
-            const q = document.getElementById('anotar-q');
-            if (!q || !P.ui.hoja || P.ui.hoja.tipo !== 'anotar') return clearInterval(rotador);
-            i = (i + 1) % EJEMPLOS.length;
-            q.placeholder = EJEMPLOS[i];
-        }, 2600);
+    };
+    /** Ajuste 4 (punto 4): «Atrás» vuelve al texto (lo que escribiste antes, entendido otra vez). */
+    P.acciones.anotarAtras = () => {
+        const h = P.ui.hoja;
+        if (!h || h.tipo !== 'anotar') return;
+        const st = P.st;
+        Object.assign(h, { modo: 'chips', manual: {}, editando: null, intento: false, errores: [] });
+        h.d = (h.texto || '').trim() ? aplicarContexto(st, h, M.entender(st, h.texto)) : null;
+        P.render({ foco: '#anotar-q' });
+        P.emitir('anotar:atras');
     };
     P.acciones.anotarAtajo = (d) => {
         const h = P.ui.hoja;
@@ -1345,7 +1406,8 @@
         if (previo && !previo.tipo && h.texto && h.texto.trim()) P.emitir('anotar:noEntendio');
         // v2.8 (D-1, P-1): «Pagué una deuda»: primero «¿Cuál deuda pagaste?» (tus cuotas y tus tarjetas, o «Es nueva»).
         const deuda = d.v === 'pagoDeuda';
-        h.d = aplicarContexto(st, h, borradorVacio(st, deuda ? 'gasto' : d.v, { monto: previo ? previo.monto : null, nombre: previo && d.v === 'gasto' ? previo.nombre : null, lugar: h.ctxLugar, medio: h.ctxMedio }));
+        // Ajuste 4 (punto 4): si escribió algo de ese mismo tipo, lo que se entendió se conserva en los datos.
+        h.d = previo && !deuda && previo.tipo === d.v ? previo : aplicarContexto(st, h, borradorVacio(st, deuda ? 'gasto' : d.v, { monto: previo ? previo.monto : null, nombre: previo && d.v === 'gasto' ? previo.nombre : null, lugar: h.ctxLugar, medio: h.ctxMedio }));
         if (deuda) Object.assign(h.d, { planPreguntar: true, soloDeudas: true, cualPlan: null, categoria: 'cuotas', emoji: '🛍️' });
         h.modo = 'form';
         h.manual = {};
@@ -1390,20 +1452,25 @@
             Object.assign(x, { ingresoRef: null, refGuardada: null, tipoIng: t.id, categoria: t.categoria, emoji: t.emoji, nombre: t.sugerido || 'Ingreso extra', adelanto: t.id === 'adelanto', agregarPlan: false });
             M.aplicarEsperado(st, x);
             if (!x.ingresoRef) Object.assign(x, { emoji: t.emoji, nombre: t.sugerido || 'Ingreso extra' });
+        } else if (d.campo === 'enQueMas') {
+            // v2.8 ajuste 4 (APROBADO por Victor, 2026-10-22), punto 5: «Más…» despliega todas; «Menos» vuelve a las 4 líneas.
+            x.enQueMas = v === 'si';
         } else if (d.campo === 'enQue') {
             // FM-7: un gasto variable lo consume (como «súper 40»); un tipo de gasto, una categoría tuya o «Otra» (FM-5).
-            Object.assign(x, { variableElegido: null, propia: null, otraCat: false });
+            Object.assign(x, { variableElegido: null, propia: null, otraCat: false, enQueFalta: false });
+            // El nombre cambia solo si estaba vacío o lo había puesto otro botón (lo escrito o lo entendido del texto se queda).
+            const nombreDe = (t) => (!h.manual.nombre && (!x.nombre || x.nombreDeBoton) ? { nombre: t, nombreDeBoton: true } : {});
             if (String(v).startsWith('var:')) {
                 const vv = (st.variables || []).find((y) => y.id === v.slice(4));
-                if (vv) Object.assign(x, { variableElegido: vv.id, variableNo: false, categoria: vv.categoria, emoji: vv.emoji, ...(h.manual.nombre ? {} : { nombre: vv.nombre }) });
+                if (vv) Object.assign(x, { variableElegido: vv.id, variableNo: false, categoria: vv.categoria, emoji: vv.emoji, ...nombreDe(vv.nombre) });
                 if (vv && vv.medio && M.medio(st, vv.medio) && !x.medioExplicito && !h.manual.medio) x.medio = vv.medio;
             } else if (String(v).startsWith('p:')) {
                 const c = (st.categoriasPropias || []).find((y) => y.id === v.slice(2));
-                if (c) Object.assign(x, { propia: c.id, categoria: 'otros', emoji: c.emoji, ...(h.manual.nombre ? {} : { nombre: c.nombre }) });
-            } else if (v === 'otra') Object.assign(x, { otraCat: true, categoria: 'otros', emoji: '🧾', ...(h.manual.nombre ? {} : { nombre: x.catNombre || null }) });
+                if (c) Object.assign(x, { propia: c.id, categoria: 'otros', emoji: c.emoji, ...nombreDe(c.nombre) });
+            } else if (v === 'otra') Object.assign(x, { otraCat: true, categoria: 'otros', emoji: '🧾', ...nombreDe(x.catNombre || null) });
             else {
                 x.categoria = v;
-                if (!h.manual.nombre) x.nombre = M.categoria(v).nombre;
+                Object.assign(x, nombreDe(M.categoria(v).nombre));
                 x.emoji = D.EMOJI_NOMBRE[claveNombre(x.nombre)] || M.categoria(v).emoji;
                 if (!x.medioExplicito && !h.manual.medio) x.medio = M.medioUsual(st, v).id;
             }
@@ -3404,7 +3471,7 @@
                     ${campoMonto(h, { label: '¿Cuánto te llegó?', valor: h.monto, ayuda: h.descuento ? `Ya le restamos ${dinero(h.descuento)} de tu adelanto. Escribe lo que llegó de verdad.` : 'Si te descontaron algo, escribe lo que llegó de verdad.' })}
                     ${opciones(h, { campo: 'lugar', label: '¿Dónde llegó?', lista: lugares(st), valor: h.lugar })}
                     ${M.descuentosDe(st, ing.id).length ? `<p class="fila-s">Al guardar, queda pagado solo: ${esc(M.descuentosDe(st, ing.id).map((p) => `${p.nombre} ${dinero(p.monto)}`).join(', '))}.</p>` : ''}
-                    ${h.fechaEsperada ? (h.noCayo ? `<div class="pregunta" role="group" aria-labelledby="l-nocayo"><p class="campo-l" id="l-nocayo">¿Qué pasó?</p><div class="chips"><button type="button" class="chip" data-a="cerrarHoja" data-fk="nocayo-todavia">Todavía no (se atrasó)</button><button type="button" class="chip" data-a="ingresoNoLlega" data-fk="nocayo-no">No me va a caer</button></div><p class="fila-s">Si no te va a caer, tu número sigue con lo que tienes y lo de esa fecha se paga con eso.</p></div>` : `<button type="button" class="link link--start" data-a="valor" data-campo="noCayo" data-v="si" data-fk="ing-nocayo">No llegó</button>`) : ''}`,
+                    ${h.fechaEsperada ? (h.noCayo ? `<div class="pregunta" role="group" aria-labelledby="l-nocayo"><p class="campo-l" id="l-nocayo">¿Va a llegar?</p><div class="chips"><button type="button" class="chip" data-a="cerrarHoja" data-fk="nocayo-todavia">Todavía no (se atrasó)</button><button type="button" class="chip" data-a="ingresoNoLlega" data-fk="nocayo-no">No me va a caer</button></div><p class="fila-s">Si no te va a caer, tu número sigue con lo que tienes y lo de esa fecha se paga con eso.</p></div>` : `<button type="button" class="link link--start" data-a="valor" data-campo="noCayo" data-v="si" data-fk="ing-nocayo">No llegó</button>`) : ''}`,
                 pie: pie2('ingresoLlegoOk', 'Siguiente', { fk: 'ing-ok' }),
             };
         },
@@ -4636,7 +4703,7 @@
     H.editarRegistro = {
         iniciar(h) {
             const r = P.st.registros.find((x) => x.id === h.id);
-            h.orig = { monto: M.montoCampo(r.monto), nombre: r.nombre || '', medio: r.medio || null, fecha: r.fecha, categoria: r.categoria || null, lugar: r.lugar || null, apartado: null };
+            h.orig = { monto: M.montoCampo(r.monto), nombre: r.nombre || '', medio: r.medio || null, fecha: r.fecha, categoria: r.categoria || null, lugar: r.lugar || null, apartado: null, enQue: r.variable ? 'var:' + r.variable : r.propia ? 'p:' + r.propia : r.categoria || null };
             Object.assign(h, structuredClone(h.orig));
             h.verApartados = false;
         },
@@ -4664,8 +4731,8 @@
                 titulo: 'Corregir',
                 cuerpo: `${pago ? `<p class="txt">${emo(pago.emoji, 18)} Tu pago de ${esc(pago.nombre)}, marcado como pagado.</p>` : ''}${antes.length ? `<div class="nota nota--info" role="note">${icon('info')}<p>Es anterior a tu cuadre de ${esc(antes.map((l) => `${l.nombre} (${M.fechaCorta(l.cuadre.fecha)})`).join(' y '))}: <strong>corregirlo no cambia tu saldo porque cuadraste después.</strong> Sí cambia el resumen del mes.</p></div>` : ''}
                     ${campoMonto(h, { label: '¿Cuánto fue?', valor: h.monto })}
-                    ${r.tipo === 'gasto' || r.tipo === 'ingreso' ? campoTexto(h, { campo: 'nombre', label: r.tipo === 'gasto' ? '¿En qué?' : '¿De qué?', valor: h.nombre }) : ''}
-                    ${r.tipo === 'gasto' && !r.pago ? opciones(h, { campo: 'categoria', label: '¿Qué tipo de gasto?', lista: D.CATEGORIAS.filter((k) => !['servicios', 'cuotas'].includes(k.id)).map((k) => ({ v: k.id, t: k.nombre, e: k.emoji })), valor: h.categoria }) : ''}
+                    ${r.tipo === 'gasto' && !r.pago ? chipsEnQue(st, h, { valor: h.enQue, mas: !!h.enQueMas, accion: 'valor', otra: false }) : ''}
+                    ${r.tipo === 'gasto' || r.tipo === 'ingreso' ? campoTexto(h, { campo: 'nombre', label: r.tipo === 'gasto' ? '¿Qué fue?' : '¿De qué?', valor: h.nombre }) : ''}
                     ${r.tipo === 'gasto' ? opciones(h, { campo: 'medio', label: '¿Con qué pagaste?', lista: medios(st), valor: h.medio }) : ''}
                     ${r.tipo === 'ingreso' ? opciones(h, { campo: 'lugar', label: '¿Dónde llegó?', lista: lugares(st), valor: h.lugar }) : ''}
                     ${campoFecha(h, 'fecha', h.fecha, { label: 'Fecha', extra: h.orig.fecha })}
@@ -4679,6 +4746,7 @@
             if (campo === 'confirmarEliminar') h.confirmarEliminar = v === 'si';
             else if (campo === 'verApartados') h.verApartados = v === 'true';
             else if (campo === 'apartado') h.apartado = v || null;
+            else if (campo === 'enQueMas') h.enQueMas = v === 'si';
             else h[campo] = v;
         },
         alCampo(h, campo, el) {
@@ -4692,7 +4760,7 @@
     };
     /** Comparación normalizada de lo original con lo actual: gobierna «Guardar cambios». */
     function hayCambiosRegistro(h) {
-        const norm = (x) => JSON.stringify({ monto: M.leerMonto(x.monto), nombre: (x.nombre || '').trim(), medio: x.medio, fecha: x.fecha, categoria: x.categoria, lugar: x.lugar, apartado: x.apartado || null });
+        const norm = (x) => JSON.stringify({ monto: M.leerMonto(x.monto), nombre: (x.nombre || '').trim(), medio: x.medio, fecha: x.fecha, categoria: x.categoria, lugar: x.lugar, apartado: x.apartado || null, enQue: x.enQue || null });
         return norm(h) !== norm(h.orig);
     }
     P.acciones.editarRegistro = (d) => {
@@ -4719,7 +4787,16 @@
                     const l = ing && ing.llegadas && ing.llegadas[r.ocurrencia];
                     if (l && !l.noLlego) l.monto = monto;
                 }
-                if (r.tipo === 'gasto') Object.assign(r, { medio: h.medio, categoria: h.categoria || r.categoria });
+                if (r.tipo === 'gasto') r.medio = h.medio;
+                // Ajuste 4 (punto 3): «¿En qué?» elige un gasto variable (lo consume), una categoría o una tuya.
+                if (r.tipo === 'gasto' && h.enQue && h.enQue !== h.orig.enQue) {
+                    const v = h.enQue.startsWith('var:') ? (s.variables || []).find((y) => y.id === h.enQue.slice(4)) : null;
+                    if (v) Object.assign(r, { variable: v.id, categoria: v.categoria });
+                    else if (h.enQue.startsWith('p:')) Object.assign(r, { propia: h.enQue.slice(2), categoria: 'otros' });
+                    else r.categoria = h.enQue;
+                    if (!v && r.variable) delete r.variable;
+                    if (!h.enQue.startsWith('p:')) delete r.propia;
+                }
                 // v2.7 (F04): corregir con qué pagaste sí cambia de qué cuenta salió (es esta anotación, no el medio).
                 if (r.tipo === 'gasto' && h.medio !== h.orig.medio) r.lugar = M.medio(s, h.medio)?.lugar || null;
                 if (r.tipo === 'ingreso') r.lugar = h.lugar;
