@@ -68,6 +68,48 @@ Versión visible en la app y en la guía: **«Prototipo v2.8.0 · 2026-10-22»**
   - **«Me llegó dinero» y el salario (C-5 reforzado).** Si eligió Salario, o el nombre se parece a un ingreso de su plan, siempre pregunta «¿Es tu [nombre] del [fecha]?», sin importar el monto ni los días. «Sí, es esa» marca «Ya llegó» de ese ingreso con el monto real, sin crear otro; «No, es otro dinero» lo anota como extra. Para lo demás sigue la regla de ±10 % y ±3 días.
   - **Mover dinero.** En Anotar, «¿A dónde?» no ofrece la cuenta de «¿De dónde?» (como ya hace el formulario). Si cambia el origen y queda igual al destino, el destino se vacía y se pide otra vez.
   - **Decisión técnica 24 (no asumir).** Al crear un gasto variable, «¿Con qué pagas normalmente?» no viene elegido; si no contesta, «Elige con qué lo pagas».
+- **Ajuste 3 «Formularios claros»: APROBADO por Victor (2026-10-22)**, al pegar el prompt «v2.8 — AJUSTE 3» (frase literal: «hagamos los cambios de fm-1 a fm-8 primero»). Las 5 pruebas de `b90f68f` pasaron («todo lo demás funciona»). La versión sigue siendo v2.8.0. Frases literales:
+  - «si ya tengo luz como gasto fijo, no debería dejarme agregarlo de nuevo»
+  - «al darle ingreso +, no debería salirme de nuevo en las opciones de "qué es?" Salario, acá debe permitir solo adicionales extraordinarios al ingreso principal»
+  - «Configurar ingreso principal como salario siempre debe de ser a través de un mismo formulario»
+  - «plan de celular no va en suscripción … Celular debe ir bajo facturas y servicios»
+  - «Las opciones abajo de ¿Cuál pago? solo deben aparecer basado en lo que selecciono arriba … y en cualquiera de esas debería permitir una opción de crear nueva categoría … y que se puedan manejar esas categorías luego desde otra opción»
+  - «si ya hay un cuchubal debe preguntar si es un adicional y asignar un alias diferente»
+  - «no debería dejarme duplicar super»
+  - «en anotar>gasté, acá deberían de salir … uso de presupuestos previamente creados en gastos variables, así no registro super 2 veces»
+  - «anotar, me llegó dinero, debe de ser el mismo formulario de ingreso esperado no?»
+  - «la palabra pago dijimos que la íbamos a cambiar»
+- Lo que se decidió con esas frases:
+  - **FM-1 · Nada duplicado** (reemplaza V2-82 «¿Es otro pago? Sí, es otro»).
+    - Al elegir o escribir algo que ya está en el plan (gasto fijo, gasto variable, ingreso, cuchubal): «Ya tienes [Luz] (el 28, ~$30)» → [Editar el que tengo] / [Es otro distinto].
+    - «Es otro distinto» pide un alias distinto, obligatorio (ej. «Luz de la casa de mamá», «Cuchubal del trabajo»).
+    - Nunca dos con el mismo nombre (sin importar mayúsculas ni tildes). Lo ya guardado no se fusiona ni cambia solo.
+  - **FM-2 · Ingreso principal en un solo lugar.**
+    - El salario o la quincena (ingreso principal) se crea y se edita solo en «Mi ingreso principal»: Primer día y Mi plan → Ingresos → Editar.
+    - «+ Ingreso» ofrece solo extras: Remesa, Aguinaldo, Quincena 25, Bono o comisión, Venta, Adelanto de salario y Otro. Sin «Salario».
+    - Sin ingreso principal, «+ Ingreso» muestra primero «Configurar mi ingreso principal».
+  - **FM-3 · «Me llegó dinero» = el mismo formulario de ingreso.**
+    - Las mismas opciones que «+ Ingreso», más «¿Cuándo llegó?» (hoy) y «¿A dónde llegó?».
+    - Arriba, si el ingreso principal está pendiente: «Es mi [nombre] del [fecha] → Ya llegó», que lo marca con el monto real, sin crear otro.
+    - Si es algo que se repite (una remesa mensual), ofrece «Agregarlo a Mi plan».
+    - Se conservan C-5 y el ajuste 2.
+  - **FM-4 · Gasto fijo: primero el grupo, luego sus opciones.**
+    - Los 4 botones grandes se quedan. «¿Cuál?» aparece solo después de elegir uno, con lo de ese grupo:
+      - Suscripción: Netflix, Disney+, Max, Prime Video, Spotify, Gimnasio, Otra.
+      - Facturas y servicios: Luz, Agua, Internet, Cable, Plan de celular, Gas (cilindro), Tasas municipales (basura), Vigilancia o cuota de colonia, Otra.
+      - Otro: Alquiler, Colegio o universidad, Cuchubal, Seguro, Ayuda a la familia, Otra.
+      - Cuota de préstamo: como hoy (crea la deuda).
+    - El plan del celular sale de Suscripción; YouTube, iCloud y Apple TV+ quedan en «Otra».
+    - Luz y agua traen marcado «El monto cambia cada mes».
+  - **FM-5 · «Otra» crea una categoría propia.**
+    - En los grupos de gasto fijo y en gastos variables: nombre + emoji (del selector que ya existe), guardada en ese grupo. Aparece en «¿Cuál?» la próxima vez.
+    - «Mis categorías» (Mi plan → menú): renombrar, cambiar emoji y archivar. No se borra una categoría con gastos; archivada no aparece al crear, y su historial sigue igual.
+    - Los datos nuevos tienen la protección de siempre (copia por versión, cero pérdidas).
+  - **FM-6 · Gastos variables:** «¿Cuál?» con Súper, Gasolina, Comida, Mercado, Transporte y Otra (FM-5). No duplica (FM-1).
+  - **FM-7 · Anotar → Gasté:** «¿En qué?» muestra primero tus gastos variables con lo que queda («Súper · te quedan $90.00»), después las categorías y «Otra». Elegir un gasto variable lo consume, como hoy «súper 40».
+  - **FM-8 · La palabra «pago»:**
+    - Como sustantivo, solo para deudas. En gastos fijos: «Otro pago» → «Otro», «¿Cuál pago?» → «¿Cuál?», «¿Qué pago?» → «¿Qué es?».
+    - En toda la app: chips, títulos, avisos, ayuda y entrenamiento. Los verbos se quedan («¿Cuánto pagas?», «¿Con qué lo pagas?»).
 
 ### E1 — el cálculo y los datos
 
@@ -151,6 +193,14 @@ Versión visible en la app y en la guía: **«Prototipo v2.8.0 · 2026-10-22»**
 | Ajuste 2 · «Pagué una deuda» | Sí | `invariantes` V16, QUÉ DEBO PROBAR 3 |
 | Ajuste 2 · «Me llegó dinero» y el salario (C-5 reforzado) | Sí | `invariantes` V8 y V13, `v265` B2, `qa-v261` C-09, `recorrer-v2`, QUÉ DEBO PROBAR 4 |
 | Ajuste 2 · mover dinero | Sí | `invariantes` V14, QUÉ DEBO PROBAR 5 |
+| Ajuste 3 · FM-1 nada duplicado | Sí | `invariantes` V17, `v265` C1 a C4, QUÉ DEBO PROBAR 1 y 6 |
+| Ajuste 3 · FM-2 ingreso principal en un solo lugar | Sí | `invariantes` V18, `v241`, QUÉ DEBO PROBAR 2 |
+| Ajuste 3 · FM-3 «Me llegó dinero» = el formulario de ingreso | Sí | `invariantes` V19, `formularios-v265`, QUÉ DEBO PROBAR 3 |
+| Ajuste 3 · FM-4 primero el grupo | Sí | `v263`, `v262`, QUÉ DEBO PROBAR 4 |
+| Ajuste 3 · FM-5 categorías propias y «Mis categorías» | Sí | `invariantes` V20, QUÉ DEBO PROBAR 5 |
+| Ajuste 3 · FM-6 gastos variables | Sí | `invariantes` V17, QUÉ DEBO PROBAR 6 |
+| Ajuste 3 · FM-7 «Gasté» con tus gastos variables | Sí | `invariantes` V21, `formularios-v265`, QUÉ DEBO PROBAR 7 |
+| Ajuste 3 · FM-8 la palabra «pago» | Sí | `palabras-v28`, `invariantes` V9, `v266`, QUÉ DEBO PROBAR 8 |
 
 ### Pruebas de E2 y al terminar
 
@@ -214,6 +264,40 @@ Versión visible en la app y en la guía: **«Prototipo v2.8.0 · 2026-10-22»**
   - «No, es otro dinero» $300: $763;
   - mover $20 de Banco Agrícola a Efectivo: $763.
 
+### Ajuste 3 «Formularios claros» (2026-10-22)
+
+- **Lo que cambió** (FM-1 a FM-8 de arriba, APROBADO por Victor 2026-10-22). La versión sigue siendo v2.8.0.
+  - **FM-1:** al elegir o escribir algo que ya está en tu plan: «Ya tienes «Luz» (el 28, ~$30)» → «Editar el que tengo» / «Es otro distinto» («¿Cómo le llamas a este?», obligatorio y distinto). Vale para gastos fijos, gastos variables, ingresos y el cuchubal.
+  - **FM-2:** «+ Ingreso» ofrece solo extras. «Mi ingreso principal» se abre al editar tu quincena o con «Configurar mi ingreso principal» si no tienes uno.
+  - **FM-3:** «Me llegó dinero» tiene las opciones de «+ Ingreso» (y «Me prestaron»), «¿A dónde llegó?» y «¿Cuándo llegó?». Arriba, «Es mi quincena del 30 → Ya llegó». Con Remesa, «Llega cada mes: agregarlo a Mi plan».
+  - **FM-4 y FM-6:** «¿Cuál?» sale después del grupo, con sus listas nuevas y «Otra».
+  - **FM-5:** «Otra» crea una categoría tuya con nombre e ícono. «Mis categorías» está al final de Mi plan: renombrar, ícono y archivar.
+  - **FM-7:** «Gasté» → «¿En qué?» empieza con tus gastos variables y lo que les queda.
+  - **FM-8:** «Otro», «¿Cuál?» y «¿Qué es?»; «¿Es tu Luz del 12?»; «Lo que ya venció»; «Listo, revisamos lo de antes».
+- **Pruebas** (una a la vez, con la memoria primero: entre 4.0 y 4.7 GB libres; una vez esperó a tener 4 GB):
+  - `actualizar --ref=c640e4e` (48 comprobaciones) y `--ref=d702de0` (45): 0 fallos;
+  - `invariantes`: **40 de 40**. Las filas nuevas V17 a V21 dan 0 de 5 sobre `b90f68f`;
+  - `palabras-v28`: 605 textos, 0. Ahora tampoco deja «Otro pago», «¿Cuál pago?» ni «¿Qué pago?»; sobre `b90f68f` encuentra 7;
+  - las 37 por archivo, en verde: `novedades`, `v25` en tres partes, `v266` y `v267` en dos;
+  - **ninguna baja frente a la línea base**;
+  - las 6 capturas a 390×844, revisadas como imágenes: gasto fijo con un grupo, «Otra» creando categoría, «Mis categorías», «Ya tienes «Luz»…», «+ Ingreso» y «Me llegó dinero» con el botón de la quincena.
+- **Pruebas que esperaban lo de antes**, actualizadas citando su FM (no se borró ninguna):
+  - FM-1: `v265` C1, C3 y C4;
+  - FM-2: `v241`, `v231` y `aceptacion-v23` (el salario de la pareja, como «Otro»);
+  - FM-3: `v265` B2 y `formularios-v265`;
+  - FM-4: `v262`, `v263`, `v231` y `aceptacion-v23` (el cuchubal, desde «Otro»);
+  - FM-7: `formularios-v265`;
+  - FM-8: `invariantes` V9, `v265` A3, `v266` F1 y `v267-editar` T6 y T7.
+- **QUÉ DEBO PROBAR, verificado antes de escribirlo.** Un guion repitió tu preparación: la v2.7, a1e9341, 888226e y las 5 del ajuste 2 en b90f68f. Después hizo las 8 nuevas con el código final, el 22 y el 26 de octubre, sin fallos:
+  - $763 → Luz de la casa de mamá $20 el 29: $743;
+  - «+ Ingreso» y «Mi ingreso principal»: $743;
+  - Remesa $150, agregada a Mi plan: $893 y $893;
+  - los grupos: $893;
+  - Clases de inglés $25 y archivarla: $868 y $868;
+  - «Ya tienes «Súper»»: $868;
+  - «Gasté» $20 en Súper: $868;
+  - «Otro» y «¿Cuál?»: $868.
+
 ### Decisiones técnicas — REVISAR (v2.8)
 
 1. ~~**Ahorros de antes: en qué cuenta.** En el banco con más dinero (si no hay banco, en la cuenta con más). Solo se ve como «dentro de Banco Agrícola»; se cambia en el ahorro.~~ **REEMPLAZADA (2026-10-22) por la pregunta de una vez «Tu ahorro [nombre], ¿en qué cuenta está?» («no asumir», APROBADO por Victor).** Ese banco solo se usa mientras no contestes. *(Se ve: QUÉ DEBO PROBAR.)*
@@ -247,6 +331,22 @@ Versión visible en la app y en la guía: **«Prototipo v2.8.0 · 2026-10-22»**
 29. **La pregunta de una vez** «¿«Súper» cambia cada quincena?» ahora dice «¿«Súper» lo vas gastando en varias compras?» (los mismos botones).
 30. **«Pagué una deuda»** muestra todas tus deudas, aunque no venzan pronto; la tarjeta, por su alias. «Es nueva» la anota como un gasto con «¿Qué deuda pagaste?», sin tipo de gasto. El formulario «Mover dinero» ya no ofrecía la misma cuenta: no cambió.
 31. **«Pasar a gasto fijo»** desde un gasto variable abre el formulario de gasto fijo con su nombre, su tope y su medio; falta su día. El variable deja de salir en tu plan desde hoy (no se borra).
+32. **FM-1 (ajuste 3):**
+    - El aviso sale al elegir o al escribir. Uno muy parecido (la misma categoría, el día o el monto, como hacía V2-82) se pregunta al guardar, con los mismos botones.
+    - Al editar, solo se bloquea si cambias el nombre por uno que ya está. Lo guardado antes con nombre repetido se puede seguir editando.
+33. **FM-2:** el salario de otra persona (la pareja) va como «Otro» con «Cada quincena». Ya no hay «Es mi ingreso principal» en los extras.
+34. **FM-3:**
+    - El botón ofrece la que falta: una que ya pasó sin marcar o la próxima. Si la próxima ya llegó, no sale.
+    - «Agregarlo a Mi plan» sale con Remesa, si no tienes otra en tu plan. Abre su formulario ya lleno, y lo de hoy no se cuenta otra vez.
+    - «Me prestaron» sigue en «¿Qué es?» (D-9).
+35. **FM-5:**
+    - Una categoría tuya es una opción de «¿Cuál?» con su nombre y su ícono. Lo que guardas con ella usa, para Mes, la categoría de su grupo.
+    - Renombrarla o archivarla no cambia lo ya guardado.
+    - «Mis categorías» está al final de Mi plan, porque Mi plan no tiene menú.
+    - El ícono se elige entre 32 dibujos de emoji de la app: no había un selector de emoji.
+36. **FM-7:** «¿En qué?» es la lista y el nombre se escribe en «¿Qué fue?». En Anotar, «Otra» crea la categoría en «Gastos variables».
+37. **FM-8:** «pago» se queda en deudas y tarjetas, en «Ya lo pagué» y en los nombres ya guardados (por ejemplo, «Pago de la semana»).
+38. **Primer día:** «Facturas y servicios» y «Casa y familia» usan los grupos de FM-4, con sus opciones nuevas.
 
 ### PENDIENTE (lo vi y no lo toqué)
 
