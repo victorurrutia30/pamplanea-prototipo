@@ -50,6 +50,7 @@ Versión visible en la app y en la guía: **«Prototipo v2.7.0 · 2026-10-21»**
 - **P-1: para la v2.8 (no se implementa ahora).** Frase literal de Victor: «creo que cuando anotas un pago, tiene que ser para un pago o gasto registrado, a menos que sea un pago nuevo». Anotar un pago se conecta con algo del plan (gasto fijo, deuda o préstamo, o tarjeta): «¿Es tu pago de [nombre]?» o «¿De cuál de tus préstamos?», con la opción «Es nuevo».
 - **P-2: NO APLICA.** El Primer día ya pregunta si ya pagaste lo que vence ese día (Victor lo confirmó).
 - **F09/D-5: para la v2.8.** La tarjeta con corte el 5 y pago el 25 no aparece el 25 de este mes; se arreglará preguntando «¿Qué día vence tu próximo pago?».
+- **Primer día como cuadre (P-3): APROBADO por Victor (2026-10-22) como está para la v2.7**, frase literal: «Decisión técnica «Primer día como cuadre»: APROBADA como está para la v2.7. Para la v2.8: ese día toma «después» y lo muestra con «¿Fue antes? Cambiar», en vez de preguntar cada vez.» En la v2.8, el día del Primer día se toma «Después» y se muestra con «¿Fue antes? Cambiar» (no se implementa ahora).
 
 **Orden obligatorio:** A (proteger sus datos) → B (arreglos del dinero) → C (escribir montos y anotar) → D (cuadrito de novedades). Sin la Parte D no se publica. Las cuatro partes están hechas, cada una con su commit.
 
@@ -184,7 +185,7 @@ Versión visible en la app y en la guía: **«Prototipo v2.7.0 · 2026-10-21»**
 11. **Recuperar una copia de una versión anterior** se trata como una actualización: se guarda con la versión que la hizo y, si es de antes de la v2.7, sale el cuadrito una vez.
 12. **El botón atrás del teléfono** cierra el cuadrito de novedades y cuenta como visto (igual que Escape o «¡Entendido!»).
 13. ~~**`?teclado=1`**~~ **REEMPLAZADA por A** (se quitó con el teclado propio).
-14. **P-3 y el Primer día:** lo que dijiste en tu Primer día («¿Cuánto tienes ahora?») cuenta como tu primer cuadre. Así, lo de antes de empezar dice que ya está en lo que contaste, y lo del mismo día pregunta antes o después. (Ver la pendiente 4.)
+14. **P-3 y el Primer día:** lo que dijiste en tu Primer día («¿Cuánto tienes ahora?») cuenta como tu primer cuadre. Así, lo de antes de empezar dice que ya está en lo que contaste, y lo del mismo día pregunta antes o después. **APROBADA por Victor (2026-10-22) para la v2.7**; en la v2.8 ese día toma «Después» con «¿Fue antes? Cambiar».
 15. **P-3, el día:** si contaste hoy, la nota dice «…tu Efectivo hoy»; si no, «…el 18 de octubre».
 16. **P-3, dónde:** en Anotar (lo que escribes y sus formularios «Gasto» y «Recibí»). «Pagado» de un pago conserva su nota de antes («Como cuadraste el X, este pago ya estaba en tu saldo»); «Ya llegó» de un ingreso esperado y corregir un movimiento no preguntan.
 17. **P-3, «Fue después de contar»:** queda guardado con la anotación (la cuenta y ese cuadre). Si después cuadras otra vez, cuenta como siempre: antes de ese cuadre nuevo.
@@ -194,7 +195,7 @@ Versión visible en la app y en la guía: **«Prototipo v2.7.0 · 2026-10-21»**
 1. **«el 22» que ya pasó: ¿preguntar o tomar el de este mes?** Hoy pregunta (lo pide el brief). *Recomendación:* dejarlo. *Tradeoff:* quien anota tarde lo de la semana toca un botón más.
 2. **Lo detallado después de un «Listo» de Reparte** cuenta como explicación de ese cuadre, aunque la persona no haya contado su dinero. *Recomendación:* dejarlo (Mes y el saldo cuadran). *Tradeoff:* en Mes puede verse «entró sin detalle» si el gasto era de antes.
 3. **Las copias internas** se guardan una por versión; con muchas versiones ocupan espacio. *Recomendación:* dejarlo así hasta que falte espacio (ya se limpian solas). *Tradeoff:* ninguno visible.
-4. **P-3 el día del Primer día:** como el Primer día cuenta como cuadre, ese día cada gasto o ingreso de esa cuenta pregunta «¿Fue antes o después de contar tu dinero?». *Recomendación:* dejarlo así (no se asume, como pide P-3). *Tradeoff:* el primer día, un toque más por cada anotación; la alternativa es no preguntar el día del Primer día y tomarlo como «Después».
+4. ~~**P-3 el día del Primer día**~~ **Resuelta: APROBADA por Victor (2026-10-22) como está para la v2.7.** En la v2.8, ese día toma «Después» y lo muestra con «¿Fue antes? Cambiar», en vez de preguntar cada vez.
 
 ### Limitaciones
 
