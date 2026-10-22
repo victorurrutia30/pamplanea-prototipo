@@ -589,7 +589,13 @@
             ${P.almacen.disponible ? '' : '<p class="fila-s">Este navegador no deja guardar: lo que hagas se pierde al cerrar.</p>'}
             <a class="link" href="index.html?guia=1">${icon('eye', 'ico-s')}Ver la guía completa (para computadora)</a></section>`;
         const paraVictor = `<details class="ay-card ay-victor"${p.estado === 'activa' || p.estado === 'fin' ? ' open' : ''}><summary class="ay-h3">${icon('users', 'ico-s')}Prueba guiada: sets A y B</summary>${prueba}<button type="button" class="ay-moderador" data-a="ayIr" data-v="moderador" data-fk="ay-moderador">Modo moderador</button></details>`;
-        return `<h3 class="campo-l campo-l--sec ay-v-sec" id="ay-v-t">${icon('users', 'ico-xs')}Herramientas de Victor (enlace ?victor=1)</h3>${actual}${notas}${lista}${datosHtml}${paraVictor}`;
+        // v2.8 (D-11, APROBADO por Victor 2026-10-21): la prueba familiar usa preguntas de comprensión, no «terminó el tutorial».
+        const comprension = `<details class="ay-card ay-victor" id="ay-d11"><summary class="ay-h3">${icon('circle-question-mark', 'ico-s')}Preguntas de comprensión (prueba familiar)</summary><p class="fila-s">Pregúntalas con la app abierta en Hoy. Lo que esperas oír, en pocas palabras:</p><ol class="mini-lista">${[
+            ['Si hoy gastas $20, ¿qué cambia?', 'Mi libre baja $20 (y lo que tengo en esa cuenta).'],
+            ['Si pagas $50 de una cuota de $100, ¿cuánto falta?', 'Faltan $50: quedan pendientes en mi plan.'],
+            ['Si gastas $20 en el súper, ¿baja tu libre?', 'No: el súper ya estaba en mi plan. Me quedan $20 menos de su tope.'],
+        ].map(([q, r]) => `<li><strong>${esc(q)}</strong> <span class="fila-s">${esc(r)}</span></li>`).join('')}</ol></details>`;
+        return `<h3 class="campo-l campo-l--sec ay-v-sec" id="ay-v-t">${icon('users', 'ico-xs')}Herramientas de Victor (enlace ?victor=1)</h3>${actual}${comprension}${notas}${lista}${datosHtml}${paraVictor}`;
     }
     function vistaApariencia() {
         const temas = [['serena-claro', 'Serena claro'], ['serena-oscuro', 'Serena oscuro'], ['ancla-claro', 'Ancla claro'], ['ancla-oscuro', 'Ancla oscuro']];

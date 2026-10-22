@@ -95,7 +95,7 @@
         if (top.paso === 2) {
             const falta = document.querySelector('[data-fk^="adp-pagado-"][aria-pressed="false"]');
             if (falta && document.querySelector('[data-fk="ad-todos"]')) return tocar('[data-fk="ad-todos"]', 'Ya pagaste todo: toca «Marcar todos como pagados».');
-            if (falta) return tocar(`[data-fk="${falta.dataset.fk}"]`, 'Ya lo pagaste: toca «Pagado».');
+            if (falta) return tocar(`[data-fk="${falta.dataset.fk}"]`, 'Ya lo pagaste: toca «Ya lo pagué».');
             return tocar('[data-fk="ad-sig"]', 'Toca «Siguiente».');
         }
         if (top.paso === 3) {
@@ -167,7 +167,7 @@
         ahorrar: (monto) => () => `Ahorras $${monto} en «Emergencias»: tu libre baja $${monto}.`,
         usar: () => {
             const a = M.apartado(P.st, 'laptop');
-            return a ? `Juntaste ${corto(a.monto)} para la laptop. Si la compras y tocas «Usar», tu libre no cambia.` : null;
+            return a ? `Juntaste ${corto(a.monto)} para la laptop. Si la compras y tocas «Pagué algo con él», tu libre no cambia.` : null;
         },
         tarjeta: () => {
             const k = P.calc();
@@ -178,7 +178,7 @@
         compraTarjeta: (cosa, frase) => () => `Escribes «${frase}»: tu libre de ${libreHoy()} baja $30 hoy.`,
         deudas: () => {
             const p = P.st.pagos.find((x) => x.activo !== false && x.deuda && x.frecuencia === 'mensual');
-            return p ? `«${p.nombre}»: ${corto(p.monto)} al mes. La ves aquí y en Pagos cada mes.` : null;
+            return p ? `«${p.nombre}»: ${corto(p.monto)} al mes. La ves aquí y en Mi plan cada mes.` : null;
         },
         // V2-77: lo disponible de la tarjeta, con su límite (los dos se ven en su ficha).
         disponible: () => {
@@ -320,14 +320,14 @@
             { que: 'Aquí ves de dónde sale', g: 'deDondeSale', ejemplo: ej.deDondeSale, antes: abrirDesglose, sel: '.hoja .desglose' },
             pasoAnotar('pupusas 6', 'anotaste $6 de pupusas', ej.anotar('pupusas', 'pupusas 6', 6), [6]),
             {
-                que: 'Estos son tus próximos pagos',
+                que: 'Esto es lo que viene',
                 g: 'pagado',
                 ejemplo: ej.pagado,
                 antes: irA('hoy'),
                 sel: 'section[aria-labelledby="h-pagos"]',
                 hazlo: {
                     claves: ['guardado:pagado'],
-                    senal: () => (enPantalla('hoy') ? tocar('[data-fk^="pagado-p-telefono-"]', 'Ya pagaste el teléfono: toca «Pagado» junto a él.') : tocar('[data-fk="nav-hoy"]', 'Toca «Hoy» abajo.')),
+                    senal: () => (enPantalla('hoy') ? tocar('[data-fk^="pagado-p-telefono-"]', 'Ya pagaste el teléfono: toca «Ya lo pagué» junto a él.') : tocar('[data-fk="nav-hoy"]', 'Toca «Hoy» abajo.')),
                     foco: '.portada',
                     pausa: (a, d) => ({ titulo: 'Mira tu libre', filas: [filaLibre(a, d), { l: 'Tienes', a: a.tienes, d: d.tienes }], texto: d.libre === a.libre ? `Tu libre no cambió: el teléfono ya estaba restado. Lo que tienes bajó ${corto(a.tienes - d.tienes)}.` : cambioLibre(a, d, 'marcaste el teléfono') }),
                 },
@@ -345,8 +345,9 @@
         persona: 'ana',
         cargar: preparar(() => ana(), 'fijo:proxima'),
         pasos: [
-            { que: 'Esta es tu próxima quincena', g: 'proxima', ejemplo: ej.proxima, antes: irA('hoy'), sel: '.proy-w' },
-            { que: ej.aproxQue, g: 'aprox', ejemplo: ej.aprox, antes: irA('hoy'), sel: '.proy-w' },
+            // v2.8 (C-8): cómo quedas la próxima quincena está arriba de Mi plan.
+            { que: 'Esta es tu próxima quincena', g: 'proxima', ejemplo: ej.proxima, antes: irA('pagos'), sel: '.proy-w' },
+            { que: ej.aproxQue, g: 'aprox', ejemplo: ej.aprox, antes: irA('pagos'), sel: '.proy-w' },
             {
                 que: 'Aquí pasas lo que te sobra',
                 g: 'pasar',
@@ -384,10 +385,10 @@
                     const h = P.ui.hoja;
                     if (M.leerMonto(h.monto) !== monto * 100) return escribir('#f-monto', String(monto), `Escribe ${monto} en «¿Cuánto quieres ahorrar?».`);
                     if (h.apartado !== 'emergencias') return tocar('[data-fk="op-apartado-emergencias"]', 'Elige «Emergencias».');
-                    return tocar('[data-fk="hoja-ok"]', 'Toca «Ahorrar».');
+                    return tocar('[data-fk="hoja-ok"]', 'Toca «Guardar».');
                 }
                 const top = arriba();
-                if (top && top.tipo === 'ahorros') return tocar('[data-fk="md-apartar"]', 'Toca «Ahorrar».');
+                if (top && top.tipo === 'ahorros') return tocar('[data-fk="md-apartar"]', 'Toca «Guardé en un ahorro».');
                 return enPantalla('midinero') ? tocar('[data-fk="md-ahorros"]', 'Toca «Ahorros».') : tocar('[data-fk="nav-midinero"]', 'Toca «Mi dinero» abajo.');
             },
             foco: '#pantalla section.total',
@@ -501,7 +502,7 @@
                 sel: '[data-fk="nav-anotar"]',
                 hazlo: { claves: ['guardado:gasto'], senal: senalAnotar('queso 12'), foco: '.portada', pausa: pausaLibre('Mira tu libre', () => 'anotaste $12 de queso') },
             },
-            { que: 'Estos son tus próximos pagos', g: 'loQueViene', ejemplo: ej.loQueViene, antes: irA('hoy'), sel: 'section[aria-labelledby="h-pagos"]' },
+            { que: 'Esto es lo que viene', g: 'loQueViene', ejemplo: ej.loQueViene, antes: irA('hoy'), sel: 'section[aria-labelledby="h-pagos"]' },
             {
                 que: 'Este aviso te ayuda con el alquiler',
                 g: 'guardar',
@@ -557,7 +558,7 @@
         persona: 'rosa',
         cargar: preparar(() => rosa(), 'variable:proximoMes'),
         pasos: [
-            { que: 'Así quedas el próximo mes', g: 'proxima', ejemplo: ej.proxima, antes: irA('hoy'), sel: '.proy-w' },
+            { que: 'Así quedas el próximo mes', g: 'proxima', ejemplo: ej.proxima, antes: irA('pagos'), sel: '.proy-w' },
             { que: 'Esta es la remesa que esperas', g: 'remesa', ejemplo: ej.remesa, antes: abrirPagos, sel: '[data-fk^="i-remesa-"]' },
             {
                 que: 'Cuando llegue, dilo aquí',
@@ -572,7 +573,7 @@
                         if (top && top.tipo === 'reparte') return tocar('[data-fk="rep-listo"]', 'Toca «Listo».');
                         if (hoja('ingresoLlego')) return tocar('[data-fk="ing-ok"]', 'Deja lo que dice y toca «Siguiente».');
                         if (top && top.tipo === 'ingreso') return tocar('[data-fk="ing-llego"]', 'Toca «Ya llegó».');
-                        return enPantalla('pagos') ? tocar('[data-fk^="i-remesa-"]', 'Toca «Remesa de Josué».') : tocar('[data-fk="nav-pagos"]', 'Toca «Pagos» abajo.');
+                        return enPantalla('pagos') ? tocar('[data-fk^="i-remesa-"]', 'Toca «Remesa de Josué».') : tocar('[data-fk="nav-pagos"]', 'Toca «Mi plan» abajo.');
                     },
                     foco: '.portada',
                     pausa: pausaLibre('Llegó la remesa', (a, d) => `llegó la remesa de ${corto(d.libre - a.libre)}`),
