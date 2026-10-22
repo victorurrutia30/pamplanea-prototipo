@@ -79,7 +79,9 @@
         if (P.deshacer.length >= 30) P.deshacer.shift();
         const resultado = fn(P.st);
         P.deshacer.push(antes);
-        const texto = typeof aviso === 'function' ? aviso(resultado) : aviso;
+        // v2.8 (D-9, U05): si con esto terminaste de pagar una cuota, el aviso lo dice (y ya no sale en tu plan).
+        const fin = P.tomarFinCuota ? P.tomarFinCuota() : null;
+        const texto = fin ? `¡Terminaste de pagar ${fin}! Ya no sale en tu plan.` : typeof aviso === 'function' ? aviso(resultado) : aviso;
         if (texto) P.avisar(texto, { deshacer, cambiar: typeof cambiar === 'function' ? cambiar(resultado) : cambiar });
         render();
         for (const c of claves) P.emitir(c);
@@ -361,9 +363,11 @@
             sub = [fecha, M.lugar(st, r.lugar)?.nombre].filter(Boolean).join(' · ');
             monto = montoHtml(r.monto, 'ingreso');
         } else if (r.tipo === 'mover') {
-            emoji = '🔁';
+            emoji = r.ahorro ? '🐷' : '🔁';
             titulo = r.nombre || 'Mover dinero';
-            sub = [fecha, `${M.lugar(st, r.de)?.nombre} → ${M.lugar(st, r.a)?.nombre}`].filter(Boolean).join(' · ');
+            // v2.8 (C-1): lo que guardaste en (o usaste de) un ahorro aparte: sale de (o llega a) una cuenta.
+            const nombreAhorro = r.ahorro ? M.apartado(st, r.ahorro)?.nombre || 'tu ahorro' : null;
+            sub = [fecha, r.ahorro ? (r.de ? `${M.lugar(st, r.de)?.nombre} → ${nombreAhorro}` : `${nombreAhorro} → ${M.lugar(st, r.a)?.nombre}`) : `${M.lugar(st, r.de)?.nombre} → ${M.lugar(st, r.a)?.nombre}`].filter(Boolean).join(' · ');
             monto = montoHtml(r.monto, 'neutro');
         } else if (r.tipo === 'pagoTarjeta') {
             emoji = '🔁';
@@ -382,7 +386,8 @@
             sub = [fecha, r.motivo === 'intereses' ? 'intereses o cargos' : r.motivo === 'compras' ? 'compras que no anotaste' : 'diferencia del estado de cuenta'].filter(Boolean).join(' · ');
             monto = montoHtml(r.monto, 'gasto');
         }
-        const editable = ['gasto', 'ingreso', 'mover', 'pagoTarjeta'].includes(r.tipo);
+        // v2.8 (C-1): lo de un ahorro aparte se corrige desde ese ahorro, no aquí.
+        const editable = ['gasto', 'ingreso', 'mover', 'pagoTarjeta'].includes(r.tipo) && !r.ahorro;
         const inner = `${caja(emoji)}<span class="fila-txt"><span class="fila-t">${esc(titulo)}</span><span class="fila-s">${esc(sub)}</span></span><span class="fila-m">${monto}</span>`;
         return `<li class="fila">${editable ? `<button type="button" class="fila-main" data-a="editarRegistro" data-id="${r.id}" data-fk="reg-${r.id}" aria-label="${esc(titulo)}, ${esc(sub)}. Corregir">${inner}</button>` : `<div class="fila-main fila-main--quieta">${inner}</div>`}</li>`;
     }

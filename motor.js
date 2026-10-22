@@ -125,6 +125,12 @@
     const apartado = (st, id) => st.apartados.find((a) => a.id === id);
     const categoria = (id) => D.CATEGORIAS.find((k) => k.id === id) || D.INGRESO_CATEGORIAS.find((k) => k.id === id) || D.CATEGORIAS.at(-1);
     const principal = (st) => st.ingresos.find((i) => i.principal && i.activo !== false);
+    /** v2.8 (C-7, C-10): un gasto fijo que se cobra solo en una tarjeta de crédito (Netflix en tu Visa): la tarjeta, o null. */
+    const tarjetaDePago = (st, p) => {
+        const m = p && medio(st, p.medio);
+        return m && m.tarjeta ? tarjeta(st, m.tarjeta) || null : null;
+    };
+    const pagoEnTarjeta = (st, p) => !!tarjetaDePago(st, p);
     const sinVS = (s) => String(s).replace(VS16, '');
 
     // ------------------------------------------------------------------ saldo con la regla del cuadre
@@ -178,7 +184,8 @@
      * está dentro de lo que contaste) o «mismoDia» (hay que preguntar si fue antes o después de contar). Si no, null.
      */
     function cuadreAnotar(st, d) {
-        if (!d || (d.tipo !== 'gasto' && d.tipo !== 'ingreso')) return null;
+        // v2.8: «Me prestaron» también es dinero que entra a una cuenta.
+        if (!d || (d.tipo !== 'gasto' && d.tipo !== 'ingreso' && d.tipo !== 'prestamo')) return null;
         const fecha = d.fecha || st.hoy;
         if (fecha > st.hoy) return null;
         const lugarId = d.tipo === 'gasto' ? medio(st, d.medio)?.lugar || null : d.lugar;
@@ -211,7 +218,22 @@
     /** v2.7 (D-8): el «sin detalle» de un cuadre, ya descontado lo que se explicó después (Mes, la ficha del lugar). */
     const sinDetalle = (st, r) => sinDetalleDe(r, explicadoPorCuadre(st));
     const tienes = (st) => suma(st.lugares, (l) => saldoLugar(st, l.id));
-    const apartadoTotal = (st) => suma(st.apartados, (a) => a.monto);
+    /**
+     * v2.8 (C-1): ¿dónde está un ahorro? `donde: { lugar }` (dentro de esa cuenta: se resta de Libre) o `donde: 'aparte'`
+     * (fuera de tus cuentas: solo se registra). Los de antes de la v2.8 no lo dicen: estaban dentro de tus cuentas (ya se
+     * restaban), así que cuentan como dentro.
+     */
+    const ahorroAparte = (a) => !!a && a.donde === 'aparte';
+    const apartadoTotal = (st) => suma(st.apartados.filter((a) => !ahorroAparte(a)), (a) => a.monto);
+    const ahorrosAparte = (st) => suma(st.apartados.filter(ahorroAparte), (a) => a.monto);
+    /** v2.8 (C-1): la cuenta de un ahorro de antes (o nuevo) que no la dice: el banco con más dinero; si no hay banco, la cuenta con más. */
+    function cuentaAhorros(st) {
+        const conSaldo = st.lugares.map((l) => ({ l, s: saldoLugar(st, l.id) }));
+        const orden = (lista) => lista.sort((a, b) => b.s - a.s)[0]?.l || null;
+        return (orden(conSaldo.filter((x) => x.l.tipo === 'banco')) || orden(conSaldo) || null)?.id || null;
+    }
+    /** v2.8 (C-1): la cuenta donde está un ahorro «dentro» (la que dijo la persona, si sigue existiendo; si no, la de ahorros). */
+    const lugarAhorro = (st, a) => (ahorroAparte(a) ? null : a && a.donde && a.donde.lugar && lugar(st, a.donde.lugar) ? a.donde.lugar : cuentaAhorros(st));
     /** El último cuadre o anotación: para «Pongámonos al día». */
     function ultimaActividad(st) {
         return st.registros.reduce((f, r) => (r.fecha > f ? r.fecha : f), '2000-01-01');
@@ -413,7 +435,31 @@
         const seq = m ? +m[1] : Math.max(0, ...st.registros.filter((r) => r.primero && r.fecha === fecha).map((r) => r.seq || 0));
         return { fecha, seq };
     }
-    function tarjetaInfo(st, t, hz = null, { comoAntes = false } = {}) {
+    /** v2.8 (D-5): meses del corte al vencimiento de una tarjeta (0 = el mismo mes; 1 = el siguiente, lo de antes). */
+    const desfaseDe = (t) => (t && (t.desfase === 0 || t.desfase === 1) ? t.desfase : 1);
+    /**
+     * v2.8 (D-5): el vencimiento que sigue a un corte: el día de pago `desfase` meses después (0: el mismo mes).
+     * Sin corte (V2-54): el próximo día de pago.
+     */
+    function venceDeCorte(t, corteFecha, base) {
+        if (!corteFecha) return proximoDia(base, t.pagoDia);
+        const [y, m] = partes(corteFecha);
+        return fechaDe(...mesMas(y, m, desfaseDe(t)), t.pagoDia);
+    }
+    /**
+     * v2.8 (D-5, F09): con la fecha que dijo la persona («¿Qué día vence tu próximo pago?») y su día de corte, cuántos meses
+     * hay del corte que le toca a ese pago: el último corte antes de esa fecha (0 si es del mismo mes).
+     */
+    function desfaseDesde(vence, corte) {
+        if (!corte || !vence) return 1;
+        const c = ultimoDia(sumarDias(vence, -1), corte);
+        const [vy, vm] = partes(vence);
+        const [cy, cm] = partes(c);
+        return Math.min(1, Math.max(0, vy * 12 + vm - (cy * 12 + cm)));
+    }
+    function tarjetaInfo(st, t, hz = null, opts = {}) {
+        const comoAntes = !!opts.comoAntes;
+        if (comoAntes) opts = { ...opts, antes27: true };
         const ult = t.estados[t.estados.length - 1];
         const regs = st.registros;
         const pagos = regs.filter((r) => r.tipo === 'pagoTarjeta' && r.tarjeta === t.id && despues(r, marcaEstado(ult, comoAntes)));
@@ -425,12 +471,18 @@
         const conSaldo = !!ult.inicial && t.debeInicial !== null && t.debeInicial !== undefined;
         const punto = conSaldo && !comoAntes ? puntoSaldo(st, t) : null;
         const compras = regs.filter((r) => r.tipo === 'gasto' && medio(st, r.medio)?.tarjeta === t.id && r.fecha > ult.corte && (!punto || despues(r, punto)));
+        // v2.8 (C-7): un cobro automático con esta tarjeta (Netflix) va dentro del pago de la tarjeta: sube lo que debes, pero
+        // no baja tu libre aparte (ni antes ni al cobrarse). `antes27`: como la v2.7.
+        const enPago = (r) => !opts.antes27 && !!r.pago && pagoEnTarjeta(st, pago(st, r.pago));
+        const anotadoLibre = (lista) => suma(lista.filter((r) => !enPago(r)), (r) => r.monto);
         // V2-54: la tarjeta del primer día no tiene día de corte hasta su primer estado de cuenta.
         const sinCorte = !t.corte;
         const [cy, cm] = partes(ult.corte);
         const [ny, nm] = mesMas(cy, cm, 1);
         const proxCorte = sinCorte ? null : fechaDe(ny, nm, t.corte);
-        const [vy, vm] = sinCorte ? mesMas(...partes(ult.vence).slice(0, 2), 1) : mesMas(ny, nm, 1);
+        // v2.8 (D-5, F09): cuántos meses hay del corte al pago, según lo que dijo la persona («¿Qué día vence tu próximo
+        // pago?»): corte el 5 y pago el 25 es el mismo mes (0). Las tarjetas de antes no lo dicen: el mes siguiente (1).
+        const [vy, vm] = sinCorte ? mesMas(...partes(ult.vence).slice(0, 2), 1) : mesMas(ny, nm, desfaseDe(t));
         // Una tarjeta recién agregada espera su primer estado de cuenta: el del corte que ya pasó.
         // V2-43 (corrección v2.3.1): una tarjeta agregada después de empezar no muestra un pago de antes de que
         // empezaras (ni de antes de agregarla): espera su siguiente corte.
@@ -439,11 +491,11 @@
         // si dijo «No, todavía lo debo», se cuenta aunque sea de antes de agregarla.
         const siguiente = ult.inicial && !sinCorte && (ult.antes === 'pagado' || (ult.vence < desdeT && ult.antes !== 'debe'));
         const pendiente = siguiente
-            ? { corte: proxCorte, vence: fechaDe(vy, vm, t.pagoDia), anotado: suma(compras.filter((r) => r.fecha <= proxCorte), (r) => r.monto), siguiente: true }
+            ? { corte: proxCorte, vence: fechaDe(vy, vm, t.pagoDia), anotado: suma(compras.filter((r) => r.fecha <= proxCorte), (r) => r.monto), anotadoLibre: anotadoLibre(compras.filter((r) => r.fecha <= proxCorte)), siguiente: true }
             : ult.inicial
             ? { corte: sinCorte ? null : ult.corte, vence: sinCorte && ult.antes === 'pagado' ? fechaDe(vy, vm, t.pagoDia) : ult.vence, anotado: 0 }
             : !sinCorte && st.hoy > proxCorte
-              ? { corte: proxCorte, vence: fechaDe(vy, vm, t.pagoDia), anotado: suma(compras.filter((r) => r.fecha <= proxCorte), (r) => r.monto) }
+              ? { corte: proxCorte, vence: fechaDe(vy, vm, t.pagoDia), anotado: suma(compras.filter((r) => r.fecha <= proxCorte), (r) => r.monto), anotadoLibre: anotadoLibre(compras.filter((r) => r.fecha <= proxCorte)) }
               : null;
         // v2.6.6 (V2-85): un estado de cuenta que vencía antes de agregar la tarjeta y que la persona dijo que ya pagó.
         const cubierto = !ult.inicial && ult.antes === 'pagado' ? ult.aPagar : 0;
@@ -457,7 +509,7 @@
         const excedente = Math.max(0, pagado - aPagarUlt - usual);
         const restoBruto = Math.max(0, ult.total - ult.aPagar);
         const resto = Math.max(0, restoBruto - excedente);
-        const comprasNetas = Math.max(0, comprasTotal - Math.max(0, excedente - restoBruto) - pagadoCompras);
+        const comprasNetas = Math.max(0, anotadoLibre(compras) - Math.max(0, excedente - restoBruto) - pagadoCompras);
         // Lo que debe de verdad no se sabe hasta su primer estado de cuenta: el estimado no cuenta como deuda.
         const debeTotal = Math.max(0, ult.total - cubierto + comprasTotal - Math.max(0, pagado - usual) - pagadoCompras);
         // agregado v2.6.7 #3: lo que dijiste que debes hoy (sin su primer estado de cuenta), o null si no lo dijiste.
@@ -472,8 +524,12 @@
         // llega antes de su fecha, o con el que elegiste en «Lo pagas con». El estado de cuenta que lo reemplaza
         // (`deEstimado`) sigue con ese ingreso, sin contarse dos veces; lo que anotaste en compras de ese ciclo ya bajó tu
         // libre el día que las hiciste (V2-07) y sigue saliendo de lo que tienes.
-        const deCompras = ult.deEstimado ? Math.max(0, Math.min(aPagarUlt, ult.anotado || 0) - pagado) : 0;
-        const comoPago = ult.inicial ? estimado : ult.deEstimado ? Math.max(0, porPagarEstado - deCompras) : 0;
+        // v2.8 (D-4, U01): una sola regla: el pago de la tarjeta (lo que pagas normalmente o, después, el estado de cuenta) se
+        // paga con el ingreso de antes de que venza, como cualquier pago; lo que ya anotaste en compras de ese ciclo bajó tu
+        // libre ese día y sigue saliendo de lo que tienes. `antes27`: como la v2.7 (solo el estado que reemplazó un estimado).
+        const comoPagoEstado = !ult.inicial && (ult.deEstimado || !opts.antes27);
+        const deCompras = comoPagoEstado ? Math.max(0, Math.min(aPagarUlt, (ult.anotadoLibre !== undefined && !opts.antes27 ? ult.anotadoLibre : ult.anotado) || 0) - pagado) : 0;
+        const comoPago = ult.inicial ? estimado : comoPagoEstado ? Math.max(0, porPagarEstado - deCompras) : 0;
         const pagoComo = pagoDeTarjeta(t, vence, comoPago);
         const partesPago = comoPago > 0 ? asignacion(st, pagoComo, vence, comoPago, hz) : [];
         const conIngreso = suma(partesPago.filter((x) => !esFundado(st, x.de)), (x) => x.monto);
@@ -613,6 +669,84 @@
         return { ...base, fecha: sig, ocurrencia: siguiente, dias: diasEntre(st.hoy, sig) };
     }
 
+    // ------------------------------------------------------------------ v2.8: el plan de esta quincena (D-3, C-1, C-3)
+    /**
+     * v2.8 (C-3): la quincena del plan (o la semana, o el mes, según cómo te pagan): desde el último ingreso que ya tienes
+     * hasta el día antes del próximo. Mientras el próximo no se confirme, sigue la de ahora. Sin ingreso fijo: el mes (o,
+     * con «los próximos 15 días», del 1 al 15 y del 16 al fin de mes). `clave` es su primer día.
+     */
+    function periodoPlan(st, hz = null) {
+        const h = hz || horizonte(st);
+        const p = principal(st);
+        if (!p) {
+            const [y, m, d] = partes(st.hoy);
+            const finMes = fechaDe(y, m, 31);
+            const quince = st.horizonteVariable === 'quince';
+            const inicio = quince && d > 15 ? fechaDe(y, m, 16) : fechaDe(y, m, 1);
+            const fin = quince && d <= 15 ? fechaDe(y, m, 15) : finMes;
+            return { clave: inicio, inicio, fin, cada: quince ? 'quince' : 'mes' };
+        }
+        const inicio = h.inicioPeriodo || corteAntes(st, sumarDias(st.hoy, 1)) || inicioDe(st);
+        const fin = h.fecha > st.hoy ? sumarDias(h.fecha, -1) : st.hoy;
+        return { clave: inicio, inicio, fin, cada: p.frecuencia === 'quincenal' ? 'quincena' : p.frecuencia === 'semanal' ? 'semana' : p.frecuencia === 'catorcenal' ? 'catorcena' : 'periodo' };
+    }
+    /** v2.8 (C-3): los gastos variables que siguen activos. */
+    const variablesActivas = (st) => (st.variables || []).filter((v) => v && v.activo !== false);
+    /**
+     * v2.8 (C-3): ¿qué gasto variable consume este gasto? El que eligió la persona (`r.variable`; `null` = ninguno). Si no
+     * dijo: el que se llama igual («súper 20» → Súper) o, si el variable se llama como su tipo de gasto (Súper, Comida,
+     * Mercado), cualquiera de ese tipo. Un gasto de un pago fijo o pagado con un ahorro no consume ninguno.
+     */
+    function variableDe(st, r) {
+        if (!r || r.tipo !== 'gasto' || r.pago || r.apartado || r.variable === null) return null;
+        const activas = variablesActivas(st).filter((v) => !v.desde || r.fecha >= v.desde);
+        if (r.variable) return activas.find((v) => v.id === r.variable) || null;
+        const nombre = normalizar(r.nombre || '');
+        const porNombre = activas.find((v) => nombre && coincide(nombre, v.nombre));
+        if (porNombre) return porNombre;
+        return activas.find((v) => v.categoria && v.categoria !== 'otros' && v.categoria === r.categoria && normalizar(v.nombre) === normalizar(categoria(v.categoria).nombre)) || null;
+    }
+    /**
+     * v2.8 (C-3): cada gasto variable en esta quincena: su tope, lo anotado (cada gasto de ese tipo lo consume una vez), lo
+     * que falta (cuenta en tu plan) y lo que te pasaste. Con «Sí, ya terminé» (`cierres[clave]`), lo que sobró vuelve a
+     * tu libre (falta $0).
+     */
+    function variablesInfo(st, hz = null) {
+        const per = periodoPlan(st, hz);
+        return variablesActivas(st)
+            .filter((v) => !v.desde || v.desde <= per.fin)
+            .map((v) => {
+                const desde = v.desde && v.desde > per.inicio ? v.desde : per.inicio;
+                const gastos = st.registros.filter((r) => r.tipo === 'gasto' && r.fecha >= desde && r.fecha <= per.fin && variableDe(st, r) === v);
+                const anotado = suma(gastos, (r) => r.monto);
+                const cierre = (v.cierres || {})[per.clave] || null;
+                const listo = !!cierre && cierre.estado === 'listo';
+                return { v, tope: v.tope, anotado, gastos, falta: listo ? 0 : Math.max(0, v.tope - anotado), pasado: Math.max(0, anotado - v.tope), sobro: listo ? Math.max(0, v.tope - anotado) : 0, cierre, listo, periodo: per };
+            });
+    }
+    /**
+     * v2.8 (C-3): «Ibas a gastar $X y anotaste $Y. ¿Ya terminaste?» se pregunta antes del siguiente ingreso: los últimos
+     * 3 días de la quincena (y mientras no se confirme el ingreso), si queda algo y todavía no contestó.
+     */
+    const preguntarVariable = (st, x) => !x.cierre && x.falta > 0 && diasEntre(st.hoy, x.periodo.fin) <= 2;
+    /** v2.8 (C-1): los ahorros con un monto para guardar cada quincena («ahorro programado»). */
+    const programados = (st) => st.apartados.filter((a) => a && a.programado && a.programado.monto > 0);
+    /**
+     * v2.8 (C-1, D-3): el ahorro programado de esta quincena: lo que falta guardar cuenta en tu plan hasta que dices «Ya lo
+     * guardé» (`guardados[clave]`). Un ahorro que ya llegó a su meta no pide más.
+     */
+    function programadoInfo(st, hz = null) {
+        const per = periodoPlan(st, hz);
+        return programados(st)
+            .filter((a) => !a.programado.desde || a.programado.desde <= per.fin)
+            .map((a) => {
+                const guardado = (a.guardados || {})[per.clave] || null;
+                const meta = a.meta ? Math.max(0, a.meta - a.monto) : null;
+                const monto = meta === null ? a.programado.monto : Math.min(a.programado.monto, meta);
+                return { a, monto, guardado, falta: guardado ? 0 : monto, periodo: per };
+            });
+    }
+
     /** El día de pago con que se paga, por defecto, lo que vence en `fecha`: el último que llega en o antes de esa fecha (V2-34; el mismo día cuenta para ese ingreso, V2-29 #4). */
     function periodoDe(st, fecha, hz = null) {
         if (!principal(st)) return fecha < (hz || horizonte(st)).fecha ? 'ahora' : 'despues';
@@ -747,7 +881,13 @@
             const entraRes = suma(resIn, (r) => r.monto);
             const salePagos = suma(lista, (x) => x.parte);
             const saleRes = suma(resOut, (r) => r.monto);
-            const eventos = [...ingresos.map((o) => ({ f: o.fecha, m: o.monto })), { f: ini, m: entraRes }, ...lista.map((x) => ({ f: x.fecha < ini ? ini : x.fecha > fin ? fin : x.fecha, m: -x.parte, x })), { f: fin, m: -saleRes }].sort((a, z) => (a.f < z.f ? -1 : a.f > z.f ? 1 : z.m - a.m));
+            // v2.8 (C-3, C-1): cada quincena que viene trae el tope de tus gastos variables y tu ahorro programado.
+            const variables = variablesActivas(st).filter((v) => !v.desde || v.desde <= fin);
+            const programadosP = programados(st).filter((a) => (!a.programado.desde || a.programado.desde <= fin) && !(a.meta && a.monto >= a.meta));
+            const saleVariables = suma(variables, (v) => v.tope);
+            const saleProgramado = suma(programadosP, (a) => (a.meta ? Math.min(a.programado.monto, a.meta - a.monto) : a.programado.monto));
+            const salePlan = saleVariables + saleProgramado;
+            const eventos = [...ingresos.map((o) => ({ f: o.fecha, m: o.monto })), { f: ini, m: entraRes }, ...lista.map((x) => ({ f: x.fecha < ini ? ini : x.fecha > fin ? fin : x.fecha, m: -x.parte, x })), { f: fin, m: -saleRes }, ...(salePlan ? [{ f: fin, m: -salePlan }] : [])].sort((a, z) => (a.f < z.f ? -1 : a.f > z.f ? 1 : z.m - a.m));
             let saldo = 0;
             let minimo = 0;
             let cuando = null;
@@ -761,11 +901,11 @@
                 }
             }
             const adelantos = resIn.filter((r) => r.adelanto);
-            const quedan = entraIng + entraRes - salePagos - saleRes;
+            const quedan = entraIng + entraRes - salePagos - saleRes - salePlan;
             // Antes de la v2.4: si el total alcanza pero un pago vence antes de que llegue otro ingreso del periodo,
             // el faltante es «solo por fechas»: se dice qué llega después y cuándo.
             const cubre = minimo < 0 ? ingresos.filter((o) => o.fecha > cuando).sort((a, z) => (a.fecha < z.fecha ? -1 : a.fecha > z.fecha ? 1 : 0))[0] || null : null;
-            return { clave, inicio: ini, fin, ingresos, principal: ingresos.find((o) => o.ingreso.principal) || null, otros: ingresos.filter((o) => !o.ingreso.principal), adelantos, entraGuardado: entraRes - suma(adelantos, (r) => r.monto), entra: entraIng + entraRes, entraIng, entraRes, partes: lista, pagos: salePagos + saleRes, salePagos, saleRes, quedan, deficit: -minimo, cuando, primero, cubre, soloFechas: minimo < 0 && quedan >= 0 };
+            return { clave, inicio: ini, fin, ingresos, principal: ingresos.find((o) => o.ingreso.principal) || null, otros: ingresos.filter((o) => !o.ingreso.principal), adelantos, entraGuardado: entraRes - suma(adelantos, (r) => r.monto), entra: entraIng + entraRes, entraIng, entraRes, partes: lista, pagos: salePagos + saleRes + salePlan, salePagos, saleRes, saleVariables, saleProgramado, variables, programados: programadosP, quedan, deficit: -minimo, cuando, primero, cubre, soloFechas: minimo < 0 && quedan >= 0 };
         };
         if (!principal(st)) {
             const fin = hz.modo === 'quince' ? sumarDias(hz.fecha, 14) : fechaDe(...partes(hz.fecha).slice(0, 2), 31);
@@ -793,6 +933,9 @@
         const lejos = sumarDias(st.hoy, 400);
         for (const p of st.pagos) {
             if (p.activo === false || p.descuento) continue;
+            // v2.8 (C-7): un cobro automático con tarjeta (Netflix en tu Visa) no resta aparte: va dentro del pago de la
+            // tarjeta (cuando se cobra, es una compra con ella). `antes27`: como lo contaba la v2.7.
+            if (!opts.antes27 && pagoEnTarjeta(st, p)) continue;
             for (const o of ocurrenciasPago(st, p, p.desde, lejos)) {
                 if (o.estado !== 'pendiente' && o.estado !== 'vencido') continue;
                 for (const parte of asignacion(st, p, o.fecha, o.monto, hz)) {
@@ -839,8 +982,14 @@
         const reservas = reservasDe(st, hz);
         const reservasProxima = reservas.filter((r) => esFundado(st, r.de) && !esFundado(st, r.para));
         const reservadoProxima = suma(reservasProxima, (r) => r.monto);
-        const obligaciones = porPagar + enTarjetas + reservadoPagos + reservadoProxima;
-        // V2-34: Libre = Tienes − Ahorros − lo que pagas con lo que ya tienes − lo que elegiste reservar. Nada más.
+        // v2.8 (D-3, C-3, C-1): lo que falta de tus gastos variables de esta quincena y tu ahorro programado.
+        const variables = variablesInfo(st, hz);
+        const faltaVariables = suma(variables, (x) => x.falta);
+        const programado = programadoInfo(st, hz);
+        const faltaProgramado = suma(programado, (x) => x.falta);
+        const obligaciones = porPagar + enTarjetas + reservadoPagos + reservadoProxima + faltaVariables + faltaProgramado;
+        // V2-34 / v2.8 (D-3): Libre = dinero en tus cuentas − tus ahorros dentro de ellas − lo que falta de tu plan hasta tu
+        // próximo ingreso (gastos fijos sin pagar, lo que falta de los variables, ahorro programado y pagos de deudas).
         const disponible = t - obligaciones;
         const base = disponible - ap;
         const libre = Math.max(0, base);
@@ -879,7 +1028,7 @@
         const inactivo = diasEntre(ultimaActividad(st), st.hoy);
         // «Pongámonos al día» (V2-29 #6): 10 días sin anotar ni cuadrar, o un día de pago sin confirmar.
         const alDia = !hz.esHoy && (inactivo >= 10 || (hz.atrasadas || []).length > 0);
-        return { hz, tienes: t, apartado: ap, items, reservados, porPagar, reservadoPagos, reservasProxima, reservadoProxima, tarjetas, enTarjetas, reservadoTarjetas, obligaciones, disponible, base, faltaPagos, falta: Math.max(0, -base), sinCubrir, libre, porDia, periodos, proxima: periodos[0] || null, futuro, avisos, inactivo, alDia };
+        return { hz, tienes: t, apartado: ap, aparte: ahorrosAparte(st), items, reservados, porPagar, reservadoPagos, reservasProxima, reservadoProxima, tarjetas, enTarjetas, reservadoTarjetas, variables, faltaVariables, programado, faltaProgramado, obligaciones, disponible, base, faltaPagos, falta: Math.max(0, -base), sinCubrir, libre, porDia, periodos, proxima: periodos[0] || null, futuro, avisos, inactivo, alDia };
     }
 
     // ------------------------------------------------------------------ mes
@@ -890,7 +1039,9 @@
         // v2.7 (D-8, F01): un gasto anotado después de cuadrar explica el «sin detalle» de ese cuadre (cada centavo, una vez).
         // `comoAntes` (DATOS-4): como lo contaba la v2.6.7, para saber si el número cambió al actualizar.
         const explicado = comoAntes ? {} : explicadoPorCuadre(st);
-        const ingresos = regs.filter((r) => r.tipo === 'ingreso');
+        // v2.8 (D-9): lo que te prestaron entra a tu cuenta, pero no es un ingreso: se dice aparte (es una deuda).
+        const prestamos = regs.filter((r) => r.tipo === 'ingreso' && r.prestamo);
+        const ingresos = regs.filter((r) => r.tipo === 'ingreso' && !r.prestamo);
         const gastos = regs.filter((r) => r.tipo === 'gasto');
         const fijos = gastos.filter((r) => r.pago);
         const anotados = gastos.filter((r) => !r.pago);
@@ -906,7 +1057,7 @@
         const sinDetalleEntro = suma(cuadres, (r) => Math.max(0, sinDetalleDe(r, explicado)));
         const entro = suma(ingresos, (r) => r.monto) + sinDetalleEntro;
         const salio = suma(gastos, (r) => r.monto) + tarjetaSinDetalle + sinDetalleSalio;
-        return { y, m, ini, fin, regs, ingresos, fijos, anotados, porCategoria: Object.values(porCategoria).sort((a, b) => b.total - a.total), tarjetaSinDetalle, sinDetalleSalio, sinDetalleEntro, entro, salio, totalFijos: suma(fijos, (r) => r.monto), totalAnotados: suma(anotados, (r) => r.monto) };
+        return { y, m, ini, fin, regs, ingresos, prestamos, totalPrestamos: suma(prestamos, (r) => r.monto), fijos, anotados, porCategoria: Object.values(porCategoria).sort((a, b) => b.total - a.total), tarjetaSinDetalle, sinDetalleSalio, sinDetalleEntro, entro, salio, totalFijos: suma(fijos, (r) => r.monto), totalAnotados: suma(anotados, (r) => r.monto) };
     }
 
     /**
@@ -972,6 +1123,8 @@
     const INTENTOS = [
         ['pago', /^(acuerdame|recuerdame|recordame|recordarme|recordar|avisame|recordatorio)\b/],
         ['pagoTarjeta', /^(pague|abone|cancele)( a)? (la )?tarjeta\b/],
+        // v2.8 (D-9, U06): «me prestaron 200»: la deuda y la entrada en un solo paso.
+        ['prestamo', /^(me prestaron|me presto|me hicieron un prestamo|pedi prestado|pedi un prestamo|saque un prestamo)\b/],
         ['ingreso', /^(me pagaron|me cayo|me cayeron|me depositaron|cobre|recibi|me mandaron|me enviaron|vendi|gane|me dieron|me llego|me llegaron)\b/],
         ['apartar', /^(aparte|apartar|guarde|guardar|ahorre|ahorrar|separe)\b/],
         ['liberar', /^(libere|liberar)\b/],
@@ -984,6 +1137,40 @@
         return n && (` ${texto} `.includes(` ${n} `) || n.split(' ').some((w) => w.length > 3 && ` ${texto} `.includes(` ${w} `)));
     };
 
+    /**
+     * v2.8: la cuenta que se nombra en la frase («en efectivo», «a Agrícola», «al banco»): por su medio (Efectivo, Débito
+     * Agrícola), por su nombre o, si dice «banco» y tienes uno solo, ese. Si no se nombra ninguna, null.
+     */
+    function lugarNombrado(st, original, d = {}) {
+        const m = d.medioExplicito ? medio(st, d.medio) : null;
+        if (m && m.lugar && lugar(st, m.lugar)) return m.lugar;
+        const t = ` ${normalizar(original)} `;
+        const GEN = new Set(['banco', 'cuenta', 'efectivo', 'billetera', 'tarjeta', 'credito', 'debito']);
+        const porNombre = st.lugares.find((l) => normalizar(l.nombre).split(' ').some((w) => w.length >= 3 && !GEN.has(w) && t.includes(` ${w} `)));
+        if (porNombre) return porNombre.id;
+        if (/ efectivo /.test(t) && lugar(st, 'efectivo')) return 'efectivo';
+        const bancos = st.lugares.filter((l) => l.tipo === 'banco');
+        return / (banco|cuenta) /.test(t) && bancos.length === 1 ? bancos[0].id : null;
+    }
+    /**
+     * v2.8 (P-1, C-4): lo que tienes por pagar en tu plan y se puede anotar como pagado: tus gastos fijos y cuotas con una
+     * fecha abierta (vencida o de los próximos 45 días) y tus tarjetas con algo por pagar. Lo que se cobra solo en una
+     * tarjeta no va (se paga con la tarjeta, C-7).
+     */
+    function opcionesPlan(st, { soloDeudas = false } = {}) {
+        const out = [];
+        for (const p of st.pagos) {
+            if (p.activo === false || p.descuento || pagoEnTarjeta(st, p) || (soloDeudas && !p.tipoDeuda)) continue;
+            const o = porPagar(st, p);
+            if (o && o.fecha <= sumarDias(st.hoy, 45)) out.push({ tipo: 'pago', id: p.id, nombre: p.nombre, emoji: p.emoji, fecha: o.fecha, monto: o.monto, deuda: !!p.tipoDeuda });
+        }
+        for (const t of st.tarjetas) {
+            const info = tarjetaInfo(st, t);
+            const monto = info.porPagarEstado + info.estimado;
+            if (monto > 0) out.push({ tipo: 'tarjeta', id: t.id, nombre: t.nombre, emoji: t.emoji, fecha: info.vence, monto, deuda: true });
+        }
+        return out.sort((a, b) => (a.fecha < b.fecha ? -1 : a.fecha > b.fecha ? 1 : 0));
+    }
     /** v2.7 (F06): «hoy», «ayer», «antier» y «mañana» en cualquier parte de la frase («en la mañana» es la hora, no el día). */
     const RELATIVAS = [[/\bpasado manana\b/, 2], [/\bmanana\b/, 1], [/\b(?:antier|anteayer)\b/, -2], [/\bayer\b/, -1], [/\bhoy\b/, 0]];
     function entender(st, original, { sinPartir = false } = {}) {
@@ -1093,7 +1280,13 @@
         }
 
         if (d.tipo === 'pagado') {
-            const p = st.pagos.find((x) => x.activo !== false && coincide(resto, x.nombre));
+            // v2.8 (C-4, P-1): lo que anotas se conecta con tu plan, pero se pregunta: «¿Es tu pago de Luz?» (o, si se parecen
+            // varios, «¿De cuál de tus préstamos?»), con «Es nuevo». Nunca se duplica ni se asume en silencio.
+            const todos = st.pagos.filter((x) => x.activo !== false && coincide(resto, x.nombre));
+            const p = todos[0];
+            d.planConfirmar = true;
+            d.planOpciones = todos.length > 1 ? todos.map((x) => x.id) : null;
+            d.cualPlan = null;
             d.pago = p.id;
             d.nombre = p.nombre;
             d.emoji = p.emoji;
@@ -1111,6 +1304,8 @@
             if (!o) {
                 // v2.6.1 (QA C-07b): ya estaba pagado: queda como gasto aparte, pero Anotar lo dice.
                 d.tipo = 'gasto';
+                d.planConfirmar = false;
+                d.planOpciones = null;
                 const ultimo = ventana.filter((x) => x.estado === 'pagado').at(-1);
                 if (ultimo) d.yaPagado = { pago: p.id, nombre: p.nombre, fecha: ultimo.fecha };
                 // V2-82: si hay un pago siguiente (por adelantado), se ofrece marcar ese en vez de un gasto suelto.
@@ -1146,13 +1341,21 @@
                 if (d.dia >= hd) d.fecha = fechaDe(y, m, d.dia);
                 else d.fechaDudosa = { dia: d.dia, opciones: [fechaDe(y, m, d.dia), fechaDe(...mesMas(y, m, 1), d.dia)] };
             }
+            // v2.8 (P-1): «pagué 35» sin decir qué: si tienes cosas por pagar en tu plan, se pregunta cuál (o «Es nuevo»).
+            // Una compra común («pagué 5 del bus») no pregunta: solo lo que suena a cuenta, cuota o recibo.
+            const PAGABLES = new Set(['otros', 'servicios', 'cuotas', 'casa', 'educacion', 'suscripciones', 'telefono']);
+            if (/^pague\b/.test(d.verbo || '') && !d.yaPagado && PAGABLES.has(k.id) && opcionesPlan(st).length) {
+                d.planPreguntar = true;
+                d.cualPlan = null;
+            }
             // Red del apartado olvidado (V2-23 a): si el gasto se llama como un apartado, se pregunta.
-            const porNombre = st.apartados.find((a) => a.monto > 0 && coincide(resto, a.nombre));
+            // v2.8 (C-1): solo un ahorro dentro de tus cuentas paga un gasto así; el de aparte primero se usa («Usé de mi ahorro»).
+            const porNombre = st.apartados.find((a) => a.monto > 0 && !ahorroAparte(a) && coincide(resto, a.nombre));
             if (porNombre) {
                 d.sugerirApartado = porNombre.id;
                 d.apartadoPorNombre = true;
             } else if (k.emergencia) {
-                const em = st.apartados.find((a) => normalizar(a.nombre).includes('emergencia') && a.monto > 0);
+                const em = st.apartados.find((a) => normalizar(a.nombre).includes('emergencia') && a.monto > 0 && !ahorroAparte(a));
                 if (em) d.sugerirApartado = em.id;
             }
         }
@@ -1163,6 +1366,9 @@
             d.emoji = d.adelanto ? '💵' : k.emoji;
             // Un adelanto «el 29»: si ese día no ha llegado, es un ingreso esperado (fecha futura).
             if (d.adelanto && d.dia !== null) d.fecha = d.dia >= partes(st.hoy)[2] ? proximoDia(st.hoy, d.dia) : ultimoDia(st.hoy, d.dia);
+            // v2.8 («Bloque validado — v2.7»): «recibí 50 en efectivo» llega a Efectivo; «…en Agrícola», a esa cuenta.
+            const lugarDicho = lugarNombrado(st, original, d);
+            if (lugarDicho) Object.assign(d, { lugar: lugarDicho, lugarDicho: true });
             // ¿Es un ingreso esperado que llegó (o se adelantó)? Un adelanto con fecha futura es uno nuevo.
             if (!(d.adelanto && d.fecha > st.hoy)) aplicarEsperado(st, d, resto);
             if (!d.nombre && d.adelanto) d.nombre = 'Adelanto de salario';
@@ -1171,6 +1377,14 @@
                 const p = principal(st);
                 d.lugar = d.categoria === 'venta' || d.categoria === 'remesa' ? (lugar(st, 'efectivo') ? 'efectivo' : st.lugares[0]?.id) : p ? p.lugar : st.lugares[0]?.id;
             }
+        }
+        if (d.tipo === 'prestamo') {
+            // v2.8 (D-9, U06): de quién (lo que queda de la frase) y dónde llegó (lo que dijiste o, si no, tu efectivo).
+            d.categoria = 'prestamo';
+            d.emoji = '🤝';
+            d.quien = palabras.length ? nombreDe(palabras) : null;
+            d.nombre = d.quien ? 'Préstamo de ' + d.quien : 'Préstamo';
+            d.lugar = lugarNombrado(st, original, d) || (lugar(st, 'efectivo') ? 'efectivo' : principal(st)?.lugar || st.lugares[0]?.id || null);
         }
         if (d.tipo === 'apartar' || d.tipo === 'liberar') {
             const a = st.apartados.find((x) => coincide(resto, x.nombre));
@@ -1256,18 +1470,21 @@
      * no llegó. Si el de esas fechas ya llegó, `ya` lo dice. Un adelanto solo se reconoce como un adelanto esperado.
      */
     function ingresoEsperado(st, d, resto = '') {
-        const desde = sumarDias(st.hoy, -12);
-        const hasta = sumarDias(st.hoy, 12);
         const esAdelantoIng = (ing) => ing.adelanto || ing.tipoIngreso === 'adelanto' || /\b(adelanto|anticipo|vale)\b/.test(normalizar(ing.nombre));
+        // v2.8 (C-5): la quincena se confirma con «Ya llegó»; lo que anotas es un extra, salvo que esté a ±10 % y a ±3 días de
+        // un ingreso esperado: entonces se pregunta «¿Es tu quincena?». Un adelanto se sigue reconociendo por su nombre.
+        const dias = d.adelanto ? 12 : 3;
+        const desde = sumarDias(st.hoy, -dias);
+        const hasta = sumarDias(st.hoy, dias);
+        const cerca = (x) => d.monto !== null && d.monto !== undefined && Math.abs(x.monto - d.monto) * 10 <= x.monto;
         let o = null;
         let ya = null;
         for (const ing of st.ingresos) {
             if (ing.activo === false || (d.adelanto && !esAdelantoIng(ing))) continue;
-            const porTipo = !!d.categoria && !['otro', 'extra', 'venta'].includes(d.categoria) && ing.categoria === d.categoria;
-            const porNombre = !!resto && coincide(resto, ing.nombre);
+            const porNombre = !!d.adelanto && !!resto && coincide(resto, ing.nombre);
             for (const x of ocurrenciasIngreso(st, ing, desde, hasta)) {
-                const porMonto = d.monto !== null && d.monto !== undefined && Math.abs(x.monto - d.monto) <= x.monto * 0.3 && (!d.categoria || d.categoria === 'salario' || d.categoria === 'otro' || ing.categoria === d.categoria);
-                if (!porTipo && !porNombre && !porMonto) continue;
+                const porMonto = cerca(x) && (!d.categoria || d.categoria === 'salario' || d.categoria === 'otro' || ing.categoria === d.categoria);
+                if (!porNombre && !porMonto) continue;
                 if (x.estado === 'llego') {
                     if (!ya || x.fecha > ya.fecha) ya = x;
                 } else if (x.estado !== 'noLlego' && (!o || x.fecha < o.fecha)) o = x;
@@ -1284,10 +1501,10 @@
             d.ingresoRef = { id: o.ingreso.id, fecha: o.fecha };
             d.nombre = o.ingreso.nombre;
             d.emoji = o.ingreso.emoji;
-            d.lugar = o.ingreso.lugar;
-            // V2-29 #10 y V2-81: se pregunta si no es el de hoy o si el monto no se parece (nunca se cuenta dos veces).
-            const cerca = d.monto !== null && d.monto !== undefined && Math.abs(o.monto - d.monto) <= o.monto * 0.3;
-            d.preguntarIngreso = o.fecha !== st.hoy || !cerca;
+            // «recibí 600 en efectivo»: donde dijiste que llegó manda.
+            if (!d.lugarDicho) d.lugar = o.ingreso.lugar;
+            // v2.8 (C-5): siempre se pregunta «¿Es tu quincena?» (nunca se cuenta dos veces ni se asume).
+            d.preguntarIngreso = true;
             d.cualIngreso = null;
         } else if (ya) d.yaRecibido = { id: ya.ingreso.id, fecha: ya.fecha };
         return d;
@@ -1321,6 +1538,9 @@
         // V2-82: un pago parecido a uno que ya tienes: primero «¿Es otro pago?»; un gasto que puede ser el pago siguiente: «¿Es el pago de…?».
         if (d.tipo === 'pago' && !d.dupOk && pagoParecido(st, d)) f.push('duplicado');
         if (d.tipo === 'gasto' && d.pagoSiguiente && !d.cualPago) f.push('cualPago');
+        // v2.8 (C-4, P-1): «¿Es tu pago de Luz?», «¿De cuál de tus préstamos?» o «¿Qué pagaste?»: se contesta antes de guardar.
+        if (((d.tipo === 'pagado' && d.planConfirmar) || (d.tipo === 'gasto' && d.planPreguntar)) && !d.cualPlan) f.push('cualPlan');
+        if (d.tipo === 'prestamo' && !d.lugar) f.push('lugar');
         // v2.7 (F19): más de un monto: primero se decide qué anotar.
         if (d.varios && !d.variosOk) f.push('varios');
         // v2.7 (F18): «tengo 0» vale, como en Cuadrar; un gasto, un pago o un movimiento necesitan más de $0.
@@ -1361,5 +1581,7 @@
         porPagar, porRecibir, ingresoEsperado, aplicarEsperado, pagoParecido,
         pasadaDelPeriodo, desdeSegun, inicioUso, antesDeEmpezar,
         pagoDeTarjeta, pagoTarjetaPropuesto, puntoSaldo,
+        ahorroAparte, ahorrosAparte, cuentaAhorros, lugarAhorro, periodoPlan, variablesActivas, variableDe, variablesInfo, preguntarVariable, programados, programadoInfo,
+        tarjetaDePago, pagoEnTarjeta, desfaseDe, venceDeCorte, desfaseDesde, lugarNombrado, opcionesPlan,
     };
 })();

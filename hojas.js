@@ -45,11 +45,41 @@
         if (!previo && (debido === null || monto >= debido)) {
             p.hechos[ocurrencia] = { estado: 'pagado', monto, registro: r.id };
             if (baja) p.hechos[ocurrencia].bajaDeuda = baja;
+            terminarCuota(st, p, ocurrencia, r);
             return r;
         }
         p.hechos[ocurrencia] = hechoDe(debido, [...(previo ? previo.pagos : []), { registro: r.id, monto, ...(baja ? { bajaDeuda: baja } : {}) }]);
+        // v2.8 (D-9): con lo que pagaste ya no debes nada: la cuota termina aunque esta vez fuera menos.
+        terminarCuota(st, p, ocurrencia, r);
         return r;
     };
+    /**
+     * v2.8 (D-9, U05): cuando lo que debes de una cuota llega a $0, la cuota termina sola: ya no sale después de esta fecha
+     * (`hasta`) y se avisa. Si se deshace ese pago, vuelve (`terminada` guarda cómo estaba).
+     */
+    let finCuota = null;
+    /** v2.8 (D-9): el aviso de la cuota que terminó con el último cambio (una sola vez). */
+    P.tomarFinCuota = () => {
+        const x = finCuota;
+        finCuota = null;
+        return x;
+    };
+    function terminarCuota(st, p, fecha, r) {
+        if (!debeConocido(p) || p.deuda.debe > 0 || p.terminada) return;
+        finCuota = p.nombre;
+        p.terminada = { fecha: st.hoy, ocurrencia: fecha, registro: r.id, hastaAntes: p.hasta || null };
+        p.hasta = fecha;
+        if (p.hechos[fecha] && p.hechos[fecha].estado === 'parcial') p.hechos[fecha] = { estado: 'pagado', monto: p.hechos[fecha].pagado, registro: r.id, debido: p.hechos[fecha].debido, pagos: p.hechos[fecha].pagos };
+        r.terminoDeuda = p.id;
+    }
+    P.terminarCuota = terminarCuota;
+    /** v2.8 (D-9): deshacer el último pago de una cuota terminada la vuelve a poner en tu plan. */
+    function reabrirCuota(p, registroId) {
+        if (!p || !p.terminada || p.terminada.registro !== registroId) return;
+        if (p.terminada.hastaAntes) p.hasta = p.terminada.hastaAntes;
+        else delete p.hasta;
+        delete p.terminada;
+    }
     /**
      * Pagar la tarjeta = mover del banco a la tarjeta. La parte que pasa del estado de cuenta paga
      * compras nuevas y gasta primero lo reservado de un apartado (V2-27); `soltarReserva` la quita
@@ -86,7 +116,8 @@
         const usado = Math.min(registro.monto, a.monto);
         const sobraAntes = a.monto - usado;
         const cumplida = !!(a.meta && a.monto >= a.meta);
-        const cierra = cerrar !== null ? cerrar : !!a.metaFecha || cumplida;
+        // v2.8 (D-9, U16): usar parte de un ahorro deja el resto. Solo se cierra solo si lo usaste todo (y era para algo).
+        const cierra = cerrar !== null ? cerrar : usado >= a.monto && (!!a.metaFecha || cumplida);
         registro.apartado = a.id;
         registro.apartadoNombre = a.nombre;
         // v2.6.1 (QA B-AP1, B-AP2): se recuerda cuánto salió del ahorro y para qué compra se reservó, para deshacerlo exacto si se elimina.
@@ -111,18 +142,91 @@
         return r;
     };
     /** Cerrar sin usar (V2-31 #3): el dinero vuelve a tu libre y queda en «Cerrados», no en Logros. */
-    P.cerrarApartado = function (st, apartadoId) {
+    P.cerrarApartado = function (st, apartadoId, { lugar = null } = {}) {
         const a = M.apartado(st, apartadoId);
-        st.cerrados = [{ nombre: a.nombre, fecha: st.hoy, monto: a.monto, emoji: a.emoji }, ...(st.cerrados || [])];
+        const monto = a.monto;
+        // v2.8 (C-1): un ahorro aparte vuelve a una de tus cuentas (la que digas o tu efectivo) para estar en tu libre.
+        if (M.ahorroAparte(a) && a.monto > 0) P.apartarEn(st, a.id, a.monto, 'liberar', { lugar });
+        st.cerrados = [{ nombre: a.nombre, fecha: st.hoy, monto, emoji: a.emoji }, ...(st.cerrados || [])];
         st.apartados = st.apartados.filter((y) => y.id !== a.id);
-        return a.monto;
+        return monto;
     };
-    P.apartarEn = function (st, apartadoId, monto, tipo = 'apartar') {
+    /**
+     * Guardar en un ahorro (`apartar`) o usar de él (`liberar`). v2.8 (C-1): dentro de una cuenta, solo cambia cuánto tiene
+     * (tu cuenta no se mueve; tu libre baja o sube). Aparte: el dinero sale de una cuenta al guardar y llega a una al usarlo
+     * (`lugar`), con un movimiento que no es ingreso ni gasto.
+     */
+    P.apartarEn = function (st, apartadoId, monto, tipo = 'apartar', { lugar = null } = {}) {
         const a = M.apartado(st, apartadoId);
         const real = tipo === 'apartar' ? monto : Math.min(monto, a.monto);
         a.monto += tipo === 'apartar' ? real : -real;
-        a.historial.unshift({ fecha: st.hoy, tipo, monto: real });
+        const h = { fecha: st.hoy, tipo, monto: real };
+        if (M.ahorroAparte(a) && real > 0) {
+            const l = lugar && M.lugar(st, lugar) ? lugar : P.lugarAparte(st);
+            if (l) {
+                const r = P.registrar(st, { tipo: 'mover', fecha: st.hoy, monto: real, de: tipo === 'apartar' ? l : null, a: tipo === 'apartar' ? null : l, ahorro: a.id, nombre: tipo === 'apartar' ? 'Guardaste en ' + a.nombre : 'Usaste de ' + a.nombre, nuevo: true });
+                Object.assign(h, { lugar: l, registro: r.id });
+            }
+        }
+        a.historial.unshift(h);
         return real;
+    };
+    /** v2.8 (C-1): de dónde sale (o a dónde llega) lo de un ahorro aparte si no se dice: tu efectivo; si no, tu primera cuenta. */
+    P.lugarAparte = (st) => (M.lugar(st, 'efectivo') ? 'efectivo' : st.lugares[0]?.id || null);
+    /** v2.8 (C-1): un ahorro nuevo con «¿Dónde está?» (dentro de una cuenta o aparte) y, si quieres, cuánto guardas cada quincena. */
+    P.crearAhorro = function (st, { nombre, emoji = '🐷', portada = 'general-alcancia', monto = 0, meta = null, metaFecha = null, donde = null, programado = null }) {
+        const id = 'a' + st.seq++;
+        const a = { id, nombre, emoji, portada, monto: 0, meta, metaFecha, historial: [], donde: donde === 'aparte' ? 'aparte' : { lugar: donde && M.lugar(st, donde) ? donde : M.cuentaAhorros(st) } };
+        if (programado > 0) a.programado = { monto: programado, desde: M.periodoPlan(st).inicio };
+        st.apartados.push(a);
+        // «Lo que ya tengo» se registra sin contar como ingreso ni gasto (C-1): aparte, ni siquiera mueve tus cuentas.
+        if (monto > 0) {
+            a.monto = monto;
+            a.historial.unshift({ fecha: st.hoy, tipo: 'inicial', monto });
+        }
+        return a;
+    };
+    /** v2.8 (C-1): «Ya lo guardé»: el ahorro programado de esta quincena pasa al ahorro (y deja de contar en tu plan). */
+    P.guardarProgramado = function (st, apartadoId, { lugar = null, monto = null } = {}) {
+        const x = M.programadoInfo(st).find((y) => y.a.id === apartadoId);
+        if (!x || x.guardado) return 0;
+        const real = monto > 0 ? monto : x.monto;
+        P.apartarEn(st, apartadoId, real, 'apartar', { lugar });
+        x.a.guardados = { ...(x.a.guardados || {}), [x.periodo.clave]: { fecha: st.hoy, monto: real } };
+        return real;
+    };
+    /** v2.8 (C-3): un gasto variable (súper, gasolina): un tope por quincena que se renueva. Cuenta desde el inicio de esta quincena. */
+    P.crearVariable = function (st, { nombre, emoji = '🛒', categoria = 'otros', tope, medio = null, deFijo = null }) {
+        const v = { id: 'v' + st.seq++, nombre, emoji, categoria, tope, medio, desde: M.periodoPlan(st).inicio, creado: st.hoy, cierres: {}, activo: true, ...(deFijo ? { deFijo } : {}) };
+        st.variables = [...(st.variables || []), v];
+        return v;
+    };
+    /** v2.8 (C-3): «¿Ya terminaste?»: «Sí» (lo que sobró vuelve a tu libre) o «Me falta» (sigue en tu plan hasta tu ingreso). */
+    P.cerrarVariable = function (st, variableId, estado) {
+        const x = M.variablesInfo(st).find((y) => y.v.id === variableId);
+        if (!x) return null;
+        x.v.cierres = { ...(x.v.cierres || {}), [x.periodo.clave]: { estado, fecha: st.hoy, anotado: x.anotado } };
+        return x;
+    };
+    /**
+     * v2.8 (D-2): pasar un gasto fijo a gasto variable (la pregunta de una vez o su ficha). El fijo no se borra: deja de
+     * salir en tu plan desde hoy (`activo: false`, con su historia) y el variable nuevo dice de cuál vino.
+     */
+    P.fijoAVariable = function (st, pagoId, { tope = null } = {}) {
+        const p = M.pago(st, pagoId);
+        if (!p || p.activo === false) return null;
+        const v = P.crearVariable(st, { nombre: p.nombre, emoji: p.emoji, categoria: p.categoria, tope: tope > 0 ? tope : p.monto, medio: p.medio, deFijo: p.id });
+        Object.assign(p, { activo: false, aVariable: { variable: v.id, fecha: st.hoy } });
+        return v;
+    };
+    /** v2.8 (D-9, U06): «Me prestaron»: la deuda (sin cuota fija todavía) y la entrada del dinero, en un solo paso. */
+    P.crearPrestamo = function (st, { nombre, monto, lugar, fecha = st.hoy, emoji = '🤝' }) {
+        const id = 'p' + st.seq++;
+        const medioDef = (st.medios.find((m) => m.lugar === lugar && !m.oculto && !m.tarjeta) || st.medios.find((m) => !m.tarjeta && !m.oculto) || st.medios[0] || {}).id || null;
+        const p = { id, nombre, emoji, categoria: 'cuotas', monto: 0, estimado: false, frecuencia: 'fechas', fechas: [], medio: medioDef, avisos: [{ tipo: 'antes', dias: 1, on: true }, { tipo: 'vence', on: true }], desde: st.hoy, creado: st.hoy, hechos: {}, previos: [], nuevo: true, tipoDeuda: 'prestamo', deuda: { debe: monto }, sinCuota: true };
+        st.pagos.push(p);
+        const r = P.registrar(st, { tipo: 'ingreso', fecha, monto, nombre, categoria: 'prestamo', emoji, lugar, prestamo: id, anotado: true, nuevo: true });
+        return { pago: p, registro: r };
     };
     P.llegoIngreso = function (st, ingresoId, fechaEsperada, { monto, lugar, fecha }) {
         const ing = M.ingreso(st, ingresoId);
@@ -272,6 +376,7 @@
         if (!r || !r.pago) return null;
         const p = M.pago(st, r.pago);
         if (p) {
+            reabrirCuota(p, r.id);
             for (const [f, h] of Object.entries(p.hechos)) {
                 // v2.7 (D-6): pagada en partes: sale solo este pago (y vuelve lo que bajó); lo demás sigue.
                 const parte = Array.isArray(h.pagos) ? h.pagos.find((x) => x.registro === r.id) : null;
@@ -651,8 +756,8 @@
     const ATAJOS = [['gasto', 'Gasté', 'receipt-text'], ['ingreso', 'Recibí', 'hand-coins'], ['pago', 'Recordarme un pago', 'bell'], ['apartar', 'Ahorrar', 'circle-plus'], ['mover', 'Mover', 'arrow-left-right'], ['cuadre', 'Cuadrar', 'scale']];
     /** V2-65: el botón de Anotar dice la acción (un solo verbo por tipo, igual que en el resto de la app). */
     P.textoGuardarAnotar = (d) => (d && d.varios && d.variosOk === 'todos' && d.partes ? `Anotar las ${d.partes.length}` : d && (d.tipo === 'gasto' || d.tipo === 'ingreso') && P.st && d.fecha > P.st.hoy ? `Guardar para el ${M.partes(d.fecha)[2]}` : textoGuardarTipo(d));
-    const textoGuardarTipo = (d) => ({ gasto: 'Guardar gasto', pagado: 'Marcar pagado', ingreso: 'Guardar ingreso', pago: 'Guardar recordatorio', apartar: 'Ahorrar', liberar: 'Sacar del ahorro', cuadre: 'Cuadrar', mover: 'Mover', pagoTarjeta: 'Pagar tarjeta' })[d && d.tipo] || 'Guardar';
-    const TIPO_NOMBRE = { gasto: 'Gasto', pagado: 'Pagado', ingreso: 'Ingreso', pago: 'Recordatorio de pago', apartar: 'Ahorrar', liberar: 'Sacar de ahorros', cuadre: 'Cuadrar', mover: 'Mover', pagoTarjeta: 'Pagar tarjeta' };
+    const textoGuardarTipo = (d) => ({ gasto: 'Guardar gasto', pagado: 'Marcar pagado', ingreso: 'Guardar ingreso', pago: 'Guardar recordatorio', apartar: 'Ahorrar', liberar: 'Sacar del ahorro', cuadre: 'Cuadrar', mover: 'Mover', pagoTarjeta: 'Pagar tarjeta', prestamo: 'Guardar préstamo' })[d && d.tipo] || 'Guardar';
+    const TIPO_NOMBRE = { gasto: 'Gasto', pagado: 'Pagado', ingreso: 'Ingreso', pago: 'Recordatorio de pago', apartar: 'Ahorrar', liberar: 'Sacar de ahorros', cuadre: 'Cuadrar', mover: 'Mover', pagoTarjeta: 'Pagar tarjeta', prestamo: 'Me prestaron' };
     let rotador = null;
 
     function borradorVacio(st, tipo, base = {}) {
@@ -676,6 +781,8 @@
             d.categoria = 'otros';
         }
         if (tipo === 'cuadre') d.lugar = base.lugar || (st.lugares.length === 1 ? st.lugares[0].id : null);
+        // v2.8 (D-9): «Me prestaron»: la deuda y el dinero que llega (a tu efectivo si no dices otra cuenta).
+        if (tipo === 'prestamo') Object.assign(d, { categoria: 'prestamo', emoji: '🤝', nombre: base.nombre || 'Préstamo', lugar: base.lugar || (M.lugar(st, 'efectivo') ? 'efectivo' : st.lugares[0] && st.lugares[0].id) });
         if (tipo === 'mover') {
             d.de = base.lugar || null;
             d.nombre = 'Mover dinero';
@@ -751,6 +858,12 @@
             const a = M.lugar(st, d.a);
             out.push(chip('mover', `${de ? esc(de.nombre) : '¿De dónde?'} → ${a ? esc(a.nombre) : '¿A dónde?'}`, { falta: !de || !a, abierto: h.editando === 'mover', etiqueta: 'De dónde a dónde' }));
             out.push(fechaChip());
+        } else if (d.tipo === 'prestamo') {
+            out.push(montoChip());
+            out.push(chip('nombre', `${emo('🤝', 16)} ${esc(d.nombre || 'Préstamo')}`, { abierto: h.editando === 'nombre', etiqueta: 'Quién te prestó' }));
+            const l = M.lugar(st, d.lugar);
+            out.push(chip('lugar', l ? `${emo(l.emoji, 16)} ${esc(l.nombre)}` : '¿Dónde?', { falta: !l, abierto: h.editando === 'lugar', etiqueta: 'Dónde llegó' }));
+            out.push(fechaChip());
         } else if (d.tipo === 'pagoTarjeta') {
             out.push(montoChip());
             // v2.7 (F07): a qué tarjeta va, a la vista antes de guardar (y se cambia aquí).
@@ -767,7 +880,7 @@
         if (campo === 'monto') {
             // V2-65: una pregunta concreta según lo que pasó (nunca «Tengo __ $»).
             const l = M.lugar(st, d.lugar);
-            const label = d.tipo === 'cuadre' ? (l ? `¿Cuánto tienes ahora en ${esc(l.nombre)}?` : '¿Cuánto tienes ahora?') : d.tipo === 'ingreso' ? '¿Cuánto recibiste?' : d.tipo === 'pago' ? '¿Cuánto pagas?' : d.tipo === 'apartar' ? '¿Cuánto quieres ahorrar?' : d.tipo === 'liberar' ? '¿Cuánto sacas?' : d.tipo === 'mover' ? '¿Cuánto mueves?' : d.tipo === 'pagoTarjeta' ? '¿Cuánto pagas a la tarjeta?' : '¿Cuánto gastaste?';
+            const label = d.tipo === 'cuadre' ? (l ? `¿Cuánto tienes ahora en ${esc(l.nombre)}?` : '¿Cuánto tienes ahora?') : d.tipo === 'ingreso' ? '¿Cuánto recibiste?' : d.tipo === 'pago' ? '¿Cuánto pagas?' : d.tipo === 'apartar' ? '¿Cuánto quieres ahorrar?' : d.tipo === 'liberar' ? '¿Cuánto sacas?' : d.tipo === 'mover' ? '¿Cuánto mueves?' : d.tipo === 'pagoTarjeta' ? '¿Cuánto pagas a la tarjeta?' : d.tipo === 'prestamo' ? '¿Cuánto te prestaron?' : '¿Cuánto gastaste?';
             // v2.7 (F05): si el número no se entendió entero, se dice cuál y se pregunta (nunca se corta).
             const dudoso = d.montoDudoso ? (d.montoExcede ? 'Puede ser de hasta $1,000,000.00.' : `No entendí «${esc(d.montoDudoso)}». Escríbelo con números, como 1,200 o 25.50.`) : '';
             return campoMonto(h, { label, valor: d.monto !== null ? M.montoCampo(d.monto) : '', errorTexto: d.tipo === 'cuadre' ? 'Escribe cuánto tienes, aunque sea $0' : 'Escribe cuánto fue', id: 'f-monto', ayuda: dudoso || (d.tipo === 'cuadre' ? 'Más o menos. Desde aquí sigue la cuenta.' : '') });
@@ -775,12 +888,14 @@
         if (campo === 'tarjeta') return opciones(h, { campo: 'tarjeta', label: '¿Qué tarjeta pagaste?', accion: 'anotarValor', valor: d.tarjeta, lista: st.tarjetas.map((t) => ({ v: t.id, t: t.nombre, e: t.emoji })), errorTexto: 'Elige la tarjeta' });
         if (campo === 'medio') return opciones(h, { campo: 'medio', label: d.tipo === 'pago' ? '¿Con qué lo pagas?' : '¿Con qué pagaste?', accion: 'anotarValor', valor: d.medio, lista: medios(st), errorTexto: 'Elige con qué pagaste' });
         if (campo === 'fecha') return campoFecha(h, 'fecha', d.fecha, { label: '¿Cuándo?', futuro: d.tipo === 'gasto' || d.tipo === 'ingreso', extra: d.ocurrencia && d.ocurrencia <= st.hoy ? d.ocurrencia : null, ayuda: d.tipo === 'gasto' || d.tipo === 'ingreso' ? 'Si eliges una fecha que todavía no llega, lo pongo en Pagos.' : '' });
-        if (campo === 'lugar') return opciones(h, { campo: 'lugar', label: d.tipo === 'ingreso' ? '¿Dónde llegó?' : d.tipo === 'pagoTarjeta' ? '¿Desde dónde?' : '¿Dónde?', accion: 'anotarValor', valor: d.lugar, lista: lugares(st), errorTexto: 'Elige dónde' });
+        if (campo === 'lugar') return opciones(h, { campo: 'lugar', label: d.tipo === 'ingreso' || d.tipo === 'prestamo' ? '¿Dónde llegó?' : d.tipo === 'pagoTarjeta' ? '¿Desde dónde?' : '¿Dónde?', accion: 'anotarValor', valor: d.lugar, lista: lugares(st), errorTexto: 'Elige dónde' });
         if (campo === 'frecuencia') return opciones(h, { campo: 'frecuencia', label: '¿Se repite?', accion: 'anotarValor', valor: d.frecuencia, lista: [{ v: 'mensual', t: 'Cada mes' }, { v: 'semanal', t: 'Cada semana' }, { v: 'unico', t: 'Solo esta vez' }], errorTexto: 'Dinos si se repite' });
         if (campo === 'dia') return d.frecuencia === 'semanal' ? opciones(h, { campo: 'diaSemana', label: '¿Qué día de la semana?', accion: 'anotarValor', valor: d.diaSemana ?? 5, lista: [1, 2, 3, 4, 5, 6, 0].map((n) => ({ v: n, t: M.capital(M.DIAS[n]) })) }) : d.frecuencia === 'unico' ? calendario(h, 'fechaPago', d.fechaPago || (d.dia ? M.proximoDia(st.hoy, d.dia) : null), { label: '¿Qué día vence?' }) : selectorDia(h, 'dia', d.dia);
         if (campo === 'apartado') return opciones(h, { campo: 'apartado', label: '¿En cuál ahorro?', accion: 'anotarValor', valor: d.apartado, lista: st.apartados.map((a) => ({ v: a.id, t: a.nombre, e: a.emoji, s: dinero(a.monto) })), errorTexto: 'Elige un ahorro' }) + (d.tipo === 'apartar' ? campoTexto(h, { campo: 'nuevoApartado', label: '¿O es un ahorro nuevo?', valor: d.apartado ? '' : d.nombre || '', placeholder: 'Ej. Regalo de mamá' }) : '');
         if (campo === 'nombre') {
-            if (d.tipo === 'ingreso') return opciones(h, { campo: 'categoriaIngreso', label: '¿De qué?', accion: 'anotarValor', valor: d.ingresoRef ? 'esperado' : d.categoria, lista: [...(d.ingresoRef ? [{ v: 'esperado', t: d.nombre, e: d.emoji }] : []), ...D.INGRESO_CATEGORIAS.map((k) => ({ v: k.id, t: k.nombre, e: k.emoji }))] });
+            // v2.8 (D-9): «Me prestaron» también se elige aquí (es una deuda, no un ingreso).
+            if (d.tipo === 'ingreso') return opciones(h, { campo: 'categoriaIngreso', label: '¿De qué?', accion: 'anotarValor', valor: d.ingresoRef ? 'esperado' : d.categoria, lista: [...(d.ingresoRef ? [{ v: 'esperado', t: d.nombre, e: d.emoji }] : []), ...D.INGRESO_CATEGORIAS.map((k) => ({ v: k.id, t: k.nombre, e: k.emoji })), { v: 'prestamo', t: 'Me prestaron', e: '🤝' }] });
+            if (d.tipo === 'prestamo') return campoTexto(h, { campo: 'nombre', label: '¿Cómo se llama esta deuda?', valor: d.nombre || '', placeholder: 'Ej. Préstamo de mi mamá', errorTexto: 'Ponle un nombre' });
             const cats = d.tipo === 'gasto' ? opciones(h, { campo: 'categoria', label: '¿Qué tipo de gasto?', accion: 'anotarValor', valor: d.categoria, lista: D.CATEGORIAS.filter((k) => !['servicios', 'cuotas'].includes(k.id)).map((k) => ({ v: k.id, t: k.nombre, e: k.emoji })) }) : d.tipo === 'pago' ? opciones(h, { campo: 'frecuente', label: '¿Cuál pago?', accion: 'anotarValor', valor: d.frecuente || '', lista: D.PAGOS_FRECUENTES.map((f) => ({ v: f.id, t: f.nombre, e: f.emoji })) }) : '';
             return campoTexto(h, { campo: 'nombre', label: d.tipo === 'pago' ? '¿Qué pago?' : '¿En qué?', valor: d.nombre || '', placeholder: d.tipo === 'pago' ? 'Ej. Colegio' : 'Ej. Pupusas', errorTexto: 'Escribe en qué fue' }) + cats;
         }
@@ -831,6 +946,9 @@
             const ch = (v, t) => `<button type="button" class="chip" aria-pressed="false" data-a="anotarValor" data-campo="cualPago" data-v="${v}" data-fk="cual-pago-${v}">${t}</button>`;
             out.push(`<div class="pregunta" role="group" aria-labelledby="l-cualPago"><p class="campo-l" id="l-cualPago">¿Es el pago de ${esc(pg.nombre)} del ${esc(P.diaMes(d.pagoSiguiente.fecha))}?</p>${d.yaPagado ? `<p class="fila-s">Ya marcaste el del ${esc(P.diaMes(d.yaPagado.fecha))}.${d.pagoSiguiente.fecha > st.hoy ? ' Este todavía no vence: lo marcas pagado por adelantado.' : ''}</p>` : ''}<div class="chips">${ch('si', 'Sí, ya lo pagué')}${ch('no', 'No, es otro gasto')}</div>${error(h, 'cualPago', 'Elige una opción')}</div>`);
         } else if (d.tipo === 'gasto' && d.yaPagado) out.push(`<div class="nota nota--info" role="note">${icon('info')}<p>Ya marcaste el pago «${esc(d.yaPagado.nombre)}» del ${esc(M.fechaCorta(d.yaPagado.fecha))}. Esto se guarda como un gasto aparte.</p></div>`);
+        // v2.8 (C-4, P-1): lo que anotas como pago se conecta con tu plan, pero se pregunta (con «Es nuevo»).
+        const planHtml = preguntaPlan(st, d, h);
+        if (planHtml) out.push(planHtml);
         // V2-80: marcar pagado un pago que todavía no vence: se dice que es por adelantado.
         if (d.tipo === 'pagado' && d.ocurrencia && d.ocurrencia > st.hoy) out.push(`<div class="nota nota--info" role="note">${icon('calendar-days')}<p>Es el pago del ${esc(P.diaMes(d.ocurrencia))}: lo marcas pagado por adelantado.</p></div>`);
         // V2-82: «Recordarme un pago» parecido a uno que ya tienes: se pregunta antes de crear otro.
@@ -923,12 +1041,62 @@
         }
         if ((d.tipo === 'gasto' || d.tipo === 'ingreso') && d.fecha > st.hoy) out.push(`<div class="nota nota--info" role="note">${icon('calendar-days')}<p><strong>Es para el ${esc(M.fechaLarga(d.fecha))}:</strong> ${d.tipo === 'gasto' ? 'lo pongo en Pagos como pago de una vez. No baja tu dinero hasta que lo pagues.' : 'lo pongo como ingreso esperado. No suma a tu libre hasta que llegue.'}${d.adelanto ? ' Después te pregunto de qué quincena te lo descuentan.' : ''}</p></div>`);
         else if (d.tipo === 'ingreso' && d.adelanto && !d.ingresoRef) out.push(`<div class="nota nota--info" role="note">${icon('info')}<p>Es un adelanto de tu salario: suma hoy. Al guardar te pregunto de qué quincena te lo descuentan.</p></div>`);
+        // v2.8 (C-3, D-3): un gasto de un gasto variable (súper, gasolina) ya estaba en tu plan: se dice cuánto te queda.
+        const varHtml = notaVariable(st, d);
+        if (varHtml) out.push(varHtml);
+        // v2.8 (D-9): «Me prestaron» queda como deuda y el dinero llega a tu cuenta.
+        if (d.tipo === 'prestamo' && d.monto) out.push(`<div class="nota nota--info" role="note">${icon('info')}<p>Llega a tu ${esc(M.lugar(st, d.lugar)?.nombre || 'cuenta')} y queda como deuda: debes ${dinero(d.monto)}. No es un ingreso.</p></div>`);
         if (d.tipo === 'apartar' && d.monto !== null) {
             const k = P.calc();
             const sin = k.tienes - k.apartado;
             if (d.monto > sin) out.push(`<div class="nota nota--atencion" role="note">${icon('triangle-alert')}<p>Solo tienes ${dinero(Math.max(0, sin))} fuera de ahorros. Puedes ahorrarlo igual, pero te faltará para cubrirlo.</p></div>`);
         }
         return out.join('');
+    }
+    /**
+     * v2.8 (C-4, P-1): «¿Es tu pago de Luz del 12?» (Sí / No, es un gasto nuevo); si se parecen varios, «¿De cuál de tus
+     * préstamos?»; y «pagué 35» sin decir qué, «¿Qué pagaste?» con lo que tienes por pagar. Siempre con «Es nuevo».
+     */
+    function preguntaPlan(st, d, h) {
+        if (d.cualPlan) return '';
+        const ch = (v, t, fk, e = null) => `<button type="button" class="chip" aria-pressed="false" data-a="anotarValor" data-campo="cualPlan" data-v="${esc(v)}" data-fk="${fk}">${e ? emo(e, 16) + ' ' : ''}${t}</button>`;
+        const err = error(h, 'cualPlan', 'Elige una opción');
+        const fechaO = (f) => (f < st.hoy ? `venció el ${M.partes(f)[2]}` : f === st.hoy ? 'vence hoy' : `vence el ${M.partes(f)[2]}`);
+        if (d.tipo === 'pagado' && d.planConfirmar) {
+            if (d.planOpciones) {
+                const lista = d.planOpciones.map((id) => M.pago(st, id)).filter(Boolean);
+                const deudas = lista.every((p) => p.tipoDeuda);
+                return `<div class="pregunta" role="group" aria-labelledby="l-cualPlan"><p class="campo-l" id="l-cualPlan" tabindex="-1">${deudas ? '¿De cuál de tus préstamos?' : '¿Cuál de tus pagos es?'}</p><div class="chips">${lista.map((p) => ch('p:' + p.id, esc(p.nombre), 'plan-p-' + p.id, p.emoji)).join('')}${ch('nuevo', 'Es nuevo', 'plan-nuevo')}</div>${err}</div>`;
+            }
+            const p = M.pago(st, d.pago);
+            const cuando = d.ocurrencia ? ` del ${esc(P.diaMes(d.ocurrencia))}` : '';
+            return `<div class="pregunta" role="group" aria-labelledby="l-cualPlan"><p class="campo-l" id="l-cualPlan" tabindex="-1">¿Es tu pago de ${esc(p ? p.nombre : d.nombre)}${cuando}?</p><div class="chips">${ch('si', 'Sí, es ese', 'plan-si')}${ch('nuevo', 'No, es un gasto nuevo', 'plan-nuevo')}</div>${err}</div>`;
+        }
+        if (d.tipo === 'gasto' && d.planPreguntar) {
+            const lista = M.opcionesPlan(st);
+            return `<div class="pregunta" role="group" aria-labelledby="l-cualPlan"><p class="campo-l" id="l-cualPlan" tabindex="-1">¿Qué pagaste?</p><div class="chips">${lista.slice(0, 6).map((x) => ch((x.tipo === 'tarjeta' ? 't:' : 'p:') + x.id, `${esc(x.nombre)} <span class="chip-s">${fechaO(x.fecha)}</span>`, 'plan-' + x.tipo + '-' + x.id, x.emoji)).join('')}${ch('nuevo', 'Es nuevo', 'plan-nuevo')}</div>${err}</div>`;
+        }
+        return '';
+    }
+    /**
+     * v2.8 (C-3, D-3): el gasto variable que consume lo que anotas: «Es de tu gasto variable Súper: te quedan $90.00 de
+     * $150.00. Tu libre no baja.» (si te pasas, cuánto, sin culpa). Con «No es de Súper» no cuenta en él.
+     */
+    function notaVariable(st, d) {
+        if (d.tipo !== 'gasto' || d.fecha > st.hoy || (d.usarApartado && d.usarApartado !== 'no')) return '';
+        const prueba = { tipo: 'gasto', nombre: d.nombre, categoria: d.categoria, fecha: d.fecha, variable: d.variableNo ? null : undefined };
+        const v = M.variableDe(st, prueba);
+        if (!v) {
+            if (!d.variableNo) return '';
+            const antes = M.variableDe(st, { ...prueba, variable: undefined });
+            return antes ? `<p class="fila-s">No cuenta en tu gasto variable ${esc(antes.nombre)}. <button type="button" class="link link--inline" data-a="anotarValor" data-campo="variableNo" data-v="no" data-fk="var-si">Sí es de ${esc(antes.nombre)}</button></p>` : '';
+        }
+        const x = M.variablesInfo(st).find((y) => y.v.id === v.id);
+        if (!x) return '';
+        const monto = d.monto || 0;
+        const queda = x.tope - x.anotado - monto;
+        const texto = queda >= 0 ? `Es de tu gasto variable ${esc(v.nombre)}: te quedan ${dinero(queda)} de ${dinero(x.tope)}. Tu libre no baja: ya estaba en tu plan.` : `Es de tu gasto variable ${esc(v.nombre)}: con esto te pasas ${dinero(-queda)} de ${dinero(x.tope)}.`;
+        return `<div class="nota nota--info" role="note" id="nota-variable">${icon('info')}<p>${texto} <button type="button" class="link link--inline" data-a="anotarValor" data-campo="variableNo" data-v="si" data-fk="var-no">No es de ${esc(v.nombre)}</button></p></div>`;
     }
     function cuerpoAnotar(st, h) {
         if (!h.d) {
@@ -939,7 +1107,8 @@
         }
         const faltan = M.faltan(st, h.d).filter((f) => f !== 'frecuencia');
         // v2.7: las preguntas nuevas (varios, fecha, tarjeta) se contestan en su recuadro, no en un editor aparte.
-        const enPregunta = (f) => f === 'varios' || f === 'ordenCuadre' || f === 'fechaFutura' || (f === 'fecha' && h.d.fechaDudosa) || (f === 'tarjeta' && !h.d.tarjeta);
+        // v2.8 (C-4, P-1): «¿Es tu pago de…?» también se contesta en su recuadro.
+        const enPregunta = (f) => f === 'varios' || f === 'ordenCuadre' || f === 'fechaFutura' || f === 'cualPlan' || (f === 'fecha' && h.d.fechaDudosa) || (f === 'tarjeta' && !h.d.tarjeta);
         const abiertos = h.modo === 'form' ? camposDe(h.d.tipo) : [...new Set([...(h.editando ? [h.editando] : []), ...(h.d.montoDudoso ? ['monto'] : []), ...(h.intento ? faltan.filter((f) => !enPregunta(f)) : [])])];
         return `<p class="campo-l campo-l--sec" id="anotar-entendi">${h.modo === 'form' ? 'Completa los datos' : 'Entendí esto. Toca cualquier dato para cambiarlo.'}</p>
             ${h.modo === 'form' ? '' : `<div class="chips chips--datos" id="anotar-chips" role="group" aria-labelledby="anotar-entendi">${chipsDe(st, h)}</div>`}
@@ -947,7 +1116,7 @@
             <div id="anotar-preg">${preguntasAnotar(st, h)}</div>`;
     }
     function camposDe(tipo) {
-        return { gasto: ['monto', 'nombre', 'medio', 'fecha'], pagado: ['monto', 'medio', 'fecha'], ingreso: ['monto', 'nombre', 'lugar', 'fecha'], pago: ['nombre', 'monto', 'frecuencia', 'dia', 'medio'], apartar: ['monto', 'apartado'], liberar: ['monto', 'apartado'], cuadre: ['lugar', 'monto'], mover: ['monto', 'mover'], pagoTarjeta: ['monto', 'tarjeta', 'lugar'] }[tipo] || [];
+        return { gasto: ['monto', 'nombre', 'medio', 'fecha'], pagado: ['monto', 'medio', 'fecha'], ingreso: ['monto', 'nombre', 'lugar', 'fecha'], pago: ['nombre', 'monto', 'frecuencia', 'dia', 'medio'], apartar: ['monto', 'apartado'], liberar: ['monto', 'apartado'], cuadre: ['lugar', 'monto'], mover: ['monto', 'mover'], pagoTarjeta: ['monto', 'tarjeta', 'lugar'], prestamo: ['monto', 'nombre', 'lugar', 'fecha'] }[tipo] || [];
     }
     const tactil = () => {
         try {
@@ -1110,6 +1279,15 @@
             if (!x.medioExplicito && !h.manual.medio) x.medio = M.medioUsual(st, v).id;
         } else if (d.campo === 'categoriaIngreso') {
             if (v === 'esperado') return P.render();
+            // v2.8 (D-9): «Me prestaron» es otra cosa: la deuda y el dinero que llega, en un paso.
+            if (v === 'prestamo') {
+                h.d = aplicarContexto(st, h, borradorVacio(st, 'prestamo', { monto: x.monto, lugar: x.lugarDicho ? x.lugar : null }));
+                h.modo = 'form';
+                h.manual = {};
+                P.render();
+                P.emitir('anotar:prestamo');
+                return;
+            }
             x.ingresoRef = null;
             x.refGuardada = null;
             x.categoria = v;
@@ -1143,6 +1321,21 @@
                 const s = x.pagoSiguiente;
                 Object.assign(x, { tipo: 'pagado', pago: s.pago, ocurrencia: s.fecha, monto: x.monto !== null ? x.monto : s.monto, medio: x.medioExplicito ? x.medio : s.medio, fecha: st.hoy, yaPagado: null });
             }
+        } else if (d.campo === 'cualPlan') {
+            // v2.8 (C-4, P-1): es ese pago de tu plan, otro de la lista, tu tarjeta o un gasto nuevo.
+            if (v === 'si') x.cualPlan = 'si';
+            else if (v === 'nuevo') Object.assign(x, { tipo: 'gasto', pago: null, ocurrencia: null, planConfirmar: false, planPreguntar: false, planOpciones: null, cualPlan: 'nuevo' });
+            else if (v.startsWith('t:')) {
+                const t = M.tarjeta(st, v.slice(2));
+                if (t) Object.assign(x, { tipo: 'pagoTarjeta', tarjeta: t.id, tarjetasPosibles: null, sinTarjeta: false, lugar: M.pagoTarjetaPropuesto(st, t).lugar, nombre: 'Pago de ' + t.nombre, cualPlan: 'si', planPreguntar: false });
+            } else if (v.startsWith('p:')) {
+                const p = M.pago(st, v.slice(2));
+                const o = p ? M.porPagar(st, p) : null;
+                if (p) Object.assign(x, { tipo: 'pagado', pago: p.id, ocurrencia: o ? o.fecha : null, nombre: p.nombre, emoji: p.emoji, categoria: p.categoria, monto: x.monto !== null ? x.monto : o ? o.monto : null, medio: x.medioExplicito ? x.medio : p.medio, medioSeguro: true, planConfirmar: true, planOpciones: null, planPreguntar: false, cualPlan: 'si' });
+            }
+        } else if (d.campo === 'variableNo') {
+            // v2.8 (C-3): «No es de Súper» (no cuenta en ese gasto variable) o volver a contarlo.
+            x.variableNo = v === 'si';
         } else if (d.campo === 'usarApartado') {
             x.usarApartado = v === 'no' ? 'no' : v;
         } else if (d.campo === 'cualIngreso') {
@@ -1267,8 +1460,13 @@
                     if (d.tipo === 'gasto') P.crearPago(s, { nombre: d.nombre, emoji: d.emoji, categoria: d.categoria, monto: d.monto, frecuencia: 'unico', fecha: d.fecha, medio: d.medio });
                     else s.ingresos.push({ id: 'i' + s.seq++, nombre: d.nombre || 'Ingreso', emoji: d.emoji || '💵', categoria: d.categoria || 'otro', monto: d.monto, aprox: false, frecuencia: 'unico', fecha: d.fecha, lugar: d.lugar, principal: false, extra: true, desde: s.hoy, llegadas: {} });
                     texto = d.tipo === 'gasto' ? `Lo puse en Pagos para el ${M.fechaCorta(d.fecha)}` : `Ingreso esperado el ${M.fechaCorta(d.fecha)}`;
+                } else if (d.tipo === 'prestamo') {
+                    // v2.8 (D-9, U06): la deuda y la entrada, en un solo paso (la entrada no es un ingreso: Mes lo dice aparte).
+                    const { registro } = P.crearPrestamo(s, { nombre: d.nombre || 'Préstamo', monto: d.monto, lugar: d.lugar, fecha: d.fecha });
+                    conOrden(registro, { ...d, tipo: 'ingreso' });
+                    texto = `Anotamos tu préstamo: debes ${dinero(d.monto)}`;
                 } else if (d.tipo === 'gasto') {
-                    const r = conOrden(P.registrar(s, { tipo: 'gasto', fecha: d.fecha, monto: d.monto, nombre: d.nombre, categoria: d.categoria, emoji: d.emoji, medio: d.medio, anotado: true, nuevo: true }));
+                    const r = conOrden(P.registrar(s, { tipo: 'gasto', fecha: d.fecha, monto: d.monto, nombre: d.nombre, categoria: d.categoria, emoji: d.emoji, medio: d.medio, anotado: true, nuevo: true, ...(d.variableNo ? { variable: null } : {}) }));
                     if (d.usarApartado && d.usarApartado !== 'no') {
                         const u = P.usarApartado(s, d.usarApartado, r);
                         if (u && u.reserva) texto = `Guardado · ${dinero(u.usado)} quedan para pagar tu tarjeta`;
@@ -1360,6 +1558,8 @@
             // v2.6.7 (V2-87): lo que pagas normalmente de una tarjeta, con el ingreso que lo paga (como cualquier otro pago).
             for (const t of k.tarjetas.filter((x) => x.conIngreso > 0)) noCuenta.push(`${esc(t.t.nombre)} (${dinero(t.conIngreso, { aprox: !!t.ult.inicial })}, vence el ${M.fechaCorta(t.vence)}): se paga con ${esc(P.fuentesTarjeta(t))}, no con lo que tienes hoy.`);
             for (const t of k.tarjetas.filter((x) => x.cupoLibre !== null)) noCuenta.push(`Lo disponible de ${esc(t.t.nombre)} (${dinero(t.cupoLibre)}): es dinero prestado, nunca suma.`);
+            // v2.8 (C-1): lo que guardas aparte no está en tus cuentas: ni suma ni se resta.
+            if (k.aparte) noCuenta.push(`Tus ahorros aparte (${dinero(k.aparte)}): no están en tus cuentas.`);
             const fila = (signo, titulo, monto, ir, sub = '', extra = '', fk = ir) => `<li class="d-fila"><button type="button" class="d-b" data-a="desgloseIr" data-ir="${ir}" data-fk="d-${fk}"><span class="d-signo" aria-hidden="true">${signo}</span><span class="d-t">${titulo}${sub ? `<span class="d-sub">${sub}</span>` : ''}</span><span class="d-m">${monto}</span>${icon('chevron-right', 'ico-xs')}</button>${extra}</li>`;
             // v2.4.1: sin ingreso fijo, la persona elige hasta cuándo ve su libre (antes solo se podía el primer día).
             const elegirHz = hz.ingreso ? '' : `<div class="campo-g" role="group" aria-labelledby="l-hz"><p class="campo-l" id="l-hz">¿Hasta cuándo ves tu libre?</p><div class="chips">${[['finDeMes', 'Hasta fin de mes'], ['quince', 'Los próximos 15 días']].map(([v, t]) => `<button type="button" class="chip" aria-pressed="${hz.modo === v}" data-a="horizonte" data-v="${v}" data-fk="hz-${v}">${hz.modo === v ? icon('check', 'ico-xs') : ''}${t}</button>`).join('')}</div></div>`;
@@ -1369,9 +1569,11 @@
                 titulo: '¿De dónde sale tu libre?',
                 cuerpo: `<ol class="desglose">
                     ${fila('', 'Tienes', dinero(k.tienes), 'midinero', esc(st.lugares.map((l) => l.nombre).join(' + ')))}
-                    ${k.apartado ? fila('−', 'Ahorros', dinero(k.apartado), 'apartados', esc(st.apartados.map((a) => a.nombre).join(', '))) : ''}
+                    ${k.apartado ? fila('−', k.aparte ? 'Ahorros dentro de tus cuentas' : 'Ahorros', dinero(k.apartado), 'apartados', esc(st.apartados.filter((a) => !M.ahorroAparte(a)).map((a) => a.nombre).join(', '))) : ''}
                     ${fila('−', `Por pagar ${antes}`, dinero(k.porPagar + k.enTarjetas - k.reservadoTarjetas), 'pagos', items.length ? 'Con lo que ya tienes' : 'Nada vence antes', items.length ? `<ul class="d-items">${items.join('')}</ul>` : '')}
                     ${reservado ? fila('−', 'Reservado para pagos', dinero(reservado), 'pagos', 'Lo que decidiste pagar con lo que tienes, aunque venza después', `<ul class="d-items">${reservados.join('')}</ul>`, 'reservado') : ''}
+                    ${k.faltaVariables ? fila('−', 'Gastos variables', dinero(k.faltaVariables), 'pagos', 'Lo que te queda de tu tope esta quincena', `<ul class="d-items">${k.variables.filter((x) => x.falta > 0).map((x) => `<li><span>${emo(x.v.emoji, 16)} ${esc(x.v.nombre)} <span class="d-sub">te quedan ${dinero(x.falta)} de ${dinero(x.tope)}</span></span><span>${dinero(x.falta)}</span></li>`).join('')}</ul>`, 'variables') : ''}
+                    ${k.faltaProgramado ? fila('−', 'Ahorro programado', dinero(k.faltaProgramado), 'apartados', 'Lo que vas a guardar esta quincena', `<ul class="d-items">${k.programado.filter((x) => x.falta > 0).map((x) => `<li><span>${emo(x.a.emoji, 16)} ${esc(x.a.nombre)}</span><span>${dinero(x.falta)}</span></li>`).join('')}</ul>`, 'programado') : ''}
                     <li class="d-total"><span class="d-signo" aria-hidden="true">=</span><span class="d-t">Libre</span><span class="d-m">${dinero(k.libre)}</span></li>
                 </ol>
                 ${k.faltaPagos > 0 || k.sinCubrir > 0 ? `<div class="nota nota--atencion" role="note">${icon('triangle-alert')}<p><strong>${esc(P.textoCero(k))}.</strong> Tu libre queda en $0.00, nunca en negativo.</p></div>` : ''}
@@ -2521,6 +2723,11 @@
                 const info = M.tarjetaInfo(st, t);
                 const ult = info.ult;
                 Object.assign(h, { editar: true, tipoDeuda: 'tarjeta', nombre: t.nombre, corte: t.corte ? String(t.corte) : '', sinCorte: !t.corte, pagoDia: String(t.pagoDia), cupo: t.cupo ? M.montoCampo(t.cupo) : '', inicial: !!ult.inicial, usualNueva: ult.inicial && t.pagoUsual ? M.montoCampo(t.pagoUsual) : '', debeHoy: ult.inicial && t.debeInicial !== null && t.debeInicial !== undefined ? M.montoCampo(t.debeInicial) : '', ecTotal: ult.inicial ? '' : M.montoCampo(ult.total), ecMinimo: ult.inicial ? '' : M.montoCampo(ult.minimo), medio: t.medio && M.medio(st, t.medio) ? t.medio : medioDef });
+                // v2.8 (D-5): si dijo que su próximo pago es el del mes siguiente, el formulario lo trae así.
+                if (ult.inicial && t.corte) {
+                    const base = t.desde && t.desde <= st.hoy ? t.desde : st.hoy;
+                    h.venceOtroMes = ult.vence === venceTarjeta(base, t.corte, t.pagoDia, true) && ult.vence !== venceTarjeta(base, t.corte, t.pagoDia);
+                }
                 if (info.comoPago > 0) {
                     h.repartidaT = info.partes.length > 1;
                     h.fuenteT = h.repartidaT ? null : M.esFundado(st, info.partes[0].de) ? 'ahora' : info.partes[0].de;
@@ -2541,7 +2748,8 @@
             let campos = '';
             if (h.tipoDeuda === 'tarjeta' && !h.cuotaTarjeta) {
                 campos = `${campoTexto(h, { campo: 'nombre', label: '¿Cómo se llama?', valor: h.nombre, placeholder: EJ_DEUDA.tarjeta, errorTexto: 'Ponle un nombre' })}
-                    <div class="ob-2">${campoDia(h, 'corte', h.sinCorte ? '¿Qué día es el corte? <span class="opcional">(opcional)</span>' : '¿Qué día es el corte?')}${campoDia(h, 'pagoDia', '¿Qué día se paga?')}</div>
+                    <div class="ob-2">${campoDia(h, 'corte', h.sinCorte ? '¿Qué día es el corte? <span class="opcional">(opcional)</span>' : '¿Qué día es el corte?')}${campoDia(h, 'pagoDia', '¿Qué día vence tu próximo pago?')}</div>
+                    <div id="vence-linea">${venceLinea(st, h)}</div>
                     <p class="fila-s">${h.sinCorte ? 'Si no sabes el día de corte, déjalo vacío: te lo pido con tu estado de cuenta.' : 'Los dos están en tu estado de cuenta.'}</p>
                     ${h.editar ? (h.inicial ? grupoSinEstado(h) : grupoEstado(h)) : grupoEstado(h) + grupoSinEstado(h)}
                     ${campoMonto(h, { campo: 'cupo', label: '¿Cuál es tu límite de crédito? <span class="opcional">(opcional)</span>', valor: h.cupo, id: 'f-cupo', placeholder: 'Ej. 1,000.00', ayuda: 'Verás cuánto tienes disponible. Nunca suma a tu libre: es dinero prestado.' })}
@@ -2571,7 +2779,7 @@
                 if (h.confirmarEliminar && h.tarjetaId) prepararReasignar(h, P.st, ligados(P.st, { medios: mediosDeTarjeta(P.st, h.tarjetaId) }), { fueraMedios: mediosDeTarjeta(P.st, h.tarjetaId), credito: true });
                 return;
             }
-            h[campo] = v;
+            h[campo] = campo === 'venceOtroMes' ? v === 'si' : v;
             if (campo === 'tipoDeuda') {
                 h.intento = false;
                 h.errores = [];
@@ -2579,6 +2787,11 @@
         },
         alCampo(h, campo, el) {
             h[campo] = el.value;
+            // v2.8 (D-5): con otro día, la fecha completa se vuelve a mostrar (sin el «mes siguiente» de antes).
+            if (campo === 'pagoDia' || campo === 'corte') {
+                h.venceOtroMes = false;
+                region('vence-linea', venceLinea(P.st, h));
+            }
         },
     };
     P.acciones.tarjetaEliminar = () => {
@@ -2618,12 +2831,42 @@
     }
     const diaValido = (v) => /^\d{1,2}$/.test(String(v || '').trim()) && +v >= 1 && +v <= 31;
     const mediosDeTarjeta = (st, id) => st.medios.filter((m) => m.tarjeta === id).map((m) => m.id);
-    /** El primer vencimiento de una tarjeta: el mes siguiente a su último corte; sin corte (V2-54), su próximo día de pago. */
-    function venceTarjeta(base, corte, pagoDia) {
-        if (!corte) return M.proximoDia(base, pagoDia);
-        const [y, m] = M.partes(M.ultimoDia(base, corte));
-        const [vy, vm] = M.mesMas(y, m, 1);
-        return M.fechaDe(vy, vm, pagoDia);
+    /**
+     * v2.8 (D-5, F09): «¿Qué día vence tu próximo pago?»: el de este mes si es de tu último corte o después (corte el 5 y pago
+     * el 25: el 25 de este mes); si no, el del mes siguiente. Ya no es «el corte más un mes». Si ya pasó, se pregunta si ya
+     * lo pagaste (V2-85). `otroMes`: la persona dijo que es el del mes siguiente. Sin corte (V2-54), su próximo día de pago.
+     */
+    function venceTarjeta(base, corte, pagoDia, otroMes = false) {
+        let v;
+        if (!corte) v = M.proximoDia(base, pagoDia);
+        else {
+            const [y, m] = M.partes(base);
+            v = M.fechaDe(y, m, pagoDia);
+            if (v < M.ultimoDia(base, corte)) v = M.fechaDe(...M.mesMas(y, m, 1), pagoDia);
+        }
+        return otroMes ? M.fechaDe(...M.mesMas(...M.partes(v).slice(0, 2), 1), pagoDia) : v;
+    }
+    /** v2.8 (D-5): cuántos meses hay del corte al pago, con la fecha que dijo la persona (el del mes siguiente suma uno). */
+    const desfaseTarjeta = (base, corte, pagoDia, otroMes = false) => Math.min(1, M.desfaseDesde(venceTarjeta(base, corte, pagoDia), corte) + (otroMes ? 1 : 0));
+    P.venceTarjeta = venceTarjeta;
+    /** v2.8 (D-5): la fecha del próximo pago en «Tarjeta o préstamo» (al agregarla, o al editarla sin estado de cuenta). */
+    const venceLinea = (st, h) => {
+        if (h.tipoDeuda !== 'tarjeta' || h.cuotaTarjeta || (h.editar && !h.inicial)) return '';
+        const t = h.editar ? M.tarjeta(st, h.tarjetaId) : null;
+        return proximoPagoTarjeta(h, t && t.desde && t.desde <= st.hoy ? t.desde : st.hoy, h.corte, h.pagoDia);
+    };
+    /**
+     * v2.8 (D-5): debajo de «¿Qué día vence tu próximo pago?», la fecha completa a la vista y, si no ha pasado, la opción de
+     * que sea la del mes siguiente (nunca se adivina en silencio).
+     */
+    function proximoPagoTarjeta(h, base, corte, pagoDia, { campo = 'venceOtroMes', accion = 'valor' } = {}) {
+        if (!diaValido(pagoDia)) return '';
+        const v = venceTarjeta(base, diaValido(corte) ? +corte : null, +pagoDia, !!h[campo]);
+        const normal = venceTarjeta(base, diaValido(corte) ? +corte : null, +pagoDia);
+        if (normal < P.st.hoy) return '';
+        const otro = M.fechaDe(...M.mesMas(...M.partes(normal).slice(0, 2), 1), +pagoDia);
+        const ch = (val, t, on) => `<button type="button" class="chip" aria-pressed="${on}" data-a="${accion}" data-campo="${campo}" data-v="${val}" data-fk="vence-${val ? 'otro' : 'este'}">${on ? icon('check', 'ico-xs') : ''}${t}</button>`;
+        return `<div class="campo-g" role="group" aria-labelledby="l-${campo}"><p class="fila-s" id="l-${campo}">Tu próximo pago: <strong>${esc(M.capital(M.conDia(v)))}</strong>.</p><div class="chips">${ch('', esc(M.fechaLarga(normal)), !h[campo])}${ch('si', esc(M.fechaLarga(otro)), !!h[campo])}</div></div>`;
     }
     /**
      * V2-85: en «Tarjeta o préstamo», el pago de este periodo que ya pasó (o vence hoy): el de la tarjeta (con o sin su
@@ -2640,7 +2883,7 @@
                 const ult = t && t.estados.at(-1);
                 if (!ult || !ult.inicial) return null;
                 const corte = diaValido(h.corte) ? +h.corte : t.corte;
-                vence = venceTarjeta(corte && t.desde && t.desde <= st.hoy ? t.desde : st.hoy, corte, pagoDia);
+                vence = venceTarjeta(corte && t.desde && t.desde <= st.hoy ? t.desde : st.hoy, corte, pagoDia, !!h.venceOtroMes);
                 if (vence === ult.vence) return null;
             } else {
                 if (!diaValido(h.corte)) return null;
@@ -2722,7 +2965,9 @@
                             const antesVence = ult.vence;
                             if (t.corte) {
                                 const base = t.desde && t.desde <= s.hoy ? t.desde : s.hoy;
-                                Object.assign(ult, { corte: M.ultimoDia(base, t.corte), vence: venceTarjeta(base, t.corte, t.pagoDia) });
+                                // v2.8 (D-5): la fecha de su próximo pago (la que se ve en el formulario) y cuántos meses hay del corte al pago.
+                                Object.assign(ult, { corte: M.ultimoDia(base, t.corte), vence: venceTarjeta(base, t.corte, t.pagoDia, !!h.venceOtroMes) });
+                                t.desfase = desfaseTarjeta(base, t.corte, t.pagoDia, !!h.venceOtroMes);
                             } else ult.vence = M.proximoDia(s.hoy, t.pagoDia);
                             // V2-85: la respuesta de antes era para otra fecha; con los días nuevos no se crea un pago vencido
                             // (salvo «No, todavía lo debo»).
@@ -2750,7 +2995,8 @@
                 (s) => {
                     const id = 't' + s.seq++;
                     const ultimoCorte = M.ultimoDia(s.hoy, corte);
-                    const vence = venceTarjeta(s.hoy, corte, pagoDia);
+                    // v2.8 (D-5, F09): la fecha de su próximo pago, la que se vio en el formulario.
+                    const vence = venceTarjeta(s.hoy, corte, pagoDia, !!h.venceOtroMes);
                     // v2.7 (F14): un estado de cuenta de $0 también es un estado de cuenta. (F10): guarda en qué orden se anotó.
                     const estado = ecTotal !== null ? { corte: ultimoCorte, total: ecTotal, minimo: ecMinimo || 0, aPagar: ecTotal, opcion: 'total', vence, seq: s.seq++ } : { corte: ultimoCorte, total: 0, minimo: 0, aPagar: 0, opcion: 'total', vence, inicial: true, esperarCorte: true };
                     // V2-85: su pago de este periodo ya pasó (o vence hoy): «Sí» no lo cuenta; «No, todavía lo debo», sí.
@@ -2759,7 +3005,7 @@
                     const usual = ecTotal === null ? M.leerMonto(h.usualNueva) : null;
                     const debeHoy = ecTotal === null ? M.leerMonto(h.debeHoy) : null;
                     // v2.7 (D-7): lo que debes hoy, con su fecha: las compras de antes ya están en ese saldo.
-                    s.tarjetas.push({ id, nombre, emoji: '💳', tipo: 'tarjeta', corte, pagoDia, cupo, interesesAnio: 0, desde: s.hoy, estados: [estado], ...(usual ? { pagoUsual: usual } : {}), ...(debeHoy !== null ? { debeInicial: debeHoy, debeDesde: { fecha: s.hoy, seq: s.seq++ } } : {}), ...(h.medio ? { medio: h.medio } : {}) });
+                    s.tarjetas.push({ id, nombre, emoji: '💳', tipo: 'tarjeta', corte, pagoDia, desfase: desfaseTarjeta(s.hoy, corte, pagoDia, !!h.venceOtroMes), cupo, interesesAnio: 0, desde: s.hoy, estados: [estado], ...(usual ? { pagoUsual: usual } : {}), ...(debeHoy !== null ? { debeInicial: debeHoy, debeDesde: { fecha: s.hoy, seq: s.seq++ } } : {}), ...(h.medio ? { medio: h.medio } : {}) });
                     s.medios.push({ id: 'm' + id, nombre, emoji: '💳', tarjeta: id });
                 },
                 { aviso: `${nombre}: su pago ya está en Pagos`, claves: ['guardado:deuda', 'guardado:deuda:tarjeta'] },
@@ -3592,6 +3838,8 @@
             h.sinCorte = info.sinCorte;
             h.corte = '';
             h.anotado = info.pendiente ? info.pendiente.anotado : 0;
+            // v2.8 (C-7): de eso, lo que bajó tu libre al comprar (sin los cobros automáticos, que van en el pago de la tarjeta).
+            h.anotadoLibre = info.pendiente && info.pendiente.anotadoLibre !== undefined ? info.pendiente.anotadoLibre : h.anotado;
             h.motivo = null;
             h.opcion = 'total';
             h.otro = '';
@@ -3695,11 +3943,12 @@
                 const info = M.tarjetaInfo(s, t);
                 const pend = info.pendiente;
                 // V2-54: con su día de corte, la tarjeta del primer día ya es como cualquier otra.
-                if (h.sinCorte && !t.corte) t.corte = +h.corte;
+                // v2.8 (D-5): y desde aquí se sabe cuántos meses hay de su corte a su pago.
+                if (h.sinCorte && !t.corte) Object.assign(t, { corte: +h.corte, desfase: M.desfaseDesde(pend.vence, +h.corte) });
                 const corte = pend.corte || M.ultimoDia(s.hoy, t.corte);
                 const dif = h.anotado ? total - h.anotado : 0;
                 // v2.7 (F10): el estado guarda en qué orden se anotó: un abono del mismo día del corte anotado después es para él.
-                const e = { corte, total, minimo, aPagar, opcion: total === 0 ? 'total' : h.opcion, vence: pend.vence, anotado: h.anotado, diferencia: dif > 0 ? dif : 0, motivo: h.motivo, seq: s.seq++ };
+                const e = { corte, total, minimo, aPagar, opcion: total === 0 ? 'total' : h.opcion, vence: pend.vence, anotado: h.anotado, ...(h.anotadoLibre !== h.anotado ? { anotadoLibre: h.anotadoLibre } : {}), diferencia: dif > 0 ? dif : 0, motivo: h.motivo, seq: s.seq++ };
                 // v2.6.7 (V2-87): reemplaza a lo que pagas normalmente: el monto real sigue con el mismo ingreso («Lo pagas con»).
                 if (info.ult.inicial && info.usual > 0) e.deEstimado = true;
                 if (t.estados.at(-1).inicial) t.estados.pop();
@@ -4460,7 +4709,8 @@
                     ${opcionesOb('t-banco', '¿De qué banco?', [...D.BANCOS.slice(0, 5).map((b) => ({ v: b, t: b })), { v: 'Otro', t: 'Otro' }], ed.banco)}
                     ${ed.banco === 'Otro' ? `<div class="campo-g"><label class="campo-l" for="ob-t-nombre">¿Cómo se llama?</label><div class="campo"><input id="ob-t-nombre" data-campo="t-nombre" type="text" autocomplete="off" value="${esc(ed.nombre)}" placeholder="Ej. Tarjeta de la tienda"></div></div>` : ''}
                     ${monto('t-debe', '¿Cuánto debes hoy? <span class="opcional">(opcional)</span>', ed.debe)}
-                    <div class="ob-2">${obDiaCorto('t-corte', '¿Qué día es el corte?', ed.corte)}${obDiaCorto('t-pago', '¿Qué día se paga?', ed.pago)}</div>
+                    <div class="ob-2">${obDiaCorto('t-corte', '¿Qué día es el corte?', ed.corte)}${obDiaCorto('t-pago', '¿Qué día vence tu próximo pago?', ed.pago)}</div>
+                    <div id="vence-linea-ob">${proximoPagoTarjeta(ed, st.hoy, ed.corte, ed.pago, { campo: 't-otroMes', accion: 'obValor' })}</div>
                     <p class="fila-s">Los dos están en tu estado de cuenta. Si no sabes el corte, déjalo vacío.</p>
                     ${monto('t-usual', '¿Cuánto pagas normalmente? <span class="opcional">(opcional)</span>', ed.usual)}
                     <p class="fila-s">Se paga como tus otros pagos, con tu ingreso de antes de esa fecha. Lo usamos hasta que anotes tu estado de cuenta.</p>
@@ -4624,7 +4874,12 @@
             if (d.ingresos[g]) d.ingresos[g][c.slice(2)] = /^d[12]$/.test(c.slice(2)) ? soloDigitos(v) : v;
         } else if (c.startsWith('x-') && d.extras && d.extras[c.slice(2)]) d.extras[c.slice(2)].monto = v;
         else if (/^d-(nombre|monto|debe)$/.test(c) || /^t-(nombre|debe|usual)$/.test(c)) ob.editando[c.slice(2)] = v;
-        else if (c === 't-corte' || c === 't-pago') ob.editando[c.slice(2)] = soloDigitos(v);
+        else if (c === 't-corte' || c === 't-pago') {
+            ob.editando[c.slice(2)] = soloDigitos(v);
+            // v2.8 (D-5): la fecha completa de tu próximo pago se ve mientras escribes.
+            ob.editando['t-otroMes'] = false;
+            region('vence-linea-ob', proximoPagoTarjeta(ob.editando, P.st.hoy, ob.editando.corte, ob.editando.pago, { campo: 't-otroMes', accion: 'obValor' }));
+        }
         else if (c === 'p-recibes') ob.editando.recibes = v;
         else if (c === 'p-monto') ob.editando.monto = v;
         else if (c === 'p-nombre') ob.editando.nombre = v;
@@ -4651,6 +4906,7 @@
         else if (d.campo === 'hoyCayo') x.hoyCayo = v;
         else if (d.campo === 'principal') x.principal = v;
         else if (d.campo === 't-banco') ob.editando.banco = v;
+        else if (d.campo === 't-otroMes') ob.editando['t-otroMes'] = v === 'si';
         else if (d.campo === 'd-dia') ob.editando.dia = Number(v);
         else if (d.campo === 'p-cobro') ob.editando.cobro = v;
         else if (d.campo === 'p-turno') ob.editando.turno = v;
@@ -4748,7 +5004,7 @@
     P.acciones.obTarjetaEditar = (d) => {
         const x = P.ui.ob.datos.tarjetas.find((y) => y.clave === d.v);
         if (!x) return;
-        P.ui.ob.editando = { tipo: 'tarjeta', clave: x.clave, banco: x.banco, nombre: x.nombre, debe: x.debe !== null ? M.montoCampo(x.debe) : '', corte: x.corte ? String(x.corte) : '', pago: String(x.pago), usual: x.usual ? M.montoCampo(x.usual) : '', antesDebe: x.antesDebe || null };
+        P.ui.ob.editando = { tipo: 'tarjeta', clave: x.clave, banco: x.banco, nombre: x.nombre, debe: x.debe !== null ? M.montoCampo(x.debe) : '', corte: x.corte ? String(x.corte) : '', pago: String(x.pago), usual: x.usual ? M.montoCampo(x.usual) : '', antesDebe: x.antesDebe || null, 't-otroMes': !!x.otroMes };
         P.ui.ob.errores = [];
         P.render({ foco: '#ob-t-debe' });
     };
@@ -4778,7 +5034,7 @@
         const otros = [...ob.datos.tarjetas.filter((y) => y.clave !== ed.clave).map((y) => y.nombre), ...(ob.completar ? P.st.tarjetas.map((t) => t.nombre) : [])];
         let final = nombre;
         for (let n = 2; otros.includes(final); n++) final = `${nombre} ${n}`;
-        const x = { clave: ed.clave || 'ob' + ++claveOb, banco: ed.banco, nombre: final, debe: M.leerMonto(ed.debe), corte, pago, usual: M.leerMonto(ed.usual), antesDebe: ed.antesDebe || null };
+        const x = { clave: ed.clave || 'ob' + ++claveOb, banco: ed.banco, nombre: final, debe: M.leerMonto(ed.debe), corte, pago, usual: M.leerMonto(ed.usual), antesDebe: ed.antesDebe || null, otroMes: !!ed['t-otroMes'] };
         const i = ob.datos.tarjetas.findIndex((y) => y.clave === x.clave);
         if (i >= 0) ob.datos.tarjetas[i] = x;
         else ob.datos.tarjetas.push(x);
@@ -4913,12 +5169,12 @@
             let id = 'credito';
             while (st.tarjetas.some((x) => x.id === id) || st.medios.some((x) => x.id === id)) id = 'credito' + ++n;
             const pagoDia = t.pago;
-            const estado = { corte: t.corte ? M.ultimoDia(st.hoy, t.corte) : M.sumarDias(st.hoy, -1), total: 0, minimo: 0, aPagar: 0, opcion: 'total', vence: venceTarjeta(st.hoy, t.corte, pagoDia), inicial: true };
+            const estado = { corte: t.corte ? M.ultimoDia(st.hoy, t.corte) : M.sumarDias(st.hoy, -1), total: 0, minimo: 0, aPagar: 0, opcion: 'total', vence: venceTarjeta(st.hoy, t.corte, pagoDia, !!t.otroMes), inicial: true };
             // V2-85: su pago de este periodo ya pasó (o vence hoy): «Sí» (o sin respuesta) espera el siguiente; «No», lo cuenta.
             const antes = antesTarjetaOb(st, t);
             if (antes) estado.antes = t.antesDebe === antes ? 'debe' : 'pagado';
             // v2.7 (D-7): lo que debes hoy, con su fecha (las compras de antes ya están en ese saldo).
-            st.tarjetas.push({ id, nombre: t.nombre, emoji: '💳', tipo: 'tarjeta', corte: t.corte || null, pagoDia, cupo: null, pagoUsual: t.usual || null, debeInicial: t.debe, ...(t.debe !== null && t.debe !== undefined ? { debeDesde: { fecha: st.hoy, seq: st.seq++ } } : {}), desde: st.hoy, interesesAnio: 0, estados: [estado] });
+            st.tarjetas.push({ id, nombre: t.nombre, emoji: '💳', tipo: 'tarjeta', corte: t.corte || null, pagoDia, ...(t.corte ? { desfase: desfaseTarjeta(st.hoy, t.corte, pagoDia, !!t.otroMes) } : {}), cupo: null, pagoUsual: t.usual || null, debeInicial: t.debe, ...(t.debe !== null && t.debe !== undefined ? { debeDesde: { fecha: st.hoy, seq: st.seq++ } } : {}), desde: st.hoy, interesesAnio: 0, estados: [estado] });
             st.medios.push({ id, nombre: t.nombre, emoji: '💳', tarjeta: id });
             idTarjeta[t.clave] = id;
         }
