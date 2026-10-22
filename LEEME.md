@@ -46,6 +46,52 @@ Versión visible en la app y en la guía: **«Prototipo v2.7.0 · 2026-10-21»**
 - **«recibí 50 en efectivo» llega a Efectivo: APROBADO por Victor («Bloque validado — v2.7», 2026-10-21)**, frase literal: «Anota para la v2.8: «recibí 50 en efectivo» debe llegar a Efectivo.»
 - **Datos (DATOS-1 a DATOS-5): siguen vigentes igual que en la v2.7** (APROBADO por Victor, 2026-10-21, frase literal: «me refería a que ya no perdieran nada de sus datos en estas actualizaciones»). Los ahorros de la v2.7 pasan a «dentro de [su cuenta]» (C-1): como ya se restaban de Libre, su Libre no cambia por eso.
 
+### E1 — el cálculo y los datos
+
+- **Tus datos a salvo (DATOS-1 a 5).** Al abrir la v2.8 con lo guardado por otra versión, queda una copia intacta en `pamplanea-uso:respaldo:antes-de-v2.8.0`. El esquema sigue en 2: solo se agrega lo nuevo.
+  - Tus ahorros de antes quedan «dentro de» una cuenta (`donde`): la que tiene más dinero de tus bancos (si no hay banco, la cuenta con más). Ya se restaban de Libre: no cambia.
+  - Nada cambia de tipo ni de nombre solo: un gasto fijo pasa a variable solo si tú lo dices (E2), y una tarjeta conserva su fecha.
+  - Los números de antes y después (Libre, el gasto del mes y lo que debes de cada tarjeta) se calculan con las reglas de la versión que los guardó (v2.7 o v2.6.7) y con las de ahora; si cambió alguno, el cuadrito lo dice en una línea.
+- **D-3 · Libre** = dinero en tus cuentas − tus ahorros dentro de ellas − lo que falta de tu plan hasta tu próximo ingreso (gastos fijos sin pagar + lo que falta de los variables + ahorro programado + pagos de deudas). Un ingreso que esperas no suma hasta que llega. El ejemplo de 01 §23.2 da $385, $365 y $385 (`invariantes` V2).
+- **C-1 · Ahorros.** Dentro de una cuenta se restan; aparte, solo se registran (tus cuentas no cambian). Guardar en uno aparte saca el dinero de una cuenta; usarlo lo devuelve a una. El ahorro programado cuenta en tu plan hasta «Ya lo guardé» (una vez por quincena). «Usé de mi ahorro» devuelve el dinero a Libre. Usar parte de un ahorro deja el resto (D-9, U16).
+- **C-3 · Gastos variables.** Un tope por quincena (por semana o por mes, según cómo te pagan) que se renueva. Cada gasto que se llama igual (o, si el variable se llama como su tipo —Súper, Comida, Mercado—, cada gasto de ese tipo) lo consume una vez: tu libre no baja otra vez. En los últimos 3 días de la quincena: «Ibas a gastar $X y anotaste $Y. ¿Ya terminaste?». «Sí»: lo que sobró vuelve a tu libre; «Me falta»: sigue en tu plan. Si gastas de más: «Te pasaste $Z».
+- **D-4 · La tarjeta, una sola regla (U01).** Antes del primer estado de cuenta, su pago es lo que pagas normalmente; después, el monto del estado. Los dos se pagan con el ingreso de antes de que venza y se pueden cambiar de quincena (V2-87). Lo que ya anotaste en compras de ese ciclo bajó tu libre el día que compraste y sigue saliendo de lo que tienes.
+- **C-7 · Cobros con tarjeta.** Un gasto fijo que se cobra en tu tarjeta (Netflix en tu Visa) no resta aparte: va dentro del pago de la tarjeta (al cobrarse es una compra con ella).
+- **D-5 · «¿Qué día vence tu próximo pago?» (F09).** La fecha completa se ve antes de guardar («Tu próximo pago: domingo 25 de octubre»), con la opción del mes siguiente. Corte el 5 y pago el 25: el 25 de este mes. Las tarjetas de antes conservan su fecha.
+- **D-9.** Cuando lo que debes de una cuota llega a $0, la cuota termina sola: «¡Terminaste de pagar [nombre]! Ya no sale en tu plan.» (Deshacer la vuelve a poner). «Me prestaron 200» guarda la deuda y la entrada en un paso; en Mes la entrada no es un ingreso.
+- **C-5.** «Me llegó dinero» a ±10 % y ±3 días de un ingreso esperado pregunta «¿Es tu quincena?» (siempre se pregunta); si no, es un extra. «recibí 50 en efectivo» llega a Efectivo («…en Agrícola», a esa cuenta).
+- **C-4 / P-1.** Anotar un pago se conecta con tu plan y se pregunta: «¿Es tu pago de Internet del 20 de octubre?» (Sí, es ese / No, es un gasto nuevo); si se parecen varios, «¿De cuál de tus préstamos?»; «pagué 35» sin decir qué, «¿Qué pagaste?» con lo que tienes por pagar y «Es nuevo». Una compra común («pagué 5 del bus») no pregunta.
+
+### Pruebas de E1
+
+- **Línea base (d702de0, sacada de git a una carpeta aparte, una prueba a la vez):** las 37 pruebas por archivo con código 0 y sin fallos (`invariantes` 20 de 20); `actualizar --ref=c640e4e`: 0 fallos.
+- **E1, por archivo, una a la vez:** las 37 con código 0 y sin fallos; `actualizar --ref=c640e4e` y `--ref=d702de0`: 0 fallos.
+- **`invariantes`: 29 de 29 filas** (las 20 de antes + V2 a V10, una por cada parte 2 a 9 de E1 y la de los datos). Sobre la v2.7 (`--raiz=` la copia de d702de0), las nueve nuevas: **0 de 9** (cada una fallaba antes).
+- **Pruebas que esperaban lo de antes, actualizadas citando su decisión (no se borró ninguna):**
+  - D-4 (la tarjeta, una sola regla): `probar-motor`, `recorrer-v2`, `v25`, `v26`, `probar-pwa`, `novedades` y `v267-editar` (el libre de Ana es $285.60: los $15 de intereses de BAC van con la quincena del 30; un estado de cuenta nuevo se paga con la quincena de antes de que venza).
+  - D-5 (el vencimiento se pregunta): `v231`, `v241`, `v266` y `v267` (corte el 5 y pago el 20: el 20 de este mes; si ya pasó, se pregunta si ya lo pagaste).
+  - C-1 (ahorros dentro de su cuenta): `aceptacion-v23` y `actualizar`.
+  - C-4 / P-1 («¿Es tu pago de…?»): `invariantes` I05 e I08, `qa-v261` C-07 y `v265` A3.
+  - C-5 (±10 % y ±3 días): `qa-v261` C-09, `v265` B2 y B3, y `recorrer-v2` (a 9 días ya no pregunta).
+  - C-7 (cobros con tarjeta dentro de su pago): `qa-v261` C-03.
+  - El cuadrito de la v2.8: `novedades` y `actualizar` (la copia es `antes-de-v2.8.0` en `invariantes` I12).
+
+### Decisiones técnicas — REVISAR (v2.8)
+
+1. **Ahorros de antes: en qué cuenta.** En el banco con más dinero (si no hay banco, en la cuenta con más). Solo se ve como «dentro de Banco Agrícola»; se cambia en el ahorro. *(Se ve: QUÉ DEBO PROBAR.)*
+2. **Un ahorro aparte no paga un gasto directo.** Primero «Usé de mi ahorro» (llega a una cuenta) y después el gasto. Así nunca se resta dos veces.
+3. **Cerrar o eliminar un ahorro aparte con dinero:** el dinero llega a tu efectivo (o la cuenta que elijas) y vuelve a tu libre.
+4. **La quincena del plan:** del último ingreso que ya tienes al día antes del siguiente; sin ingreso fijo, el mes (o del 1 al 15 y del 16 al fin de mes con «los próximos 15 días»). Un gasto variable nuevo cuenta desde el inicio de esta quincena (lo que ya gastaste de ese tipo también cuenta).
+5. **Qué gasto consume un variable:** el que se llama igual; si el variable se llama como su tipo de gasto (Súper, Comida, Mercado), cualquiera de ese tipo. Los pagos fijos y lo pagado con un ahorro no lo consumen. Anotar lo dice y trae «No es de Súper». *(Se ve.)*
+6. **«¿Ya terminaste?»** se pregunta los últimos 3 días de la quincena (y mientras el ingreso no se confirme), si queda algo y no contestaste. Sin respuesta, al llegar el ingreso empieza la quincena nueva con el tope entero.
+7. **D-4:** de un estado de cuenta, lo que ya anotaste en compras sigue saliendo de lo que tienes (bajó tu libre el día que compraste); lo demás (intereses, compras sin anotar) va con el ingreso de antes del vencimiento. Con Ana (BAC $245, $230 anotados) su libre sube $15: los intereses van con la quincena del 30. *(Se ve.)*
+8. **C-7:** un cobro con tarjeta que venció y no marcaste tampoco resta: va en el pago de la tarjeta.
+9. **D-5:** «¿Qué día vence tu próximo pago?» sigue siendo un día (1 al 31) y debajo se ve la fecha completa con el mes; si el de este mes ya pasó, se pregunta si ya lo pagaste (V2-85). *(Se ve.)*
+10. **D-9 «Me prestaron»:** la deuda queda sin cuota fija (no sale en tu plan) hasta que le pongas una en Deudas. El dinero llega a tu efectivo si no dices otra cuenta. *(Se ve.)*
+11. **C-5:** un adelanto se sigue reconociendo por su nombre hasta 12 días antes o después (V2-56); lo demás, solo a ±10 % y ±3 días.
+12. **P-1:** «pagué…» sin decir qué pregunta solo si suena a cuenta, cuota o recibo (sin tipo, servicios, cuotas, casa, educación, suscripciones o teléfono). «Anotar las 2» con un pago del plan lo marca sin preguntar (la nota dice cuáles).
+13. **La versión v2.8.0** se puso al terminar E1 (y no al final): la copia «antes-de-v2.8.0» y el cuadrito dependen de ella.
+
 ---
 
 ## Prototipo v2.7 · Tus números bien (2026-10-21)
