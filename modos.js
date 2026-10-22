@@ -860,7 +860,7 @@
     // ------------------------------------------------------------------ v2.8: las preguntas de una sola vez (E2.7)
     /**
      * v2.8 (D-2, D-5): a quien viene de una versión anterior, una sola vez y con sus datos: por cada gasto fijo que parece
-     * variable (súper, gasolina, comida, mercado), «¿«Súper» cambia cada quincena?»; por cada tarjeta, «¿Qué día vence tu
+     * variable (súper, gasolina, comida, mercado), «¿«Súper» lo vas gastando en varias compras?»; por cada tarjeta, «¿Qué día vence tu
      * próximo pago de [tarjeta]?»; y por cada ahorro de antes, «Tu ahorro [nombre], ¿en qué cuenta está?» («no asumir»,
      * APROBADO por Victor, 2026-10-22). Nada cambia sin respuesta; lo contestado queda en tus datos (`preguntas28`).
      */
@@ -917,7 +917,7 @@
             }
             if (q.tipo === 'variable') {
                 const p = q.pago;
-                return `<li class="p28-caso"><div class="p28-caso-t">${P.caja(p.emoji || '🛒')}<span class="fila-txt"><span class="fila-t">¿«${esc(p.nombre)}» cambia ${esc(P.cadaVez())}?</span><span class="fila-s">Como gasto variable, su tope sería ${M.dinero(q.tope)} ${esc(P.cadaPlan())}.</span></span></div><div class="acciones-2" role="group" aria-label="${esc(p.nombre)}"><button type="button" class="btn" data-a="pregunta28" data-id="${esc(q.clave)}" data-v="no" data-fk="p28-no-${p.id}">No, queda fijo</button><button type="button" class="btn btn--prim" data-a="pregunta28" data-id="${esc(q.clave)}" data-v="si" data-fk="p28-si-${p.id}">Pasarlo a gasto variable</button></div></li>`;
+                return `<li class="p28-caso"><div class="p28-caso-t">${P.caja(p.emoji || '🛒')}<span class="fila-txt"><span class="fila-t">¿«${esc(p.nombre)}» lo vas gastando en varias compras?</span><span class="fila-s">Como gasto variable, su tope sería ${M.dinero(q.tope)} ${esc(P.cadaPlan())}.</span></span></div><div class="acciones-2" role="group" aria-label="${esc(p.nombre)}"><button type="button" class="btn" data-a="pregunta28" data-id="${esc(q.clave)}" data-v="no" data-fk="p28-no-${p.id}">No, queda fijo</button><button type="button" class="btn btn--prim" data-a="pregunta28" data-id="${esc(q.clave)}" data-v="si" data-fk="p28-si-${p.id}">Pasarlo a gasto variable</button></div></li>`;
             }
             const t = q.tarjeta;
             const ch = (f, fk) => `<button type="button" class="btn${f === q.actual ? ' btn--prim' : ''}" data-a="pregunta28" data-id="${esc(q.clave)}" data-v="${f}" data-fk="${fk}">${esc(M.capital(M.fechaLarga(f)))}</button>`;

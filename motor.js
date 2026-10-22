@@ -1164,14 +1164,18 @@
         for (const p of st.pagos) {
             if (p.activo === false || p.descuento || pagoEnTarjeta(st, p) || (soloDeudas && !p.tipoDeuda)) continue;
             const o = porPagar(st, p);
-            if (o && o.fecha <= sumarDias(st.hoy, 45)) out.push({ tipo: 'pago', id: p.id, nombre: p.nombre, emoji: p.emoji, fecha: o.fecha, monto: o.monto, deuda: !!p.tipoDeuda });
+            // v2.8 (Victor, 2026-10-22): en «Pagué una deuda» salen todas tus deudas, aunque no venzan pronto.
+            if (o && (soloDeudas || o.fecha <= sumarDias(st.hoy, 45))) out.push({ tipo: 'pago', id: p.id, nombre: p.nombre, emoji: p.emoji, fecha: o.fecha, monto: o.monto, deuda: !!p.tipoDeuda });
+            else if (soloDeudas) out.push({ tipo: 'pago', id: p.id, nombre: p.nombre, emoji: p.emoji, fecha: null, monto: p.monto, deuda: true });
         }
         for (const t of st.tarjetas) {
             const info = tarjetaInfo(st, t);
             const monto = info.porPagarEstado + info.estimado;
-            if (monto > 0) out.push({ tipo: 'tarjeta', id: t.id, nombre: t.nombre, emoji: t.emoji, fecha: info.vence, monto, deuda: true });
+            // La tarjeta, por su alias (v2.8, C-10).
+            if (monto > 0 || soloDeudas) out.push({ tipo: 'tarjeta', id: t.id, nombre: t.apodo || t.nombre, emoji: t.emoji, fecha: monto > 0 ? info.vence : null, monto, deuda: true });
         }
-        return out.sort((a, b) => (a.fecha < b.fecha ? -1 : a.fecha > b.fecha ? 1 : 0));
+        const f = (x) => x.fecha || '9999-12-31';
+        return out.sort((a, b) => (f(a) < f(b) ? -1 : f(a) > f(b) ? 1 : 0));
     }
     /** v2.7 (F06): «hoy», «ayer», «antier» y «mañana» en cualquier parte de la frase («en la mañana» es la hora, no el día). */
     const RELATIVAS = [[/\bpasado manana\b/, 2], [/\bmanana\b/, 1], [/\b(?:antier|anteayer)\b/, -2], [/\bayer\b/, -1], [/\bhoy\b/, 0]];
@@ -1479,11 +1483,24 @@
         const desde = sumarDias(st.hoy, -dias);
         const hasta = sumarDias(st.hoy, dias);
         const cerca = (x) => d.monto !== null && d.monto !== undefined && Math.abs(x.monto - d.monto) * 10 <= x.monto;
+        // v2.8 (APROBADO por Victor, 2026-10-22, C-5 reforzado): con Salario, o un nombre que se parece a un ingreso de tu
+        // plan, siempre se pregunta «¿Es tu Quincena del 30?», sin importar el monto ni los días (nunca se cuenta dos veces).
+        const dePlan = (ing) => !d.adelanto && ((d.categoria === 'salario' && ing.categoria === 'salario') || (!!resto && coincide(resto, ing.nombre)));
         let o = null;
         let ya = null;
         for (const ing of st.ingresos) {
             if (ing.activo === false || (d.adelanto && !esAdelantoIng(ing))) continue;
             const porNombre = !!d.adelanto && !!resto && coincide(resto, ing.nombre);
+            if (dePlan(ing)) {
+                // La que falta: una que ya pasó y no marcaste o, si no, la próxima. Si la próxima ya llegó, se avisa.
+                const xs = ocurrenciasIngreso(st, ing, sumarDias(st.hoy, -31), sumarDias(st.hoy, 31)).filter((x) => x.estado !== 'noLlego');
+                const proxima = xs.find((x) => x.fecha >= st.hoy);
+                const falta = xs.find((x) => x.fecha < st.hoy && x.estado !== 'llego') || (proxima && proxima.estado !== 'llego' ? proxima : null);
+                const llego = proxima && proxima.estado === 'llego' ? proxima : xs.filter((x) => x.estado === 'llego').at(-1);
+                if (falta && (!o || falta.fecha < o.fecha)) o = falta;
+                else if (!falta && llego && (!ya || llego.fecha > ya.fecha)) ya = llego;
+                continue;
+            }
             for (const x of ocurrenciasIngreso(st, ing, desde, hasta)) {
                 const porMonto = cerca(x) && (!d.categoria || d.categoria === 'salario' || d.categoria === 'otro' || ing.categoria === d.categoria);
                 if (!porNombre && !porMonto) continue;
@@ -1562,6 +1579,8 @@
         if (d.tipo === 'pagoTarjeta' && !d.lugar) f.push('lugar');
         if (d.tipo === 'gasto' && !d.medio) f.push('medio');
         if (d.tipo === 'gasto' && !d.nombre) f.push('nombre');
+        // v2.8 (D-2 corregida, Victor 2026-10-22): «Es nuevo»: «¿Cómo es?» (llega con fecha, lo voy gastando o solo esta vez).
+        if (d.tipo === 'gasto' && d.cualPlan === 'nuevo' && !d.soloDeudas && !d.comoEs) f.push('comoEs');
         if (d.tipo === 'pago') {
             if (!d.nombre) f.push('nombre');
             if (!d.frecuencia) f.push('frecuencia');
