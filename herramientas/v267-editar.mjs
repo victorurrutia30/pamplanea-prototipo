@@ -152,7 +152,9 @@ if (partes.includes(1)) {
         await ev(`P.abrirHoja('nuevaDeuda', { tipoInicial: 'tarjeta' }); true`);
         await esperar(300);
         const crear = await etiquetas();
-        await escribir('#f-nombre', 'Visa Cuscatlán');
+        // v2.8 (APROBADO por Victor, 2026-10-22): «¿De qué banco o cooperativa?» («Otro» pide el nombre) reemplaza «¿Cómo se llama?».
+        await clic('[data-fk="op-banco-Otro"]');
+        await escribir('#f-otroNombre', 'Visa Cuscatlán');
         await escribir('#f-corte', '25');
         await escribir('#f-pagoDia', '14');
         await escribir('#f-cupo', '1000');
@@ -168,11 +170,11 @@ if (partes.includes(1)) {
         const editar = await etiquetas();
         // Su estado de cuenta se anota con «Llegó mi estado de cuenta» (en la ficha); lo demás se edita aquí.
         comparar(crear, editar, ['¿Qué es?', '¿Tienes tu último estado de cuenta?', '¿Cuánto es el pago de contado?', '¿Cuánto es el pago mínimo?', '¿Todavía no tienes estado de cuenta?']);
-        check('trae lo que tiene', [await valor('#f-nombre'), await valor('#f-corte'), await valor('#f-pagoDia'), await valor('#f-cupo'), await valor('#f-usualNueva'), await valor('#f-debeHoy'), await pulsado('op-medio-' + debito), await pulsado('op-fuenteT-2026-10-30')], ['Visa Cuscatlán', '25', '14', '1000.00', '100.00', '800.00', 'true', 'true']);
+        check('trae lo que tiene', [await valor('#f-otroNombre'), await valor('#f-corte'), await valor('#f-pagoDia'), await valor('#f-cupo'), await valor('#f-usualNueva'), await valor('#f-debeHoy'), await pulsado('op-medio-' + debito), await pulsado('op-fuenteT-2026-10-30')], ['Visa Cuscatlán', '25', '14', '1000.00', '100.00', '800.00', 'true', 'true']);
         await foto('T1-editar');
         // Editar cada campo.
         const l0 = await libre();
-        await escribir('#f-nombre', 'Visa Oro');
+        await escribir('#f-otroNombre', 'Visa Oro');
         // Del 14 al 13: el de octubre (13 oct) ya pasó («Sí, ya lo pagué», lo elegido) y el siguiente es el 13 nov.
         await escribir('#f-pagoDia', '13');
         await escribir('#f-cupo', '1500');
@@ -210,11 +212,15 @@ if (partes.includes(2)) {
         await irA('midinero', 'tarjeta', id);
         await clic('[data-fk="editar-tarjeta"]', 400);
         const editar = await etiquetas();
-        // En el Primer día se elige el banco; al editar es su nombre («Crédito Agrícola»).
-        comparar(notas.T2crear, editar, ['¿De qué banco?']);
-        check('trae lo del Primer día', [await valor('#f-nombre'), await valor('#f-corte'), await valor('#f-pagoDia'), await valor('#f-usualNueva'), await valor('#f-debeHoy')], ['Crédito Agrícola', '21', '15', '150.00', '2000.00']);
+        // v2.8 (APROBADO por Victor, 2026-10-22): «¿De qué banco o cooperativa?» y «Alias», igual al crear y al editar (antes,
+        // al editar era su nombre, «Crédito Agrícola»). Su nombre coincide con un banco de la lista: sale elegido.
+        comparar(notas.T2crear, editar);
+        check('trae lo del Primer día', [await pulsado('op-banco-Agrícola'), await valor('#f-apodo'), await valor('#f-corte'), await valor('#f-pagoDia'), await valor('#f-usualNueva'), await valor('#f-debeHoy')], ['true', '', '21', '15', '150.00', '2000.00']);
+        await escribir('#f-apodo', 'La de la casa');
         await escribir('#f-debeHoy', '1800');
         await guardar('deuda-ok');
+        check('el alias se guarda y el nombre no cambia solo', await ev(`[P.st.tarjetas[0].nombre, P.st.tarjetas[0].apodo, P.st.medios.find((m) => m.tarjeta === P.st.tarjetas[0].id).nombre]`), ['Crédito Agrícola', 'La de la casa', 'Crédito Agrícola']);
+        check('la ficha se llama como su alias', await texto('#pantalla .pg-head'), contiene('La de la casa'));
         check('ficha: «~$1,800 · Por confirmar con tu estado de cuenta»', await texto('#pantalla .ficha-cifra'), (x) => x.includes('~$1,800') && x.includes('Por confirmar con tu estado de cuenta'));
         await foto('T2-ficha');
     });
@@ -226,7 +232,9 @@ if (partes.includes(3)) {
         await primerDia();
         await ev(`P.abrirHoja('nuevaDeuda', { tipoInicial: 'tarjeta' }); true`);
         await esperar(300);
-        await escribir('#f-nombre', 'Visa Cuscatlán');
+        // v2.8 (APROBADO por Victor, 2026-10-22): «¿De qué banco o cooperativa?»; «Otro» pide el nombre.
+        await clic('[data-fk="op-banco-Otro"]');
+        await escribir('#f-otroNombre', 'Visa Cuscatlán');
         await escribir('#f-corte', '10');
         await escribir('#f-pagoDia', '5');
         await escribir('#f-ecTotal', '300');
@@ -312,6 +320,8 @@ if (partes.includes(6)) {
         await escribir('#f-monto', '25');
         await elegirFecha('turno', '2026-11-30');
         await escribir('#f-turnoMonto', '250');
+        // v2.8 (APROBADO por Victor, 2026-10-22): sin «¿Con qué lo pagas?» no se guarda (antes venía elegido el primero).
+        await clic('[data-fk="op-medio-efectivo"]');
         const crear = await etiquetas();
         await guardar();
         const id = await ev(`P.st.pagos.find((p) => /cuchubal/i.test(p.nombre)).id`);
@@ -347,7 +357,8 @@ if (partes.includes(7)) {
         await escribir('#f-monto', '25');
         await clic('[data-fk="dia-dia-28"]');
         await clic(`[data-fk="op-medio-${debito}"]`);
-        await clic('[data-fk="np-automatico"]');
+        // v2.8 (APROBADO por Victor, 2026-10-22): con un banco o una tarjeta, «¿Se cobra solo?» (antes, un chip).
+        await clic('[data-fk="op-solo-si"]');
         const crear = await etiquetas();
         await guardar();
         const id = await ev(`P.st.pagos.find((p) => p.nombre === 'Gimnasio').id`);
@@ -356,12 +367,13 @@ if (partes.includes(7)) {
         await clic('[data-fk="editar-pago"]', 400);
         const editar = await etiquetas();
         comparar(crear, editar, ['¿Cuál pago?']);
-        check('trae lo que tiene', [await valor('#f-nombre'), await valor('#f-monto'), await pulsado('dia-dia-28'), await pulsado('op-medio-' + debito), await pulsado('np-automatico'), await pulsado('estimado')], ['Gimnasio', '25.00', 'true', 'true', 'true', 'false']);
+        check('trae lo que tiene', [await valor('#f-nombre'), await valor('#f-monto'), await pulsado('dia-dia-28'), await pulsado('op-medio-' + debito), await pulsado('op-solo-si'), await pulsado('estimado')], ['Gimnasio', '25.00', 'true', 'true', 'true', 'false']);
         await escribir('#f-monto', '30');
         await clic('[data-fk="estimado"]');
         await clic('[data-fk="dia-dia-27"]');
+        // En efectivo no se pregunta si se cobra solo (y deja de cobrarse solo).
         await clic('[data-fk="op-medio-efectivo"]');
-        await clic('[data-fk="np-automatico"]');
+        check('con Efectivo no sale «¿Se cobra solo?»', await hay('[data-campo="solo"]'), false);
         await guardar();
         const p = await ev(`P.st.pagos.find((x) => x.id === ${js(id)})`);
         check('guardado', [p.monto, p.estimado, p.dia, p.medio, !!p.automatico], [3000, true, 27, 'efectivo', false]);
@@ -438,7 +450,8 @@ if (partes.includes(10)) {
         await esperar(300);
         const crear = await etiquetas();
         await clic('[data-fk="op-clase-banco"]');
-        await escribir('#f-nombre', 'Banco Cuscatlán');
+        // v2.8 (APROBADO por Victor, 2026-10-22): «¿De qué banco o cooperativa?» y «Alias (opcional)» reemplazan «¿Cómo se llama?».
+        await clic('[data-fk="op-banco-Cuscatlán"]');
         await escribir('#f-monto', '200');
         await guardar('lugar-ok');
         const id = await ev(`P.st.lugares.find((l) => l.nombre === 'Banco Cuscatlán').id`);
@@ -448,15 +461,20 @@ if (partes.includes(10)) {
         await esperar(300);
         const editar = await etiquetas();
         comparar(crear, editar);
-        check('trae lo que tiene', [await valor('#f-nombre'), await valor('#f-monto'), await pulsado('lugar-debito'), await pulsado('op-clase-banco')], ['Banco Cuscatlán', '200.00', 'true', 'true']);
-        await escribir('#f-nombre', 'Cuscatlán');
+        check('trae lo que tiene', [await pulsado('op-banco-Cuscatlán'), await valor('#f-apodo'), await valor('#f-monto'), await pulsado('lugar-debito'), await pulsado('op-clase-banco')], ['true', '', '200.00', 'true', 'true']);
+        await escribir('#f-apodo', 'La de la casa');
         await escribir('#f-monto', '250');
         await clic('[data-fk="lugar-debito"]');
         await guardar('lugar-ok');
         check('Hoy: el libre sube $50 (cuadre de hoy)', (await libre()) - l0, 5000);
         check('su débito ya no aparece para elegir', await ev(`P.st.medios.some((m) => m.lugar === ${js(id)} && m.tarjetaDebito && !m.oculto)`), false);
+        check('se llama como su alias y guarda su banco', await ev(`(() => { const l = P.st.lugares.find((x) => x.id === ${js(id)}); return [l.nombre, l.banco]; })()`), ['La de la casa', 'Cuscatlán']);
         await irA('midinero', 'cuentas');
-        check('Cuentas: el nombre nuevo con $250.00', await pantalla(), (x) => x.includes('Cuscatlán') && x.includes('$250.00'));
+        check('Cuentas: el alias con $250.00', await pantalla(), (x) => x.includes('La de la casa') && x.includes('$250.00'));
+        await ev(`P.ui.hoja = null; P.abrirHoja('lugar', { id: ${js(id)} }); true`);
+        await esperar(300);
+        check('al editar otra vez: su banco elegido y su alias', [await pulsado('op-banco-Cuscatlán'), await valor('#f-apodo')], ['true', 'La de la casa']);
+        await ev(`P.cerrarHoja({ sinFoco: true }); true`);
     });
 }
 

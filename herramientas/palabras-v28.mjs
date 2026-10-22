@@ -1,6 +1,10 @@
 // PRUEBA v2.8 (C-2, APROBADO por Victor 2026-10-21: «Las apruebo»): ninguna pantalla, ayuda, glosario ni entrenamiento
 // dice «apartar», «apartado», «reservar» ni «Pagos» como pestaña. La reserva se explica solo en «¿De dónde sale?» (el
 // desglose del libre). El intérprete puede seguir aceptando «aparté» (lo que escribe la persona no se revisa).
+// Y (APROBADO por Victor, 2026-10-22: «Ese "no, lo pago yo" es vago…» y «como se llama, como le dices?…») tampoco
+// «lo pago yo» ni «¿Cómo le dices?»: ahora «¿Con qué lo pagas?» y «Alias (opcional)». Por eso también recorre
+// «Completar tu Primer día» (con sus editores abiertos), «Nuevo lugar», «Editar» de una cuenta de banco y «+ Gasto fijo»
+// con un banco elegido («¿Se cobra solo?»).
 // Recorre, con tus datos (una persona con tarjeta, ahorros dentro y aparte, gastos variables, ahorro programado, un
 // préstamo y un cobro con tarjeta) y con los tres ejemplos (Ana, Carlos y Rosa): las 4 pestañas, Mi plan en sus dos vistas,
 // cada ficha, cada hoja, los paneles de Ayuda, el glosario, los consejos y todos los textos del entrenamiento.
@@ -56,6 +60,29 @@ const RECORRER = `(async () => {
             cerrar();
             try { P.abrirHoja(tipo, { ...datos }); await espera(20); tomar(quien + ' · hoja ' + tipo, document.getElementById('capa-hoja')); } catch (e) { out.push({ donde: quien + ' · hoja ' + tipo, error: e.message }); }
         }
+        // v2.8 (Victor, 2026-10-22): las cuentas de banco, «+ Gasto fijo» con un banco o una tarjeta y «Completar tu Primer día».
+        const banco0 = st.lugares.find((l) => l.tipo === 'banco');
+        for (const [tipo, datos] of [['lugar', {}], ...(banco0 ? [['lugar', { id: banco0.id }]] : [])]) {
+            cerrar();
+            try { P.abrirHoja(tipo, { ...datos }); await espera(20); tomar(quien + ' · hoja ' + tipo + (datos.id ? ' ' + datos.id : ''), document.getElementById('capa-hoja')); } catch (e) { out.push({ donde: quien + ' · hoja ' + tipo, error: e.message }); }
+        }
+        const cobraSolo = MOTOR.puedeCobrarSolo || ((s, id) => !!(MOTOR.medio(s, id) || {}).tarjeta);
+        const mb = st.medios.find((m) => !m.oculto && cobraSolo(st, m.id));
+        if (mb) {
+            cerrar(); P.abrirHoja('nuevoPago', {}); P.ui.hoja.medio = mb.id; P.render(); await espera(20);
+            tomar(quien + ' · hoja nuevoPago con ' + mb.nombre, document.getElementById('capa-hoja'));
+        }
+        try {
+            cerrar(); P.acciones.obCompletar(); await espera(20);
+            for (const paso of [3, 4, 5]) { P.ui.ob.paso = paso; P.ui.ob.editando = null; P.render(); await espera(20); ver(quien + ' · Primer día paso ' + paso); }
+            P.ui.ob.paso = 4; P.acciones.obTarjetaNueva(); P.acciones.obValor({ campo: 't-banco', v: 'Otro' }); await espera(20); ver(quien + ' · Primer día tarjeta');
+            P.ui.ob.editando = null; P.ui.ob.paso = 5; P.acciones.obPago({ v: 'luz' }); await espera(20);
+            const conBanco = [...document.querySelectorAll('[data-campo="p-paga"], [data-campo="p-cobro"]')].map((x) => x.dataset.v).find((v) => /^[TtLb]:/.test(v) && v !== 'L:efectivo');
+            if (conBanco) { P.acciones.obValor({ campo: document.querySelector('[data-campo="p-paga"]') ? 'p-paga' : 'p-cobro', v: conBanco }); await espera(20); }
+            ver(quien + ' · Primer día gasto fijo');
+            P.ui.ob.editando = null; P.acciones.obSuscripcion(); await espera(20); ver(quien + ' · Primer día suscripción');
+            P.acciones.obCerrar(); await espera(20);
+        } catch (e) { out.push({ donde: quien + ' · Primer día', error: e.message }); }
         // Anotar con cada atajo y con frases.
         for (const atajo of ['gasto', 'ingreso', 'pagoDeuda', 'apartar', 'mover', 'cuadre']) {
             cerrar(); P.acciones.anotar(); P.acciones.anotarAtajo({ v: atajo }); await espera(20); tomar(quien + ' · Anotar ' + atajo, document.getElementById('capa-hoja'));
@@ -116,6 +143,8 @@ const textos = await ev(RECORRER);
 // Las palabras que no se dicen (C-2). «Pagos» como pestaña: en la barra de abajo y como nombre de pantalla.
 // («aparte» sí se dice: es el ahorro que está fuera de tus cuentas, C-1.)
 const PROHIBIDAS = /\b(apart(ar|ado|ados|ada|adas|é|aste|amos|aron)|reserv(ar|ado|ada|ados|adas|ando|é|aste|a|as|amos|aron|e|o|ación|aciones))\b/i;
+// v2.8 (Victor, 2026-10-22): «No, lo pago yo» y «¿Cómo le dices?» ya no se dicen (también en «¿De dónde sale?»).
+const YA_NO = /\blo pago yo\b|¿\s*c[oó]mo le dices\s*\?/i;
 const malas = [];
 const errores = [];
 for (const x of textos) {
@@ -126,6 +155,8 @@ for (const x of textos) {
     const re = x.desglose ? /\bapart(ar|ado|ados|ada|adas|é|aste|amos|aron)\b/i : PROHIBIDAS;
     const m = re.exec(x.texto);
     if (m) malas.push(`${x.donde}: «…${x.texto.slice(Math.max(0, m.index - 50), m.index + 50)}…»`);
+    const y = YA_NO.exec(x.texto);
+    if (y) malas.push(`${x.donde}: «…${x.texto.slice(Math.max(0, y.index - 50), y.index + 50)}…»`);
     // «Pagos» como nombre de la pestaña (en una frase como «en Pagos», «Ver en Pagos», «Toca «Pagos»»).
     const tab = /\b(en|a|de|Toca|Ve a|Abre|Ver en)\s+«?Pagos\b/.exec(x.texto);
     if (tab) malas.push(`${x.donde}: «…${x.texto.slice(Math.max(0, tab.index - 40), tab.index + 40)}…»`);

@@ -1,7 +1,7 @@
 // PRUEBAS v2.6.2 (fase 2: deudas, tarjetas y Primer día). A 390×844:
 //  A) V2-68 el Primer día en el orden aprobado: ingreso → cuánto tienes → TODAS las deudas («Agregar otra deuda»
 //     visible; editar y quitar sin salir del paso) → tarjetas de crédito (cuánto debes hoy, corte y pago, cuánto pagas
-//     normalmente) → gastos fijos («¿Se cobra solo en una tarjeta o cuenta?»); «Paso N de 5»; retomable al recargar; el
+//     normalmente) → gastos fijos («¿Con qué lo pagas?» y «¿Se cobra solo?», v2.8); «Paso N de 5»; retomable al recargar; el
 //     número final con su frase; lo creado: deudas con su saldo, tarjetas con su pago estimado (V2-54/V2-78) y lo que
 //     debes «por confirmar», gastos que se cobran solos en la tarjeta o cuenta elegida, nada huérfano;
 //  B) «Completar tu Primer día» (ya configurada) desde Mi dinero y Ayuda: solo deudas, tarjetas y gastos fijos, que se
@@ -160,14 +160,20 @@ try {
         await clic('[data-fk="ob-p-luz"]');
         await escribir('#ob-p-monto', '35');
         await clic('[data-fk="ob-p-dia-12"]');
-        check('¿se cobra solo? con tus tarjetas y tu cuenta', await ev(`[...document.querySelectorAll('[data-fk^="ob-p-cobro-"]')].map((e) => e.textContent.trim())`), ['No, lo pago yo', 'En Crédito BAC', 'En Crédito Cuscatlán', 'En Banco Agrícola']);
-        await clic('[data-fk^="ob-p-cobro-b:"]');
+        // v2.8 (APROBADO por Victor, 2026-10-22): «¿Con qué lo pagas?» (tus cuentas y tus tarjetas) reemplaza «¿Se cobra solo
+        // en una tarjeta o cuenta?» y «No, lo pago yo»; con un banco o una tarjeta, «¿Se cobra solo?».
+        check('«¿Con qué lo pagas?» con tu cuenta y tus tarjetas', await ev(`[...document.querySelectorAll('[data-fk^="ob-p-paga-"]')].map((e) => e.textContent.trim())`), ['Efectivo', 'Banco Agrícola', 'Crédito BAC', 'Crédito Cuscatlán']);
+        await clic('[data-fk="ob-p-paga-b:banco"]');
+        await clic('[data-fk="ob-p-solo-si"]');
         await clic('[data-fk="ob-p-agregar"]');
         await clic('[data-fk="ob-s-nueva"]');
         await clic('[data-fk="ob-p-servicio-netflix"]');
         await escribir('#ob-p-monto', '10');
         await clic('[data-fk="ob-p-dia-3"]');
-        check('la suscripción, por defecto en la primera tarjeta (V2-47)', await ev('P.ui.ob.editando.cobro'), (v) => /^t:/.test(v));
+        // v2.8 (Victor, 2026-10-22): nunca se elige la cuenta por el tipo de gasto (antes, la primera tarjeta, V2-47).
+        check('la suscripción no trae nada elegido', await ev('P.ui.ob.editando.paga'), null);
+        await clic('[data-fk^="ob-p-paga-t:"]');
+        await clic('[data-fk="ob-p-solo-si"]');
         await clic('[data-fk="ob-p-agregar"]');
         await clic('[data-fk="ob-p-cuchubal"]');
         await escribir('#ob-p-monto', '25');
@@ -175,6 +181,7 @@ try {
         await clic('[data-fk="cal-p-turno-sig"]');
         await clic('[data-fk="cal-p-turno-2026-11-20"]');
         await escribir('#ob-p-recibes', '400');
+        await clic('[data-fk="ob-p-paga-efectivo"]');
         await clic('[data-fk="ob-p-agregar"]');
         await foto('A-paso5-gastos');
         await clic('[data-fk="ob-sig"]');
@@ -229,7 +236,10 @@ try {
         await clic('[data-fk="ob-p-cable"]');
         await escribir('#ob-p-monto', '20');
         await clic('[data-fk="ob-p-dia-10"]');
-        check('¿se cobra solo? también con lo que ya tienes', await ev(`[...document.querySelectorAll('[data-fk^="ob-p-cobro-"]')].map((e) => e.textContent.trim())`), (x) => x.includes('En Crédito BAC') && x.includes('En Crédito BAC 2') && x.includes('En Banco Agrícola'));
+        check('«¿Con qué lo pagas?» también con lo que ya tienes', await ev(`[...document.querySelectorAll('[data-fk^="ob-p-paga-"]')].map((e) => e.textContent.trim())`), (x) => x.includes('Crédito BAC') && x.includes('Crédito BAC 2') && x.includes('Banco Agrícola'));
+        await ev(`[...document.querySelectorAll('[data-campo="p-paga"]')].find((b) => b.textContent.trim() === 'Banco Agrícola').click(); true`);
+        await esperar(200);
+        await clic('[data-fk="ob-p-solo-no"]');
         await clic('[data-fk="ob-p-agregar"]');
         check('el último botón: «Agregar todo»', await texto('[data-fk="ob-sig"]'), 'Agregar todo');
         await clic('[data-fk="ob-sig"]');
@@ -255,7 +265,8 @@ try {
         await clic('[data-fk="td-tarjeta"]');
         const formulario = await texto('.hoja');
         check('el formulario: límite de crédito, sin «cupo»', formulario, (t) => /límite de crédito/i.test(t) && !/cupo/i.test(t) && t.includes('¿Cuánto pagas normalmente?') && t.includes('¿Cuánto debes hoy?'));
-        await escribir('#f-nombre', 'Crédito Promerica');
+        // v2.8 (Victor, 2026-10-22): «¿De qué banco o cooperativa?»: se llama «Crédito Promerica».
+        await clic('[data-fk="op-banco-Promerica"]');
         await escribir('#f-corte', '25');
         await escribir('#f-pagoDia', '12');
         await escribir('#f-cupo', '1000');

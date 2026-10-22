@@ -502,7 +502,9 @@ try {
         await clic('[data-fk="md-deudas"]');
         await clic('[data-fk="md-deuda"]');
         await clic('[data-fk="td-tarjeta"]');
-        await escribir('#f-nombre', 'Visa Agrícola');
+        // v2.8 (APROBADO por Victor, 2026-10-22): «¿De qué banco o cooperativa?»; «Otro» pide el nombre.
+        await clic('[data-fk="op-banco-Otro"]');
+        await escribir('#f-otroNombre', 'Visa Agrícola');
         await escribir('#f-corte', '21');
         await escribir('#f-pagoDia', '10');
         await clic('[data-fk="deuda-ok"]');

@@ -101,6 +101,12 @@ async function primerDia({ nombre, ingresos, efectivo, banco, credito, pagos }) 
         await clic(`[data-fk="ob-p-${p.id}"]`);
         await escribir('#ob-p-monto', p.monto);
         if (p.dia) await clic(`[data-fk="ob-p-dia-${p.dia}"]`);
+        // v2.8 (APROBADO por Victor, 2026-10-22): «¿Con qué lo pagas?» ya no viene elegido: se elige lo que antes se ponía solo.
+        // (Los servicios, en el banco si hay; lo demás, en efectivo.)
+        if (banco && ['luz', 'agua', 'internet', 'cable'].includes(p.id)) {
+            await clic('[data-fk="ob-p-paga-b:banco"]');
+            await clic('[data-fk="ob-p-solo-no"]');
+        } else await clic('[data-fk="ob-p-paga-efectivo"]');
         await clic('[data-fk="ob-p-agregar"]');
     }
     await foto(actual + '-pagos-fijos');

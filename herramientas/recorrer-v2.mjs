@@ -98,6 +98,9 @@ for (const tema of temas) {
         await clic('[data-fk="ob-p-luz"]');
         await escribir('#ob-p-monto', '35');
         await clic('[data-fk="ob-p-dia-12"]');
+        // v2.8 (APROBADO por Victor, 2026-10-22): «¿Con qué lo pagas?» ya no viene elegido: se elige lo que antes se ponía solo.
+        await clic('[data-fk="ob-p-paga-b:banco"]');
+        await clic('[data-fk="ob-p-solo-no"]');
         await clic('[data-fk="ob-p-agregar"]');
         await clic('[data-fk="ob-sig"]');
         await fotoLarga('c01-primer-numero');
@@ -136,6 +139,11 @@ for (const tema of temas) {
         await clic('[data-fk="nav-anotar"]');
         await escribir('#anotar-q', 'acuérdame colegio 20 el 5');
         await clic('[data-fk="op-frecuencia-mensual"]');
+        // v2.8 (APROBADO por Victor, 2026-10-22): «¿Con qué lo pagas?» ya no se elige solo (antes, por el tipo de gasto):
+        // la persona elige el mismo medio que antes se ponía (Transferencia) y contesta «¿Se cobra solo?».
+        await clic('[data-fk="anotar-guardar"]');
+        await clic(`[data-fk="op-medio-${await ev("MOTOR.medioUsual(P.st, 'educacion').id")}"]`);
+        if (await hay('[data-fk="op-solo-no"]')) await clic('[data-fk="op-solo-no"]');
         await clic('[data-fk="anotar-guardar"]');
         await ev('P.simular("dia4"); true');
         await esperar(150);
@@ -342,7 +350,8 @@ for (const tema of temas) {
         await clic('[data-fk="md-deuda"]');
         await foto('c31-tipos');
         await clic('[data-fk="td-tarjeta"]');
-        await escribir('#f-nombre', 'Crédito Cuscatlán');
+        // v2.8 (APROBADO por Victor, 2026-10-22): «¿De qué banco o cooperativa?»: se llama «Crédito Cuscatlán».
+        await clic('[data-fk="op-banco-Cuscatlán"]');
         await escribir('#f-corte', '20');
         await escribir('#f-pagoDia', '10');
         await escribir('#f-cupo', '500');

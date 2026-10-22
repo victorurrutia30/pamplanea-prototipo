@@ -73,7 +73,8 @@ try {
     await foto('dos-bancos-billetera');
     await clic('[data-fk="ob-sig"]');
     // v2.6.2 (V2-68): primero TODAS las deudas (dos préstamos), luego las tarjetas (dos con corte y la que todavía no
-    // tiene corte, V2-54), luego los gastos fijos (una suscripción, que se cobra en la primera tarjeta, V2-47).
+    // tiene corte, V2-54), luego los gastos fijos (una suscripción en la primera tarjeta; v2.8, APROBADO por Victor el
+    // 2026-10-22: «¿Con qué lo pagas?» lo elige la persona, ya no viene elegida la primera tarjeta).
     for (const [nombre, cuota, dia] of [['Préstamo Liss', '156', '30'], ['Préstamo', '79', '30']]) {
         await clic('[data-fk="ob-dn-prestamo"]');
         await escribir('#ob-d-nombre', nombre);
@@ -101,6 +102,8 @@ try {
     await clic('[data-fk="ob-p-servicio-netflix"]');
     await escribir('#ob-p-monto', '9.99');
     await clic('[data-fk="ob-p-dia-12"]');
+    await clic('[data-fk^="ob-p-paga-t:"]');
+    await clic('[data-fk="ob-p-solo-si"]');
     await foto('suscripcion');
     await clic('[data-fk="ob-p-agregar"]');
     await foto('pagos-fijos');
@@ -147,7 +150,8 @@ try {
     check('lista completa', await texto('#pantalla'), contiene('Ingresos', 'Quincena', 'Gastos fijos', 'Gastos variables', 'Ahorro programado', 'Pagos de deudas', 'Préstamo Liss', 'Netflix', 'sale de:'));
     await clic('[data-fk="mp-p6"]').catch(() => null);
 
-    // V2-47: «+ Pago» → Suscripción, con tarjeta de crédito por defecto; Mes lo suma.
+    // V2-47: «+ Pago» → Suscripción; Mes lo suma. v2.8 (APROBADO por Victor, 2026-10-22): «¿Con qué lo pagas?» ya no
+    // viene con la tarjeta de crédito (nunca se elige la cuenta por el tipo de gasto): la persona la elige.
     actual = 'suscripcion';
     await clic('[data-fk="nav-pagos"]');
     await clic('[data-fk="nuevo-pago"]');
@@ -156,7 +160,10 @@ try {
     await escribir('#f-monto', '5.99');
     await clic('[data-fk="dia-dia-20"]');
     await foto('nueva-suscripcion');
-    check('medio por defecto: crédito', await ev('window.MOTOR.medio(P.st, P.ui.hoja.medio)?.nombre'), 'Crédito BAC');
+    check('«¿Con qué lo pagas?» sin nada elegido', await ev('P.ui.hoja.medio'), null);
+    await clic('[data-fk="op-medio-credito"]');
+    await clic('[data-fk="op-solo-no"]');
+    check('con la tarjeta que elegiste', await ev('window.MOTOR.medio(P.st, P.ui.hoja.medio)?.nombre'), 'Crédito BAC');
     check('solo mensual o anual', await ev('[...document.querySelectorAll("[data-campo=frecuencia]")].map((x) => x.dataset.v)'), ['mensual', 'anual']);
     await clic('[data-fk="hoja-ok"]');
     await clic('[data-fk="nav-mes"]');

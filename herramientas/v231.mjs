@@ -90,6 +90,12 @@ async function victor({ conCuchubal = true } = {}) {
         await clic(`[data-fk="ob-p-${id}"]`);
         await escribir('#ob-p-monto', monto);
         await clic('[data-fk="ob-p-dia-30"]');
+        // v2.8 (APROBADO por Victor, 2026-10-22): «¿Con qué lo pagas?» ya no viene elegido: se elige lo que antes se ponía solo.
+        if (id === 'alquiler') await clic('[data-fk="ob-p-paga-efectivo"]');
+        else {
+            await clic('[data-fk="ob-p-paga-b:banco"]');
+            await clic('[data-fk="ob-p-solo-no"]');
+        }
         await clic('[data-fk="ob-p-agregar"]');
     }
     await clic('[data-fk="ob-sig"]');
@@ -105,6 +111,8 @@ async function victor({ conCuchubal = true } = {}) {
     await escribir('#f-monto', '160');
     await clic('[data-fk="estimado"]');
     await clic('[data-fk="dia-dia-30"]');
+    // v2.8 (APROBADO por Victor, 2026-10-22): «¿Con qué lo pagas?» ya no viene elegido: se elige lo que antes se ponía solo.
+    await clic('[data-fk="op-medio-efectivo"]');
     await clic('[data-fk="hoja-ok"]');
     for (const [nombre, cuota] of [['Préstamo Liss', '156'], ['Préstamo', '79']]) {
         await clic('[data-fk="nuevo-pago"]');
@@ -123,6 +131,7 @@ async function victor({ conCuchubal = true } = {}) {
         await clic('[data-fk="op-qModo-otros"]');
         await escribir('#f-d1', '8');
         await escribir('#f-d2', '23');
+        await clic('[data-fk="op-medio-efectivo"]');
         await clic('[data-fk="hoja-ok"]');
         // v2.6.6 (V2-85): el del 8 de octubre ya pasó: «¿ya lo pagaste?» («Sí»: el primero es el 23).
         if (await hay('#antes-t')) await clic('[data-fk="hoja-ok"]');
@@ -337,7 +346,9 @@ try {
     await clic('[data-fk="md-deudas"]');
     await clic('[data-fk="md-deuda"]');
     await clic('[data-fk="td-tarjeta"]');
-    await escribir('#f-nombre', 'Visa Agrícola');
+    // v2.8 (APROBADO por Victor, 2026-10-22): «¿De qué banco o cooperativa?»; «Otro» pide el nombre.
+    await clic('[data-fk="op-banco-Otro"]');
+    await escribir('#f-otroNombre', 'Visa Agrícola');
     await escribir('#f-corte', '21');
     await escribir('#f-pagoDia', '10');
     await clic('[data-fk="deuda-ok"]');
@@ -364,6 +375,8 @@ try {
     await escribir('#f-nombre', 'Préstamo cooperativa');
     await escribir('#f-monto', '45');
     await clic('[data-fk="dia-dia-15"]');
+    // v2.8 (APROBADO por Victor, 2026-10-22): «¿Con qué lo pagas?» ya no viene elegido: se elige lo que antes se ponía solo.
+    await clic('[data-fk="op-medio-efectivo"]');
     await clic('[data-fk="hoja-ok"]');
     const idPc = await ev('P.st.pagos.find((p) => p.nombre === "Préstamo cooperativa").id');
     check('no está en Deudas todavía', await ev(`!!P.st.pagos.find((p) => p.id === ${js(idPc)}).tipoDeuda`), false);

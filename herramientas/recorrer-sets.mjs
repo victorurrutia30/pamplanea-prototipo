@@ -138,6 +138,11 @@ try {
     await tarea('A3-colegio', async () => {
         await anotar('acuérdame colegio 20 el 5');
         await clic('[data-fk="op-frecuencia-mensual"]');
+        // v2.8 (APROBADO por Victor, 2026-10-22): «¿Con qué lo pagas?» ya no se elige solo (antes, por el tipo de gasto):
+        // la persona elige el mismo medio que antes se ponía (Transferencia) y contesta «¿Se cobra solo?».
+        await clic('[data-fk="anotar-guardar"]');
+        await clic(`[data-fk="op-medio-${await ev("MOTOR.medioUsual(P.st, 'educacion').id")}"]`);
+        if (await hay('[data-fk="op-solo-no"]')) await clic('[data-fk="op-solo-no"]');
         await clic('[data-fk="anotar-guardar"]');
     }, { facil: 3, confuso: 'No sabía qué era «se repite»' });
     await tarea('A4-quincena', async () => {
@@ -226,7 +231,8 @@ try {
         await clic('[data-fk="md-deudas"]');
         await clic('[data-fk="md-deuda"]');
         await clic('[data-fk="td-tarjeta"]');
-        await escribir('#f-nombre', 'Crédito Cuscatlán');
+        // v2.8 (APROBADO por Victor, 2026-10-22): «¿De qué banco o cooperativa?»: se llama «Crédito Cuscatlán».
+        await clic('[data-fk="op-banco-Cuscatlán"]');
         await escribir('#f-corte', '20');
         await escribir('#f-pagoDia', '10');
         await escribir('#f-ecTotal', '120');

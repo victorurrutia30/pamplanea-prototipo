@@ -277,6 +277,8 @@ if (partes.includes('c')) {
         if (nombre !== undefined) await escribir('#f-nombre', nombre);
         if (monto) await escribir('#f-monto', monto);
         if (dia) await clic(`[data-fk="dia-dia-${dia}"]`);
+        // v2.8 (APROBADO por Victor, 2026-10-22): «¿Con qué lo pagas?» ya no viene elegido: lo que antes venía (Efectivo).
+        await clic('[data-fk="op-medio-efectivo"]');
     };
     const pagos = (n) => ev(`P.st.pagos.filter((p) => MOTOR.normalizar(p.nombre) === MOTOR.normalizar(${js(n)})).length`);
     await seccion('C1 «+ Pago» con la luz que ya tienes', async () => {
@@ -328,6 +330,11 @@ if (partes.includes('c')) {
         await clic('[data-fk="dup-otro"]', 300);
         check('«Sí, es otro»: ya no pregunta', await ev(`!!document.querySelector('.pregunta--dup')`), false);
         await clic('[data-fk="op-frecuencia-mensual"]', 300);
+        // v2.8 (APROBADO por Victor, 2026-10-22): «¿Con qué lo pagas?» ya no se elige solo (antes, por el tipo de gasto): se
+        // elige el mismo de antes y se contesta «¿Se cobra solo?».
+        await clic('[data-fk="anotar-guardar"]', 400);
+        await clic(`[data-fk="op-medio-${await ev("MOTOR.medioUsual(P.st, 'servicios').id")}"]`, 300);
+        if (await hay('[data-fk="op-solo-no"]')) await clic('[data-fk="op-solo-no"]', 300);
         await clic('[data-fk="anotar-guardar"]', 500);
         check('«Sí, es otro»: se guarda', await pagos('Luz'), 2);
     });

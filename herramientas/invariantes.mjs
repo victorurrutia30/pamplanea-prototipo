@@ -26,6 +26,7 @@
 //  V9 anotar un pago se conecta con tu plan (C-4, P-1)
 //  V10 tus datos de la v2.7 en la v2.8 (DATOS-1 a 5, C-1)
 //  V11 «no asumir» (APROBADO por Victor, 2026-10-22): cada ahorro de antes pregunta en qué cuenta está; «Aparte» sube tu libre
+//  V12 «¿Con qué lo pagas?» (APROBADO por Victor, 2026-10-22): un gasto fijo nunca recibe una cuenta que la persona no eligió
 // Uso: node herramientas/invariantes.mjs [--base=http://…/] [--puerto=9961] [--solo=I01,F13] [--raiz=<otra copia>]
 //      (--raiz: las mismas filas sobre otra copia, por ejemplo la v2.6.7 sacada de git, para ver cuáles fallaban antes)
 import { mkdir } from 'node:fs/promises';
@@ -423,7 +424,9 @@ await filaDe('F14', 'Se puede confirmar un estado de cuenta de $0', async () => 
     // Al agregar una tarjeta: «0» es un estado de cuenta (vacío no).
     await ev(`__armar()`);
     await ev(`P.abrirHoja('nuevaDeuda', { tipoInicial: 'tarjeta' }); true`);
-    await escribir('#f-nombre', 'Visa');
+    // v2.8 (APROBADO por Victor, 2026-10-22): «¿De qué banco o cooperativa?»; «Otro» pide el nombre.
+    await clic('[data-fk="op-banco-Otro"]');
+    await escribir('#f-otroNombre', 'Visa');
     await escribir('#f-corte', '5');
     await escribir('#f-pagoDia', '25');
     await escribir('#f-ecTotal', '0');
@@ -787,7 +790,9 @@ await filaDe('V5', 'Tarjeta con una sola regla (D-4): lo que pagas normalmente y
 await filaDe('V6', 'Vencimiento (D-5, F09): se pregunta «¿Qué día vence tu próximo pago?»; corte el 5 y pago el 25 → el 25 de este mes', async () => {
     await ev(`__armar()`);
     await ev(`P.abrirHoja('nuevaDeuda', { tipoInicial: 'tarjeta' }); true`);
-    await escribir('#f-nombre', 'Visa');
+    // v2.8 (APROBADO por Victor, 2026-10-22): «¿De qué banco o cooperativa?»; «Otro» pide el nombre.
+    await clic('[data-fk="op-banco-Otro"]');
+    await escribir('#f-otroNombre', 'Visa');
     check('la pregunta', await ev(`document.querySelector('label[for="f-pagoDia"]').textContent.trim()`), '¿Qué día vence tu próximo pago?');
     await escribir('#f-corte', '5');
     await escribir('#f-pagoDia', '25');
@@ -800,7 +805,9 @@ await filaDe('V6', 'Vencimiento (D-5, F09): se pregunta «¿Qué día vence tu p
     // «Es el de noviembre»: la persona lo dice; no se adivina.
     await ev(`__armar()`);
     await ev(`P.abrirHoja('nuevaDeuda', { tipoInicial: 'tarjeta' }); true`);
-    await escribir('#f-nombre', 'Visa');
+    // v2.8 (APROBADO por Victor, 2026-10-22): «¿De qué banco o cooperativa?»; «Otro» pide el nombre.
+    await clic('[data-fk="op-banco-Otro"]');
+    await escribir('#f-otroNombre', 'Visa');
     await escribir('#f-corte', '5');
     await escribir('#f-pagoDia', '25');
     await clic('[data-fk="vence-otro"]');
@@ -949,6 +956,89 @@ await filaDe('V11', '«No asumir»: cada ahorro de antes pregunta «¿en qué cu
     check('al volver a abrir no vuelven y queda guardado', [await hay('.p28-lista'), await ev(`MOTOR.apartado(P.st, 'ap1').donde`), (await libre()) - libreAntes], [false, 'aparte', 30000]);
     await ev(`P.sinGuardar = true; localStorage.clear(); true`);
     await abrirApp();
+});
+
+// ------------------------------------------------------------------ V12 («¿Con qué lo pagas?»)
+await filaDe('V12', '«¿Con qué lo pagas?»: un gasto fijo nunca recibe una cuenta que la persona no eligió (ni por su tipo)', async () => {
+    const hay = (sel) => ev(`!!document.querySelector(${js(sel)})`);
+    const elegidos = (campo) => ev(`[...document.querySelectorAll('[data-campo="${campo}"][aria-pressed="true"]')].map((b) => b.dataset.v)`);
+    const pagoDe = (nombre) => ev(`(() => { const p = P.st.pagos.find((x) => x.nombre === ${js(nombre)}); return p ? { medio: p.medio, automatico: !!p.automatico } : null; })()`);
+    await ev(`__armar((st) => { __internet(st); __tarjeta(st); })`);
+    // «+ Gasto fijo»: nada viene elegido; una suscripción no se va sola a la tarjeta.
+    await ev(`P.abrirHoja('nuevoPago', {}); true`);
+    await esperar(200);
+    check('«+ Gasto fijo»: «¿Con qué lo pagas?» sin nada elegido', await elegidos('medio'), []);
+    await clic('[data-fk="np-suscripcion"]');
+    await clic('[data-fk="op-servicio-spotify"]');
+    check('una suscripción no elige la tarjeta por ti', await elegidos('medio'), []);
+    await escribir('#f-monto', '5.99');
+    await clic('[data-fk="dia-dia-24"]');
+    await clic('[data-fk="hoja-ok"]');
+    check('sin contestar no se guarda: «Elige con qué lo pagas»', [await texto('#err-medio'), await pagoDe('Spotify')], ['Elige con qué lo pagas', null]);
+    await clic('[data-fk="op-medio-mt50"]');
+    check('con una tarjeta: «¿Se cobra solo?» (Sí, se cobra solo / No, yo lo pago)', await ev(`[...document.querySelectorAll('[data-campo="solo"]')].map((b) => b.textContent.trim())`), ['Sí, se cobra solo', 'No, yo lo pago']);
+    await clic('[data-fk="hoja-ok"]');
+    check('sin «¿Se cobra solo?» tampoco se guarda', [await texto('#err-solo'), await pagoDe('Spotify')], ['Elige si se cobra solo', null]);
+    await clic('[data-fk="op-solo-si"]');
+    await clic('[data-fk="hoja-ok"]');
+    check('se guarda con lo que elegiste: tu tarjeta, se cobra solo', await pagoDe('Spotify'), { medio: 'mt50', automatico: true });
+    // En efectivo no se pregunta si se cobra solo.
+    await ev(`P.abrirHoja('nuevoPago', {}); true`);
+    await esperar(200);
+    await escribir('#f-nombre', 'Colegio');
+    await escribir('#f-monto', '40');
+    await clic('[data-fk="dia-dia-28"]');
+    await clic('[data-fk="op-medio-efectivo"]');
+    check('con Efectivo no sale «¿Se cobra solo?»', await hay('[data-campo="solo"]'), false);
+    await clic('[data-fk="hoja-ok"]');
+    check('Colegio: en efectivo, lo pagas tú', await pagoDe('Colegio'), { medio: 'efectivo', automatico: false });
+    // Editar: lo ya guardado no cambia (su cuenta sigue elegida; se cambia solo si tú la cambias).
+    await ev(`P.abrirHoja('editarPago', { id: 'internet' }); true`);
+    await esperar(200);
+    check('editar: su cuenta sigue elegida y «No, yo lo pago»', [await elegidos('medio'), await elegidos('solo')], [['debito'], ['no']]);
+    await clic('[data-fk="hoja-ok"]');
+    check('editar sin cambiar nada: Internet sigue en tu débito', await pagoDe('Internet'), { medio: 'debito', automatico: false });
+    // Anotar «acuérdame…»: tampoco elige por el tipo de gasto.
+    const r1 = await ev(`__anotar('acuérdame agua 12 el 25', { frecuencia: 'mensual' })`);
+    check('Anotar «acuérdame agua…»: falta «¿Con qué lo pagas?»', [r1.abierta, (r1.errores || []).includes('medio'), await ev(`P.ui.hoja.d.medio`)], [true, true, null]);
+    await ev(`P.acciones.anotarValor({ campo: 'medio', v: 'debito' }); P.acciones.anotarGuardar(); true`);
+    check('con tu débito, falta «¿Se cobra solo?»', await ev(`P.ui.hoja ? P.ui.hoja.errores : null`), ['solo']);
+    await ev(`P.acciones.anotarValor({ campo: 'solo', v: 'no' }); P.acciones.anotarGuardar(); true`);
+    await esperar(200);
+    check('Agua: con tu débito, lo pagas tú', await pagoDe('Agua'), { medio: 'debito', automatico: false });
+    // «Completar tu Primer día»: tus cuentas y tus tarjetas, nada elegido; sin respuesta no se agrega.
+    await ev(`P.acciones.obCompletar(); true`);
+    await esperar(200);
+    await clic('[data-fk="ob-sig"]', 300);
+    await clic('[data-fk="ob-sig"]', 300);
+    await clic('[data-fk="ob-p-luz"]');
+    check('«¿Con qué lo pagas?» con tus cuentas y tarjetas, nada elegido', [await ev(`[...document.querySelectorAll('[data-campo="p-paga"]')].map((b) => b.textContent.trim())`), await elegidos('p-paga')], [['Efectivo', 'Banco Agrícola', 'Crédito Cuscatlán'], []]);
+    await escribir('#ob-p-monto', '30');
+    await clic('[data-fk="ob-p-dia-27"]');
+    await clic('[data-fk="ob-p-agregar"]');
+    check('sin contestar no se agrega: «Elige con qué lo pagas»', [await texto('.ob-editor .campo-error'), await ev(`P.ui.ob.datos.pagos.length`)], ['Elige con qué lo pagas', 0]);
+    await clic('[data-fk="ob-p-paga-L:banco"]');
+    check('con un banco: «¿Se cobra solo?»', await ev(`[...document.querySelectorAll('[data-campo="p-solo"]')].map((b) => b.textContent.trim())`), ['Sí, se cobra solo', 'No, yo lo pago']);
+    await clic('[data-fk="ob-p-agregar"]');
+    check('sin «¿Se cobra solo?» tampoco', [await texto('.ob-editor .campo-error'), await ev(`P.ui.ob.datos.pagos.length`)], ['Elige si se cobra solo', 0]);
+    await clic('[data-fk="ob-p-solo-si"]');
+    await clic('[data-fk="ob-p-agregar"]');
+    await clic('[data-fk="ob-s-nueva"]');
+    check('la suscripción ya no trae tu tarjeta elegida', await elegidos('p-paga'), []);
+    await clic('[data-fk="ob-p-servicio-netflix"]');
+    await escribir('#ob-p-monto', '10.99');
+    await clic('[data-fk="ob-p-dia-26"]');
+    await clic('[data-fk="ob-p-paga-L:efectivo"]');
+    check('con Efectivo no se pregunta si se cobra solo', await hay('[data-campo="p-solo"]'), false);
+    await clic('[data-fk="ob-p-agregar"]');
+    await clic('[data-fk="ob-sig"]', 400);
+    check('Luz: tu débito, se cobra solo · Netflix: Efectivo (no la tarjeta)', [await pagoDe('Luz'), await pagoDe('Netflix')], [{ medio: 'debito', automatico: true }, { medio: 'efectivo', automatico: false }]);
+    // Un Primer día empezado antes («No, lo pago yo»): al seguir, pregunta con qué lo pagas.
+    await ev(`P.acciones.obCompletar(); P.ui.ob.paso = 5; P.ui.ob.datos.pagos.push({ clave: 'viejo', id: 'cable', nombre: 'Cable', emoji: '📺', categoria: 'servicios', monto: 2000, variable: false, frecuencia: 'mensual', dia: 27, cobro: 'no' }); P.render(); true`);
+    await esperar(200);
+    await clic('[data-fk="ob-sig"]', 300);
+    check('de antes, sin respuesta: no se agrega y lo pregunta', [await ev(`!!P.ui.ob`), await texto('.ob-editor .campo-error'), await pagoDe('Cable')], [true, 'Elige con qué lo pagas', null]);
+    await ev(`P.acciones.obCerrar(); true`);
 });
 
 const resultado = { version: await ev('window.VERSION_PROTOTIPO').catch(() => null), filas: filas.map((f) => ({ id: f.id, ok: f.ok, nombre: f.nombre, checks: f.checks.length, malas: f.checks.filter((c) => !c.ok) })), resumen: `${filas.filter((f) => f.ok).length} de ${filas.length} filas bien`, fallos, errores: b.errores, fallidas: b.fallidas };

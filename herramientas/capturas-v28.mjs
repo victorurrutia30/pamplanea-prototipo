@@ -2,6 +2,8 @@
 // Hoy (el número, lo que viene y Anotar), Mi plan (sus 5 secciones), Anotar con verbos (y «súper 20» de un gasto
 // variable), la ficha de la tarjeta (sus cobros, apodo y la sugerencia de repartir), Ahorros (dentro y aparte), la ficha de
 // un ahorro, las preguntas de una vez (a quien viene de la v2.7; con la de cada ahorro de antes, «no asumir») y el cuadrito.
+// Y (APROBADO por Victor, 2026-10-22) «¿Con qué lo pagas?» y «¿Se cobra solo?» en «+ Gasto fijo» y en «Completar tu Primer
+// día», y «Editar» de la tarjeta BAC con su banco elegido y su alias.
 // Uso: node herramientas/capturas-v28.mjs [--base=http://…/] [--puerto=9959] [--tema=serena-claro]
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
@@ -105,6 +107,31 @@ for (const ancho of [390, 1440]) {
         await foto('8-ahorro-aparte', ancho);
         await subir('#ap-prog');
         await foto('8b-ahorro-programado', ancho);
+        // 7. «+ Gasto fijo»: «¿Con qué lo pagas?» sin nada elegido; con tu débito, «¿Se cobra solo?».
+        const subirHoja = (sel) => ev(`(() => { const el = document.querySelector(${js(sel)}); const c = el && el.closest('.hoja-c'); if (c) c.scrollTop += el.getBoundingClientRect().top - c.getBoundingClientRect().top - 120; return !!el; })()`);
+        await ev(`P.irTab('pagos'); P.abrirHoja('nuevoPago', {}); true`);
+        await esperar(300);
+        await ev(`(() => { for (const [id, v] of [['f-nombre', 'Agua'], ['f-monto', '12']]) { const el = document.getElementById(id); el.value = v; el.dispatchEvent(new Event('input', { bubbles: true })); } document.querySelector('[data-fk="dia-dia-25"]').click(); return true; })()`);
+        await esperar(200);
+        await subirHoja('#l-medio');
+        await foto('9-con-que-lo-pagas', ancho);
+        await ev(`document.querySelector('[data-fk="op-medio-debito"]').click(); true`);
+        await esperar(200);
+        await subirHoja('#l-medio');
+        await foto('9b-se-cobra-solo', ancho);
+        await ev(`P.cerrarHoja({ sinFoco: true }); true`);
+        // 8. «Completar tu Primer día»: un gasto fijo con «¿Con qué lo pagas?» y «¿Se cobra solo?».
+        await ev(`(() => { P.acciones.obCompletar(); P.ui.ob.paso = 5; P.render(); P.acciones.obPago({ v: 'internet' }); P.acciones.obValor({ campo: 'p-paga', v: 'L:agricola' }); return true; })()`);
+        await esperar(300);
+        await ev(`(() => { const el = document.getElementById('ob-l-p-paga'); const v = document.getElementById('vista'); if (el && v) v.scrollTop += el.getBoundingClientRect().top - v.getBoundingClientRect().top - 140; return true; })()`);
+        await foto('10-primer-dia-con-que', ancho);
+        await ev(`P.acciones.obCerrar(); true`);
+        await esperar(200);
+        // 9. Editar la tarjeta BAC: su banco elegido y su alias.
+        await ev(`P.irTab('midinero'); P.abrir('tarjeta', 'bac'); true`);
+        await esperar(300);
+        await ev(`document.querySelector('[data-fk="editar-tarjeta"]').click(); true`);
+        await foto('11-editar-tarjeta', ancho);
     } catch (e) {
         errores.push(`${ancho}: ${e.message}`);
     }

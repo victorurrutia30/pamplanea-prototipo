@@ -527,6 +527,8 @@ if (partes.includes('f')) {
         await ev(`P.abrirHoja('nuevoPago', {}); true`);
         await esperar(300);
         await clic('[data-fk="np-otro"]');
+        // v2.8 (APROBADO por Victor, 2026-10-22): «¿Con qué lo pagas?» ya no viene elegido: lo de antes (Efectivo).
+        await clic('[data-fk="op-medio-efectivo"]');
         await escribir('#f-nombre', 'Internet');
         await escribir('#f-monto', '25');
         await clic('[data-fk="dia-dia-5"]');

@@ -115,7 +115,8 @@ const dif = (a, d) => Object.fromEntries(Object.keys(d).filter((k) => JSON.strin
 caso('A-L1', 'A', 'Crear un lugar (banco con débito): su primer cuadre y su débito', 'P2', async () => {
     await cargar();
     const a = await ev('QA.dinero()');
-    await ev(`QA.hoja('lugar', {}, { clase: 'banco', nombre: 'Banco Cuscatlán', monto: '250', debito: true }, 'lugarOk'); true`);
+    // v2.8 (APROBADO por Victor, 2026-10-22): «¿De qué banco o cooperativa?» («Otro» pide el nombre) reemplaza «¿Cómo se llama?».
+    await ev(`QA.hoja('lugar', {}, { clase: 'banco', banco: 'Cuscatlán', monto: '250', debito: true }, 'lugarOk'); true`);
     const d = await ev('QA.dinero()');
     const x = await ev(`(() => { const l = P.st.lugares.find((l) => l.nombre === 'Banco Cuscatlán'); return l && { cuadre: !!l.cuadre, debito: P.st.medios.some((m) => m.lugar === l.id && m.tarjetaDebito) }; })()`);
     return [...(d.tienes - a.tienes === 25000 ? [] : [`Tienes subió ${d.tienes - a.tienes}, no 25000`]), ...(x && x.cuadre && x.debito ? [] : ['sin cuadre o sin débito']), ...(await ev('QA.revisar()'))];
@@ -501,7 +502,8 @@ caso('E-01', 'E', 'Día 31 en meses cortos, febrero y cambio de año', 'P2', asy
 });
 caso('E-02', 'E', 'Tarjeta con corte 31 y pago 15: el ciclo cruza el mes sin perder días', 'P2', async () => {
     await cargar();
-    await ev(`QA.hoja('nuevaDeuda', {}, { tipoDeuda: 'tarjeta', nombre: 'Tarjeta 31', corte: '31', pagoDia: '15' }, 'nuevaDeudaOk'); true`);
+    // v2.8 (APROBADO por Victor, 2026-10-22): «¿De qué banco o cooperativa?» («Otro» pide el nombre) reemplaza «¿Cómo se llama?».
+    await ev(`QA.hoja('nuevaDeuda', {}, { tipoDeuda: 'tarjeta', banco: 'Otro', otroNombre: 'Tarjeta 31', corte: '31', pagoDia: '15' }, 'nuevaDeudaOk'); true`);
     const t = await ev(`(() => { const t = P.st.tarjetas.find((x) => x.nombre === 'Tarjeta 31'); const i = MOTOR.tarjetaInfo(P.st, t); return { corte: t.estados[0].corte, vence: t.estados[0].vence, prox: i.proxCorte }; })()`);
     return t.corte === '2026-09-30' && t.vence === '2026-10-15' && t.prox === '2026-10-31' ? [] : [JSON.stringify(t)];
 });
@@ -510,10 +512,11 @@ caso('E-02', 'E', 'Tarjeta con corte 31 y pago 15: el ciclo cruza el mes sin per
 caso('F-01', 'F', 'Nombres vacíos o solo espacios se rechazan con su mensaje; nombres muy largos y con emoji se guardan', 'P2', async () => {
     await cargar();
     const f = [];
-    const r1 = await ev(`(() => { QA.hoja('lugar', {}, { clase: 'banco', nombre: '   ', monto: '10' }, 'lugarOk'); const ok = !!P.ui.hoja && P.ui.hoja.errores.includes('nombre'); P.cerrarHoja(); return ok; })()`);
+    // v2.8 (APROBADO por Victor, 2026-10-22): «¿De qué banco o cooperativa?» («Otro» pide el nombre) reemplaza «¿Cómo se llama?».
+    const r1 = await ev(`(() => { QA.hoja('lugar', {}, { clase: 'banco', banco: 'Otro', otroNombre: '   ', monto: '10' }, 'lugarOk'); const ok = !!P.ui.hoja && P.ui.hoja.errores.includes('otroNombre'); P.cerrarHoja(); return ok; })()`);
     if (!r1) f.push('un lugar con nombre en blanco se guardó');
     const largo = 'Cooperativa de ahorro y crédito de los trabajadores del mercado central 🛒 de San Salvador';
-    await ev(`QA.hoja('lugar', {}, { clase: 'banco', nombre: ${js(largo)}, monto: '10' }, 'lugarOk'); true`);
+    await ev(`QA.hoja('lugar', {}, { clase: 'banco', banco: 'Otro', otroNombre: ${js(largo)}, monto: '10' }, 'lugarOk'); true`);
     if (!(await ev(`P.st.lugares.some((l) => l.nombre === ${js(largo)})`))) f.push('no guardó un nombre largo con emoji');
     const desborda = await ev(`(() => { P.irTab('midinero'); P.abrir('cuentas'); return document.getElementById('vista').scrollWidth > document.getElementById('vista').clientWidth + 1; })()`);
     if (desborda) f.push('un nombre largo desborda Cuentas');

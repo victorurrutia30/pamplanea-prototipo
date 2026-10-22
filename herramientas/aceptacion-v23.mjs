@@ -90,6 +90,12 @@ try {
         await clic(`[data-fk="ob-p-${id}"]`);
         await escribir('#ob-p-monto', monto);
         await clic('[data-fk="ob-p-dia-30"]');
+        // v2.8 (APROBADO por Victor, 2026-10-22): «¿Con qué lo pagas?» ya no viene elegido: se elige lo que antes se ponía solo.
+        if (id === 'alquiler') await clic('[data-fk="ob-p-paga-efectivo"]');
+        else {
+            await clic('[data-fk="ob-p-paga-b:banco"]');
+            await clic('[data-fk="ob-p-solo-no"]');
+        }
         await clic('[data-fk="ob-p-agregar"]');
     }
     await clic('[data-fk="ob-sig"]');
@@ -109,6 +115,8 @@ try {
     await escribir('#f-monto', '160');
     await clic('[data-fk="estimado"]');
     await clic('[data-fk="dia-dia-30"]');
+    // v2.8 (APROBADO por Victor, 2026-10-22): «¿Con qué lo pagas?» ya no viene elegido: se elige lo que antes se ponía solo.
+    await clic('[data-fk="op-medio-efectivo"]');
     await clic('[data-fk="hoja-ok"]');
     for (const [nombre, cuota] of [['Préstamo Liss', '156'], ['Préstamo', '79']]) {
         await clic('[data-fk="nuevo-pago"]');
@@ -125,6 +133,7 @@ try {
     await clic('[data-fk="op-frecuente-cuchubal"]');
     await escribir('#f-monto', '25');
     check('cuchubal: sugiere quincenal', await ev('P.ui.hoja.frecuencia'), 'quincenal');
+    await clic('[data-fk="op-medio-efectivo"]');
     await clic('[data-fk="op-qModo-otros"]');
     await escribir('#f-d1', '8');
     await escribir('#f-d2', '23');

@@ -151,6 +151,8 @@ async function nuevoPago({ nombre = 'Gimnasio', monto = '25', frecuencia = 'mens
     await ev(`P.abrirHoja('nuevoPago', {}); true`);
     await esperar(300);
     await clic('[data-fk="np-otro"]');
+    // v2.8 (APROBADO por Victor, 2026-10-22): «¿Con qué lo pagas?» ya no viene elegido: lo de antes (Efectivo).
+    await clic('[data-fk="op-medio-efectivo"]');
     await escribir('#f-nombre', nombre);
     await escribir('#f-monto', monto);
     if (frecuencia !== 'mensual') await clic(`[data-fk="op-frecuencia-${frecuencia}"]`);
@@ -256,6 +258,10 @@ if (partes.includes('a')) {
         await ev(`(() => { P.acciones.anotar(); const q = document.getElementById('anotar-q'); q.value = 'recuérdame pagar el gimnasio 25 el 14'; q.dispatchEvent(new Event('input', { bubbles: true })); return true; })()`);
         await esperar(500);
         if (await hay('[data-fk="op-frecuencia-mensual"]')) await clic('[data-fk="op-frecuencia-mensual"]', 400);
+        // v2.8 (APROBADO por Victor, 2026-10-22): «¿Con qué lo pagas?» ya no se elige solo (antes, por el tipo de gasto): se
+        // elige el mismo de antes y, si es un banco o una tarjeta, se contesta «¿Se cobra solo?».
+        await ev(`(() => { const m = MOTOR.medioUsual(P.st, P.ui.hoja.d.categoria).id; P.acciones.anotarValor({ campo: 'medio', v: m }); if (MOTOR.puedeCobrarSolo(P.st, m)) P.acciones.anotarValor({ campo: 'solo', v: 'no' }); return true; })()`);
+        await esperar(300);
         check('la pregunta en Anotar', await pregunta(), 'El de octubre (14 oct), ¿ya lo pagaste?');
         await verPregunta();
         await foto('A6-anotar');
@@ -271,7 +277,8 @@ if (partes.includes('b')) {
     const tarjetaMiDinero = async ({ nombre = 'Crédito Agrícola', corte, pago = '14', usual = '', ec = '' }) => {
         await ev(`P.abrirHoja('nuevaDeuda', { tipoInicial: 'tarjeta' }); true`);
         await esperar(300);
-        await escribir('#f-nombre', nombre);
+        // v2.8 (APROBADO por Victor, 2026-10-22): «¿De qué banco o cooperativa?»: «Crédito Agrícola» es el banco Agrícola.
+        await clic(`[data-fk="op-banco-${nombre.replace(/^Crédito /, '')}"]`);
         await escribir('#f-corte', corte);
         await escribir('#f-pagoDia', pago);
         if (ec) await escribir('#f-ecTotal', ec);
@@ -365,6 +372,8 @@ if (partes.includes('c')) {
         await ev(`P.abrirHoja('nuevoPago', {}); true`);
         await esperar(300);
         await clic('[data-fk="np-otro"]');
+        // v2.8 (APROBADO por Victor, 2026-10-22): «¿Con qué lo pagas?» ya no viene elegido: lo de antes (Efectivo).
+        await clic('[data-fk="op-medio-efectivo"]');
         await clic('[data-fk="op-frecuente-cuchubal"]');
         await escribir('#f-monto', '10');
         await clic('[data-fk="op-frecuencia-semanal"]');
@@ -491,6 +500,7 @@ if (partes.includes('f')) {
     const tarjetaConEstado = async () => {
         await ev(`P.abrirHoja('nuevaDeuda', { tipoInicial: 'tarjeta' }); true`);
         await esperar(300);
+        // (En la v2.6.5: el formulario de entonces, con «¿Cómo se llama?».)
         await escribir('#f-nombre', 'Crédito Agrícola');
         await escribir('#f-corte', '25');
         await escribir('#f-pagoDia', '14');
