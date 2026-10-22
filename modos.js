@@ -65,6 +65,8 @@
         x.feedback = Array.isArray(x.feedback) ? x.feedback : [];
         if (x.st) {
             for (const k of ['lugares', 'medios', 'tarjetas', 'apartados', 'logros', 'pagos', 'ingresos', 'registros', 'avisos', 'reservasTarjeta', 'cerrados', 'reservas']) x.st[k] = Array.isArray(x.st[k]) ? x.st[k] : [];
+            // v2.8 (C-3): los gastos variables (solo si ya los tiene: a lo de antes no se le agrega nada vacío).
+            if (x.st.variables !== undefined && !Array.isArray(x.st.variables)) x.st.variables = [];
             // V2-79: un ejemplo guardado por error conserva su persona (así se reconoce y no se muestra como tuyo).
             if (!PERSONAS_EJEMPLO.has(x.st.persona)) x.st.persona = 'uso';
             // v2.7 (DATOS-3, F04): lo de antes queda en la cuenta donde aparece hoy.
@@ -130,6 +132,16 @@
     function congelar(st) {
         if (!st || !Array.isArray(st.registros)) return;
         for (const r of st.registros) if (r && r.tipo === 'gasto' && r.lugar === undefined) r.lugar = M.lugarGasto(st, r);
+        // v2.8 (C-1): tus ahorros de antes pasan a «dentro de [tu cuenta]»: ya se restaban de tu libre, así que no cambia.
+        // Solo se agrega dónde están (el banco con más dinero; si no hay banco, la cuenta con más). Nada cambia de nombre.
+        if (Array.isArray(st.apartados) && Array.isArray(st.lugares)) {
+            let cuenta;
+            for (const a of st.apartados) {
+                if (!a || typeof a !== 'object' || a.donde !== undefined) continue;
+                if (cuenta === undefined) cuenta = st.lugares.length ? M.cuentaAhorros({ ...st, registros: st.registros }) : null;
+                a.donde = { lugar: cuenta };
+            }
+        }
     }
 
     // ------------------------------------------------------------------ v2.7 (DATOS-1, DATOS-2): versiones y copias
@@ -149,6 +161,8 @@
     const versionMasNueva = (v) => !!numVersion(v) && cmpVersion(numVersion(v), VERSION_N) > 0;
     /** ¿Lo guardó una versión anterior a la v2.7 (o una que todavía no anotaba su versión)? */
     const anteriorA27 = (v) => !numVersion(v) || cmpVersion(numVersion(v), [2, 7, 0]) < 0;
+    /** v2.8: ¿lo guardó una versión anterior a la v2.8? */
+    const anteriorA28 = (v) => !numVersion(v) || cmpVersion(numVersion(v), [2, 8, 0]) < 0;
     /**
      * v2.7 (DATOS-2, F20): ¿se puede usar? `estricto` (al restaurar una copia): la forma de cada cosa, sus montos en
      * centavos enteros, sus fechas y que lo que se nombra exista. Siempre: calcular en una copia aparte, antes de escribir
@@ -173,6 +187,8 @@
             if (st.pagos.some((p) => !obj(p) || typeof p.id !== 'string' || !centONulo(p.monto) || !obj(p.hechos))) return 'pagos';
             if (st.ingresos.some((i) => !obj(i) || typeof i.id !== 'string' || !centONulo(i.monto) || !obj(i.llegadas) || (i.lugar && !lugares.has(i.lugar)))) return 'ingresos';
             if (st.registros.some((r) => !obj(r) || typeof r.tipo !== 'string' || !iso(r.fecha) || !cent(r.monto))) return 'registros';
+            // v2.8 (C-3): los gastos variables, con su tope en centavos enteros.
+            if (st.variables !== undefined && (!Array.isArray(st.variables) || st.variables.some((v) => !obj(v) || typeof v.id !== 'string' || !cent(v.tope)))) return 'variables';
         }
         if (!st.configurado) return null;
         try {
@@ -263,13 +279,16 @@
     }
 
     // ------------------------------------------------------------------ v2.7 (DATOS-4): los números antes y después
-    /** El Mes actual, lo que debes de cada tarjeta y tu libre, con las reglas de antes (`comoAntes`) o las de ahora. */
-    function numerosVisibles(st, comoAntes) {
+    /**
+     * El Mes actual, lo que debes de cada tarjeta y tu libre, con las reglas de antes o las de ahora. `reglas`: true o
+     * '2.6.7' (como la v2.6.7), '2.7' (como la v2.7: la tarjeta y los cobros con tarjeta de antes de la v2.8) o nada (ahora).
+     */
+    function numerosVisibles(st, reglas) {
         const x = structuredClone(st);
         x.hoy = hoy();
         const [y, m] = M.partes(x.hoy);
-        const opts = comoAntes ? { comoAntes: true } : {};
-        const mes = M.resumenMes(x, y, m, opts);
+        const opts = reglas === '2.7' ? { antes27: true } : reglas ? { comoAntes: true } : {};
+        const mes = M.resumenMes(x, y, m, { comoAntes: !!opts.comoAntes });
         return {
             mes: { y, m, salio: mes.salio, entro: mes.entro },
             tarjetas: x.tarjetas.map((t) => {
@@ -284,16 +303,21 @@
      * números antes y después de actualizar. Lo que cambió (porque estaba mal) va en el cuadrito de novedades.
      */
     function prepararNovedades(u, crudo) {
-        if (!u.st || !u.st.configurado || u.st.persona !== 'uso' || esDeEjemplo(u.st) || !anteriorA27(crudo.version) || (u.novedades && u.novedades['v2.7'])) return;
+        if (!u.st || !u.st.configurado || u.st.persona !== 'uso' || esDeEjemplo(u.st) || !anteriorA28(crudo.version) || (u.novedades && u.novedades['v2.8'])) return;
+        // v2.8: los números de antes son los de la versión que los guardó (la v2.7, o la v2.6.7 y anteriores).
+        const de27 = !anteriorA27(crudo.version);
         let antes = null;
         let despues = null;
         try {
-            antes = numerosVisibles(u.st, true);
-            despues = numerosVisibles(u.st, false);
+            antes = numerosVisibles(u.st, de27 ? '2.7' : '2.6.7');
+            despues = numerosVisibles(u.st, null);
         } catch {
             antes = despues = null;
         }
-        u.novedades = { ...(u.novedades || {}), 'v2.7': { fecha: new Date().toISOString(), antes, despues, visto: null } };
+        // Quien viene de antes de la v2.7 ve un solo cuadrito (el de ahora), con lo de la v2.7 que le toque.
+        const v27 = u.novedades && u.novedades['v2.7'];
+        const pendiente27 = !de27 && !(v27 && v27.visto);
+        u.novedades = { ...(u.novedades || {}), 'v2.8': { fecha: new Date().toISOString(), antes, despues, visto: null, de: crudo.version || null, con27: pendiente27 } };
     }
 
     let uso = null;
@@ -461,43 +485,58 @@
      * actualizar cambió un número porque estaba mal (DATOS-4), una línea lo dice, sin culpa.
      */
     const palabras = (t) => String(t).trim().split(/\s+/).filter(Boolean).length;
+    /**
+     * v2.8: la línea de los números que cambiaron, con antes y después (una sola, sin culpa). Primero tu libre, luego el
+     * gasto del mes y luego lo que debes de cada tarjeta; si cambió más de uno, los que quepan en 20 palabras.
+     */
     function lineaCorreccion(n, st) {
         if (!n || !n.antes || !n.despues) return null;
         const cambios = [];
         const { antes, despues } = n;
-        if (antes.mes.salio !== despues.mes.salio) cambios.push({ que: `tu gasto de ${M.MESES[despues.mes.m - 1]}`, monto: despues.mes.salio });
+        if (antes.libre !== despues.libre) cambios.push({ que: 'tu libre', antes: antes.libre, monto: despues.libre });
+        if (antes.mes.salio !== despues.mes.salio) cambios.push({ que: `tu gasto de ${M.MESES[despues.mes.m - 1]}`, antes: antes.mes.salio, monto: despues.mes.salio });
         for (const t of despues.tarjetas) {
             const a = antes.tarjetas.find((x) => x.id === t.id);
-            if (a && a.debe !== t.debe) cambios.push({ que: `lo que debes de ${(st.tarjetas.find((x) => x.id === t.id) || t).nombre}`, monto: t.debe });
+            if (a && a.debe !== t.debe) cambios.push({ que: `lo que debes de ${(st.tarjetas.find((x) => x.id === t.id) || t).nombre}`, antes: a.debe, monto: t.debe });
         }
-        if (antes.libre !== despues.libre) cambios.push({ que: 'tu libre', monto: despues.libre });
         if (!cambios.length) return null;
-        if (cambios.length === 1) return `Corregimos ${cambios[0].que}: ahora es ${dinero(cambios[0].monto)}.`;
-        // Una sola línea: lo que quepa en 20 palabras (primero el gasto del mes, luego lo que debes, luego el libre).
+        const uno = (c) => `${M.capital(c.que)} era ${dinero(c.antes)} y ahora es ${dinero(c.monto)}.`;
+        if (cambios.length === 1) return uno(cambios[0]);
         for (let i = cambios.length; i > 1; i--) {
-            const lista = cambios.slice(0, i).map((c) => `${c.que} es ${dinero(c.monto)}`);
-            const t = `Corregimos unos números: ${lista.slice(0, -1).join(', ')} y ${lista.at(-1)}.`;
+            const resto = cambios.slice(1, i).map((c) => `${c.que}, ${dinero(c.monto)}`);
+            const t = `${M.capital(cambios[0].que)} era ${dinero(cambios[0].antes)} y ahora es ${dinero(cambios[0].monto)}; ${resto.join('; ')}.`;
             if (palabras(t) <= 20) return t;
         }
-        return `Corregimos ${cambios[0].que}: ahora es ${dinero(cambios[0].monto)}.`;
+        return uno(cambios[0]);
     }
-    /** Las líneas del cuadrito para esta persona (cada una con 20 palabras o menos; a lo más 5 con el cierre). */
+    /**
+     * APROBADO por Victor (2026-10-22, brief v2.8): las líneas del cuadrito para esta persona, cada una con 20 palabras o
+     * menos y a lo más 5 con el cierre. Quien viene de antes de la v2.7 ve también lo de la v2.7 que le toque, si cabe.
+     */
     function lineasNovedades(u) {
         const st = u.st;
-        const n = u.novedades && u.novedades['v2.7'];
-        // v2.7 (A): sin el teclado propio, la línea de los montos es solo la de los miles.
-        const lineas = ['Ya puedes anotar montos grandes, como 1,200.'];
-        if (st.pagos.some((p) => p.activo !== false)) lineas.push('Si pagas parte de una cuota, te mostramos cuánto falta.');
-        if (st.tarjetas.length) lineas.push('Tus abonos a la tarjeta ahora bajan lo que debes.');
+        const n = u.novedades && u.novedades['v2.8'];
+        const lineas = ['Pagos ahora se llama Mi plan: ahí ves lo que viene.'];
+        if (st.apartados.length) lineas.push('Tus ahorros ya no se mezclan con lo que puedes gastar.');
+        lineas.push('El súper y la gasolina pueden ser gastos variables.');
         const correccion = lineaCorreccion(n, st);
+        if (n && n.con27) {
+            const de27 = [];
+            if (st.pagos.some((p) => p.activo !== false)) de27.push('Si pagas parte de una cuota, te mostramos cuánto falta.');
+            if (st.tarjetas.length) de27.push('Tus abonos a la tarjeta ahora bajan lo que debes.');
+            de27.push('Ya puedes anotar montos grandes, como 1,200.');
+            for (const l of de27) if (lineas.length < (correccion ? 3 : 4)) lineas.push(l);
+        }
         if (correccion) lineas.push(correccion);
+        // Con el cierre, 5 líneas como mucho.
         return lineas.slice(0, 4);
     }
+    const NOV_TITULO = '¡PamPlanea está más clara! ✨';
     const NOV_CIERRE = 'Tus datos están completos y a salvo.';
     let novPrevio = null;
     function novedadesPendientes() {
         if (P.modo !== 'uso' || bloqueo || !uso || !uso.st || !uso.st.configurado || uso.st.persona !== 'uso') return false;
-        const n = uso.novedades && uso.novedades['v2.7'];
+        const n = uso.novedades && uso.novedades['v2.8'];
         return !!n && !n.visto;
     }
     function abrirNovedades() {
@@ -508,7 +547,7 @@
         novPrevio = document.activeElement;
         const capa = Object.assign(document.createElement('div'), { id: 'capa-novedades', className: 'capa-novedades' });
         capa.innerHTML = `<div class="nov-fondo"></div><section class="nov" role="dialog" aria-modal="true" aria-labelledby="nov-t" aria-describedby="nov-x">
-            <h2 class="nov-t" id="nov-t" tabindex="-1">¡PamPlanea se puso al día! ✨</h2>
+            <h2 class="nov-t" id="nov-t" tabindex="-1">${esc(NOV_TITULO)}</h2>
             <ul class="nov-lista" id="nov-x">${lineas.map((l) => `<li>${icon('check', 'ico-xs')}<span>${esc(l)}</span></li>`).join('')}</ul>
             <p class="nov-cierre">${esc(NOV_CIERRE)}</p>
             <button type="button" class="btn btn--prim btn--48 btn--full" data-a="novedadesOk" data-fk="nov-ok">¡Entendido!</button>
@@ -529,8 +568,12 @@
             const el = document.getElementById(id);
             if (el) el.inert = ['vista', 'nav'].includes(id) && !!(P.ui && P.ui.hoja);
         }
-        // Una sola vez: queda guardado con tus datos (al recargar no vuelve).
-        if (uso && uso.novedades && uso.novedades['v2.7']) uso.novedades['v2.7'].visto = new Date().toISOString();
+        // Una sola vez: queda guardado con tus datos (al recargar no vuelve). Si traía lo de la v2.7, también queda visto.
+        if (uso && uso.novedades && uso.novedades['v2.8']) {
+            const ahora = new Date().toISOString();
+            uso.novedades['v2.8'].visto = ahora;
+            if (uso.novedades['v2.8'].con27) uso.novedades['v2.7'] = { ...(uso.novedades['v2.7'] || {}), visto: ahora, enV28: true };
+        }
         guardarUso();
         const el = novPrevio && novPrevio.isConnected ? novPrevio : document.querySelector('#pantalla h1');
         if (el) el.focus({ preventScroll: true });
