@@ -127,21 +127,24 @@ try {
     await clic('[data-fk="atras"]');
     await clic('[data-fk="md-ahorros"]');
     await foto('ahorros');
-    check('ahorros: la línea', await texto('#pantalla'), contiene('Tus ahorros siguen en tu banco o efectivo; solo les pones nombre'));
+    // v2.8 (C-1): «¿Dónde está?»: dentro de una cuenta o aparte.
+    check('ahorros: la línea', await texto('#pantalla'), contiene('Dentro de una cuenta, tu ahorro no cuenta en tu libre. Aparte, solo lo registramos.'));
     await clic('[data-fk="atras"]');
     await clic('[data-fk="md-deudas"]');
     await foto('deudas');
     check('deudas', await texto('#pantalla'), contiene('Préstamo Liss', 'Préstamo', 'Tarjeta Cuscatlán', 'Crédito BAC', 'Crédito Cuscatlán'));
     await clic('[data-fk="atras"]');
-    check('barra inferior igual', await ev('[...document.querySelectorAll("#nav .nav-t")].map((x) => x.textContent)'), ['Hoy', 'Pagos', 'Anotar', 'Mi dinero', 'Mes']);
+    // v2.8 (D-1): Hoy · Mi plan · (+) · Mi dinero · Mes.
+    check('barra inferior igual', await ev('[...document.querySelectorAll("#nav .nav-t")].map((x) => x.textContent)'), ['Hoy', 'Mi plan', 'Anotar', 'Mi dinero', 'Mes']);
 
     // V2-39: Pagos con dos vistas.
     actual = 'pagos';
     await clic('[data-fk="nav-pagos"]');
-    check('dos vistas', await ev('[...document.querySelectorAll(".pagos-modo .app-tab")].map((x) => x.textContent)'), ['Calendario', 'Mis pagos e ingresos']);
+    // v2.8 (C-9): «Mi plan» con sus secciones (abre ahí) y el calendario que ya existía.
+    check('dos vistas', await ev('[...document.querySelectorAll(".pagos-modo .app-tab")].map((x) => x.textContent)'), ['Mi plan', 'Calendario']);
     await clic('[data-fk="modo-lista"]');
     await foto('mis-pagos');
-    check('lista completa', await texto('#pantalla'), contiene('Tus ingresos', 'Quincena', 'Cuotas y préstamos', 'Préstamo Liss', 'Suscripciones', 'Netflix', 'Pagas ~$9.99 al mes en suscripciones', 'Con la quincena de antes de que venza'));
+    check('lista completa', await texto('#pantalla'), contiene('Ingresos', 'Quincena', 'Gastos fijos', 'Gastos variables', 'Ahorro programado', 'Pagos de deudas', 'Préstamo Liss', 'Netflix', 'sale de:'));
     await clic('[data-fk="mp-p6"]').catch(() => null);
 
     // V2-47: «+ Pago» → Suscripción, con tarjeta de crédito por defecto; Mes lo suma.
@@ -164,7 +167,8 @@ try {
     actual = 'ahorros';
     await clic('[data-fk="nav-anotar"]');
     await escribir('#anotar-q', 'ahorré 20 viaje');
-    check('intérprete: ahorrar', await texto('#anotar-chips'), contiene('Ahorrar', 'Viaje'));
+    // v2.8 (D-1): «Guardé en un ahorro».
+    check('intérprete: ahorrar', await texto('#anotar-chips'), contiene('Guardé en un ahorro', 'Viaje'));
     await clic('[data-fk="anotar-guardar"]');
     await clic('[data-fk="nav-midinero"]');
     check('sin «apartado» en Mi dinero', await ev('/apartad/i.test(document.getElementById("pantalla").textContent)'), false);

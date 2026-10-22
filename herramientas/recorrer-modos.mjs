@@ -299,6 +299,8 @@ try {
         await fecha('2026-11-01');
         await abrirApp();
         await clic('[data-fk="nav-pagos"]');
+        // v2.8 (C-9): el calendario es la otra vista de Mi plan.
+        await clic('[data-fk="modo-calendario"]');
         await clic('[data-fk="tab-mes"]');
         check('luz último día del mes', await texto('.linea'), contiene('último día del mes'));
         await foto('a-pagos-noviembre');

@@ -143,7 +143,10 @@ try {
     check('~$7.90 por día', await texto('.portada-s'), '~$7.90 por día');
     check('sin avisos rojos', await hay('#pantalla .nota--atencion'), false);
     check('sin avisos en el motor', k.avisos, []);
-    check('proyección', await texto('.proy'), contiene('Próxima quincena (29)', 'ingreso ~$1,163 · pagos ~$713 · te quedarían ~$450', 'incluye ~$566 de tu pareja'));
+    // v2.8 (C-8): cómo quedas la próxima quincena ya no está en Hoy: está arriba de Mi plan («gastos», D-2).
+    await ev(`P.irTab('pagos'); true`);
+    check('proyección', await texto('.proy'), contiene('Próxima quincena (29)', 'ingreso ~$1,163 · gastos ~$713 · te quedarían ~$450', 'incluye ~$566 de tu pareja'));
+    await ev(`P.irTab('hoy'); true`);
     check('proyección (números)', k.prox, { clave: '2026-10-29', entra: 116300, pagos: 71300, quedan: 45000, deficit: 0 });
     check('sin llegadas inventadas', await ev('P.st.ingresos.flatMap((i) => Object.keys(i.llegadas))'), []);
     check('inicio = hoy', await ev('P.st.inicio'), '2026-10-17');
@@ -151,10 +154,11 @@ try {
     await foto('victor-desglose');
     check('desglose', await texto('.hoja'), contiene('Tienes', '$120.00', 'Cuchubal', '$25.00', 'Libre', '$95.00', 'Próxima quincena (29)'));
     await clic('[data-fk="desglose-ok"]');
+    await ev(`P.irTab('pagos'); true`);
     await clic('[data-fk="proyeccion"]');
     await foto('victor-pagos-proxima');
     check('la proyección lleva a Pagos → Próxima', await ev('[P.ui.tab, P.ui.pagosVista]'), ['pagos', 'proxima']);
-    check('Pagos → Próxima: mismos números', await texto('.per-res'), contiene('Ingreso ~$1,163 · pagos ~$713 · te quedarían ~$450'));
+    check('Pagos → Próxima: mismos números', await texto('.per-res'), contiene('Ingreso ~$1,163 · gastos ~$713 · te quedarían ~$450'));
     await clic('[data-fk="tab-actual"]');
     check('esta quincena sin llegadas del 14', await texto('.linea'), (x) => !String(x).includes('Llegó'));
     check('«Más adelante» solo el aguinaldo', await ev('(() => { const g = [...document.querySelectorAll(".grupo")].find((x) => x.querySelector(".grupo-t")?.textContent === "Más adelante"); return g ? [...g.querySelectorAll(".fila-t")].map((x) => x.textContent) : []; })()'), ['Aguinaldo']);
@@ -179,13 +183,16 @@ try {
     check('parejo: $100 y $100', await ev('Object.values(P.ui.hoja.partes)'), ['100.00', '100.00']);
     await clic('[data-fk="pc-ok"]');
     check('partes guardadas', await ev(`(() => { const M = window.MOTOR; const p = M.pago(P.st, ${js(alquiler)}); return M.asignacion(P.st, p, "2026-10-30", p.monto).map((x) => [x.de, x.monto]); })()`), [['ahora', 10000], ['2026-10-29', 10000]]);
-    check('ficha: reservando y con la del 29', await texto('section[aria-labelledby="f-con"]'), contiene('Reservado de lo que tienes ahora', '$100.00', 'Con tu quincena del 29'));
+    // v2.8 (C-2): sin «reservar» fuera de «¿De dónde sale?».
+    check('ficha: reservando y con la del 29', await texto('section[aria-labelledby="f-con"]'), contiene('Ya contado de lo que tienes ahora', '$100.00', 'Con tu quincena del 29'));
     await clic('[data-fk="atras"]');
     await clic('[data-fk="nav-hoy"]');
     informe.numeros.repartido = { libre: await texto('.portada-n'), linea: await texto('.portada-s') };
     check('libre con $100 reservados', await texto('.portada-n'), '$0.00');
     check('faltante exacto', await texto('.portada-s'), 'Te faltan $5.00 para cubrir lo que viene');
-    check('próxima quincena: pagos ~$613', await texto('.proy'), contiene('pagos ~$613', 'te quedarían ~$550'));
+    await ev(`P.irTab('pagos'); true`);
+    check('próxima quincena: gastos ~$613 (en Mi plan, C-8)', await texto('.proy'), contiene('gastos ~$613', 'te quedarían ~$550'));
+    await ev(`P.irTab('hoy'); true`);
     await foto('repartir-hoy');
     await clic('[data-fk="toast-deshacer"]').catch(() => null);
     await ev('P.deshacerUltimo && P.st.pagos.find((p) => p.nombre === "Alquiler").asignaciones && Object.keys(P.st.pagos.find((p) => p.nombre === "Alquiler").asignaciones).length ? P.deshacerUltimo() : null; true');
@@ -227,9 +234,10 @@ try {
     check('el chip abre el calendario', await hay('.cal-dias'), true);
     await clic('[data-fk="cal-fecha-2026-10-25"]');
     await foto('futura-nota');
-    check('nota «Es para el 25»', await texto('#anotar-preg'), contiene('Es para el 25 de octubre', 'lo pongo en Pagos como pago de una vez'));
+    // v2.8 (D-1, D-2): «Mi plan» y «gasto de una vez».
+    check('nota «Es para el 25»', await texto('#anotar-preg'), contiene('Es para el 25 de octubre', 'lo pongo en Mi plan como gasto de una vez'));
     await clic('[data-fk="anotar-guardar"]');
-    check('toast', await texto('.toast'), contiene('Lo puse en Pagos para el 25 oct'));
+    check('toast', await texto('.toast'), contiene('Lo puse en Mi plan para el 25 oct'));
     check('es un pago de una vez', await ev('(() => { const p = P.st.pagos.find((x) => x.nombre === "Zapatos"); return p && [p.frecuencia, p.fecha, p.monto]; })()'), ['unico', '2026-10-25', 4000]);
     check('no hay gasto', await ev('P.st.registros.some((r) => r.tipo === "gasto" && r.nombre === "Zapatos")'), false);
     check('no baja lo que tienes', await ev('P.calc().tienes'), tienesAntes);
@@ -293,7 +301,7 @@ try {
     await abrirApp('caso=C20&tema=' + tema);
     await foto('carlos-hoy');
     check('libre sin reserva automática', await texto('.portada-n'), '$125.00');
-    check('sugerencia (ámbar)', await texto('.aviso-hoy'), contiene('El viernes 30 recibes ~$90', 'el alquiler', 'te faltarían ~$70', '¿Reservas algo de tu pago del viernes 23?'));
+    check('sugerencia (ámbar)', await texto('.aviso-hoy'), contiene('El viernes 30 recibes ~$90', 'el alquiler', 'te faltarían ~$70', '¿Dejas algo listo de tu pago del viernes 23?'));
     check('ámbar, no rojo', await ev('document.querySelector(".aviso-hoy")?.classList.contains("nota--ambar")'), true);
     await clic('[data-fk="at-sug-si"]');
     await foto('carlos-reservar');
@@ -303,7 +311,8 @@ try {
     check('libre baja por lo que eligió', await texto('.portada-n'), '$55.00');
     check('ya no sugiere', await hay('[data-fk="at-sug-si"]'), false);
     await ev('P.abrir("pago", "alquiler"); true');
-    check('el alquiler lo dice', await texto('section[aria-labelledby="f-con"]'), contiene('Reservado de lo que tienes ahora', '$70.00', 'Con tu pago del viernes 30', '$80.00'));
+    // v2.8 (C-2): sin «reservar» fuera de «¿De dónde sale?».
+    check('el alquiler lo dice', await texto('section[aria-labelledby="f-con"]'), contiene('Ya contado de lo que tienes ahora', '$70.00', 'Con tu pago del viernes 30', '$80.00'));
     await foto('carlos-alquiler');
     // «No, después veo» la calla.
     await abrirApp('caso=C33&tema=' + tema);

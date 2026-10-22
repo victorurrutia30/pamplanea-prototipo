@@ -140,6 +140,7 @@ try {
         check('«No, es otro ingreso»: un adelanto nuevo', await ev('[P.ui.hoja.d.tipo, P.ui.hoja.d.adelanto, P.ui.hoja.d.nombre]'), ['ingreso', true, 'Adelanto de salario']);
         await foto('anotar-adelanto');
         // v2.7 (P-3): llega a una cuenta que contó hoy: pregunta si fue antes o después de contar; «Después» (suma hoy).
+        // v2.8 (pendiente 4): si es el cuadre de su Primer día, ya cuenta como «Después» (sin pregunta).
         await ev(`document.querySelector('[data-fk="orden-despues"]')?.click(); true`);
         await esperar(150);
         await clic('[data-fk="anotar-guardar"]');
@@ -214,7 +215,8 @@ try {
         const pid = await ev('P.st.pagos.find((p) => p.nombre === "Luz").id');
         await ev(`P.abrir("pago", ${js(pid)}); true`);
         await esperar(200);
-        check('ficha de un pago: su consejo', await texto('.tip p'), 'Aquí ves cuándo vence y de qué dinero sale. Cuando lo pagues, toca «Pagado».');
+        // v2.8 (C-4): «Ya lo pagué» lo vuelve gasto.
+        check('ficha de un pago: su consejo', await texto('.tip p'), 'Aquí ves cuándo vence y de qué dinero sale. Cuando lo pagues, toca «Ya lo pagué».');
         await clic('[data-fk="tip-pago"]');
         await ev(`P.irTab("hoy"); P.abrir("pago", ${js(pid)}); true`);
         await esperar(200);
@@ -373,7 +375,8 @@ try {
         await escribir('#f-monto', '40');
         await clic('[data-fk="reservar-ok"]');
         await logrado('P-RESERVAR');
-        check('P-RESERVAR: el alquiler lo dice', await texto('[data-fk="p-alquiler-2026-11-05"]'), contiene('Reservando $40.00 de lo que tienes ahora'));
+        // v2.8 (C-2): sin «reservar» fuera de «¿De dónde sale?»: «$40.00 de lo que tienes ahora».
+        check('P-RESERVAR: el alquiler lo dice', await texto('[data-fk="p-alquiler-2026-11-05"]'), contiene('$40.00 de lo que tienes ahora'));
         await clic('[data-fk="pr-siguiente"]');
         await clic('[data-fk="pr-P-SEMANA"]');
         await esperar(400);

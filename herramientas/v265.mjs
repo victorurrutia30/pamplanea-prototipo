@@ -341,11 +341,11 @@ if (partes.includes('c')) {
             else break;
         }
         const yaTienes = await ev(`(() => { const b = document.querySelector('[data-fk="ob-p-luz"]'); return b ? { texto: b.innerText.replace(/\\s+/g, ' ').trim(), tienes: b.classList.contains('chip--tienes') } : null; })()`);
-        check('la luz que ya tienes: «Ya está en Pagos» y no se vuelve a elegir', yaTienes, (x) => !!x && /Ya está en Pagos/.test(x.texto) && x.tienes);
+        check('la luz que ya tienes: «Ya está en Pagos» y no se vuelve a elegir', yaTienes, (x) => !!x && /Ya está en Mi plan/.test(x.texto) && x.tienes);
         await clic('[data-fk="ob-p-luz"]', 300);
-        check('tocarla solo dice dónde está', [await ev('!!(P.ui.ob && P.ui.ob.editando)'), await texto('.toast')], (x) => x[0] === false && /Ya tienes «Luz» en Pagos/.test(String(x[1])));
+        check('tocarla solo dice dónde está', [await ev('!!(P.ui.ob && P.ui.ob.editando)'), await texto('.toast')], (x) => x[0] === false && /Ya tienes «Luz» en Mi plan/.test(String(x[1])));
         await clic('[data-fk="ob-p-luz"]', 300);
-        check('tocarla solo dice dónde está', [await ev('!!(P.ui.ob && P.ui.ob.editando)'), await texto('.toast')], (x) => x[0] === false && /Ya tienes «Luz» en Pagos/.test(String(x[1])));
+        check('tocarla solo dice dónde está', [await ev('!!(P.ui.ob && P.ui.ob.editando)'), await texto('.toast')], (x) => x[0] === false && /Ya tienes «Luz» en Mi plan/.test(String(x[1])));
         await foto('C5-completar-gastos-fijos');
     });
 }

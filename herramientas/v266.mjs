@@ -556,9 +556,9 @@ if (partes.includes('f')) {
         check('copia interna antes de corregir (con la tarjeta sin contestar)', await ev(`(() => { const c = JSON.parse(localStorage.getItem('pamplanea-uso:respaldo-antes-de-empezar')); return !!c && !c.st.tarjetas[0].estados.at(-1).antes; })()`), true);
         await foto('F1-si');
         // «Deshacer»: las respuestas vuelven atrás, pero lo anotado después de contestar se queda.
-        // v2.7 (P-3): es del mismo día que su Primer día (su primer cuadre): pregunta antes o después de contar; «Después».
-        check('(P-3: pregunta si fue antes o después de contar)', await ev(`(() => { P.acciones.anotar(); const q = document.getElementById('anotar-q'); q.value = 'pupusas 5'; q.dispatchEvent(new Event('input', { bubbles: true })); return !!document.querySelector('[data-fk="orden-despues"]'); })()`), true);
-        await ev(`(() => { P.acciones.anotarValor({ campo: 'ordenCuadre', v: 'despues' }); P.acciones.anotarGuardar(); return true; })()`);
+        // v2.8 (pendiente 4): es del mismo día que su Primer día: ya no pregunta; cuenta como «Después» y trae «¿Fue antes? Cambiar».
+        check('(pendiente 4: «Después» con «¿Fue antes? Cambiar»)', await ev(`(() => { P.acciones.anotar(); const q = document.getElementById('anotar-q'); q.value = 'pupusas 5'; q.dispatchEvent(new Event('input', { bubbles: true })); return [!!document.querySelector('[data-fk="orden-cambiar"]'), !document.getElementById('l-orden')]; })()`), [true, true]);
+        await ev(`(() => { P.acciones.anotarGuardar(); return true; })()`);
         await esperar(400);
         await ev(`P.irTab('hoy'); true`);
         await esperar(300);

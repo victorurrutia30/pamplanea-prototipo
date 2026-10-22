@@ -397,8 +397,9 @@ if (partes.includes(8)) {
         await guardar();
         const i = await ev(`P.st.ingresos.find((x) => x.id === ${js(id)})`);
         check('guardado', [i.monto, i.lugar], [35000, 'efectivo']);
-        await irA('hoy');
-        check('Hoy: la próxima quincena incluye lo de Luis (~$350)', await pantalla(), contiene('~$350'));
+        // v2.8 (C-8): la próxima quincena está en Mi plan.
+        await irA('pagos');
+        check('Mi plan: la próxima quincena incluye lo de Luis (~$350)', await pantalla(), contiene('~$350'));
     });
 }
 

@@ -82,7 +82,7 @@ try {
     const glos = await ev('Object.fromEntries(window.GLOSARIO.map((g) => { const x = window.terminoGlosario(g.id, false); return [g.id, x.t + ": " + x.para + "Ejemplo: " + x.ejemplo]; }))');
     await ev('P.cargarPersona("ana"); true');
     await esperar(300);
-    for (const [id, abrirJs] of [['libre', 'P.irTab("hoy")'], ['proxima', 'P.irTab("hoy")'], ['pagasCon', 'P.abrir("pago", "colegio")'], ['ahorros', 'P.irTab("midinero"); P.abrir("ahorros")'], ['deudas', 'P.irTab("midinero"); P.abrir("deudas")'], ['cuadrar', 'P.irTab("midinero"); P.abrir("cuentas"); P.abrirHoja("cuadrar")']]) {
+    for (const [id, abrirJs] of [['libre', 'P.irTab("hoy")'], ['proxima', 'P.irTab("pagos")'], ['pagasCon', 'P.abrir("pago", "colegio")'], ['ahorros', 'P.irTab("midinero"); P.abrir("ahorros")'], ['deudas', 'P.irTab("midinero"); P.abrir("deudas")'], ['cuadrar', 'P.irTab("midinero"); P.abrir("cuentas"); P.abrirHoja("cuadrar")']]) {
         await ev(abrirJs + '; true');
         await esperar(250);
         check(`«?» de ${id}: se ve y mide 44 px`, await ev(`(() => { const q = document.querySelector('[data-fk="q-${id}"]'); if (!q) return null; const r = q.getBoundingClientRect(); return [r.width >= 44, r.height >= 44, q.getAttribute('aria-expanded'), document.getElementById('q-${id}').hidden]; })()`), [true, true, 'false', true]);
@@ -119,7 +119,8 @@ try {
     await abrirApp();
     check('una sola vez por pantalla', await hay('.tip'), false);
     await clic('[data-fk="nav-pagos"]');
-    check('Pagos: su consejo', await texto('.tip p'), contiene('Toca un pago para elegir con qué lo pagas'));
+    // v2.8 (C-9): el consejo de Mi plan.
+    check('Pagos: su consejo', await texto('.tip p'), contiene('Aquí está tu plan: lo que viene y de dónde sale'));
     await clic('[data-fk="tip-pagos"]');
     await clic('[data-fk="nav-midinero"]');
     check('Mi dinero: su consejo', await hay('[data-fk="tip-midinero"]'), true);
@@ -164,8 +165,10 @@ try {
     await clic('[data-fk="ad-ok"]');
     await esperar(300);
     check('ejercicio del adelanto: ¡Lo lograste!', await texto('.tarea-bar'), contiene('¡Lo lograste!', 'Adelanto de salario'));
-    await clic('[data-fk="nav-hoy"]');
+    // v2.8 (C-8): cómo quedas la próxima quincena está en Mi plan, no en Hoy («gastos»: D-2).
+    await clic('[data-fk="nav-pagos"]');
     check('su próxima quincena: con el descuento', await texto('.proy'), contiene('te descuentan $200.00 del adelanto'));
+    await clic('[data-fk="nav-hoy"]');
     await foto('practicar-adelanto');
     // La tarjeta del primer día está en «Primer día» (C01).
     // v2.6.2 (V2-68): las tarjetas de crédito tienen su propio paso en el Primer día.
@@ -199,8 +202,10 @@ try {
         await b.ir(base + 'telefono.html#persona=ana&tema=' + t);
         await esperar(350);
         const r = {};
-        await ev('P.acciones.qVer({ v: "proxima" }); true');
+        // v2.8 (C-8): el «?» de la próxima quincena está en Mi plan (ya no en Hoy).
+        await ev('P.irTab("pagos"); P.acciones.qVer({ v: "proxima" }); true');
         Object.assign(r, await ev(medir([['«?» de la próxima', '.proy-w .q'], ['texto del «?»', '#q-proxima p']])));
+        await ev('P.irTab("hoy"); true');
         // Sobre el número (un degradado) el «?» usa el mismo color que el número grande.
         check(`${t}: el «?» del número, del color del número`, await ev('getComputedStyle(document.querySelector(".portada .q")).color === getComputedStyle(document.querySelector(".portada-n")).color'), true);
         await ev('P.ayuda.abrir("practica"); true');

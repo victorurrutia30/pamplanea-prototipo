@@ -368,7 +368,8 @@ try {
         await pintado('hazlo', 2);
         await clic('[data-fk="tour-saltar-paso"]');
         await pintado('paso', 3);
-        check('«Saltar este paso»: al siguiente', await texto('#tour-t'), 'Estos son tus próximos pagos');
+        // v2.8 (C-8): Hoy enseña «Lo que viene» (ya no «tus próximos pagos»).
+        check('«Saltar este paso»: al siguiente', await texto('#tour-t'), 'Esto es lo que viene');
         await clic('[data-fk="tour-salir"]');
         await esperar(300);
         // Retomar un capítulo de «Aprende más» (versión variable).
@@ -419,7 +420,10 @@ try {
         actual = 'E V2-59 #27';
         await fecha('2026-10-18');
         await limpio('persona=rosa');
-        check('#27 Hoy: «Tus ventas cuentan cuando las anotas», sin «ingreso ~$0» ni rojo', [await texto('.proy-l'), await texto('.proy-s'), await ev('document.querySelector(".proy-l").classList.contains("proy-l--falta")'), await ev('/entra ~\\$0/.test(document.body.innerText)')], ['pagas ~$191 · tus ventas cuentan cuando las anotas', 'este mes llevas $316.00 en ventas', false, false]);
+        // v2.8 (C-8): cómo quedas la próxima quincena está en Mi plan, no en Hoy («gastos»: D-2).
+        await ev(`P.irTab('pagos'); true`);
+        check('#27 Mi plan: «Tus ventas cuentan cuando las anotas», sin «ingreso ~$0» ni rojo', [await texto('.proy-l'), await texto('.proy-s'), await ev('document.querySelector(".proy-l").classList.contains("proy-l--falta")'), await ev('/entra ~\\$0/.test(document.body.innerText)')], ['pagas ~$191 · tus ventas cuentan cuando las anotas', 'este mes llevas $316.00 en ventas', false, false]);
+        await ev(`P.irTab('hoy'); true`);
         check('#27 el aviso del próximo mes tampoco dice «te faltarían»', await texto('.aviso-hoy'), (x) => x.includes('Del 1 nov al 30 nov pagas ~$191.') && x.includes('Tus ventas cuentan cuando las anotas.') && !x.includes('faltarían'));
         await foto('E-27-hoy');
         await clic('[data-fk="portada"]');
@@ -428,12 +432,14 @@ try {
         await clic('[data-fk="at-sug-si"]');
         check('#27 en «¿Cuánto reservas?»', await texto('.hoja-c .txt'), 'El próximo mes pagas ~$191: el alquiler, la luz, el agua y más. Tus ventas cuentan cuando las anotas.');
         await ev('P.cerrarHoja(); true');
+        await ev(`P.irTab('pagos'); true`);
         await clic('[data-fk="proyeccion"]');
         await esperar(250);
         check('#27 en Pagos → Próxima', await texto('.per-res'), (x) => x.includes('Pagas ~$191 · tus ventas cuentan cuando las anotas') && !x.includes('~$0'));
         // Con ingreso fijo, igual que antes.
         await abrirApp('persona=ana');
-        check('#27 con quincena, sin cambio (v2.8, D-4: con los $15 de BAC)', await texto('.proy-l'), 'ingreso ~$600 · pagos ~$70 · te quedarían ~$530');
+        await ev(`P.irTab('pagos'); true`);
+        check('#27 con quincena, sin cambio (v2.8, D-4: con los $15 de BAC)', await texto('.proy-l'), 'ingreso ~$600 · gastos ~$70 · te quedarían ~$530');
 
         actual = 'E V2-59 #28';
         await abrirApp('persona=rosa');
@@ -566,7 +572,7 @@ try {
             await abrirApp('persona=' + persona);
             const variable = persona === 'rosa';
             const glos = await ev(`Object.fromEntries(window.GLOSARIO.map((g) => { const x = window.terminoGlosario(g.id, ${variable}); return [g.id, x.t + ': ' + x.para + ' Ejemplo: ' + x.ejemplo]; }))`);
-            for (const [id, abrirJs] of [['libre', 'P.irTab("hoy")'], ['proxima', 'P.irTab("hoy")'], ['pagasCon', `P.abrir("pago", ${js(persona === 'ana' ? 'colegio' : 'alquiler')})`], ['ahorros', 'P.irTab("midinero"); P.abrir("ahorros")'], ['deudas', 'P.irTab("midinero"); P.abrir("deudas")'], ['cuadrar', 'P.irTab("midinero"); P.abrir("cuentas"); P.abrirHoja("cuadrar")']]) {
+            for (const [id, abrirJs] of [['libre', 'P.irTab("hoy")'], ['proxima', 'P.irTab("pagos")' /* v2.8 (C-8): la próxima quincena está en Mi plan */], ['pagasCon', `P.abrir("pago", ${js(persona === 'ana' ? 'colegio' : 'alquiler')})`], ['ahorros', 'P.irTab("midinero"); P.abrir("ahorros")'], ['deudas', 'P.irTab("midinero"); P.abrir("deudas")'], ['cuadrar', 'P.irTab("midinero"); P.abrir("cuentas"); P.abrirHoja("cuadrar")']]) {
                 await ev(abrirJs + '; true');
                 await esperar(250);
                 if (!(await hay(`[data-fk="q-${id}"]`))) {
@@ -709,7 +715,7 @@ if (partes.includes('k')) {
             await ev('P.ayuda.cerrar({ foco: false }); P.abrir("aprende"); true');
             await esperar(250);
             Object.assign(r, await ev(medir([['glosario: ejemplo', '.glosario-ej'], ['glosario: texto', '.glosario dd']])));
-            await ev('P.cargarPersona("rosa"); true');
+            await ev('P.cargarPersona("rosa"); P.irTab("pagos"); true');
             await esperar(250);
             Object.assign(r, await ev(medir([['próximo mes (vende)', '.proy-l'], ['ventas del mes', '.proy-s']])));
             informe.contraste[t] = r;

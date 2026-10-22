@@ -293,6 +293,8 @@ try {
         actual = 'D ingreso o pago';
         await enUso();
         await clic('[data-fk="nav-pagos"]');
+        // v2.8 (C-9): las marcas del día están en el calendario de Mi plan.
+        await clic('[data-fk="modo-calendario"]');
         const dia = await ev(`(() => { const g = [...document.querySelectorAll('.grupo')].find((x) => x.querySelector('.fila--ingreso') && x.querySelector('.fila--pago')) || [...document.querySelectorAll('.grupo')].find((x) => x.querySelector('.fila--ingreso')); if (!g) return null; return { cab: g.querySelector('.grupo-cab')?.innerText.replace(/\\s+/g, ' '), filas: [...g.querySelectorAll('.fila')].map((f) => ({ ing: f.classList.contains('fila--ingreso'), marca: f.querySelector('.mov')?.innerText.trim(), monto: f.querySelector('.fila-m .monto')?.innerText.trim() })) }; })()`);
         check('un día con ingreso: su marca «+ Ingreso»', dia && dia.cab, (t) => typeof t === 'string' && t.includes('+ Ingreso'));
         check('el ingreso va primero y dice «Ingreso»', dia && dia.filas[0], (f) => f && f.ing && f.marca === 'Ingreso');
@@ -302,7 +304,8 @@ try {
         check('cada pago dice «Pago» y su monto resta («−»)', pagos, (x) => x.length > 0 && x.every((p) => p.marca === 'Pago' && /^(−|~)/.test(p.monto)) && !x.some((p) => p.monto.includes('−~')));
         const ingresos = await ev(`[...document.querySelectorAll('.linea .fila--ingreso .fila-m .monto')].map(${visible})`);
         check('un ingreso que llegó suma («+») y un estimado no lleva «+~»', ingresos, (x) => x.length > 0 && x.every((m) => /^\+\$|^~\$/.test(m)) && !x.some((m) => m.includes('+~')));
-        check('los días con pagos también tienen su marca', await ev(`[...document.querySelectorAll('.dia-marca--pago')].map((e) => e.textContent)`), (x) => x.length > 0 && x.every((t) => /^− (Pago|\d+ pagos)$/.test(t)));
+        // v2.8 (D-2): «Pago» solo para deudas y tarjetas; un gasto fijo se marca «− Gasto».
+        check('los días con pagos también tienen su marca', await ev(`[...document.querySelectorAll('.dia-marca--pago')].map((e) => e.textContent)`), (x) => x.length > 0 && x.every((t) => /^− (Pago|\d+ pagos|Gasto|\d+ gastos)$/.test(t)));
         await foto('D-pagos-calendario');
         // Contraste de las marcas en los 4 temas (nunca solo color, y cuando hay color, ≥ 4.5:1).
         const minimo = await ev(`(async () => {
@@ -321,7 +324,8 @@ try {
         })()`);
         check('contraste de las marcas ≥ 4.5:1 en los 4 temas', minimo, (x) => x >= 4.5);
         await clic('[data-fk="modo-lista"]');
-        check('«Mis pagos e ingresos»: «Tus ingresos», «ingresos … · pagos …»', await texto('#pantalla'), (t) => t.includes('Tus ingresos') && /Al mes, más o menos: ingresos ~\$/.test(t) && !/te entra|Lo que te pagan/i.test(t));
+        // v2.8 (C-9): «Mi plan» (antes «Mis pagos e ingresos»): sus secciones, con «Ingresos» y «tu plan».
+        check('«Mi plan»: «Ingresos», «ingresos … · tu plan …»', await texto('#pantalla'), (t) => t.includes('Ingresos') && /Al mes, más o menos: ingresos ~\$[\d,.]+ · tu plan ~\$/.test(t) && !/te entra|Lo que te pagan/i.test(t));
         await foto('D-pagos-lista');
     }
 

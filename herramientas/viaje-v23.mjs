@@ -96,9 +96,8 @@ try {
     // Anota un gasto: baja el libre y lo que tiene, igual.
     await clic('[data-fk="nav-anotar"]');
     await escribir('#anotar-q', 'pupusas 5');
-    // v2.7 (P-3): es el mismo día de su primer cuadre (el Primer día): pregunta si fue antes o después de contar; «Después».
-    check('pupusas: pregunta si fue antes o después de contar', await texto('#l-orden'), '¿Fue antes o después de contar tu dinero?');
-    await clic('[data-fk="orden-despues"]');
+    // v2.8 (pendiente 4): el mismo día de su Primer día ya no pregunta: cuenta como «Después» y trae «¿Fue antes? Cambiar».
+    check('pupusas: «Después» con «¿Fue antes? Cambiar»', await texto('#orden-nota'), 'Cuenta como después de contar tu dinero: tu Efectivo baja.');
     await clic('[data-fk="anotar-guardar"]');
     check('pupusas: libre $90.00', await texto('.portada-n'), '$90.00');
     await coherente('tras pupusas');
@@ -125,7 +124,10 @@ try {
     check('Reparte lo dice', await texto('#pantalla'), (x) => x.includes('Llegó antes de tu quincena del 29') && x.includes('Usarla desde ya'));
     await clic('[data-fk="rep-listo"]');
     check('adelantado: el libre no sube', await texto('.portada-n'), libre28);
+    // v2.8 (C-8): cómo quedas la próxima quincena ya no está en Hoy: está arriba de Mi plan («gastos», D-2).
+    await ev(`P.irTab('pagos'); true`);
     check('adelantado: la próxima lo cuenta', await texto('.proy'), (x) => x.includes('ingreso ~$1,163') && x.includes('$566.00 de tu pareja, que ya llegó'));
+    await ev(`P.irTab('hoy'); true`);
     await coherente('pareja adelantada');
 
     // 29 oct: llega la quincena. Se confirma; lo del 30 ya sale de este dinero.

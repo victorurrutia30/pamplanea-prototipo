@@ -830,6 +830,10 @@ await filaDe('V7', 'Deudas (D-9): la cuota termina sola en $0 con aviso; «Me pr
     check('la entrada: $200 a tu efectivo, ligada a la deuda', d.entrada, ['ingreso', 20000, 'efectivo', true]);
     check('tu efectivo sube $200 y tu libre también', [(await ev(`__saldo('efectivo')`)) - ef, (await libre()) - l0], [20000, 20000]);
     check('en Mes no es un ingreso: va aparte como préstamo', [d.mes, d.entro], [20000, false]);
+    // E2: la pantalla Mes lo dice en una línea.
+    const mes = await ev(`(() => { P.irTab('mes'); const el = document.querySelector('[data-fk="mes-prestamos"]'); return el ? el.textContent.trim() : null; })()`);
+    check('Mes: «Te prestaron $200.00: es una deuda, no cuenta como ingreso.»', mes, 'Te prestaron $200.00: es una deuda, no cuenta como ingreso.');
+    await ev(`P.irTab('hoy'); true`);
 });
 
 // ------------------------------------------------------------------ V8 (C-5 y «recibí 50 en efectivo»)

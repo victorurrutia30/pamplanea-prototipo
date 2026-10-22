@@ -209,7 +209,10 @@ if (partes.includes('a')) {
         check('Hoy: «Libre $1,000.00»', await texto('.portada-n'), '$1,000.00');
         check('Hoy dice con qué se paga la tarjeta', portada, contiene('Tarjeta ~$100 del 14 nov: se paga con tu quincena del 30'));
         check('Hoy ya no dice «Incluye tarjeta»', portada, noContiene('Incluye tarjeta'));
-        check('Hoy: «Próxima quincena (30)» con la tarjeta', await ev(`document.querySelector('#pantalla').innerText.replace(/\\s+/g, ' ')`), contiene('ingreso ~$600 · pagos ~$100 · te quedarían ~$500'));
+        // v2.8 (C-8): «Próxima quincena» está en Mi plan (ya no en Hoy).
+        await ev(`P.irTab('pagos'); true`);
+        check('Mi plan: «Próxima quincena (30)» con la tarjeta', await ev(`document.querySelector('#pantalla').innerText.replace(/\\s+/g, ' ')`), contiene('ingreso ~$600 · gastos ~$100 · te quedarían ~$500'));
+        await ev(`P.irTab('hoy'); true`);
         const prox = await proximos();
         notas.A.proximos = prox;
         check('Próximos pagos: la tarjeta bajo «Con tu quincena del 30»', prox, (x) => x.indexOf('— Con tu quincena del 30') >= 0 && x.indexOf('Crédito BAC') > x.indexOf('— Con tu quincena del 30'));
@@ -249,7 +252,8 @@ if (partes.includes('b')) {
         check('reservado $100', n1.reservado, 10000);
         check('la próxima quincena ya no la paga', p1[0][2], p0[0][2] - 10000);
         check('lo elegido se guarda en la tarjeta', await ev(`P.st.tarjetas.find((x) => x.nombre === 'Crédito BAC').asignaciones`), { '2026-11-14': [{ de: 'ahora', monto: 10000 }] });
-        check('la ficha lo dice', await seccionCon('Lo pagas con'), contiene('Reservado de lo que tienes ahora'));
+        // v2.8 (C-2): sin «reservar» fuera de «¿De dónde sale?».
+        check('la ficha lo dice', await seccionCon('Lo pagas con'), contiene('Ya contado de lo que tienes ahora'));
         check('el aviso «Deshacer»', await hay('[data-fk="toast-deshacer"]'), true);
         await clic('[data-fk="toast-deshacer"]', 400);
         const n2 = await numeros();
@@ -432,10 +436,13 @@ if (partes.includes('e')) {
             notas['E ' + n].proximos = prox;
             if (separador) check(`Próximos pagos: la tarjeta bajo «${separador}»`, prox, (x) => x.indexOf('— ' + separador) >= 0 && x.indexOf('Crédito Agrícola') > x.indexOf('— ' + separador) && x.indexOf('Préstamo') < x.indexOf('— ' + separador));
             else check('Próximos pagos: la tarjeta y el préstamo bajo «Con tu salario del 29» (cada mes se llama «Salario»)', prox, (x) => x.indexOf('— Con tu salario del 29') >= 0 && x.indexOf('Crédito Agrícola') > x.indexOf('— Con tu salario del 29') && x.indexOf('Préstamo') > x.indexOf('— Con tu salario del 29'));
+            // v2.8 (C-8): «Próxima quincena» está en Mi plan.
+            await ev(`P.irTab('pagos'); true`);
             const pantalla = await ev(`document.querySelector('#pantalla').innerText.replace(/\\s+/g, ' ')`);
+            await ev(`P.irTab('hoy'); true`);
             notas['E ' + n].proximaQuincena = (pantalla.match(/Próxim[ao] [^·]*· ingreso[^.]*/) || [''])[0];
             if (n === '14 y 29') {
-                check('«Próxima quincena (29)»: ingreso ~$550 · pagos ~$157 · te quedarían ~$393', pantalla, contiene('ingreso ~$550 · pagos ~$157 · te quedarían ~$393'));
+                check('«Próxima quincena (29)»: ingreso ~$550 · pagos ~$157 · te quedarían ~$393', pantalla, contiene('ingreso ~$550 · gastos ~$157 · te quedarían ~$393'));
                 await foto('E-hoy');
                 // Pagos → Próxima: el préstamo con la del 29.
                 await ev(`P.irTab('pagos'); true`);
@@ -443,7 +450,7 @@ if (partes.includes('e')) {
                 notas['E ' + n].pagos = await texto('#pantalla');
                 await foto('E-pagos');
             }
-            if (n === 'cada mes el 29') check('«Próximo …»: el préstamo y la tarjeta con el del 29 (~$307)', pantalla, contiene('pagos ~$307'));
+            if (n === 'cada mes el 29') check('«Próximo …»: el préstamo y la tarjeta con el del 29 (~$307)', pantalla, contiene('gastos ~$307'));
             // agregado v2.6.7 #3: lo que debe, igual en la ficha, Deudas y Mi dinero.
             const frase = 'Debes ~$2,000 · por confirmar con tu estado de cuenta';
             await abrirTarjeta('Crédito Agrícola');

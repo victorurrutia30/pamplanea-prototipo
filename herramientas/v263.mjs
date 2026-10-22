@@ -86,7 +86,8 @@ try {
         await foto('A-anotar-cuadre');
         await cerrar();
         await clic('[data-fk="nav-anotar"]');
-        check('el atajo dice «Cuadrar» (no «Tengo $___»)', await ev(`[...document.querySelectorAll('.hoja .atajo')].map((c) => c.textContent.trim())`), (x) => x.includes('Cuadrar') && !x.some((t) => /Tengo/.test(t)));
+        // v2.8 (D-1): Anotar con verbos: «Cuadré».
+        check('el atajo dice «Cuadré» (no «Tengo $___»)', await ev(`[...document.querySelectorAll('.hoja .atajo')].map((c) => c.textContent.trim())`), (x) => x.includes('Cuadré') && !x.some((t) => /Tengo/.test(t)));
         await cerrar();
         // Los demás formularios: el botón dice la acción.
         const botones = {};
@@ -103,7 +104,8 @@ try {
             botones[nombre] = await boton();
             await cerrar();
         }
-        check('cada botón dice su acción', botones, { pago: 'Guardar pago', ingreso: 'Guardar ingreso', tarjeta: 'Agregar tarjeta', prestamo: 'Agregar deuda', cuadrar: 'Cuadrar', ahorrar: 'Ahorrar' });
+        // v2.8 (D-2: «pago» solo para deudas; C-1: «Guardé en un ahorro»).
+        check('cada botón dice su acción', botones, { pago: 'Guardar gasto fijo', ingreso: 'Guardar ingreso', tarjeta: 'Agregar tarjeta', prestamo: 'Agregar deuda', cuadrar: 'Cuadrar', ahorrar: 'Guardar en el ahorro' });
         // Formato al salir del campo: se ve «1,234.50» y se guarda igual.
         await ev(`P.abrirHoja('nuevoPago'); true`);
         await esperar(200);

@@ -187,8 +187,10 @@ try {
     check('aceptación: la próxima (29)', base1.prox, { entra: 116300, pagos: 71300, quedan: 45000, deficit: 0 });
     check('aceptación: sin avisos', base1.avisos, []);
     await clic('[data-fk="nav-pagos"]');
+    // v2.8 (C-9): Mi plan abre en sus secciones; el calendario (con «Mes») es la otra vista. («gastos»: D-2.)
+    await clic('[data-fk="modo-calendario"]');
     await clic('[data-fk="tab-mes"]');
-    check('b) Pagos → Mes: resumen de octubre', await texto('.per-res .per-res-l'), 'Ingresos ~$1,163 · pagos ~$713 · queda ~$450');
+    check('b) Pagos → Mes: resumen de octubre', await texto('.per-res .per-res-l'), 'Ingresos ~$1,163 · gastos ~$713 · queda ~$450');
     const mes = await ev('(() => { const r = window.MOTOR.pagosDelMes(P.st, 2026, 10); return [r.entra, r.pagos, r.queda]; })()');
     check('b) los mismos números del motor', mes, [116300, 71300, 45000]);
     await foto('pagos-mes-resumen');
@@ -203,17 +205,20 @@ try {
     check('el libre de HOY no cambia (no suma hasta que llegue)', c1.libre, 9500);
     check('la próxima: ingreso ~$1,477 · pagos ~$1,196 · ~$281', c1.prox, { entra: 147700, pagos: 119600, quedan: 28100, deficit: 0 });
     check('sin aviso de faltante', c1.avisos, []);
-    check('texto de la próxima', await texto('.proy-l'), 'ingreso ~$1,477 · pagos ~$1,196 · te quedarían ~$281');
+    // v2.8 (C-8): cómo quedas la próxima quincena está en Mi plan, no en Hoy («gastos»: D-2).
+    await ev(`P.irTab('pagos'); true`);
+    check('texto de la próxima', await texto('.proy-l'), 'ingreso ~$1,477 · gastos ~$1,196 · te quedarían ~$281');
     check('incluye ~$314 de adelanto', await texto('.proy-s'), 'incluye ~$566 de tu pareja y ~$314 de adelanto');
     await foto('proyeccion-con-adelanto');
     // «Más adelante» = después de «Próxima»: el adelanto se ve solo en su periodo.
     await clic('[data-fk="nav-pagos"]');
+    await clic('[data-fk="modo-calendario"]');
     await clic('[data-fk="tab-actual"]');
     check('3) «Esta quincena → Más adelante» sin el adelanto', await ev('[...document.querySelectorAll(".grupo .fila-t")].filter((e) => e.closest(".grupo").querySelector(".grupo-t").textContent === "Más adelante").map((e) => e.textContent)'), ['Aguinaldo']);
     await clic('[data-fk="tab-proxima"]');
     const idAd0 = await ev('P.st.ingresos.find((i) => i.nombre === "Adelanto de Salario").id');
     check('3) el adelanto está en la Próxima', await hay(`[data-fk="i-${idAd0}-2026-10-29"]`), true);
-    check('3) Próxima: mismo resumen', await texto('.per-res .per-res-l'), 'Ingreso ~$1,477 · pagos ~$1,196 · te quedarían ~$281');
+    check('3) Próxima: mismo resumen', await texto('.per-res .per-res-l'), 'Ingreso ~$1,477 · gastos ~$1,196 · te quedarían ~$281');
 
     // ================================================================ Corrección: adelanto de salario con descuento
     actual = 'adelanto';
@@ -266,7 +271,8 @@ try {
     check('faltante por fechas: en total alcanza y dos salidas', sug.x, 'En total sí te alcanza, pero el seguro vence antes. ¿Lo pagas con tu quincena del 29 o reservas solo $51.00?');
     check('faltante por fechas: corto con el día', sug.corto, 'te faltarían ~$51 el 16');
     await ev('P.abrirHoja("atencion"); true');
-    check('botones: pagarlo antes y reservar', await ev('[...document.querySelectorAll("[data-fk=at-sug-pagar], [data-fk=at-sug-si], [data-fk=at-sug-no]")].map((e) => e.textContent.trim())'), ['Pagarlo con tu quincena del 29', 'Reservar $51.00', 'No, después veo']);
+    // v2.8 (C-2): «Dejar listos $51.00» (sin «Reservar»).
+    check('botones: pagarlo antes y reservar', await ev('[...document.querySelectorAll("[data-fk=at-sug-pagar], [data-fk=at-sug-si], [data-fk=at-sug-no]")].map((e) => e.textContent.trim())'), ['Pagarlo con tu quincena del 29', 'Dejar listos $51.00', 'No, después veo']);
     await foto('aviso-faltante-por-fechas');
     await clic('[data-fk="at-sug-pagar"]');
     check('«Pagarlo con…» abre la hoja con esa quincena elegida', await ev('[document.getElementById("hoja-t").textContent, P.ui.hoja.modo]'), ['¿Con qué pagas el seguro?', 'uno:2026-10-29']);
@@ -412,6 +418,7 @@ try {
     await clic('[data-fk="pn-listo"]');
     check('Hoy: «Tarjeta ~$100 del 5 nov: se paga con tu quincena del 30» (V2-87)', await texto('.portada-b'), contiene('Tarjeta ~$100 del 5 nov: se paga con tu quincena del 30'));
     await clic('[data-fk="nav-pagos"]');
+    await clic('[data-fk="modo-calendario"]').catch(() => null);
     await clic('[data-fk="tab-proxima"]');
     check('su pago está en Pagos (~$100 estimado, 5 nov)', await texto('[data-fk^="t-credito-2026-11-05"]'), contiene('Visa Cuscatlán', '~$100'));
     await clic('[data-fk="nav-midinero"]');

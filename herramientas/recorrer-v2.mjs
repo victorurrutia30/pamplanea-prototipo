@@ -113,8 +113,11 @@ for (const tema of temas) {
         // v2.8 (D-4, U01): los $15 de intereses del estado de cuenta de BAC van con la quincena del 30: el libre de Ana sube $15.
         check('libre antes', await libre(), '$285.60');
         check('incluye tarjeta', await texto('.portada-v'), 'Incluye tarjeta $230.00, vence el 5 de noviembre');
+        // v2.8 (C-8): cómo quedas la próxima quincena está en Mi plan, no en Hoy («gastos»: D-2).
+        await ev(`P.irTab('pagos'); true`);
         check('próxima quincena (V2-35)', await texto('.proy'), contiene('Próxima quincena (30)'));
-        check('próxima quincena: números', await texto('.proy'), contiene('ingreso ~$600 · pagos ~$70 · te quedarían ~$530'));
+        check('próxima quincena: números', await texto('.proy'), contiene('ingreso ~$600 · gastos ~$70 · te quedarían ~$530'));
+        await ev(`P.irTab('hoy'); true`);
         check('sin reserva automática', await ev('document.body.textContent.includes("Ya separa")'), false);
         await clic('[data-fk="nav-anotar"]');
         await escribir('#anotar-q', 'pupusas 6');
@@ -207,13 +210,15 @@ for (const tema of temas) {
         await cargar('caso=C20', tema);
         check('libre antes (sin reserva automática)', await libre(), '$125.00');
         check('por día', await texto('.portada-s'), '~$62 por día');
-        check('sugerencia ámbar', await texto('.aviso-hoy'), contiene('El viernes 30 recibes ~$90', 'te faltarían ~$70', '¿Reservas algo de tu pago del viernes 23?'));
+        check('sugerencia ámbar', await texto('.aviso-hoy'), contiene('El viernes 30 recibes ~$90', 'te faltarían ~$70', '¿Dejas algo listo de tu pago del viernes 23?'));
         await fotoLarga('c20-hoy');
         await clic('[data-fk="portada"]');
         await foto('c20-desglose');
         check('desglose', await texto('.desglose'), contiene('Tienes', '$125.00', 'Libre'));
         await clic('[data-fk="desglose-ok"]');
         await clic('[data-fk="nav-pagos"]');
+        // v2.8 (C-9): Mi plan abre en sus secciones; el calendario es la otra vista.
+        await clic('[data-fk="modo-calendario"]');
         await clic('[data-fk="tab-proxima"]');
         check('mismo día', await ev('document.body.textContent.includes("mismo día de tu pago")'), true);
         await fotoLarga('c20-pagos-proxima');
@@ -225,9 +230,10 @@ for (const tema of temas) {
         check('libre con lo reservado', await libre(), '$55.00');
         await clic('[data-fk="nav-midinero"]');
         await fotoLarga('c20-midinero');
-        check('reparto', await texto('.reparto-frase'), 'Tienes $125.00 = reservado para pagos $70.00 + libre $55.00');
+        // v2.8 (C-2): sin «reservar» fuera de «¿De dónde sale?».
+        check('reparto', await texto('.reparto-frase'), 'Tienes $125.00 = ya contado para pagos $70.00 + libre $55.00');
         await ev('P.abrir("pago", "alquiler"); true');
-        check('el alquiler lo dice', await texto('section[aria-labelledby="f-con"]'), contiene('Reservado de lo que tienes ahora', '$70.00', 'Con tu pago del viernes 30', '$80.00'));
+        check('el alquiler lo dice', await texto('section[aria-labelledby="f-con"]'), contiene('Ya contado de lo que tienes ahora', '$70.00', 'Con tu pago del viernes 30', '$80.00'));
         await ev('P.simular("viernes"); true');
         await esperar(150);
         await clic('[data-fk="ing-si"]');
@@ -343,6 +349,8 @@ for (const tema of temas) {
         await foto('c31-tarjeta');
         await clic('[data-fk="deuda-ok"]');
         await clic('[data-fk="nav-pagos"]');
+        // v2.8 (C-9): Mi plan abre en sus secciones; el calendario es la otra vista.
+        await clic('[data-fk="modo-calendario"]');
         await clic('[data-fk="nuevo-pago"]');
         await foto('c31-nuevo-pago');
         await clic('[data-fk="np-cuota"]');
@@ -388,7 +396,7 @@ for (const tema of temas) {
         check('cupo', await texto('[data-fk="t-bac"]'), contiene('Disponible $610.00 de $1,500.00'));
         await clic('[data-fk="nav-midinero"]');
         await clic('[data-fk="md-ahorros"]');
-        check('logro', await texto('section[aria-labelledby=md-logros]'), contiene('Usado con Crédito BAC · $600.00 reservados para tu pago del 5 de diciembre'));
+        check('logro', await texto('section[aria-labelledby=md-logros]'), contiene('Usado con Crédito BAC · $600.00 listos para tu pago del 5 de diciembre'));
         await clic('[data-fk="nav-midinero"]');
         await clic('[data-fk="md-cuentas"]');
         check('banco igual', await texto('[data-fk="l-agricola"] .fila-m'), '$1,455.60');
