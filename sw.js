@@ -19,7 +19,6 @@ const ARCHIVOS = [
     "index.html",
     "manifest.webmanifest",
     "modos.js",
-    "montos.js",
     "motor.js",
     "prototipo.css",
     "recursos/arte.js",

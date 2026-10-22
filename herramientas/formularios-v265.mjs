@@ -114,9 +114,8 @@ const REVISAR = `(enOb) => {
     });
     // Las etiquetas de los campos (no los títulos de sección, .campo-l--sec) son preguntas.
     const etiquetas = [...cont.querySelectorAll('.campo-l')].filter((e) => e.getClientRects().length && !e.classList.contains('campo-l--sec') && !e.closest('.ob-resumen')).map((e) => e.innerText.replace(/\\s+/g, ' ').trim()).filter((t) => t && !/¿[^?]+\\?/.test(t));
-    // v2.7 (C-6): en el teléfono los montos usan el teclado de la app (inputmode «none»); sin él, el numérico con punto.
-    const modoMonto = P.montoInputmode ? P.montoInputmode() : 'decimal';
-    const montos = [...cont.querySelectorAll('.campo--monto input')].filter((i) => i.getAttribute('inputmode') !== modoMonto).map((i) => i.id);
+    // v2.7 (A, reemplaza a C-6): los montos usan el teclado del teléfono, el numérico con punto (sin teclado propio).
+    const montos = [...cont.querySelectorAll('.campo--monto input')].filter((i) => i.getAttribute('inputmode') !== 'decimal').map((i) => i.id);
     const chicos = [...cont.querySelectorAll('button, input, label.btn, [role="radio"]')].filter((e) => e.getClientRects().length && !e.classList.contains('sr-only') && !e.closest('.link--inline') && !e.classList.contains('link--inline')).map((e) => ({ e, r: e.getBoundingClientRect() })).filter(({ e, r }) => r.height < 43.5 && !(e.classList.contains('link') && r.height >= 24)).map(({ e, r }) => (e.dataset.fk || e.id || e.className) + ':' + Math.round(r.height));
     const prim = cont.querySelector('.hoja-pie .btn--prim, .ob-pie .btn--prim, [data-fk="hoja-ok"]');
     return { elegidos, etiquetas, montos, chicos: chicos.slice(0, 6), boton: prim ? prim.innerText.trim() : null, primario };

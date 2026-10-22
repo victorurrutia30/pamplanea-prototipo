@@ -98,15 +98,22 @@
             vv.addEventListener('scroll', ajustar);
         }
         window.addEventListener('resize', ajustar);
-        // Que el campo enfocado (Anotar, montos) no quede debajo del teclado.
+        // Que el campo enfocado (Anotar, montos) no quede debajo del teclado. v2.7 (A): con su pregunta y su mensaje
+        // («No entendí…», el error), que van justo debajo.
+        const aLaVista = (el) => (el.closest('.campo-g') || el).scrollIntoView({ block: 'nearest' });
         document.addEventListener('focusin', (e) => {
             const el = e.target;
             if (!el.matches || !el.matches('input, textarea')) return;
             root.classList.add('escribiendo');
             setTimeout(() => {
                 ajustar();
-                el.scrollIntoView({ block: 'nearest' });
+                aLaVista(el);
             }, 320);
+        });
+        // v2.7 (A): si al escribir aparece un mensaje debajo del campo, también se ve.
+        document.addEventListener('input', (e) => {
+            const el = e.target;
+            if (el.matches && el.matches('.campo--monto input') && document.activeElement === el) requestAnimationFrame(() => aLaVista(el));
         });
         document.addEventListener('focusout', (e) => {
             if (e.target.matches && e.target.matches('input, textarea')) setTimeout(() => !document.activeElement?.matches?.('input, textarea') && root.classList.remove('escribiendo'), 50);

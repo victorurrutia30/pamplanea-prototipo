@@ -10,8 +10,6 @@
     const { dinero } = M;
     const H = (P.hojas = {});
     const S = P.pantallas;
-    /** v2.7 (C-6): en el teléfono los montos usan el teclado de montos (montos.js), no el del sistema. */
-    const modoMonto = () => (P.montoInputmode ? P.montoInputmode() : 'decimal');
 
     // ------------------------------------------------------------------ mutaciones del estado
     /** v2.6.1 (QA A-D3): lo que debes solo baja si se sabe cuánto debes, y se recuerda cuánto bajó para devolverlo exacto. */
@@ -394,7 +392,7 @@
     const inv = (h, campo) => (h.intento && h.errores.includes(campo) ? `aria-invalid="true" aria-describedby="err-${campo}"` : '');
     function campoMonto(h, { campo = 'monto', label = '¿Cuánto?', valor = '', ayuda = '', errorTexto = 'Escribe el monto', id = null, placeholder = 'Ej. 25.00' } = {}) {
         const fid = id || 'f-' + campo;
-        return `<div class="campo-g"><label class="campo-l" for="${fid}">${label}</label><div class="campo campo--monto"><span aria-hidden="true">$</span><input id="${fid}" data-campo="${campo}" type="text" inputmode="${modoMonto()}" autocomplete="off" placeholder="${esc(placeholder)}" value="${esc(valor)}" ${inv(h, campo)}></div>${ayuda ? `<p class="campo-ayuda">${ayuda}</p>` : ''}${error(h, campo, M.montoExcede(valor) ? 'Puede ser de hasta $1,000,000.00' : errorTexto)}</div>`;
+        return `<div class="campo-g"><label class="campo-l" for="${fid}">${label}</label><div class="campo campo--monto"><span aria-hidden="true">$</span><input id="${fid}" data-campo="${campo}" type="text" inputmode="decimal" autocomplete="off" placeholder="${esc(placeholder)}" value="${esc(valor)}" ${inv(h, campo)}></div>${ayuda ? `<p class="campo-ayuda">${ayuda}</p>` : ''}${error(h, campo, M.montoExcede(valor) ? 'Puede ser de hasta $1,000,000.00' : errorTexto)}</div>`;
     }
     // V2-65 (fase 3): los montos se ven con formato al salir del campo y, al volver, el número para escribir.
     const conFormato = (c) => (c / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -4003,7 +4001,7 @@
                 if (top.cuadres[l.id] === undefined) top.cuadres[l.id] = M.montoCampo(esperado);
                 const m = M.leerMonto(top.cuadres[l.id]);
                 const dif = m === null ? null : m - esperado;
-                return `<li class="ad-item">${caja(l.emoji)}<div class="ad-txt"><p class="fila-t">${esc(l.nombre)}</p><div class="campo-g"><label class="campo-l" for="rc-${l.id}">¿Cuánto tienes ahora?</label><div class="campo campo--monto"><span aria-hidden="true">$</span><input id="rc-${l.id}" data-campo="repCuadre" data-l="${l.id}" type="text" inputmode="${modoMonto()}" value="${esc(top.cuadres[l.id])}"></div></div><p class="fila-s" id="rc-dif-${l.id}" aria-live="polite">${textoDif(esperado, dif)}</p></div></li>`;
+                return `<li class="ad-item">${caja(l.emoji)}<div class="ad-txt"><p class="fila-t">${esc(l.nombre)}</p><div class="campo-g"><label class="campo-l" for="rc-${l.id}">¿Cuánto tienes ahora?</label><div class="campo campo--monto"><span aria-hidden="true">$</span><input id="rc-${l.id}" data-campo="repCuadre" data-l="${l.id}" type="text" inputmode="decimal" value="${esc(top.cuadres[l.id])}"></div></div><p class="fila-s" id="rc-dif-${l.id}" aria-live="polite">${textoDif(esperado, dif)}</p></div></li>`;
             })
             .join('');
         return P.tarjetaSeccion(`${n}. ¿Cuadramos?`, `<p class="txt txt--card">Mira tu cartera y la app del banco. No tiene que ser exacto; si no quieres, déjalo como está.</p><ul class="lista-ad">${filas}</ul>`, { id: 'rep-cuadre' });
@@ -4137,7 +4135,7 @@
                           top.ingresos[clave] = v;
                           return `<li class="ad-item">${caja(o.ingreso.emoji)}<div class="ad-txt"><p class="fila-t">${esc(o.ingreso.nombre)} del ${esc(M.fechaLarga(o.fecha))}</p><p class="fila-s">Normalmente ${dinero(o.monto, { aprox: true })} en ${esc(M.lugar(st, o.ingreso.lugar).nombre)}</p>
                             <div class="chips"><button type="button" class="chip" aria-pressed="${v.decision === 'si'}" data-a="aldiaIngreso" data-f="${clave}" data-v="si" data-fk="adi-si-${o.fecha}${o.ingreso.principal ? '' : '-' + o.ingreso.id}">${v.decision === 'si' ? icon('check', 'ico-xs') : ''}Sí, ya llegó</button><button type="button" class="chip" aria-pressed="${v.decision === 'todavia'}" data-a="aldiaIngreso" data-f="${clave}" data-v="todavia" data-fk="adi-todavia-${o.fecha}">${v.decision === 'todavia' ? icon('check', 'ico-xs') : ''}Todavía no</button><button type="button" class="chip" aria-pressed="${v.decision === 'no'}" data-a="aldiaIngreso" data-f="${clave}" data-v="no" data-fk="adi-no-${o.fecha}">${v.decision === 'no' ? icon('check', 'ico-xs') : ''}No me va a caer</button></div>
-                            ${v.decision === 'si' ? `<div class="campo-g"><label class="campo-l" for="adi-m-${o.fecha}">¿Cuánto?</label><div class="campo campo--monto"><span aria-hidden="true">$</span><input id="adi-m-${o.fecha}" data-campo="adIngreso" data-f="${clave}" type="text" inputmode="${modoMonto()}" value="${esc(v.monto)}"></div></div>` : ''}</div></li>`;
+                            ${v.decision === 'si' ? `<div class="campo-g"><label class="campo-l" for="adi-m-${o.fecha}">¿Cuánto?</label><div class="campo campo--monto"><span aria-hidden="true">$</span><input id="adi-m-${o.fecha}" data-campo="adIngreso" data-f="${clave}" type="text" inputmode="decimal" value="${esc(v.monto)}"></div></div>` : ''}</div></li>`;
                       })
                       .join('')
                 : '<li class="ad-item"><p class="txt">No hay ingresos por confirmar.</p></li>';
@@ -4153,7 +4151,7 @@
                           const ch = (val, txt) => `<button type="button" class="chip" aria-pressed="${v === val}" data-a="aldiaPago" data-k="${clave}" data-v="${val}" data-fk="adp-${val}-${clave}">${v === val ? icon('check', 'ico-xs') : ''}${txt}</button>`;
                           // v2.7 (F17): pagar una tarjeta pide cuánto (con lo mismo que propone «Pagar tarjeta»); nunca un abono de $0.
                           const idT = 'adt-' + clave.replace(/[^\w-]/g, '-');
-                          const montoT = o.tarjeta && v === 'pagado' ? `<div class="campo-g"><label class="campo-l" for="${idT}">¿Cuánto pagaste?</label><div class="campo campo--monto"><span aria-hidden="true">$</span><input id="${idT}" data-campo="adTarjeta" data-k="${esc(clave)}" type="text" inputmode="${modoMonto()}" autocomplete="off" value="${esc(top.montosT[clave] ?? '')}" ${top.faltaT === clave ? `aria-invalid="true" aria-describedby="${idT}-err"` : ''}></div>${top.faltaT === clave ? `<p class="campo-error" id="${idT}-err">${icon('triangle-alert')}<span>Escribe cuánto pagaste</span></p>` : ''}</div>` : '';
+                          const montoT = o.tarjeta && v === 'pagado' ? `<div class="campo-g"><label class="campo-l" for="${idT}">¿Cuánto pagaste?</label><div class="campo campo--monto"><span aria-hidden="true">$</span><input id="${idT}" data-campo="adTarjeta" data-k="${esc(clave)}" type="text" inputmode="decimal" autocomplete="off" value="${esc(top.montosT[clave] ?? '')}" ${top.faltaT === clave ? `aria-invalid="true" aria-describedby="${idT}-err"` : ''}></div>${top.faltaT === clave ? `<p class="campo-error" id="${idT}-err">${icon('triangle-alert')}<span>Escribe cuánto pagaste</span></p>` : ''}</div>` : '';
                           return `<li class="ad-item">${caja(o.tarjeta ? o.tarjeta.emoji : o.pago.emoji)}<div class="ad-txt"><p class="fila-t">${esc(nombre)} · ${dinero(o.monto, { aprox: o.estimado })}</p><p class="fila-s">Venció el ${esc(M.fechaLarga(o.fecha))}${o.parcial ? ` · ya pagaste ${dinero(o.parcial.pagado)}` : ''}</p><div class="chips">${ch('pagado', 'Pagado')}${ch('aun', 'Aún no')}${o.tarjeta ? '' : ch('saltar', 'Saltar')}</div>${montoT}</div></li>`;
                       })
                       .join('')
@@ -4171,7 +4169,7 @@
                     if (top.cuadres[l.id] === undefined) top.cuadres[l.id] = M.montoCampo(esperado);
                     const m = M.leerMonto(top.cuadres[l.id]);
                     const dif = m === null ? null : m - esperado;
-                    return `<li class="ad-item">${caja(l.emoji)}<div class="ad-txt"><p class="fila-t">${esc(l.nombre)}</p><p class="fila-s">Según lo anotado: ${dinero(esperado)}</p><div class="campo-g"><label class="campo-l" for="adc-${l.id}">¿Cuánto tienes de verdad?</label><div class="campo campo--monto"><span aria-hidden="true">$</span><input id="adc-${l.id}" data-campo="adCuadre" data-l="${l.id}" type="text" inputmode="${modoMonto()}" value="${esc(top.cuadres[l.id])}"></div></div><p class="fila-s" id="adc-dif-${l.id}" aria-live="polite">${dif === null ? '' : dif === 0 ? 'Cuadra exacto.' : `${dinero(Math.abs(dif))} ${dif < 0 ? 'salieron' : 'entraron'} sin detalle.`}</p></div></li>`;
+                    return `<li class="ad-item">${caja(l.emoji)}<div class="ad-txt"><p class="fila-t">${esc(l.nombre)}</p><p class="fila-s">Según lo anotado: ${dinero(esperado)}</p><div class="campo-g"><label class="campo-l" for="adc-${l.id}">¿Cuánto tienes de verdad?</label><div class="campo campo--monto"><span aria-hidden="true">$</span><input id="adc-${l.id}" data-campo="adCuadre" data-l="${l.id}" type="text" inputmode="decimal" value="${esc(top.cuadres[l.id])}"></div></div><p class="fila-s" id="adc-dif-${l.id}" aria-live="polite">${dif === null ? '' : dif === 0 ? 'Cuadra exacto.' : `${dinero(Math.abs(dif))} ${dif < 0 ? 'salieron' : 'entraron'} sin detalle.`}</p></div></li>`;
                 })
                 .join('');
             return `<div class="pg pg--flujo">${cab(3, 'Cuadra tus lugares', 'Mira tu cartera y la app del banco. No tiene que ser exacto al centavo.')}<ul class="lista-ad card">${filas}</ul><button type="button" class="btn btn--prim btn--48 btn--full" data-a="aldiaSiguiente" data-fk="ad-sig">Listo</button></div>`;
@@ -4332,7 +4330,7 @@
             return `<header class="pg-head ob-head">${atras}<p class="paso">Paso ${k} de ${total}</p><div class="ob-barra" aria-hidden="true"><span style="width:${(k / total) * 100}%"></span></div><h1 class="h1" tabindex="-1">${t}</h1>${s ? `<p class="sub">${s}</p>` : ''}</header>`;
         };
         const err = (campo, t) => (ob.errores && ob.errores.includes(campo) ? `<p class="campo-error" id="ob-err-${campo}">${icon('triangle-alert')}<span>${esc(t)}</span></p>` : '');
-        const monto = (campo, label, valor, extra = '') => `<div class="campo-g"><label class="campo-l" for="ob-${campo}">${label}</label><div class="campo campo--monto"><span aria-hidden="true">$</span><input id="ob-${campo}" data-campo="${campo}" type="text" inputmode="${modoMonto()}" autocomplete="off" placeholder="Ej. 600.00" value="${esc(valor || '')}" ${extra}></div></div>`;
+        const monto = (campo, label, valor, extra = '') => `<div class="campo-g"><label class="campo-l" for="ob-${campo}">${label}</label><div class="campo campo--monto"><span aria-hidden="true">$</span><input id="ob-${campo}" data-campo="${campo}" type="text" inputmode="decimal" autocomplete="off" placeholder="Ej. 600.00" value="${esc(valor || '')}" ${extra}></div></div>`;
         const pie = (izq, der) => `<div class="ob-pie">${izq}${der}</div>`;
         const sig = (texto = 'Siguiente') => `<button type="button" class="btn btn--prim btn--48" data-a="obSiguiente" data-fk="ob-sig">${texto}</button>`;
         const atrasPie = `<button type="button" class="btn btn--48" data-a="obAtras" data-fk="ob-atras2">Atrás</button>`;

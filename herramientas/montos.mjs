@@ -1,11 +1,12 @@
-// PRUEBA v2.7 (C-6, F05–F08, F18, F19): escribir montos y anotar. Con el código real de la app («Marta», 21 oct 2026).
-//  A) Un solo lector de montos (MOTOR.leerMonto) para formularios y Anotar: 25, 2.5, 1200, 1,200, 1,234.50, 1.000,50, 0 y
-//     9 dígitos; los decimales de más (y las comas mal puestas) se rechazan; en Anotar, se preguntan.
-//  B) El teclado de montos en el teléfono: «25» = $25.00, «2.5» = $2.50, «1200» = $1,200.00; hasta 2 decimales y 9
-//     dígitos; el monto en vivo y grande; botones de 44 px o más; anuncia el monto; teclado físico y Escape.
-//  C) El mismo componente en TODOS los campos de monto (cada hoja, Pongámonos al día, Reparte y el Primer día) y, en la
-//     computadora, el teclado de siempre.
-//  D) El mismo resultado en un formulario, en el teclado y en Anotar.
+// PRUEBA v2.7 (A, F05–F08, F18, F19): escribir montos y anotar. Con el código real de la app («Marta», 21 oct 2026).
+//  A) Un solo lector de montos (MOTOR.leerMonto) para formularios y Anotar: 25, 2.5, 1200, 1,200, 1,234.50, 1.000,50,
+//     25,50, 0 y 9 dígitos; los decimales de más (y las comas mal puestas) se rechazan; en Anotar, se preguntan.
+//  B) v2.7 (A, reemplaza a C-6): en el teléfono, el teclado del teléfono (inputmode «decimal»), sin teclado propio:
+//     «25» = $25.00, «2.5» = $2.50, «1,200» = $1,200.00 y «25,50» = $25.50; nada se abre solo ni tapa el formulario; el
+//     campo y su mensaje («No entendí…») quedan a la vista al escribir.
+//  C) v2.7 (A): TODOS los campos de monto (cada hoja, Pongámonos al día, Reparte y el Primer día) con el teclado del
+//     teléfono, y en la computadora el de siempre.
+//  D) El mismo resultado en un formulario y en Anotar.
 //  E) Anotar no adivina: F05 (miles), F06 (hoy, ayer, mañana, «el 22»), F07 (la tarjeta nombrada), F08 (sin tarjeta),
 //     F18 («tengo 0») y F19 (dos montos en una frase).
 // Uso: node herramientas/montos.mjs [--base=http://…/] [--puerto=9962] [--partes=abcde] [--raiz=<otra copia>]
@@ -52,12 +53,10 @@ async function seccion(nombre, fn) {
         await foto('ERROR-' + nombre.slice(0, 12).replace(/[^\w]+/g, '-')).catch(() => null);
     }
 }
-let teclado = false;
 let scriptId = null;
-async function abrirApp({ conTeclado = false } = {}) {
+async function abrirApp() {
     if (scriptId) await b.enviar('Page.removeScriptToEvaluateOnNewDocument', { identifier: scriptId });
-    scriptId = (await b.enviar('Page.addScriptToEvaluateOnNewDocument', { source: `window.__fechaPrueba = '2026-10-21';${conTeclado ? ' window.__tecladoMontos = true;' : ' window.__tecladoMontos = false;'}` })).identifier;
-    teclado = conTeclado;
+    scriptId = (await b.enviar('Page.addScriptToEvaluateOnNewDocument', { source: `window.__fechaPrueba = '2026-10-21';` })).identifier;
     await b.ir('about:blank');
     await b.ir(base + 'telefono.html');
     await esperar(500);
@@ -84,17 +83,19 @@ const guardar = async () => {
     await esperar(120);
     return ev(`!!(P.ui.hoja && P.ui.hoja.tipo === 'anotar')`);
 };
-const tecla = async (t) => {
-    const ok = await ev(`(() => { const b = document.querySelector('[data-tecla="${t}"]'); if (!b) return false; b.click(); return true; })()`);
-    if (!ok) throw new Error('el teclado no tiene ' + t);
-    await esperar(30);
-};
-const teclas = async (s) => {
-    for (const t of s.split('')) await tecla(t === '⌫' ? 'borrar' : t);
-};
-const ENTRADAS = [['25', 2500], ['2.5', 250], ['1200', 120000], ['1,200', 120000], ['1,234.50', 123450], ['1.000,50', 100050], ['0', 0], ['999999.99', 99999999], ['1000000', 100000000]];
-/** Lo que se teclea en el teclado de montos para escribir lo mismo (sin comas: solo dígitos y punto). */
-const enTeclado = (t) => (t === '1.000,50' ? '1000.50' : t.replace(/,/g, ''));
+// v2.7 (A): «25,50» también (por si el teclado del teléfono muestra coma).
+const ENTRADAS = [['25', 2500], ['2.5', 250], ['1200', 120000], ['1,200', 120000], ['1,234.50', 123450], ['1.000,50', 100050], ['25,50', 2550], ['0', 0], ['999999.99', 99999999], ['1000000', 100000000]];
+/** ¿Se ve? Dentro de la pantalla, del área que se desplaza y sin nada encima (lo de arriba en ese punto es él mismo). */
+const seVe = (sel) =>
+    ev(`(() => {
+        const el = document.querySelector(${js(sel)});
+        if (!el) return 'no está';
+        const r = el.getBoundingClientRect();
+        const c = el.closest('.hoja-c, .vista')?.getBoundingClientRect() || { top: 0, bottom: innerHeight };
+        if (r.top < Math.max(0, c.top) - 1 || r.bottom > Math.min(innerHeight, c.bottom) + 1) return 'fuera: ' + Math.round(r.top) + '–' + Math.round(r.bottom);
+        const arriba = document.elementFromPoint(r.left + Math.min(20, r.width / 2), r.top + r.height / 2);
+        return arriba && (arriba === el || el.contains(arriba)) ? true : 'tapado por ' + (arriba ? arriba.id || arriba.className : 'nada');
+    })()`);
 
 // ------------------------------------------------------------------ A) un solo lector de montos
 if (partes.includes('a')) {
@@ -108,63 +109,48 @@ if (partes.includes('a')) {
     });
 }
 
-// ------------------------------------------------------------------ B) el teclado de montos
+// ------------------------------------------------------------------ B) v2.7 (A): el teclado del teléfono
+// (Antes, C-6: el teclado propio. Victor vio que se abría solo, tapaba el formulario y escondía «No entendí…»: se quitó.)
 if (partes.includes('b')) {
-    await abrirApp({ conTeclado: true });
+    await abrirApp();
     await armar();
-    await seccion('B teclado', async () => {
+    await seccion('B teclado del teléfono', async () => {
+        check('(la prueba es en modo teléfono: pantalla táctil)', await ev(`matchMedia('(pointer: coarse)').matches`), true);
         await ev(`P.abrirHoja('cuadrar', { id: 'efectivo' }); true`);
-        check('en el teléfono, el teclado del sistema no sale', await ev(`document.getElementById('f-monto').getAttribute('inputmode')`), 'none');
-        check('no se abre solo al abrir la hoja', await ev(`P.teclado.abierto()`), null);
-        await ev(`document.getElementById('f-monto').click(); true`);
-        await esperar(100);
-        check('al tocar el campo, se abre', await ev(`P.teclado.abierto()`), 'f-monto');
-        check('dice qué se pregunta', await texto('.tec-l'), '¿Cuánto tienes ahora?');
-        for (const [t, ver] of [['25', '$25.00'], ['2.5', '$2.50'], ['1200', '$1,200.00']]) {
-            await ev(`document.getElementById('f-monto').value = ''; true`);
-            await teclas(t);
-            check(`«${t}» se ve en vivo: ${ver}`, [await texto('#tec-v'), await ev(`MOTOR.leerMonto(document.getElementById('f-monto').value)`)], [ver, await ev(`MOTOR.leerMonto(${js(t)})`)]);
+        check('el campo pide el teclado del teléfono con punto (inputmode «decimal»)', await ev(`document.getElementById('f-monto').getAttribute('inputmode')`), 'decimal');
+        await ev(`document.getElementById('f-monto').click(); document.getElementById('f-monto').focus(); true`);
+        await esperar(450);
+        check('sin teclado propio: nada se abre encima', await ev(`[!!document.getElementById('capa-teclado'), !!document.querySelector('.tec, [data-tecla]'), typeof P.teclado]`), [false, false, 'undefined']);
+        check('el campo se ve, sin nada encima', await seVe('#f-monto'), true);
+        for (const [t, c] of [['25', 2500], ['2.5', 250], ['1,200', 120000], ['25,50', 2550]]) {
+            await escribir('#f-monto', t);
+            check(`«${t}» = ${c} centavos (el lector único)`, await ev(`MOTOR.leerMonto(P.ui.hoja.monto)`), c);
         }
-        await foto('B-teclado-1200');
-        await ev(`document.getElementById('f-monto').value = ''; true`);
-        await teclas('3.456');
-        check('3 decimales: el tercero no entra', await ev(`document.getElementById('f-monto').value`), '3.45');
-        await teclas('..');
-        check('un segundo punto no entra', await ev(`document.getElementById('f-monto').value`), '3.45');
-        await ev(`document.getElementById('f-monto').value = ''; true`);
-        await teclas('1234567890');
-        check('hasta 9 dígitos', [await ev(`document.getElementById('f-monto').value`), await texto('#tec-v')], ['123456789', '$123,456,789.00']);
-        await teclas('⌫⌫⌫⌫⌫⌫⌫⌫⌫');
-        check('borrar', [await ev(`document.getElementById('f-monto').value`), await texto('#tec-v')], ['', '$0.00']);
-        await teclas('.5');
-        check('«.5» = $0.50', await texto('#tec-v'), '$0.50');
-        check('el foco se queda en el campo (el lector no salta)', await ev(`document.activeElement.id`), 'f-monto');
-        check('anuncia el monto (aria-live)', await ev(`document.getElementById('tec-v').getAttribute('aria-live')`), 'polite');
-        check('botones de 44 px o más', await ev(`Math.min(...[...document.querySelectorAll('.tec-b, .tec-listo')].map((x) => x.getBoundingClientRect().height))`), (x) => x >= 44);
-        check('el campo se ve arriba del teclado', await ev(`document.getElementById('f-monto').getBoundingClientRect().bottom <= document.querySelector('.tec').getBoundingClientRect().top`), true);
-        check('cada tecla dice qué es', await ev(`[...document.querySelectorAll('.tec-b')].map((x) => x.getAttribute('aria-label') || x.textContent.trim())`), ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'Punto', '0', 'Borrar']);
-        await tecla('listo');
-        check('«Listo»: se cierra y el campo queda con formato', [await ev(`P.teclado.abierto()`), await ev(`document.getElementById('f-monto').value`), await ev(`P.ui.hoja.monto`)], [null, '0.50', '0.50']);
-        // Teclado físico: las mismas reglas; Escape cierra el teclado (no la hoja).
-        await ev(`document.getElementById('f-monto').value = ''; document.getElementById('f-monto').focus(); true`);
-        for (const k of ['7', '.', '2', '5', '9']) await b.enviar('Input.dispatchKeyEvent', { type: 'keyDown', key: k, text: k });
-        check('teclado físico: «7.259» queda en $7.25', [await ev(`document.getElementById('f-monto').value`), await texto('#tec-v')], ['7.25', '$7.25']);
-        await b.enviar('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 });
-        await esperar(100);
-        check('Escape cierra el teclado, la hoja sigue y el foco vuelve al campo', [await ev(`P.teclado.abierto()`), await ev(`!!P.ui.hoja`), await ev(`document.activeElement.id`)], [null, true, 'f-monto']);
-        await ev(`document.getElementById('f-monto').click(); true`);
-        await teclas('9');
-        check('al volver, el primer dígito empieza de nuevo (lo de antes estaba elegido)', await ev(`document.getElementById('f-monto').value`), '9');
-        await tecla('listo');
+        await escribir('#f-monto', '25,50');
         await ev(`P.acciones.cuadrarOk(); true`);
-        check('y se guarda lo que se ve: cuadre de $9', await ev(`P.st.registros.at(-1).tipo + ':' + P.st.registros.at(-1).monto`), 'cuadre:900');
-        check('al cerrar la hoja, el teclado se va', [await ev(`P.teclado.abierto()`), await ev(`document.getElementById('capa-teclado')?.innerHTML || ''`)], [null, '']);
+        check('y se guarda eso: cuadre de $25.50', await ev(`P.st.registros.at(-1).tipo + ':' + P.st.registros.at(-1).monto`), 'cuadre:2550');
+    });
+    await seccion('B mensaje a la vista', async () => {
+        await anotar('súper 1,2345');
+        await esperar(150);
+        check('el campo del monto se abre en la hoja (no encima)', await ev(`!!document.querySelector('#anotar-editor #f-monto') && !document.getElementById('capa-teclado')`), true);
+        check('«No entendí…» va justo debajo del campo', await ev(`(() => { const f = document.getElementById('f-monto').closest('.campo').getBoundingClientRect(); const m = document.querySelector('#anotar-editor .campo-ayuda').getBoundingClientRect(); return m.top >= f.bottom - 1 && m.top - f.bottom < 24; })()`), true);
+        check('el texto del mensaje', await texto('#anotar-editor .campo-ayuda'), 'No entendí «1,2345». Escríbelo con números, como 1,200 o 25.50.');
+        // Como cuando el teclado del teléfono sale: el campo empieza fuera de la vista y, al enfocarlo, campo y mensaje suben.
+        await ev(`(() => { const c = document.querySelector('.hoja-c'); c.style.maxHeight = '260px'; c.scrollTop = 0; document.getElementById('anotar-q').focus(); return true; })()`);
+        await esperar(450);
+        await ev(`document.getElementById('f-monto').focus(); true`);
+        await esperar(450);
+        check('al escribir en el campo: el campo se ve', await seVe('#f-monto'), true);
+        check('y su mensaje también (no queda tapado)', await seVe('#anotar-editor .campo-ayuda'), true);
+        await foto('B-mensaje-a-la-vista');
+        await ev(`document.querySelector('.hoja-c').style.maxHeight = ''; true`);
     });
 }
 
-// ------------------------------------------------------------------ C) el mismo componente en todos los campos de monto
+// ------------------------------------------------------------------ C) v2.7 (A): todos los campos de monto, con el teclado del teléfono
 if (partes.includes('c')) {
-    await abrirApp({ conTeclado: true });
+    await abrirApp();
     await armar();
     await seccion('C todos', async () => {
         const hojas = [['cuadrar', { id: 'efectivo' }], ['mover', {}], ['apartar', { id: 'emergencias' }], ['nuevoPago', {}], ['nuevoIngreso', {}], ['nuevaDeuda', { tipoInicial: 'tarjeta' }], ['nuevaDeuda', { tipoInicial: 'prestamo' }], ['pagado', { tipoPago: 'tarjeta', id: 'bac' }], ['estadoCuenta', { id: 'cus' }], ['editarRegistro', { id: 'r1' }], ['deuda', { id: 'pr' }], ['liberar', { id: 'emergencias' }]];
@@ -176,39 +162,38 @@ if (partes.includes('c')) {
             const ids = await ev(`[...document.querySelectorAll('.campo--monto input')].map((x) => x.id)`);
             for (const id of ids) {
                 campos++;
-                const r = await ev(`(() => { const el = document.getElementById(${js(id)}); el.click(); return { modo: el.getAttribute('inputmode'), abierto: P.teclado.abierto(), etiqueta: document.querySelector('.tec-l')?.textContent || '' }; })()`);
-                if (r.modo !== 'none' || r.abierto !== id || !r.etiqueta) malos.push(`${h}#${id}: ${JSON.stringify(r)}`);
-                await ev(`P.teclado.cerrar(); true`);
+                const r = await ev(`(() => { const el = document.getElementById(${js(id)}); el.click(); el.focus(); return { modo: el.getAttribute('inputmode'), encima: !!document.getElementById('capa-teclado') }; })()`);
+                if (r.modo !== 'decimal' || r.encima) malos.push(`${h}#${id}: ${JSON.stringify(r)}`);
             }
         }
-        check(`todos los campos de monto de las hojas usan el teclado (${campos} campos)`, malos, []);
+        check(`todos los campos de monto de las hojas: teclado del teléfono, nada encima (${campos} campos)`, malos, []);
         check('(y son varios)', campos, (n) => n >= 12);
         // Pongámonos al día, Reparte y el Primer día también.
+        const modos = `[...document.querySelectorAll('.campo--monto input')].map((x) => x.getAttribute('inputmode'))`;
         await ev(`P.ui.hoja && P.cerrarHoja({ sinFoco: true }); P.abrir('aldia'); P.acciones.aldiaSiguiente(); P.acciones.aldiaSiguiente(); true`);
-        const aldia = await ev(`[...document.querySelectorAll('.campo--monto input')].map((x) => { x.click(); const r = [x.getAttribute('inputmode'), P.teclado.abierto() === x.id]; P.teclado.cerrar(); return r; })`);
-        check('Pongámonos al día (cuadrar tus lugares)', aldia.length && aldia.every((x) => x[0] === 'none' && x[1]), true);
+        check('Pongámonos al día (cuadrar tus lugares)', await ev(modos), (x) => x.length > 0 && x.every((m) => m === 'decimal'));
         await ev(`P.irTab('hoy'); P.abrir('reparte', 'quincena', { fecha: '2026-10-15', monto: 60000 }); true`);
-        const reparte = await ev(`[...document.querySelectorAll('.campo--monto input')].map((x) => { x.click(); const r = [x.getAttribute('inputmode'), P.teclado.abierto() === x.id]; P.teclado.cerrar(); return r; })`);
-        check('Reparte', reparte.length > 0 && reparte.every((x) => x[0] === 'none' && x[1]), true);
+        check('Reparte', await ev(modos), (x) => x.length > 0 && x.every((m) => m === 'decimal'));
         await ev(`(() => { const st = DATOS.crearNueva(); Object.assign(st, { persona: 'uso', hoy: '2026-10-21' }); P.cargar(st); P.ui.ob.paso = 2; P.render({ nueva: true }); return true; })()`);
-        const ob = await ev(`[...document.querySelectorAll('.campo--monto input')].map((x) => { x.click(); const r = [x.getAttribute('inputmode'), P.teclado.abierto() === x.id]; P.teclado.cerrar(); return r; })`);
-        check('el Primer día', ob.length > 0 && ob.every((x) => x[0] === 'none' && x[1]), true);
+        check('el Primer día', await ev(modos), (x) => x.length > 0 && x.every((m) => m === 'decimal'));
         await foto('C-primer-dia');
     });
-    await abrirApp({ conTeclado: false });
+    await b.tamano(1440, 900, { movil: false, toque: false });
+    await abrirApp();
     await armar();
     await seccion('C computadora', async () => {
         await ev(`P.abrirHoja('cuadrar', { id: 'efectivo' }); document.getElementById('f-monto').click(); true`);
-        check('en la computadora: el teclado de siempre, sin el de montos', [await ev(`document.getElementById('f-monto').getAttribute('inputmode')`), await ev(`P.teclado.abierto()`)], ['decimal', null]);
+        check('en la computadora: el teclado de siempre', [await ev(`document.getElementById('f-monto').getAttribute('inputmode')`), await ev(`!!document.getElementById('capa-teclado')`)], ['decimal', false]);
         await escribir('#f-monto', '1,200');
         await ev(`P.acciones.cuadrarOk(); true`);
         check('se escribe normal y se lee con las mismas reglas: «1,200» = $1,200.00', await ev(`P.st.registros.at(-1).monto`), 120000);
     });
+    await b.tamano(390, 844);
 }
 
-// ------------------------------------------------------------------ D) el mismo resultado en formulario, teclado y Anotar
+// ------------------------------------------------------------------ D) el mismo resultado en formulario y Anotar
 if (partes.includes('d')) {
-    await abrirApp({ conTeclado: true });
+    await abrirApp();
     await armar();
     await seccion('D iguales', async () => {
         for (const [t, c] of ENTRADAS.filter((x) => x[1] > 0 && x[1] <= 100000000)) {
@@ -217,11 +202,8 @@ if (partes.includes('d')) {
             await ev(`P.cerrarHoja({ sinFoco: true }); P.abrirHoja('mover', { id: 'agricola' }); true`);
             await escribir('#f-monto', t);
             const deForm = await ev(`MOTOR.leerMonto(P.ui.hoja.monto)`);
-            await ev(`document.getElementById('f-monto').value = ''; document.getElementById('f-monto').click(); true`);
-            await teclas(enTeclado(t));
-            const deTeclado = await ev(`MOTOR.leerMonto(document.getElementById('f-monto').value)`);
-            await ev(`P.teclado.cerrar(); P.cerrarHoja({ sinFoco: true }); true`);
-            check(`«${t}»: Anotar = formulario = teclado = ${c}`, [deAnotar, deForm, deTeclado], [c, c, c]);
+            await ev(`P.cerrarHoja({ sinFoco: true }); true`);
+            check(`«${t}»: Anotar = formulario = ${c}`, [deAnotar, deForm], [c, c]);
         }
         await anotar('súper 2.555');
         check('decimales de más en Anotar: se pregunta', [(await borrador()).monto, (await borrador()).dudoso], [null, '2.555']);
