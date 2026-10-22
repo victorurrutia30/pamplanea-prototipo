@@ -52,6 +52,22 @@ Versión visible en la app y en la guía: **«Prototipo v2.8.0 · 2026-10-22»**
   - Nunca se elige la cuenta por el tipo de gasto (sale «si no, luz va al banco, suscripción a la tarjeta, lo demás a efectivo»). Si no contesta a), no se guarda: «Elige con qué lo pagas». Lo ya guardado no cambia: cada pago conserva su cuenta y se cambia al editarlo.
   - **«¿De qué banco o cooperativa?» + «Alias (opcional)»**, en tarjetas de crédito y cuentas de banco, igual al crear y al editar (V2-88): Agrícola, Cuscatlán, BAC, Davivienda, Promerica, Hipotecaria, Fedecrédito y «Otro» (pide el nombre; sirve para tarjetas de tienda). «Alias (opcional)», ej. «La de la casa», con la ayuda «Así la verás en la app»; reemplaza «¿Cómo le dices?».
   - Al editar algo ya guardado: si su nombre coincide con un banco de la lista, sale elegido; si no, «Otro» con su nombre. Su apodo de antes pasa a Alias. Nada guardado cambia de nombre solo.
+- **Ajuste 2 antes de validar: APROBADO por Victor (2026-10-22)**, al pegar el prompt «v2.8 — AJUSTE 2 ANTES DE VALIDAR». Las 3 pruebas de `888226e` pasaron («lo demás is looking really nice»). Frases literales:
+  - «la app en el formulario de gasto fijo pregunta, siempre es el mismo monto? … al darle no, cambia ya no me muestra ciertos servicios como luz agua … que en verdad pueden variar … la primera pregunta confunde»
+  - «Cuando le doy pagué una deuda me sale todas las opciones como que a anotar un gasto voy, es normal?»
+  - «Al darle me llegó dinero aún puedo anotar salario? o sea que podría duplicar mi salario sin querer?»
+  - «en mover dinero, puedo mover de efectivo a efectivo? no debería salir en la opción adonde la misma de donde viene»
+- Lo que se decidió con esas frases:
+  - **D-2 CORREGIDA: fijo o variable no se decide por el monto.**
+    - Gasto fijo = llega un cobro con fecha, aunque el monto cambie (luz, agua, internet, Netflix). Gasto variable = lo vas gastando en varias compras hasta un tope (súper, gasolina).
+    - En Mi plan, «+ Gasto fijo» y «+ Gasto variable» ya deciden: no se pregunta otra vez. Al final de cada formulario, un enlace para cambiar: «¿Lo vas gastando en varias compras? Pásalo a gasto variable» y su inverso.
+    - Sin elección previa («Es nuevo» en Anotar o P-1), la pregunta es «¿Cómo es?»: «Llega con fecha (luz, agua, internet)» / «Lo voy gastando (súper, gasolina)».
+    - «¿Siempre es el mismo monto?» sale de toda la app. «Varía (es un estimado)» pasa a «El monto cambia cada mes», con la ayuda «Pon un aproximado; cuando llegue, anotas el real», y viene marcado en luz y agua.
+    - Al editar: «Pasar a gasto variable» o «Pasar a gasto fijo», como enlace, sin la pregunta. Lo guardado no cambia de tipo solo.
+  - **«Pagué una deuda».** Primero y solo «¿Cuál deuda pagaste?»: tarjetas, préstamos y cuotas, por su alias o nombre, o «Es nueva». Al elegir una, solo lo de esa deuda: monto sugerido (su cuota o su pago de tarjeta), «¿Con qué pagaste?» y fecha; sin categoría ni emoji. Pagar menos sigue D-6 (parcial). Sin deudas: «No tienes deudas anotadas» con «Agregar una deuda».
+  - **«Me llegó dinero» y el salario (C-5 reforzado).** Si eligió Salario, o el nombre se parece a un ingreso de su plan, siempre pregunta «¿Es tu [nombre] del [fecha]?», sin importar el monto ni los días. «Sí, es esa» marca «Ya llegó» de ese ingreso con el monto real, sin crear otro; «No, es otro dinero» lo anota como extra. Para lo demás sigue la regla de ±10 % y ±3 días.
+  - **Mover dinero.** En Anotar, «¿A dónde?» no ofrece la cuenta de «¿De dónde?» (como ya hace el formulario). Si cambia el origen y queda igual al destino, el destino se vacía y se pide otra vez.
+  - **Decisión técnica 24 (no asumir).** Al crear un gasto variable, «¿Con qué pagas normalmente?» no viene elegido; si no contesta, «Elige con qué lo pagas».
 
 ### E1 — el cálculo y los datos
 
@@ -131,6 +147,10 @@ Versión visible en la app y en la guía: **«Prototipo v2.8.0 · 2026-10-22»**
 | DATOS-1 a 5 | Sí | `invariantes` V10 e I12, `actualizar` (c640e4e y d702de0) |
 | «No asumir» · ahorros de antes | Sí | `invariantes` V11, `novedades`, `actualizar` |
 | «¿Con qué lo pagas?» y «¿De qué banco o cooperativa?» + «Alias» (ajuste) | Sí | `invariantes` V12, `palabras-v28`, `v262`, `v267-editar` (T1, T2, T7 y T10), QUÉ DEBO PROBAR |
+| Ajuste 2 · D-2 corregida y decisión 24 | Sí | `invariantes` V15, `palabras-v28`, QUÉ DEBO PROBAR 1 y 2 |
+| Ajuste 2 · «Pagué una deuda» | Sí | `invariantes` V16, QUÉ DEBO PROBAR 3 |
+| Ajuste 2 · «Me llegó dinero» y el salario (C-5 reforzado) | Sí | `invariantes` V8 y V13, `v265` B2, `qa-v261` C-09, `recorrer-v2`, QUÉ DEBO PROBAR 4 |
+| Ajuste 2 · mover dinero | Sí | `invariantes` V14, QUÉ DEBO PROBAR 5 |
 
 ### Pruebas de E2 y al terminar
 
@@ -166,6 +186,34 @@ Versión visible en la app y en la guía: **«Prototipo v2.8.0 · 2026-10-22»**
   - alias «Mi BAC»: $453;
   - «Cooperativa del trabajo» (alias «La cooperativa») con $50: $503.
 
+### Ajuste 2 antes de validar (2026-10-22)
+
+- **Lo que cambió** (las decisiones de arriba, APROBADO por Victor 2026-10-22):
+  - **D-2 corregida.** «+ Gasto fijo» y «+ Gasto variable» ya deciden. Al final de cada formulario, «¿Lo vas gastando en varias compras? Pásalo a gasto variable» o «¿Llega un cobro con fecha? Pásalo a gasto fijo».
+  - Al editar: «Pasar a gasto variable» o, en un gasto variable, «Pasar a gasto fijo». «El monto cambia cada mes» («Pon un aproximado; cuando llegue, anotas el real.») viene marcado en luz y agua.
+  - En Anotar, «Es nuevo» pregunta «¿Cómo es?».
+  - **«Pagué una deuda»:** primero y solo «¿Cuál deuda pagaste?». Al elegir, cuánto (lo sugerido), «¿Con qué pagaste?» y cuándo. Sin deudas: «No tienes deudas anotadas» con «Agregar una deuda».
+  - **«Me llegó dinero»:** con Salario, o el nombre de un ingreso de tu plan, siempre «¿Es tu quincena del 30?» (Sí, es esa / No, es otro dinero).
+  - **Mover:** «¿A dónde?» sin la cuenta de «¿De dónde?».
+  - **Decisión 24:** el gasto variable tampoco trae medio elegido.
+- **Pruebas** (una a la vez, con la memoria primero: entre 4.2 y 4.7 GB libres):
+  - `actualizar --ref=c640e4e` y `--ref=d702de0`: 0 fallos;
+  - `invariantes`: **35 de 35**. Las filas nuevas V13 a V16 dan 0 de 4 sobre `888226e`;
+  - `palabras-v28`: 605 textos, 0. Ahora tampoco deja «¿Siempre es el mismo monto?»;
+  - en verde: `v262`, `v263`, `v265`, `v267-editar`, `qa-v261`, `v24`, `v241`, `v231`, `v261`, `v26`, `recorrer-v2`, `recorrer-sets`, `recorrer-modos`, `aceptacion-v23`, `entrega2-v23`, `viaje-v23`, `v264`, `atras`, `formularios-v265`, `v266` (dos partes), `v267` (dos partes), `humo-v23`, `montos`, `novedades`, `probar-pwa`, `recuperar-v263` y `v25` (tres partes);
+  - **ninguna baja frente a la línea base**;
+  - las 4 capturas a 390×844, revisadas como imágenes: gasto fijo con «El monto cambia cada mes», «¿Cuál deuda pagaste?», «¿Es tu quincena del 30?» y «¿A dónde?».
+- **Pruebas que esperaban lo de antes**, actualizadas citando la decisión (no se borró ninguna):
+  - `invariantes` V8: «me pagaron 500» es Salario y ahora pregunta; la regla de ±10 % sigue con «recibí 500»;
+  - `invariantes` V9: «Es nuevo» contesta «Solo esta vez»;
+  - `v265` B2, `qa-v261` C-09 y `recorrer-v2`: «Sí, es esa» / «No, es otro dinero», y con Salario pregunta también a 9 días.
+- **QUÉ DEBO PROBAR, verificado antes de escribirlo.** Un guion repitió tu preparación: Primer día en la v2.7, las 10 pruebas en a1e9341 y las 3 del ajuste 1 en 888226e. Después hizo las 5 nuevas con el código final, el 22 y el 26 de octubre, sin fallos:
+  - $503 → gasto fijo, Luz y el enlace: $503;
+  - «Mercado» $40 con Efectivo: $463;
+  - $30 a Mi BAC desde Banco Agrícola: $463 (le quedan $70 por pagar el 28);
+  - «No, es otro dinero» $300: $763;
+  - mover $20 de Banco Agrícola a Efectivo: $763.
+
 ### Decisiones técnicas — REVISAR (v2.8)
 
 1. ~~**Ahorros de antes: en qué cuenta.** En el banco con más dinero (si no hay banco, en la cuenta con más). Solo se ve como «dentro de Banco Agrícola»; se cambia en el ahorro.~~ **REEMPLAZADA (2026-10-22) por la pregunta de una vez «Tu ahorro [nombre], ¿en qué cuenta está?» («no asumir», APROBADO por Victor).** Ese banco solo se usa mientras no contestes. *(Se ve: QUÉ DEBO PROBAR.)*
@@ -194,6 +242,11 @@ Versión visible en la app y en la guía: **«Prototipo v2.8.0 · 2026-10-22»**
 24. **El gasto variable** sigue trayendo elegido el primer medio, como antes (no estaba en el ajuste).
 25. **Alias de una cuenta de banco:** la cuenta se llama como su alias y guarda de qué banco es (`banco`), solo si tiene alias; sin alias no se guarda nada nuevo. Su débito se llama como el banco («Débito Cooperativa del trabajo»). «Otro» pide el nombre también en el paso 2 del Primer día.
 26. **Primer día:** si quitas la tarjeta o la cuenta con que pagabas un gasto fijo, al seguir se vuelve a preguntar «¿Con qué lo pagas?». Un Primer día empezado antes del ajuste, con «No, lo pago yo», también lo pregunta.
+27. **«¿Cómo es?» (ajuste 2)** tiene una tercera respuesta, **«Solo esta vez»**, para lo que no se repite. «Llega con fecha» y «Lo voy gastando» guardan el gasto y abren su formulario ya lleno para agregarlo a Mi plan. Si lo cierras, queda solo el gasto.
+28. **El salario (ajuste 2):** se pregunta por la que falta (una que ya pasó sin marcar o la próxima). Si la próxima ya llegó, se avisa «Ya marcaste tu quincena del 30 como recibida» en vez de preguntar por la siguiente. «Me pagaron…» cuenta como Salario.
+29. **La pregunta de una vez** «¿«Súper» cambia cada quincena?» ahora dice «¿«Súper» lo vas gastando en varias compras?» (los mismos botones).
+30. **«Pagué una deuda»** muestra todas tus deudas, aunque no venzan pronto; la tarjeta, por su alias. «Es nueva» la anota como un gasto con «¿Qué deuda pagaste?», sin tipo de gasto. El formulario «Mover dinero» ya no ofrecía la misma cuenta: no cambió.
+31. **«Pasar a gasto fijo»** desde un gasto variable abre el formulario de gasto fijo con su nombre, su tope y su medio; falta su día. El variable deja de salir en tu plan desde hoy (no se borra).
 
 ### PENDIENTE (lo vi y no lo toqué)
 
