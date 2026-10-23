@@ -13,6 +13,10 @@
 // cuenta de cada gasto, es dónde está cada ahorro (`donde`: dentro de tu cuenta, C-1). Los números «de antes» del
 // cuadrito son los de la versión vieja (con sus reglas). Si la regla nueva de la tarjeta (D-4) o los cobros con tarjeta
 // (C-7) cambian tu libre, la app muestra el número nuevo y el cuadrito lo dice con antes y después.
+// v2.9 «Números claros» (Fase E, DECIDIDO por criterio, autorizado por Victor 2026-10-23): la copia es `antes-de-v2.9.0`, el
+// cuadrito es el de la v2.9 (de 2 a 4 líneas) y, además de Carlos, Rosa y el sintético, dos juegos como los de Pam y Majo
+// (adelanto con su descuento, aguinaldo, la pareja, la tarjeta y, desde la v2.8, presupuestos y ahorro programado) creados
+// con la versión vieja: cero pérdidas, sus saldos iguales y, si su libre cambió (H1, «Comida afuera»), el cuadrito lo dice.
 // Uso: node herramientas/actualizar.mjs --ref=7c0d06e   (v2.5)   ·   --ref=ca97256   (v2.6)   [--puerto=8767]
 import { execSync, spawn } from 'node:child_process';
 import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
@@ -92,8 +96,13 @@ const desde28 = (v) => {
     return a > 2 || (a === 2 && b2 >= 8);
 };
 const NUEVA28 = desde28(NUEVA);
+const desde29 = (v) => {
+    const [a, b2] = numV(v);
+    return a > 2 || (a === 2 && b2 >= 9);
+};
+const NUEVA29 = desde29(NUEVA);
 /** v2.8: la clave del cuadrito de la versión nueva. */
-const NOV = NUEVA28 ? 'v2.8' : 'v2.7';
+const NOV = NUEVA29 ? 'v2.9' : NUEVA28 ? 'v2.8' : 'v2.7';
 /** v2.8: ¿esta línea del cuadrito dice que un número cambió? (v2.7: «Corregimos…»; v2.8: con antes y después). */
 const lineaCambio = (l) => (NUEVA28 ? /^(Tu libre era|Tu gasto de \S+ era|Lo que debes de .+ era)/.test(l) : l.startsWith('Corregimos'));
 const CLAVE_COPIA = 'pamplanea-uso:respaldo:antes-de-v' + numV(NUEVA).join('.');
@@ -123,6 +132,40 @@ function perdidas(viejo, nuevo) {
     for (const c of ['nombre', 'inicio', 'configurado', 'persona', 'seq']) if (JSON.stringify(viejo[c]) !== JSON.stringify(nuevo[c])) out.push(`${c}: ${JSON.stringify(viejo[c])} → ${JSON.stringify(nuevo[c])}`);
     return out;
 }
+/**
+ * v2.9: datos como los de Pam (quincena) y Majo (mes), creados en la página de la versión VIEJA: un adelanto que ya llegó
+ * y se descuenta (con $10 de comisión) del próximo pago, el aguinaldo, la pareja, la tarjeta BAC con su estado de cuenta y,
+ * si la versión vieja ya los tiene (v2.8), presupuestos («Súper» y «Comida afuera», con pupusas anotadas) y ahorro programado.
+ */
+const comoPamMajo = (tipo) => `(() => {
+    const s = DATOS.crearAna();
+    const hoy = P.modos.hoy();
+    const d = (n) => { const x = new Date(hoy + 'T00:00:00Z'); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); };
+    Object.assign(s, { persona: 'uso', hoy, inicio: d(-25) });
+    const q = s.ingresos.find((i) => i.principal);
+    if (${JSON.stringify(tipo)} === 'mes') {
+        Object.assign(q, { nombre: 'Salario', frecuencia: 'mensual', dia: 30, monto: 120000, dias: undefined, desde: d(-35) });
+        const ultimo = MOTOR.ocurrenciasIngreso(s, q, d(-40), hoy).at(-1).fecha;
+        q.llegadas = { ...q.llegadas, [ultimo]: { monto: 120000 } };
+    }
+    const proximo = MOTOR.ocurrenciasIngreso(s, q, d(1), d(40))[0].fecha;
+    const reg = (f) => { s.registros.push({ id: 'r' + s.seq, seq: s.seq, ...f }); s.seq++; };
+    s.ingresos.push({ id: 'pareja', nombre: 'Salario de Luis', emoji: '💵', categoria: 'otro', monto: 35000, aprox: false, frecuencia: 'mensual', dia: 28, lugar: 'efectivo', principal: false, extra: true, desde: d(-25), llegadas: {} });
+    s.ingresos.push({ id: 'adel', nombre: 'Adelanto de salario', emoji: '💵', categoria: 'otro', tipoIngreso: 'adelanto', monto: 20000, aprox: false, frecuencia: 'unico', fecha: d(-2), lugar: 'efectivo', principal: false, extra: true, desde: d(-2), llegadas: { [d(-2)]: { monto: 20000 } }, adelanto: { descuentos: [{ ingreso: q.id, fecha: proximo, monto: 21000 }] } });
+    reg({ tipo: 'ingreso', fecha: d(-2), monto: 20000, nombre: 'Adelanto de salario', categoria: 'otro', emoji: '💵', lugar: 'efectivo', ingreso: 'adel', ocurrencia: d(-2) });
+    reg({ tipo: 'gasto', fecha: d(-1), monto: 1200, nombre: 'Pupusas', categoria: 'comida', emoji: '🫓', medio: 'efectivo', anotado: true });
+    if (${JSON.stringify(desde28(VIEJA))}) {
+        const per = MOTOR.periodoPlan(s);
+        s.variables = [
+            { id: 'super', nombre: 'Súper', emoji: '🛒', categoria: 'super', tope: 15000, medio: 'debito', desde: per.inicio, creado: d(-10), cierres: {}, activo: true },
+            { id: 'cafuera', nombre: 'Comida afuera', emoji: '🍔', categoria: 'comida', tope: 4000, medio: 'efectivo', desde: per.inicio, creado: d(-10), cierres: {}, activo: true },
+        ];
+        const em = s.apartados.find((a) => a.id === 'emergencias');
+        em.programado = { monto: 2500, desde: per.inicio };
+        em.donde = { lugar: 'agricola' };
+    }
+    return s;
+})()`;
 /**
  * DATOS-5: el set sintético, creado en la página de la versión VIEJA con sus propias funciones de datos: lo que en la
  * v2.6.7 quedaba mal en cada F (los datos tal como los dejaba).
@@ -204,7 +247,7 @@ try {
     const viejos = { Prueba: await ev(NUMEROS) };
     const crudos = {};
     if (NUEVA27) {
-        for (const [nombre, crear] of [['Carlos P', 'DATOS.crearCarlos()'], ['Rosa P', 'DATOS.crearRosa()'], ['Sintética', SINTETICO]]) {
+        for (const [nombre, crear] of [['Carlos P', 'DATOS.crearCarlos()'], ['Rosa P', 'DATOS.crearRosa()'], ['Sintética', SINTETICO], ...(NUEVA29 ? [['Pam P', comoPamMajo('quincena')], ['Majo P', comoPamMajo('mes')]] : [])]) {
             await ev(`(() => { const s = ${crear}; Object.assign(s, { persona: 'uso', nombre: ${JSON.stringify(nombre)}, hoy: P.modos.hoy() }); P.cargar(s, { tab: 'hoy' }); P.modos.guardarUso(); return true; })()`);
             await esperar(200);
             viejos[nombre] = await ev(NUMEROS);
@@ -235,10 +278,10 @@ try {
     check('la versión nueva y solo su caché', [await ev('window.VERSION_PROTOTIPO'), await ev('caches.keys()')], (x) => x[0] === NUEVA && x[1].includes(CACHE) && x[1].length === 1);
     if (NUEVA27) {
         // v2.7 (Parte D): el cuadrito de novedades sale una vez; se cierra para seguir. v2.8: el de la v2.8.
-        check(NUEVA28 ? 'v2.8: el cuadrito de novedades' : 'v2.7: el cuadrito de novedades', await texto('#nov-t'), NUEVA28 ? '¡PamPlanea está más clara! ✨' : '¡PamPlanea se puso al día! ✨');
+        check(`${NOV}: el cuadrito de novedades`, await texto('#nov-t'), NUEVA29 ? '¡Tus números, más claros! ✨' : NUEVA28 ? '¡PamPlanea está más clara! ✨' : '¡PamPlanea se puso al día! ✨');
         informe.datos.lineasNovedades = await ev(`[...document.querySelectorAll('.nov-lista li')].map((li) => li.innerText.trim())`);
         // Cierre v2.8: 5 líneas como mucho, «Tus datos están completos y a salvo.» y el enlace para recuperar.
-        if (NUEVA28) check('v2.8: el cuadrito, con su cierre y «¿Algo se ve raro? Recupera tus datos»', [informe.datos.lineasNovedades.length <= 5, await texto('.nov-cierre'), await texto('[data-fk="nov-recuperar"]')], [true, 'Tus datos están completos y a salvo.', '¿Algo se ve raro? Recupera tus datos']);
+        if (NUEVA28) check(`${NOV}: el cuadrito, con su cierre y «¿Algo se ve raro? Recupera tus datos»`, [NUEVA29 ? informe.datos.lineasNovedades.length >= 2 && informe.datos.lineasNovedades.length <= 4 : informe.datos.lineasNovedades.length <= 5, await texto('.nov-cierre'), await texto('[data-fk="nov-recuperar"]')], [true, 'Tus datos están completos y a salvo.', '¿Algo se ve raro? Recupera tus datos']);
         await b.captura(path.join(salida, '3a-novedades.png'));
         await clic('[data-fk="nov-ok"]');
     }

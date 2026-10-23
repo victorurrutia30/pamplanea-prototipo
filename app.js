@@ -836,7 +836,8 @@
 
     /**
      * v2.8 (C-3): antes de tu próximo ingreso, por cada gasto variable que no has cerrado: «Ibas a gastar $X y anotaste $Y.
-     * ¿Ya terminaste?» (Sí / Me falta / Se me olvidó anotar). Si te pasaste, se dice sin culpa.
+     * ¿Ya terminaste?» (Sí, ya no gasto más en esto / Todavía voy a gastar / Me falta anotar algo, v2.9 R5). Si te pasaste, se
+     * dice sin culpa.
      */
     function cierreVariables(k) {
         const st = P.st;
@@ -1949,7 +1950,7 @@
 
     /**
      * v2.8 (C-3): la ficha de un gasto variable: su tope por quincena, lo que llevas, lo que te queda (o cuánto te pasaste),
-     * los gastos que lo consumieron y «¿Ya terminaste?» (Sí / Me falta / Se me olvidó anotar).
+     * los gastos que lo consumieron y «¿Ya terminaste?». v2.9 (R5): Editar, «Saltar esta quincena», «Ya no lo uso» y «Reabrir».
      */
     S.variable = function ({ id }) {
         const st = P.st;
@@ -2231,7 +2232,7 @@
             else if (x.tipo === 'aldia') P.abrir('aldia');
             else if (x.tipo === 'tab') P.irTab(x.tab);
         },
-        /** v2.8 (ajuste 5, punto 2): «Ver por tipo ›» / «Ver por fecha ›»; se recuerda en este teléfono. */
+        /** v2.8 (ajuste 5, punto 2) y v2.9 (R6): «Por fecha | Por tipo», arriba; se recuerda en este teléfono. */
         /** v2.8 ajuste 6 (punto 3): «Ver todas» / «Otros (n)» en «¿En qué se te fue?». */
         mesTodas: () => {
             P.ui.mesTodas = !P.ui.mesTodas;

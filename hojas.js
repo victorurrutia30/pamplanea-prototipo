@@ -215,7 +215,7 @@
         st.variables = [...(st.variables || []), v];
         return v;
     };
-    /** v2.8 (C-3): «¿Ya terminaste?»: «Sí» (lo que sobró vuelve a tu libre) o «Me falta» (sigue en tu plan hasta tu ingreso). */
+    /** v2.8 (C-3): «¿Ya terminaste?»: «Sí, ya no gasto más en esto» (lo que sobró vuelve a tu libre) o «Todavía voy a gastar». */
     P.cerrarVariable = function (st, variableId, estado) {
         const x = M.variablesInfo(st).find((y) => y.v.id === variableId);
         if (!x) return null;
@@ -1832,7 +1832,7 @@
                 // V2-54: hasta su primer estado de cuenta, lo que paga normalmente.
                 // v2.6.6 (V2-85): la fecha del ciclo que se cuenta (antes decía la del ciclo de antes de agregarla: «venció el 14 oct»).
                 // v2.6.7 (V2-87): solo lo que sale de lo que ya tienes (vence antes de tu próximo ingreso); lo que paga un
-                // ingreso que todavía no llega va en «Todavía no cuenta», y lo reservado, en «Reservado para pagos».
+                // ingreso que todavía no llega va en la pestaña de ese periodo (v2.9, R3), y lo reservado, en «Reservado para pagos».
                 if (t.estimadoAhora > 0) items.push(`<li><span>${emo(t.t.emoji, 16)} ${esc(t.t.nombre)} <span class="d-sub">lo que pagas normalmente, ${t.vence < st.hoy ? 'venció' : 'vence'} el ${M.fechaCorta(t.vence)}${t.vence >= st.hoy && hz.ingreso && !hz.esHoy && !hz.atrasada ? `, antes de tu ${esc(P.nombreIngreso(hz))}` : ''}</span></span><span>${dinero(t.estimadoAhora, { aprox: true })}</span></li>`);
                 // V2-29 #1: vence después del ingreso, pero ya baja el libre; se dice cuándo vence.
                 if (t.porPagarAhora > 0) items.push(`<li><span>${emo(t.t.emoji, 16)} ${esc(t.t.nombre)} <span class="d-sub">estado de cuenta, ${t.ult.vence < st.hoy ? 'venció' : 'vence'} el ${M.partes(t.ult.vence)[2]} ${M.MESES_CORTOS[M.partes(t.ult.vence)[1] - 1]}${t.porPagarAhora < t.porPagarEstado ? ` · ${dinero(t.porPagarAhora)} de ${dinero(t.porPagarEstado)}` : ''}</span></span><span>${dinero(t.porPagarAhora)}</span></li>`);
@@ -2868,7 +2868,7 @@
         if (!x || x.guardado) return;
         P.cambiar((s) => P.guardarProgramado(s, d.id), { aviso: `Guardaste ${dinero(x.monto)} en ${x.a.nombre}`, claves: ['guardado:programado:hecho'] });
     };
-    /** v2.8 (C-3): «¿Ya terminaste?»: «Sí» (lo que sobró vuelve a tu libre), «Me falta» (sigue en tu plan) o «Se me olvidó anotar». */
+    /** v2.8 (C-3) y v2.9 (R5): «Sí, ya no gasto más en esto», «Todavía voy a gastar», «Me falta anotar algo», «Saltar» y «Reabrir». */
     P.acciones.variableCierre = (d) => {
         const x = M.variablesInfo(P.st).find((y) => y.v.id === d.id);
         if (!x) return;

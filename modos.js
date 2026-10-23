@@ -167,6 +167,8 @@
     const anteriorA27 = (v) => !numVersion(v) || cmpVersion(numVersion(v), [2, 7, 0]) < 0;
     /** v2.8: ¿lo guardó una versión anterior a la v2.8? */
     const anteriorA28 = (v) => !numVersion(v) || cmpVersion(numVersion(v), [2, 8, 0]) < 0;
+    /** v2.9: ¿lo guardó una versión anterior a la v2.9? */
+    const anteriorA29 = (v) => !numVersion(v) || cmpVersion(numVersion(v), [2, 9, 0]) < 0;
     /**
      * v2.7 (DATOS-2, F20): ¿se puede usar? `estricto` (al restaurar una copia): la forma de cada cosa, sus montos en
      * centavos enteros, sus fechas y que lo que se nombra exista. Siempre: calcular en una copia aparte, antes de escribir
@@ -285,13 +287,14 @@
     // ------------------------------------------------------------------ v2.7 (DATOS-4): los números antes y después
     /**
      * El Mes actual, lo que debes de cada tarjeta y tu libre, con las reglas de antes o las de ahora. `reglas`: true o
-     * '2.6.7' (como la v2.6.7), '2.7' (como la v2.7: la tarjeta y los cobros con tarjeta de antes de la v2.8) o nada (ahora).
+     * '2.6.7' (como la v2.6.7), '2.7' (como la v2.7: la tarjeta y los cobros con tarjeta de antes de la v2.8), '2.8' (como la
+     * v2.8: un presupuesto se lleva su tipo solo si se llama como él) o nada (ahora).
      */
     function numerosVisibles(st, reglas) {
         const x = structuredClone(st);
         x.hoy = hoy();
         const [y, m] = M.partes(x.hoy);
-        const opts = reglas === '2.7' ? { antes27: true } : reglas ? { comoAntes: true } : {};
+        const opts = reglas === '2.8' ? { antes29: true } : reglas === '2.7' ? { antes27: true, antes29: true } : reglas ? { comoAntes: true, antes29: true } : {};
         const mes = M.resumenMes(x, y, m, { comoAntes: !!opts.comoAntes });
         return {
             mes: { y, m, salio: mes.salio, entro: mes.entro },
@@ -307,21 +310,21 @@
      * números antes y después de actualizar. Lo que cambió (porque estaba mal) va en el cuadrito de novedades.
      */
     function prepararNovedades(u, crudo) {
-        if (!u.st || !u.st.configurado || u.st.persona !== 'uso' || esDeEjemplo(u.st) || !anteriorA28(crudo.version) || (u.novedades && u.novedades['v2.8'])) return;
-        // v2.8: los números de antes son los de la versión que los guardó (la v2.7, o la v2.6.7 y anteriores).
-        const de27 = !anteriorA27(crudo.version);
+        if (!u.st || !u.st.configurado || u.st.persona !== 'uso' || esDeEjemplo(u.st) || !anteriorA29(crudo.version) || (u.novedades && u.novedades['v2.9'])) return;
+        // Los números de antes son los de la versión que los guardó (la v2.8, la v2.7, o la v2.6.7 y anteriores).
+        const reglas = anteriorA27(crudo.version) ? '2.6.7' : anteriorA28(crudo.version) ? '2.7' : '2.8';
         let antes = null;
         let despues = null;
         try {
-            antes = numerosVisibles(u.st, de27 ? '2.7' : '2.6.7');
+            antes = numerosVisibles(u.st, reglas);
             despues = numerosVisibles(u.st, null);
         } catch {
             antes = despues = null;
         }
-        // Quien viene de antes de la v2.7 ve un solo cuadrito (el de ahora), con lo de la v2.7 que le toque.
+        // v2.9: un solo cuadrito (el de ahora); quien viene de antes de la v2.8 deja vistos también los de la v2.8 y la v2.7.
+        const v28 = u.novedades && u.novedades['v2.8'];
         const v27 = u.novedades && u.novedades['v2.7'];
-        const pendiente27 = !de27 && !(v27 && v27.visto);
-        u.novedades = { ...(u.novedades || {}), 'v2.8': { fecha: new Date().toISOString(), antes, despues, visto: null, de: crudo.version || null, con27: pendiente27 } };
+        u.novedades = { ...(u.novedades || {}), 'v2.9': { fecha: new Date().toISOString(), antes, despues, visto: null, de: crudo.version || null, con28: !(v28 && v28.visto), con27: reglas !== '2.8' && !(v27 && v27.visto) } };
     }
 
     let uso = null;
@@ -519,22 +522,22 @@
      */
     function lineasNovedades(u) {
         const st = u.st;
-        const n = u.novedades && u.novedades['v2.8'];
-        // Cierre de la v2.8 (APROBADO por Victor 2026-10-22): 5 líneas como mucho, nada técnico; el antes y después solo si cambió un número.
-        const lineas = ['Pagos ahora se llama Mi plan: ahí ves lo que viene.'];
-        if (st.apartados.length) lineas.push('Tus ahorros ya no se mezclan con lo que puedes gastar.');
-        lineas.push('Ponle un máximo a lo que quieras: son tus presupuestos.');
-        lineas.push('Mes te cuenta en qué se te fue el dinero.');
+        const n = u.novedades && u.novedades['v2.9'];
+        // v2.9 (DECIDIDO por criterio, autorizado por Victor 2026-10-23): de 2 a 4 líneas, amables y sin palabras técnicas; el
+        // antes y después solo si cambió un número (DATOS-4). Quien no cobra por quincena lee «cada semana» o «cada mes».
+        const cada = P.cadaVez ? P.cadaVez(st) : 'cada quincena';
+        const lineas = [`Mi plan ahora te muestra solo lo de ${cada}.`, '«¿De dónde sale?» cambia según lo que estás viendo.'];
+        if ((st.variables || []).some((v) => v && v.activo !== false)) lineas.push('Tus presupuestos se pueden editar, saltar o reabrir.');
         const correccion = lineaCorreccion(n, st);
         if (correccion) lineas.push(correccion);
-        return lineas.slice(0, 5);
+        return lineas.slice(0, 4);
     }
-    const NOV_TITULO = '¡PamPlanea está más clara! ✨';
+    const NOV_TITULO = '¡Tus números, más claros! ✨';
     const NOV_CIERRE = 'Tus datos están completos y a salvo.';
     let novPrevio = null;
     function novedadesPendientes() {
         if (P.modo !== 'uso' || bloqueo || !uso || !uso.st || !uso.st.configurado || uso.st.persona !== 'uso') return false;
-        const n = uso.novedades && uso.novedades['v2.8'];
+        const n = uso.novedades && uso.novedades['v2.9'];
         return !!n && !n.visto;
     }
     function abrirNovedades() {
@@ -567,11 +570,13 @@
             const el = document.getElementById(id);
             if (el) el.inert = ['vista', 'nav'].includes(id) && !!(P.ui && P.ui.hoja);
         }
-        // Una sola vez: queda guardado con tus datos (al recargar no vuelve). Si traía lo de la v2.7, también queda visto.
-        if (uso && uso.novedades && uso.novedades['v2.8']) {
+        // Una sola vez: queda guardado con tus datos (al recargar no vuelve). Si traía lo de la v2.8 o la v2.7, también queda visto.
+        if (uso && uso.novedades && uso.novedades['v2.9']) {
             const ahora = new Date().toISOString();
-            uso.novedades['v2.8'].visto = ahora;
-            if (uso.novedades['v2.8'].con27) uso.novedades['v2.7'] = { ...(uso.novedades['v2.7'] || {}), visto: ahora, enV28: true };
+            const n = uso.novedades['v2.9'];
+            n.visto = ahora;
+            if (n.con28) uso.novedades['v2.8'] = { ...(uso.novedades['v2.8'] || {}), visto: ahora, enV29: true };
+            if (n.con27) uso.novedades['v2.7'] = { ...(uso.novedades['v2.7'] || {}), visto: ahora, enV29: true };
         }
         guardarUso();
         const el = novPrevio && novPrevio.isConnected ? novPrevio : document.querySelector('#pantalla h1');
@@ -881,7 +886,9 @@
     }
     const preguntas = { oculta: false, aparte: null };
     function preguntas28() {
-        if (P.modo !== 'uso' || !uso || !P.st || !P.st.configurado || P.st.persona !== 'uso' || !(uso.novedades && uso.novedades['v2.8'])) return [];
+        // v2.9: también a quien viene de antes de la v2.8 directo a la v2.9 (un solo cuadrito, el de la v2.9).
+        const n29 = uso && uso.novedades && uso.novedades['v2.9'];
+        if (P.modo !== 'uso' || !uso || !P.st || !P.st.configurado || P.st.persona !== 'uso' || !((uso.novedades && uso.novedades['v2.8']) || (n29 && anteriorA28(n29.de)))) return [];
         const st = P.st;
         const hechas = st.preguntas28 || {};
         const out = [];

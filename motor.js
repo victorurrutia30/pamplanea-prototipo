@@ -708,7 +708,7 @@
      * dijo: el que se llama igual («súper 20» → Súper) o, si el variable se llama como su tipo de gasto (Súper, Comida,
      * Mercado), cualquiera de ese tipo. Un gasto de un pago fijo o pagado con un ahorro no consume ninguno.
      */
-    function variableDe(st, r) {
+    function variableDe(st, r, opts = {}) {
         if (!r || r.tipo !== 'gasto' || r.pago || r.apartado || r.variable === null) return null;
         const activas = variablesActivas(st).filter((v) => !v.desde || r.fecha >= v.desde);
         if (r.variable) return activas.find((v) => v.id === r.variable) || null;
@@ -720,7 +720,8 @@
         // v2.9 (auditoría H1, DECIDIDO por criterio, autorizado por Victor 2026-10-23): también si se llama como uno de los nombres
         // de ese tipo: «Comida afuera» (el presupuesto sugerido desde el ajuste 7) se lleva cada gasto de comida. «Gasolina» sigue
         // solo por su nombre (un «bus 1» no es gasolina).
-        const deTipo = (v) => [normalizar(nombreCat(v.categoria)), ...(NOMBRES_TIPO[v.categoria] || [])].includes(normalizar(v.nombre));
+        // `antes29` (DATOS-4): como la v2.8, solo el que se llama como su tipo.
+        const deTipo = (v) => [normalizar(nombreCat(v.categoria)), ...(opts.antes29 ? [] : NOMBRES_TIPO[v.categoria] || [])].includes(normalizar(v.nombre));
         return activas.find((v) => v.categoria && v.categoria !== 'otros' && v.categoria === r.categoria && deTipo(v)) || null;
     }
     /**
@@ -728,13 +729,13 @@
      * que falta (cuenta en tu plan) y lo que te pasaste. Con «Sí, ya terminé» (`cierres[clave]`), lo que sobró vuelve a
      * tu libre (falta $0).
      */
-    function variablesInfo(st, hz = null) {
+    function variablesInfo(st, hz = null, opts = {}) {
         const per = periodoPlan(st, hz);
         return variablesActivas(st)
             .filter((v) => !v.desde || v.desde <= per.fin)
             .map((v) => {
                 const desde = v.desde && v.desde > per.inicio ? v.desde : per.inicio;
-                const gastos = st.registros.filter((r) => r.tipo === 'gasto' && r.fecha >= desde && r.fecha <= per.fin && variableDe(st, r) === v);
+                const gastos = st.registros.filter((r) => r.tipo === 'gasto' && r.fecha >= desde && r.fecha <= per.fin && variableDe(st, r, opts) === v);
                 const anotado = suma(gastos, (r) => r.monto);
                 const cierre = (v.cierres || {})[per.clave] || null;
                 const listo = !!cierre && cierre.estado === 'listo';
@@ -1002,7 +1003,7 @@
         const reservasProxima = reservas.filter((r) => esFundado(st, r.de) && !esFundado(st, r.para));
         const reservadoProxima = suma(reservasProxima, (r) => r.monto);
         // v2.8 (D-3, C-3, C-1): lo que falta de tus gastos variables de esta quincena y tu ahorro programado.
-        const variables = variablesInfo(st, hz);
+        const variables = variablesInfo(st, hz, opts);
         const faltaVariables = suma(variables, (x) => x.falta);
         const programado = programadoInfo(st, hz);
         const faltaProgramado = suma(programado, (x) => x.falta);

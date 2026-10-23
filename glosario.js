@@ -20,7 +20,7 @@ window.GLOSARIO = [
     { id: 'ahorros', t: 'Ahorros', para: 'Lo que ya tienes guardado. Dentro de una cuenta no cuenta en tu libre; aparte, solo se registra.', ejemplo: 'Tu ahorro «Emergencias» dentro de tu banco ya no cuenta en tu libre.' },
     { id: 'programado', t: 'Ahorro programado', para: 'Lo que guardas cada quincena. Cuenta en tu plan hasta que tocas «Ya lo guardé».', ejemplo: 'Si guardas cada quincena para Emergencias, eso ya no cuenta en tu libre.', paraVariable: 'Lo que guardas cada mes. Cuenta en tu plan hasta que tocas «Ya lo guardé».', ejemploVariable: 'Si guardas cada mes para Emergencias, eso ya no cuenta en tu libre.' },
     { id: 'variables', t: 'Presupuestos', para: 'Lo máximo que quieres gastar en algo cada quincena, como el súper. Cada gasto lo va consumiendo.', ejemplo: 'Si gastas en el súper, tu libre no baja: ya estaba en tu plan.', paraVariable: 'Lo máximo que quieres gastar en algo cada mes, como el súper. Cada gasto lo va consumiendo.' },
-    { id: 'plan', t: 'Mi plan', para: 'Es lo que viene: ingresos, gastos fijos, presupuestos, ahorro programado y deudas.', ejemplo: 'Lo ves por fecha o «Ver por tipo». Con «+ Agregar» sumas algo nuevo.' },
+    { id: 'plan', t: 'Mi plan', para: 'Es lo que viene: ingresos, gastos fijos, presupuestos, ahorro programado y deudas. Cada pestaña muestra solo su periodo.', ejemplo: 'Arriba eliges «Por fecha» o «Por tipo». Con «+ Agregar» sumas algo nuevo.' },
     { id: 'vaEn', t: '«va en» tu tarjeta', para: 'Lo que se cobra en tu tarjeta se ve en gris: ya va dentro del pago de la tarjeta.', ejemplo: 'Netflix en tu tarjeta dice «va en» y el nombre de la tarjeta: no suma aparte.' },
     { id: 'categorias', t: 'Mis categorías', para: 'Las del día a día, tus presupuestos y tus gastos fijos. Puedes crear, renombrar u ocultar.', ejemplo: 'Si no usas «Tecnología», ocúltala: lo que ya anotaste no cambia.' },
     { id: 'planMes', t: 'Mes en Mi plan', para: 'Lo que entra y sale de tu plan en un mes. Con las flechas ves otros meses.', ejemplo: 'En diciembre ves tu aguinaldo y todo lo que pagas ese mes.' },
@@ -51,7 +51,7 @@ window.terminoGlosario = (id, variable = false) => {
 };
 window.TIPS = {
     hoy: 'Tu número dice cuánto puedes gastar hasta tu quincena. Tócalo para ver de dónde sale.',
-    pagos: 'Aquí ves lo que viene, día por día. Con «+ Agregar» sumas algo; toca una fila para verla.',
+    pagos: 'Cada pestaña muestra solo lo de su periodo. Con «+ Agregar» sumas algo; toca una fila para verla.',
     midinero: 'Cuánto tienes, tus ahorros y lo que debes. Toca una puerta para ver el detalle.',
     cuentas: 'Si tu efectivo no coincide, toca «Cuadrar» y di cuánto tienes. Sin culpa.',
     ahorros: 'Tus ahorros pueden estar dentro de una cuenta o aparte. Dentro, no cuentan en tu libre.',
@@ -59,7 +59,7 @@ window.TIPS = {
     mes: 'Aquí ves qué pasó este mes y en qué se te fue. Toca una fila del historial para corregirla.',
     // Sin ingreso fijo: Hoy y Mi plan no hablan de «quincena».
     hoyVariable: 'Tu número dice cuánto puedes gastar hasta fin de mes (o en 15 días). Tócalo para ver de dónde sale.',
-    pagosVariable: 'Aquí ves lo que viene y de qué dinero sale. Con «+ Agregar» sumas algo nuevo.',
+    pagosVariable: 'Cada pestaña muestra solo lo de su mes. Con «+ Agregar» sumas algo nuevo.',
     // V2-58 (#24): también en Anotar y en la ficha de un pago.
     anotar: 'Escribe como hablas («pupusas 6») o toca «Gasté», «Me llegó dinero»… y llena lo que falta.',
     pago: 'Aquí ves cuándo vence y de qué dinero sale. Cuando lo pagues, toca «Ya lo pagué».',
