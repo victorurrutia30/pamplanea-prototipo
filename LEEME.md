@@ -32,6 +32,18 @@ Versión visible en la app y en la guía: **«Prototipo v2.9.2 · 2026-10-23»**
 - **VISTA PREVIA — QUITAR ANTES DE PUBLICAR:** `vista-previa.js` (selector «Hoy A / Hoy B» arriba de Hoy y «Cargar ejemplo» con Pam, Majo, Toño y Rosa × 7 casos; recarga con `#ejemplo=` y no guarda nada), su `<script>` en `telefono.html`, la línea `#ejemplo=` de `arranque.js` y la de `ayuda.js` que no registra el service worker en raw.githack.com. Al publicar también se quita la propuesta que no se elija y `hoyClasico` si ya no hace falta.
 - **Pruebas:** `invariantes` 69 de 69 (con A); `personas-v29 --hoy=A` y `--hoy=B`: 0 diferencias; `palabras-v28`: 0 de 903. La comparación con capturas está en `pamplanea-capturas/prototipo-hoy-opciones/index.html`.
 
+### Hoy C «Mezcla» (APROBADO por Victor, 2026-10-23)
+
+Sobre los chips de presupuestos de A: «me encanta esto, por lo demás estoy de acuerdo con tu fusión» (la fusión que propuso el auditor). Hoy C, de arriba hacia abajo:
+
+1. El saludo y la **portada de color de A**: Libre, su línea, «¿De dónde sale?» y el «?». Sin el botón «¿Ya llegó?» dentro (pasa a «Para hoy»); la línea «Falta confirmar tu quincena de hoy» se queda.
+2. **«Para hoy» de B**: cada cosa con su botón, o «Nada pendiente para hoy ✓». Reemplaza la línea «⚠ N cosas por revisar» de A. «¿Ya llegó?» sale una sola vez, como primera fila. Máximo 3 filas y «Ver las N» para el resto. Un aviso que no es pregunta lleva «Ver», no «Responder».
+3. **Presupuestos en los chips de A**: 3 (los más cerca de su máximo), «Ver todos (N)», el pasado con ícono y texto («te pasaste $X»). Un nombre largo: máximo 2 líneas con «…» (completo para el lector de pantalla), el monto en su propia línea y todos los chips de una fila con la misma altura.
+4. **«Lo que viene»** en dos grupos, sin cambios.
+5. **Un solo «+ Anotar»** (el de abajo). Sin la barra «Tus $X se reparten así».
+
+Las preguntas de una vez y «No se están guardando tus datos» siguen como tarjetas (fila V45). En la vista previa, «Hoy C» es la opción por defecto; A y B quedan para comparar (QUITAR ANTES DE PUBLICAR).
+
 ---
 
 ## Prototipo v2.9.2 · Cada peso una vez (2026-10-23)
