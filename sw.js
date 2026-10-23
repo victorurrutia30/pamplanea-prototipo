@@ -2,7 +2,7 @@
 // el nombre de la caché; una versión nueva espera hasta que la persona toque «Actualizar» (los datos
 // guardados en el navegador no se tocan). Generado por herramientas/generar-sw.mjs: no editar a mano.
 'use strict';
-const VERSION_SW = 'v2.9.0-2026-10-23';
+const VERSION_SW = 'v2.9.1-2026-10-23';
 const CACHE = 'pamplanea-proto-' + VERSION_SW;
 const ARCHIVOS = [
     "./",
