@@ -65,6 +65,12 @@ Versión visible en la app y en la guía: **«Prototipo v2.9.2 · 2026-10-23»**
 - **`palabras-v28`:** 0 de 903.
 - **`capturas-v292`** (nueva) a 390×844, revisadas como imágenes: «¿Con qué ingreso la pagas?», Próxima, Mes de octubre, Mes de noviembre, repartida y Hoy.
 - `diario-antes` sigue fallando en el mismo paso viejo que en la v2.9.1 (`tour-sig`; no es parte de la batería verde).
+- **Publicada (main `b9489ef`) y revisada en vivo en Pages**, con un perfil de prueba:
+  - Pages pasó a la v2.9.2 menos de dos minutos después del push, antes de que la revisión alcanzara a instalar la v2.9.1. La actualización de una app instalada (de la v2.9.1 a la v2.9.2, «Hay una versión nueva · Actualizar») queda probada con `actualizar --ref=c99221f`, que sirve las dos versiones en la misma subruta y con el mismo service worker;
+  - en Pages: la v2.9.2 con su service worker y solo su caché;
+  - con datos guardados por la v2.9.1 (Tarjeta Liss pagada con la quincena del 30 oct), la copia «antes de la v2.9.2» es idéntica y no se pierde nada. Lo único nuevo es la cuenta de cada gasto, como desde la v2.7, porque los datos de prueba no la traían;
+  - sale el cuadrito con el antes y el después; Hoy no cambia; octubre la cuenta bajo el 30 oct y noviembre la muestra en gris;
+  - con datos sin nada que cambie, no sale el cuadrito.
 
 ---
 
