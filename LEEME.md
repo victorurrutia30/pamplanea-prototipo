@@ -164,6 +164,17 @@ Versión visible en la app y en la guía: **«Prototipo v2.8.0 · 2026-10-22»**
   - **4. Montos (Mi plan y Mes):** gastos sin «−», ingresos con «+», aproximados «~$30.00», pagado ✓ en gris, parcial «faltan $X.XX».
   - **4b.** Un cobro con tarjeta se ve «$10.00 · va en Mi BAC», en gris y sin «−»: no está dentro de «Sale» (C-7).
   - **4c.** Al crear algo nuevo: primera letra en mayúscula y el emoji por el nombre (gasolina → ⛽). Lo ya guardado no cambia.
+- **Ajuste 7: APROBADO por Victor (2026-10-22)**, al pegar el prompt «v2.8 — AJUSTE 7». De `42a46ee`: «Lo demás se ve bien». Frases literales:
+  - «Dice comida y comida afuera, debería ser solo comida afuera»
+  - «el signo ~ se confunde con "-" me están diciendo»
+  - «No veo la opción de crear categorías en categorías. ¿Cuál es la diferencia de para anotar vs presupuesto en categorías? Me gusta como están buckets»
+  - «Eso de Pagas ~$10.00 al mes en suscripciones en mes, ¿de qué depende y por qué muestra exactamente eso?»
+- Decisiones (una línea cada una):
+  - **1.** Presupuestos sugeridos: sale «Comida», queda «Comida afuera». Lo ya guardado (tu presupuesto «Comida») no cambia.
+  - **2. «~» → «aprox.»** en todas las pantallas, siempre con centavos y después del monto («$30.00 aprox.»). Si no cabe, la fila baja a dos líneas; no se abrevia.
+  - **3. Mis categorías:** «Gastos del día a día» («Las eliges al anotar lo que gastas»), «Presupuestos» («Con un máximo por quincena») y «Gastos fijos» (Suscripciones · Facturas y servicios · Otros).
+  - **3b.** «+ Nueva categoría» arriba: «¿En qué grupo?», luego nombre e ícono. En una del día a día, «Ponerle un máximo» abre «+ Presupuesto» con ese nombre e ícono (FM-1 si ya existe).
+  - **4. Mes:** la línea «Pagas ~$X al mes en suscripciones» pasa a «Lo que encontramos»: «Tus suscripciones: $10.00 al mes (Netflix)», hasta 3 nombres y «y n más». Tocarla abre Mi plan → Ver por tipo → Gastos fijos.
 
 ### E1 — el cálculo y los datos
 
@@ -269,6 +280,10 @@ Versión visible en la app y en la guía: **«Prototipo v2.8.0 · 2026-10-22»**
 | Ajuste 6 · categorías predefinidas editables, fijas con 🔒 | Sí | `invariantes` V29 y V30, `actualizar` ×2, QUÉ DEBO PROBAR 3, captura |
 | Ajuste 6 · Mes nuevo | Sí | `invariantes` V27 y V28, `viaje-v23`, `entrega2-v23`, QUÉ DEBO PROBAR 4 y 5, capturas |
 | Ajuste 6 · un solo formato de montos, «va en Mi BAC» | Sí | `invariantes` V31, `v262`, `aceptacion-v23`, QUÉ DEBO PROBAR 2 |
+| Ajuste 7 · «aprox.» en vez de «~» | Sí | `invariantes` V32, `aceptacion-v23`, `v262`, QUÉ DEBO PROBAR 1, captura |
+| Ajuste 7 · sin «Comida» en los presupuestos sugeridos | Sí | QUÉ DEBO PROBAR 2 |
+| Ajuste 7 · Mis categorías: grupos, «+ Nueva categoría», «Ponerle un máximo» | Sí | `invariantes` V33 y V34, QUÉ DEBO PROBAR 3, captura |
+| Ajuste 7 · «Tus suscripciones» en «Lo que encontramos» | Sí | `entrega2-v23`, QUÉ DEBO PROBAR 4 |
 
 ### Pruebas de E2 y al terminar
 
@@ -420,6 +435,17 @@ Versión visible en la app y en la guía: **«Prototipo v2.8.0 · 2026-10-22»**
   - el guion repitió hasta el ajuste 5 en `0c3cdbf`, y con el código final tu «Comida» de $50 y las 5 nuevas, el 22 de octubre, sin fallos;
   - tu libre: $856 → $838 (tu «Comida» ya lleva $32 de pupusas) → $808 con «Farmacia».
 
+### Ajuste 7 (2026-10-22)
+
+- **Lo que cambió** (APROBADO por Victor 2026-10-22; v2.8.0): «aprox.» en vez de «~»; sin «Comida» en los sugeridos; «Mis categorías» con sus grupos explicados, «+ Nueva categoría» y «Ponerle un máximo»; «Tus suscripciones» en «Lo que encontramos».
+- **Pruebas** (modo ajuste, una a la vez; dos veces esperó a tener 4 GB):
+  - `invariantes`: **53 de 53**. Nuevas: V32 (ninguna pantalla con «~$»), V33 y V34;
+  - en verde: `palabras-v28`, `v263`, `v262`, `v241`, `aceptacion-v23`, `entrega2-v23`, `viaje-v23`, `humo-v23`, `humo`, `atras`, `recorrer-sets`, `contraste-v23` (mínimo 4.94:1), `contraste`, `teclado`, `montos` y `numeros-entrenamiento`;
+  - `actualizar` ×2: 0 fallos;
+  - actualizadas citando su punto: `invariantes`, `v262`, `v241`, `aceptacion-v23`, `viaje-v23` y `entrega2-v23`;
+  - 2 capturas a 390×844 (Mis categorías y Mi plan con «aprox.»), revisadas como imágenes.
+- **QUÉ DEBO PROBAR, verificado:** el guion repitió hasta el ajuste 6 en `42a46ee` y las 4 nuevas con el código final, el 22 de octubre, sin fallos: $808 → $783 con «Salud».
+
 ### Pendiente para el cierre
 
 Para cuando Victor escriba «todo aprobado, lancemos» (modo ajuste: no se hizo ahora).
@@ -430,7 +456,8 @@ Para cuando Victor escriba «todo aprobado, lancemos» (modo ajuste: no se hizo 
   - El tour y el glosario hablan de «tu próxima quincena» como tarjeta; ahora señalan el resumen de Mi plan → Próxima.
   - El consejo de la primera vez en Mi plan.
   - «Presupuestos» en el entrenamiento, la ayuda, el glosario («Gastos variables») y el cuadrito («pueden ser gastos variables»); el consejo de Mes.
-- **`palabras-v28`:** agregar «gasto variable» y «gastos variables» (cuando cambien esos textos).
+- **`palabras-v28`:** agregar «gasto variable» y «gastos variables» (cuando cambien esos textos) y «~$».
+- **Textos con «~»** en el entrenamiento y la ayuda (los que no salen del motor), y «Para anotar».
 - **Contraste:** «⚠ N por confirmar», «va en Mi BAC» y la línea contra el mes anterior no se midieron en los 4 temas (el caso de `contraste-v23` no los tiene).
 - **Pruebas que no se corrieron:**
   - la batería completa y las largas: `v25`, `v24`, `v231`, `v26`, `v264`, `v266`, `v267`, `v267-editar`, `formularios-v265`, `recorrer-v2`, `recorrer-modos`;
@@ -516,6 +543,11 @@ Para cuando Victor escriba «todo aprobado, lancemos» (modo ajuste: no se hizo 
 60. **Al crear,** el emoji por el nombre solo reemplaza un ícono genérico (🧾, 🛒, 🏷️, 🧩).
 61. **«Súper, fijo o presupuesto»:** lo elige la persona con «¿Cómo es?», «Pásalo a…» y la pregunta de una vez; no se agregó Súper a los gastos fijos.
 62. **Lo guardado:** lo nuevo (`categoriasBase`) solo aparece al cambiar una categoría; la versión sigue en v2.8.0, así que la copia por versión es la de antes de la v2.8.0. Una versión anterior lo ignora sin perder nada (`actualizar` ×2: 0 fallos).
+63. **Ajuste 7, «aprox.»** se escribe en un solo lugar (`dinero`). Lo que entra lleva «+» también en las fichas («+$597.00 aprox.»).
+64. **«Otra» al anotar** crea una categoría del día a día (antes, de presupuestos). Las que ya tenías no cambian de grupo.
+65. **«Fijas»** sigue al final, con «La app las usa para tus cuentas»; cada una abre con «La app la usa para tus cuentas».
+66. **«Tus suscripciones»** cuenta las creadas como suscripción, las de esa categoría y las que se llaman como una de la lista (tu Netflix del guion se escribió a mano). Va antes de «Tu avance»; máximo 3 tarjetas.
+67. **Lo guardado no cambió de forma** (solo un grupo nuevo para tus categorías); igual se corrió `actualizar` ×2.
 
 ### PENDIENTE (lo vi y no lo toqué)
 
