@@ -4424,3 +4424,47 @@ html.con-hazlo .mask {
 .pl-bloque {
     grid-template-columns: minmax(0, 1fr);
 }
+
+/* v2.8 (ajuste 7): «aprox.» no se abrevia: si no cabe, el nombre baja a dos líneas. Mis categorías con sus grupos. */
+.pl-n {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+.mes-cat-n {
+    white-space: normal;
+}
+.mes-enc-b {
+    width: 100%;
+    min-height: 44px;
+    text-align: left;
+}
+.mes-enc-b > span:not(.emo) {
+    display: grid;
+    flex: 1;
+    gap: 2px;
+}
+.mes-enc-b:hover {
+    background: var(--p-hover);
+}
+.cat-g {
+    margin-top: 6px;
+}
+.cat-g-s {
+    margin-top: -4px;
+}
+.cat-sub {
+    padding: 0 4px;
+    color: var(--color-text-muted);
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 18px;
+}
+.campo-l--sec.cat-g {
+    color: var(--color-text);
+    font-size: 15px;
+    font-weight: 600;
+}

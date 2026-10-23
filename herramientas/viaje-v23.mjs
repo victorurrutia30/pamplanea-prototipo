@@ -127,7 +127,7 @@ try {
     // v2.8 (C-8): cómo quedas la próxima quincena ya no está en Hoy: está arriba de Mi plan («gastos», D-2).
     // Ajuste 5 (punto 4): está en Mi plan → Próxima («Entra ~$X · Sale ~$Y»).
     await ev(`P.ui.pagosVista = 'proxima'; P.irTab('pagos'); true`);
-    check('adelantado: la próxima lo cuenta', await texto('.plan-res'), (x) => x.includes('Entra ~$1,163') && x.includes('$566.00 de tu pareja, que ya llegó'));
+    check('adelantado: la próxima lo cuenta', await texto('.plan-res'), (x) => x.includes('Entra $1,163.00 aprox.') && x.includes('$566.00 de tu pareja, que ya llegó'));
     await ev(`P.ui.pagosVista = 'actual'; true`);
     await ev(`P.irTab('hoy'); true`);
     await coherente('pareja adelantada');

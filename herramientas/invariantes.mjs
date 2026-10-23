@@ -41,6 +41,7 @@
 // Ajuste 6 «Presupuestos, categorías y Mes» (APROBADO por Victor, 2026-10-22): V27 «Salieron» = lo anotado del mes · V28 las
 //  filas de «¿En qué se te fue?» suman «Salieron» · V29 ocultar o renombrar no cambia montos · V30 una fija no se cambia ·
 //  V31 en Mi plan, «Sale» = lo que falta en sus filas (sin «va en»)
+// Ajuste 7 (APROBADO por Victor, 2026-10-22): V32 ninguna pantalla muestra «~$» · V33 «Ponerle un máximo» · V34 «+ Nueva categoría»
 // Uso: node herramientas/invariantes.mjs [--base=http://…/] [--puerto=9961] [--solo=I01,F13] [--raiz=<otra copia>]
 //      (--raiz: las mismas filas sobre otra copia, por ejemplo la v2.6.7 sacada de git, para ver cuáles fallaban antes)
 import { mkdir } from 'node:fs/promises';
@@ -1191,7 +1192,8 @@ await filaDe('V17', 'FM-1: nunca dos con el mismo nombre en tu plan; «Es otro d
     await esperar(200);
     await clic('[data-fk="np-servicios"]');
     await clic('[data-fk="op-frecuente-luz"]');
-    check('al elegir Luz: «Ya tienes «Luz» (el 28, ~$30)»', [await texto('#dup-t'), await ev(`[...document.querySelectorAll('#dup-box [data-a="yaTienes"]')].map((b) => b.textContent.trim())`)], ['Ya tienes «Luz» (el 28, ~$30).', ['Editar el que tengo', 'Es otro distinto']]);
+    // Ajuste 7 (punto 2, APROBADO por Victor 2026-10-22): «~» → «aprox.», con centavos y después del monto.
+    check('al elegir Luz: «Ya tienes «Luz» (el 28, $30.00 aprox.)»', [await texto('#dup-t'), await ev(`[...document.querySelectorAll('#dup-box [data-a="yaTienes"]')].map((b) => b.textContent.trim())`)], ['Ya tienes «Luz» (el 28, $30.00 aprox.).', ['Editar el que tengo', 'Es otro distinto']]);
     await escribir('#f-monto', '30');
     await clic('[data-fk="dia-dia-28"]');
     await clic('[data-fk="op-medio-efectivo"]');
@@ -1475,7 +1477,7 @@ await filaDe('V25', 'Ajuste 5: todo lo que mostraba el Mi plan anterior (509aef4
     await ev(`P.ui.hoja && P.cerrarHoja({ sinFoco: true }); P.ui.pagosModo = 'fecha'; P.ui.pagosVista = 'actual'; P.irTab('pagos'); true`);
     check('tarjeta pagada en parte: su fila dice «faltan $70.00»', await texto('[data-fk^="t-t50-"]'), (t) => typeof t === 'string' && t.includes('faltan $70.00'));
     await ev(`P.ui.pagosModo = 'tipo'; P.render(); true`);
-    check('«Deudas» cuenta la tarjeta entera (~$145: $45 + lo que pagas normalmente, $100), sin «NaN»', await texto('[data-fk="sec-deudas"]'), (t) => typeof t === 'string' && t.endsWith('~$145.00') && !t.includes('NaN'));
+    check('«Deudas» cuenta la tarjeta entera (~$145: $45 + lo que pagas normalmente, $100), sin «NaN»', await texto('[data-fk="sec-deudas"]'), (t) => typeof t === 'string' && t.endsWith('$145.00 aprox.') && !t.includes('NaN'));
     await ev(`P.ui.pagosModo = null; true`);
 });
 
@@ -1595,6 +1597,97 @@ await filaDe('V31', 'Ajuste 6: en Mi plan, «Sale» = la suma de lo que falta en
     const total = [...montos, ...bloque, ...venc].reduce((a, b) => a + b, 0);
     check(`«Sale» (${sale}) = filas (${montos.join(' + ')}) + presupuestos y ahorro (${bloque.join(' + ')}) + por confirmar (${venc.join(' + ')})`, [filas > 0, total], [true, sale]);
     check('y es lo mismo que cuenta tu libre', sale, await ev(`P.calc().obligaciones`));
+});
+
+// ================================================================== Ajuste 7 (APROBADO por Victor, 2026-10-22)
+// ------------------------------------------------------------------ V32 (ajuste 7, punto 2)
+await filaDe('V32', 'Ajuste 7: ninguna pantalla muestra «~$» (lo aproximado dice «$30.00 aprox.»)', async () => {
+    const malas = [];
+    const ver = async (donde) => {
+        await esperar(60);
+        const t = await ev(`document.getElementById('app').innerText`);
+        if (t.includes('~$')) malas.push(`${donde}: ${t.slice(Math.max(0, t.indexOf('~$') - 30), t.indexOf('~$') + 12).replace(/\\s+/g, ' ')}`);
+    };
+    for (const caso of ['385', 'ana', 'carlos', 'rosa']) {
+        if (caso === '385') await ev(`__armar((st) => { (${EJEMPLO_385})(st); __internet(st, { id: 'agua', nombre: 'Agua', emoji: '💧', monto: 1200, estimado: true, dia: 16, desde: '2026-10-15' }); st.ingresos.push({ id: 'remesa', nombre: 'Remesa', emoji: '🌎', categoria: 'remesa', monto: 15000, aprox: true, frecuencia: 'mensual', dia: 28, lugar: 'banco', principal: false, extra: true, desde: '2026-10-15', llegadas: {} }); })`);
+        else await ev(`P.sinGuardar = true; P.cargarPersona(${js(caso)}); P.ayuda && P.ayuda.abierto && P.ayuda.cerrar({ foco: false }); true`);
+        for (const tab of ['hoy', 'midinero', 'mes']) {
+            await ev(`P.ui.hoja && P.cerrarHoja({ sinFoco: true }); P.irTab(${js(tab)}); true`);
+            await ver(`${caso} · ${tab}`);
+        }
+        for (const [modo, vista] of [['fecha', 'actual'], ['fecha', 'proxima'], ['fecha', 'mes'], ['tipo', 'actual']]) {
+            await ev(`P.ui.pagosModo = ${js(modo)}; P.ui.pagosVista = ${js(vista)}; P.ui.planAbiertas = { ingresos: true, fijos: true, variables: true, ahorro: true, deudas: true }; P.irTab('pagos'); true`);
+            await ver(`${caso} · Mi plan ${modo} ${vista}`);
+        }
+        await ev(`P.irTab('hoy'); P.abrirHoja('desglose'); true`);
+        await ver(`${caso} · ¿De dónde sale?`);
+        const fichas = await ev(`[...P.st.pagos.map((p) => ['pago', p.id]), ...P.st.tarjetas.map((t) => ['tarjeta', t.id]), ...P.st.ingresos.map((i) => ['ingreso', i.id]), ...(P.st.variables || []).map((v) => ['variable', v.id]), ...P.st.apartados.map((a) => ['apartado', a.id]), ['porConfirmar', null], ['deudas', null]]`);
+        for (const [tipo, id] of fichas) {
+            await ev(`P.ui.hoja && P.cerrarHoja({ sinFoco: true }); P.irTab('midinero'); P.abrir(${js(tipo)}, ${js(id)}); true`);
+            await ver(`${caso} · ficha ${tipo} ${id || ''}`);
+        }
+        await ev(`P.ui.hoja && P.cerrarHoja({ sinFoco: true }); P.irTab('hoy'); P.acciones.anotar(); true`);
+        await escribir('#anotar-q', 'luz 35');
+        await ver(`${caso} · Anotar «luz 35»`);
+        await ev(`P.cerrarHoja({ sinFoco: true }); true`);
+    }
+    check('ninguna «~$»', malas, []);
+    await ev(`P.ui.pagosModo = null; P.ui.pagosVista = 'actual'; true`);
+});
+// ------------------------------------------------------------------ V33 (ajuste 7, punto 3)
+await filaDe('V33', 'Ajuste 7: «Ponerle un máximo» crea un presupuesto con ese nombre e ícono, sin cambiar lo anotado (FM-1 si ya existe)', async () => {
+    await ev(`__armar(${EJEMPLO_385})`);
+    const anotado = () => ev(`JSON.stringify({ montos: P.st.registros.map((r) => [r.id, r.monto, r.nombre, r.categoria]), salio: MOTOR.resumenMes(P.st, 2026, 10).salio })`);
+    const antes = await anotado();
+    await ev(`P.abrirHoja('categorias'); true`);
+    await clic('[data-fk="catb-gasto-salud"]');
+    await clic('[data-fk="cat-maximo"]');
+    check('abre «Presupuesto» con «Salud» y 💊', [await texto('#hoja-t'), await ev(`P.ui.hoja.nombre`), await ev(`P.ui.hoja.emoji`)], ['Presupuesto', 'Salud', '💊']);
+    await escribir('#f-monto', '40');
+    await clic('[data-fk="op-medio-debito"]');
+    await clic('[data-fk="hoja-ok"]');
+    check('se crea el presupuesto Salud de $40.00', await ev(`(P.st.variables || []).filter((v) => v.nombre === 'Salud').map((v) => [v.emoji, v.tope, v.categoria])`), [['💊', 4000, 'salud']]);
+    check('lo anotado no cambia', await anotado(), antes);
+    await ev(`P.abrirHoja('categorias'); true`);
+    await clic('[data-fk="catb-gasto-super"]');
+    await clic('[data-fk="cat-maximo"]');
+    check('«Súper» ya es presupuesto: FM-1 «Ya tienes…»', await texto('#dup-box'), (t) => typeof t === 'string' && t.includes('Ya tienes'));
+    const n = await ev(`(P.st.variables || []).length`);
+    await escribir('#f-monto', '60');
+    await clic('[data-fk="op-medio-debito"]');
+    await clic('[data-fk="hoja-ok"]');
+    check('y no se duplica', await ev(`(P.st.variables || []).filter((v) => v.nombre === 'Súper').length`), 1);
+    check('ni cambia lo anotado', await anotado(), antes);
+    await ev(`P.ui.hoja && P.cerrarHoja({ sinFoco: true }); true`);
+    void n;
+});
+// ------------------------------------------------------------------ V34 (ajuste 7, punto 3)
+await filaDe('V34', 'Ajuste 7: «+ Nueva categoría» la deja en su grupo (y no repite un nombre)', async () => {
+    await ev(`__armar()`);
+    const nueva = async (grupo, nombre) => {
+        await ev(`P.abrirHoja('categorias'); true`);
+        await clic('[data-fk="cat-nueva"]');
+        await clic(`[data-fk="op-grupo-${grupo}"]`);
+        await escribir('#f-catNombre', nombre);
+        await clic('[data-fk="cat-nueva-ok"]');
+    };
+    await nueva('gasto', 'mascotas');
+    await nueva('variable', 'Gimnasio en casa');
+    await nueva('suscripcion', 'Crunchyroll');
+    check('guardadas en su grupo, con mayúscula', await ev(`P.st.categoriasPropias.map((c) => [c.grupo, c.nombre])`), [['gasto', 'Mascotas'], ['variable', 'Gimnasio en casa'], ['suscripcion', 'Crunchyroll']]);
+    check('se ven en «Mis categorías»', await texto('.hoja-c'), contiene('Mascotas', 'Gimnasio en casa', 'Crunchyroll'));
+    await ev(`P.cerrarHoja({ sinFoco: true }); P.acciones.anotar(); P.acciones.anotarAtajo({ v: 'gasto' }); true`);
+    await esperar(150);
+    check('del día a día: sale en «¿En qué?» al anotar', await ev(`[...document.querySelectorAll('[data-campo="enQue"]')].map((b) => b.textContent.trim())`), (x) => x.includes('Mascotas'));
+    await ev(`P.cerrarHoja({ sinFoco: true }); P.abrirHoja('nuevoPago', { fecha: 'variable' }); true`);
+    check('de presupuestos: sale en «¿Cuál?» del presupuesto', await ev(`[...document.querySelectorAll('[data-fk^="op-frecuenteVar-"]')].map((b) => b.textContent.trim())`), (x) => x.includes('Gimnasio en casa'));
+    await ev(`P.cerrarHoja({ sinFoco: true }); P.abrirHoja('nuevoPago'); true`);
+    await clic('[data-fk="np-suscripcion"]');
+    check('de suscripciones: sale en «¿Cuál?» de la suscripción', await ev(`[...document.querySelectorAll('[data-fk^="op-servicio-"]')].map((b) => b.textContent.trim())`), (x) => x.includes('Crunchyroll'));
+    await ev(`P.cerrarHoja({ sinFoco: true }); true`);
+    await nueva('gasto', 'Comida');
+    check('«Comida» ya existe: «Ya tienes…» y no se crea', [await texto('#err-catNombre'), await ev(`P.st.categoriasPropias.length`)], (x) => typeof x[0] === 'string' && x[0].includes('Ya tienes') && x[1] === 3);
+    await ev(`P.ui.hoja && P.cerrarHoja({ sinFoco: true }); true`);
 });
 
 const resultado = { version: await ev('window.VERSION_PROTOTIPO').catch(() => null), filas: filas.map((f) => ({ id: f.id, ok: f.ok, nombre: f.nombre, checks: f.checks.length, malas: f.checks.filter((c) => !c.ok) })), resumen: `${filas.filter((f) => f.ok).length} de ${filas.length} filas bien`, fallos, errores: b.errores, fallidas: b.fallidas };

@@ -25,7 +25,7 @@
         // V2-73: un pago resta (−) y un ingreso esperado suma (+). Un estimado sigue sin «+~» ni «−~» (acuerdo de la v2.3:
         // «un estimado se escribe «~$597»»): lo que dice que suma es la etiqueta «Ingreso» y la marca del día.
         if (tipo === 'pago') return `<span class="monto monto--pago"><span class="sr-only">Pago: </span>${aprox ? dinero(c, { aprox }) : dinero(-c)}</span>`;
-        if (tipo === 'esperado') return `<span class="monto monto--esperado"><span class="sr-only">Ingreso esperado: </span>${aprox ? '' : '+'}${dinero(c, { aprox })}</span>`;
+        if (tipo === 'esperado') return `<span class="monto monto--esperado"><span class="sr-only">Ingreso esperado: </span>+${dinero(c, { aprox })}</span>`;
         if (tipo === 'neutro') return `<span class="monto monto--neutro">${icon('arrow-left-right', 'ico-xs')}${dinero(c, { aprox })}</span>`;
         return `<span class="monto">${dinero(c, { aprox })}</span>`;
     }
@@ -773,7 +773,7 @@
         const tarjetaConIngreso = ultimaTarjeta ? null : k.tarjetas.find((x) => x.conIngreso > 0);
         const lineas = [];
         if (porConfirmar) lineas.push(`<span class="portada-s">${hz.esHoy ? 'Confírmala para ver el número nuevo' : `Falta confirmar tu ${esc(nombreIngreso(hz))} del ${M.partes(porConfirmar.fecha)[2]}`}</span>`);
-        else if (k.porDia !== null) lineas.push(`<span class="portada-s">~${dinero(k.porDia, { aprox: true }).replace('~', '')} por día</span>`);
+        else if (k.porDia !== null) lineas.push(`<span class="portada-s">${dinero(k.porDia, { aprox: true })} por día</span>`);
         else if (k.libre <= 0) lineas.push(`<span class="portada-s">${P.textoCero(k)}</span>`);
         if (porConfirmar && k.libre <= 0 && (k.faltaPagos || k.sinCubrir)) lineas.push(`<span class="portada-v">${P.textoCero(k)}</span>`);
         // V2-29 #1: el pago de la tarjeta que vence después del ingreso ya baja el libre; se dice.
@@ -1612,7 +1612,17 @@
             .map((x) => ({ x, p: M.pago(st, x.pago) }))
             .filter(({ x, p }) => p && p.estimado && Math.abs(x.monto - p.monto) >= 100)
             .sort((a, b) => Math.abs(b.x.monto - b.p.monto) - Math.abs(a.x.monto - a.p.monto))[0];
-        if (dif) out.push({ id: 'plan', emoji: dif.p.emoji, t: 'Planeado contra real', l: `${dif.p.nombre}: calculaste ${dinero(dif.p.monto, { aprox: true, centavos: true })}, pagaste ${dinero(dif.x.monto)}` });
+        if (dif) out.push({ id: 'plan', emoji: dif.p.emoji, t: 'Planeado contra real', l: `${dif.p.nombre}: calculaste ${dinero(dif.p.monto, { aprox: true })}, pagaste ${dinero(dif.x.monto)}` });
+        // Ajuste 7 (punto 4, APROBADO por Victor 2026-10-22): tus suscripciones activas, al mes, con sus nombres (antes, una línea suelta).
+        // Una suscripción: la que se creó como suscripción, la de esa categoría o la que se llama como una de la lista
+        // (Netflix escrito a mano).
+        const nombresSusc = new Set([...(P.catSuscripciones ? P.catSuscripciones(st) : []).filter((x) => x.id !== 'otra'), ...(P.categoriasDe ? P.categoriasDe(st, 'suscripcion', { archivadas: true }) : [])].map((x) => M.normalizar(x.nombre)));
+        const susc = st.pagos.filter((p) => p.activo !== false && !p.tipoDeuda && (p.tipoPago === 'suscripcion' || p.categoria === 'suscripciones' || nombresSusc.has(M.normalizar(p.nombre))));
+        if (susc.length) {
+            const aprox = susc.some((p) => p.estimado || p.frecuencia !== 'mensual');
+            const nombres = `${susc.slice(0, 3).map((p) => p.nombre).join(', ')}${susc.length > 3 ? ` y ${susc.length - 3} más` : ''}`;
+            out.push({ id: 'suscripciones', emoji: '📺', t: 'Tus suscripciones', l: `${dinero(M.suma(susc, (p) => alMes(p)), { aprox })} al mes (${nombres})`, ir: 'irSuscripciones' });
+        }
         // Avance: cuánto bajaron tus deudas y cuánto guardaste.
         const deudas = M.suma(r.regs.filter((x) => x.tipo === 'pagoTarjeta' || (x.tipo === 'gasto' && x.pago && M.pago(st, x.pago)?.tipoDeuda)), (x) => x.monto);
         const guardaste = M.suma(st.apartados.flatMap((a) => a.historial || []).filter((h) => h.tipo === 'apartar' && h.fecha >= r.ini && h.fecha <= r.fin), (h) => h.monto);
@@ -1663,13 +1673,10 @@
         const mesNombre = M.MESES[m - 1];
         const nav = `<div class="mes-nav"><button type="button" class="icon-btn" data-a="mesNav" data-d="-1" aria-label="Mes anterior" data-fk="mes-ant">${icon('chevron-left')}</button><p class="mes-nav-t" aria-live="polite">${esc(M.capital(mesNombre))} ${y}${esActual ? '<span class="mes-hasta">hasta hoy</span>' : ''}</p><button type="button" class="icon-btn" data-a="mesNav" data-d="1" aria-label="Mes siguiente" data-fk="mes-sig" ${esActual ? 'disabled' : ''}>${icon('chevron-right')}</button></div>`;
         const cabeza = `${encabezado('Mes', '')}${P.tipHtml('mes')}${nav}`;
-        // V2-47: cuánto se va en suscripciones, al mes (se conserva).
-        const suscripciones = st.pagos.filter((p) => p.activo !== false && p.tipoPago === 'suscripcion');
-        const linkSusc = suscripciones.length ? `<p><button type="button" class="link link--start" data-a="irMisPagos" data-fk="mes-suscripciones">${icon('receipt-text', 'ico-s')}Pagas ${esc(dinero(M.suma(suscripciones, (p) => alMes(p)), { aprox: true, centavos: true }))} al mes en suscripciones</button></p>` : '';
         // Con pocos datos: una frase amable, nunca un gráfico vacío.
         if (!r.regs.length) {
             const primero = st.inicio && st.inicio.slice(0, 7) === base;
-            return `<div class="pg">${cabeza}<p class="vacio plan-vacio">${primero || base > (st.inicio || '').slice(0, 7) ? 'Cuando completes tu primer mes, aquí verás en qué se te fue.' : `No hay nada anotado en ${esc(mesNombre)}.`}</p>${linkSusc}</div>`;
+            return `<div class="pg">${cabeza}<p class="vacio plan-vacio">${primero || base > (st.inicio || '').slice(0, 7) ? 'Cuando completes tu primer mes, aquí verás en qué se te fue.' : `No hay nada anotado en ${esc(mesNombre)}.`}</p></div>`;
         }
         // b) Resumen: lo que entró y salió, «Te sobraron» (o «Te faltaron», sin culpa) y una línea contra el mes anterior.
         const queda = r.entro - r.salio;
@@ -1687,7 +1694,6 @@
                 <p class="mes-res-n">${dinero(Math.abs(queda))}</p>
                 ${contra ? `<p class="mes-res-c">${esc(contra)}</p>` : ''}
                 ${r.totalPrestamos ? `<p class="fila-s" data-fk="mes-prestamos">Te prestaron ${dinero(r.totalPrestamos)}: es una deuda, no cuenta como ingreso.</p>` : ''}
-                ${linkSusc}
             </section>`;
         // c) «¿En qué se te fue?»: las 5 más grandes con su barra y su monto; el resto en «Otros (n)».
         const todas = filasEnQue(r);
@@ -1715,7 +1721,7 @@
         const h = hallazgos[i];
         const lo = hallazgos.length
             ? `<section class="card mes-sec mes-enc" aria-labelledby="mes-enc-t"><div class="card-h"><h2 class="card-t" id="mes-enc-t">Lo que encontramos</h2>${hallazgos.length > 1 ? `<div class="mes-enc-nav"><button type="button" class="icon-btn" data-a="mesEnc" data-d="-1" aria-label="Anterior" data-fk="mes-enc-ant" ${i === 0 ? 'disabled' : ''}>${icon('chevron-left')}</button><span class="fila-s">${i + 1} de ${hallazgos.length}</span><button type="button" class="icon-btn" data-a="mesEnc" data-d="1" aria-label="Siguiente" data-fk="mes-enc-sig" ${i === hallazgos.length - 1 ? 'disabled' : ''}>${icon('chevron-right')}</button></div>` : ''}</div>
-                <div class="mes-enc-c" aria-live="polite" data-fk="mes-enc-${h.id}">${caja(h.emoji, 'emo--sm')}<div><p class="fila-t">${esc(h.t)}</p><p class="txt">${esc(h.l)}</p></div></div>
+                ${h.ir ? `<button type="button" class="mes-enc-c mes-enc-b" aria-live="polite" data-a="${h.ir}" data-fk="mes-enc-${h.id}">${caja(h.emoji, 'emo--sm')}<span><span class="fila-t">${esc(h.t)}</span><span class="txt">${esc(h.l)}</span></span>${icon('chevron-right', 'ico-xs')}</button>` : `<div class="mes-enc-c" aria-live="polite" data-fk="mes-enc-${h.id}">${caja(h.emoji, 'emo--sm')}<div><p class="fila-t">${esc(h.t)}</p><p class="txt">${esc(h.l)}</p></div></div>`}
             </section>`
             : '';
         // f) «Historial»: 🔎 por nombre y «Filtros» (tipo, categoría, cuenta). Se corrige tocando la fila.
@@ -2126,6 +2132,13 @@
         mesTodas: () => {
             P.ui.mesTodas = !P.ui.mesTodas;
             render({ foco: '[data-fk="mes-ver-todas"]' });
+        },
+        /** Ajuste 7: «Tus suscripciones» → Mi plan → Ver por tipo → Gastos fijos. */
+        irSuscripciones: () => {
+            P.ui.pagosModo = 'tipo';
+            P.ui.planAbiertas = { ...(P.ui.planAbiertas || {}), fijos: true };
+            P.irTab('pagos');
+            render({ foco: '[data-fk="sec-fijos"]' });
         },
         /** «Lo que encontramos»: una a la vez, con ‹ ›. */
         mesEnc: (d) => {

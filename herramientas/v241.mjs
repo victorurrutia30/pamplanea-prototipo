@@ -309,8 +309,8 @@ async function revisarCelebracion(version, nombre, antes, quiere) {
     await foto(`${version}-${nombre}-hecho`);
 }
 const dineroTxt = (c) => '$' + (c / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-/** Los ~$ de un texto dinámico se ven tal cual en la pantalla (los del motor). */
-const montosQueNoSeVen = (texto, sel) => ev(`(() => { const vis = document.querySelector(${js(sel)})?.innerText || ''; return (${js(texto)}.match(/~\\$\\d+(?:,\\d{3})*(?:\\.\\d{2})?/g) || []).filter((m) => !vis.includes(m)); })()`);
+/** Los montos aproximados de un texto dinámico («$44.00 aprox.», ajuste 7) se ven tal cual en la pantalla (los del motor). */
+const montosQueNoSeVen = (texto, sel) => ev(`(() => { const vis = document.querySelector(${js(sel)})?.innerText || ''; return (${js(texto)}.match(/\\$\\d+(?:,\\d{3})*\\.\\d{2} aprox\\./g) || []).filter((m) => !vis.includes(m)); })()`);
 async function quiz(version, mal) {
     await clic('[data-fk="tour-quiz"]');
     const n = await ev('P.tour.PREGUNTAS.length');

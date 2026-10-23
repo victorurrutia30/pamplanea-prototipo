@@ -77,18 +77,17 @@
     }
 
     // ------------------------------------------------------------------ dinero (centavos)
-    /** `centavos`: el aproximado también con centavos («~$30.00»; v2.8 ajuste 6, punto 4: Mi plan y Mes). */
-    function dinero(c, { signo = false, aprox = false, centavos = false } = {}) {
+    /**
+     * v2.8 ajuste 7 (punto 2, APROBADO por Victor 2026-10-22): «el signo ~ se confunde con "-"». Lo aproximado se escribe
+     * «$30.00 aprox.»: siempre con centavos y «aprox.» después del monto («+$600.00 aprox.» si suma). `centavos` ya no hace falta.
+     */
+    function dinero(c, { signo = false, aprox = false } = {}) {
         if (c === null || c === undefined) return '—';
         const neg = c < 0;
         const abs = Math.abs(c);
-        const entero = Math.floor(abs / 100).toLocaleString('en-US');
-        const cent = abs % 100;
-        let s = '$' + entero + (aprox && cent === 0 && !centavos ? '' : '.' + pad(cent));
-        if (aprox) s = '~' + s;
+        const s = '$' + Math.floor(abs / 100).toLocaleString('en-US') + '.' + pad(abs % 100) + (aprox ? ' aprox.' : '');
         if (neg) return '−' + s;
-        // Un estimado se escribe «~$597», nunca «+~$597».
-        return (signo && c > 0 && !aprox ? '+' : '') + s;
+        return (signo && c > 0 ? '+' : '') + s;
     }
     function leerMonto(texto, sinTope = false) {
         if (texto === null || texto === undefined) return null;

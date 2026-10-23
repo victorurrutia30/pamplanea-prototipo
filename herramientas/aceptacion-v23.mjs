@@ -157,13 +157,14 @@ try {
     informe.numeros.victor = k;
     check('horizonte', await texto('.portada-h'), 'Hasta tu quincena del 29 · en 12 días');
     check('libre $95.00', await texto('.portada-n'), '$95.00');
-    check('~$7.90 por día', await texto('.portada-s'), '~$7.90 por día');
+    // Ajuste 7 (punto 2, APROBADO por Victor 2026-10-22): «~» → «aprox.», con centavos y después del monto.
+    check('$7.90 aprox. por día', await texto('.portada-s'), '$7.90 aprox. por día');
     check('sin avisos rojos', await hay('#pantalla .nota--atencion'), false);
     check('sin avisos en el motor', k.avisos, []);
     // v2.8 (C-8): cómo quedas la próxima quincena ya no está en Hoy: está arriba de Mi plan («gastos», D-2).
     // Ajuste 5 (punto 4): la próxima quincena está en Mi plan → Próxima, en su resumen.
     await ev(`P.ui.pagosVista = 'proxima'; P.irTab('pagos'); true`);
-    check('proyección', await texto('.plan-res'), contiene('Del 29 oct al 13 nov', 'Entra ~$1,163.00 · Sale ~$713.00', 'Te quedarían', '~$450.00', 'Incluye ~$566.00 de tu pareja'));
+    check('proyección', await texto('.plan-res'), contiene('Del 29 oct al 13 nov', 'Entra $1,163.00 aprox. · Sale $713.00 aprox.', 'Te quedarían', '$450.00 aprox.', 'Incluye $566.00 aprox. de tu pareja'));
     await ev(`P.ui.pagosVista = 'actual'; P.irTab('hoy'); true`);
     check('proyección (números)', k.prox, { clave: '2026-10-29', entra: 116300, pagos: 71300, quedan: 45000, deficit: 0 });
     check('sin llegadas inventadas', await ev('P.st.ingresos.flatMap((i) => Object.keys(i.llegadas))'), []);
@@ -178,16 +179,18 @@ try {
     await foto('victor-pagos-proxima');
     check('Mi plan → Próxima', await ev('[P.ui.tab, P.ui.pagosVista]'), ['pagos', 'proxima']);
     // Ajuste 6 (punto 4): en Mi plan, lo aproximado con centavos («~$450.00»).
-    check('Pagos → Próxima: mismos números', await texto('.plan-res'), contiene('Entra ~$1,163.00 · Sale ~$713.00', '~$450.00'));
+    check('Pagos → Próxima: mismos números', await texto('.plan-res'), contiene('Entra $1,163.00 aprox. · Sale $713.00 aprox.', '$450.00 aprox.'));
     await clic('[data-fk="tab-actual"]');
     check('esta quincena sin llegadas del 14', await texto('.pl-lista'), (x) => !String(x).includes('Llegó'));
     check('«Más adelante» solo el aguinaldo', await ev('(() => { const g = [...document.querySelectorAll(".pl-bloque")].find((x) => x.querySelector(".pl-h")?.textContent.startsWith("Más adelante")); return g ? [...g.querySelectorAll(".pl-n")].map((x) => x.textContent) : []; })()'), ['Aguinaldo']);
     await foto('victor-pagos-esta');
     // Ajuste 5 (puntos 6 y 11): en la lista por fecha todo ingreso lleva «+», también el estimado («+~$597»), para que no
     // dependa solo del color. Un pago nunca «−~». En la ficha sigue «~$597».
-    check('ingresos con «+»; nunca «−~»', await ev('[document.body.textContent.includes("−~"), [...document.querySelectorAll(".pl-fila .monto--ingreso")].every((m) => m.textContent.includes("+"))]'), [false, true]);
+    // Ajuste 7: ya no hay «~» en ninguna pantalla.
+    check('ingresos con «+»; ningún «~»', await ev('[document.body.textContent.includes("~"), [...document.querySelectorAll(".pl-fila .monto--ingreso")].every((m) => m.textContent.includes("+"))]'), [false, true]);
     await ev(`P.abrir("ingreso", "quincena"); true`);
-    check('ficha del ingreso sin «+~»', await texto('.cifra'), '~$597');
+    // Ajuste 7: con «aprox.» ya no se confunde: lo que entra lleva «+» también en la ficha.
+    check('ficha del ingreso: «+$597.00 aprox.»', await texto('.cifra'), '+$597.00 aprox.');
     await clic('[data-fk="atras"]');
 
     // ================================================================ 2. Repartir el alquiler entre dos quincenas
@@ -213,7 +216,7 @@ try {
     check('faltante exacto', await texto('.portada-s'), 'Te faltan $5.00 para cubrir lo que viene');
     // Ajuste 5 (punto 4): Mi plan → Próxima.
     await ev(`P.ui.pagosVista = 'proxima'; P.irTab('pagos'); true`);
-    check('próxima quincena: sale ~$613 (Mi plan → Próxima)', await texto('.plan-res'), contiene('Sale ~$613.00', '~$550.00'));
+    check('próxima quincena: sale ~$613 (Mi plan → Próxima)', await texto('.plan-res'), contiene('Sale $613.00 aprox.', '$550.00 aprox.'));
     await ev(`P.ui.pagosVista = 'actual'; true`);
     await ev(`P.irTab('hoy'); true`);
     await foto('repartir-hoy');
@@ -324,7 +327,7 @@ try {
     await abrirApp('caso=C20&tema=' + tema);
     await foto('carlos-hoy');
     check('libre sin reserva automática', await texto('.portada-n'), '$125.00');
-    check('sugerencia (ámbar)', await texto('.aviso-hoy'), contiene('El viernes 30 recibes ~$90', 'el alquiler', 'te faltarían ~$70', '¿Dejas algo listo de tu pago del viernes 23?'));
+    check('sugerencia (ámbar)', await texto('.aviso-hoy'), contiene('El viernes 30 recibes $90.00 aprox.', 'el alquiler', 'te faltarían $70.00 aprox.', '¿Dejas algo listo de tu pago del viernes 23?'));
     check('ámbar, no rojo', await ev('document.querySelector(".aviso-hoy")?.classList.contains("nota--ambar")'), true);
     await clic('[data-fk="at-sug-si"]');
     await foto('carlos-reservar');

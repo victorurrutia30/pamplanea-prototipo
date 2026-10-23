@@ -172,7 +172,9 @@ try {
     await clic('[data-fk="hoja-ok"]');
     await clic('[data-fk="nav-mes"]');
     await foto('mes-suscripciones');
-    check('Mes: suscripciones al mes', await texto('[data-fk="mes-suscripciones"]'), 'Pagas ~$15.98 al mes en suscripciones');
+    // Ajuste 7 (punto 4, APROBADO por Victor 2026-10-22): una tarjeta de «Lo que encontramos», con sus nombres.
+    await ev(`(() => { const i = P.encontramos(P.st, MOTOR.resumenMes(P.st, ...P.st.hoy.slice(0, 7).split('-').map(Number))).findIndex((x) => x.id === 'suscripciones'); P.ui.mesEnc = Math.max(0, i); P.render(); return true; })()`);
+    check('Mes: «Tus suscripciones: $15.98 al mes (…)»', await texto('[data-fk="mes-enc-suscripciones"]'), (t) => typeof t === 'string' && t.includes('Tus suscripciones') && t.includes('$15.98 al mes (') && !t.includes('~'));
 
     // V2-41: «Ahorros» en toda la app.
     actual = 'ahorros';

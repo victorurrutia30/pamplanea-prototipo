@@ -207,7 +207,8 @@ try {
         await clic('[data-fk="pn-listo"]');
         await clic('[data-fk="nav-midinero"]');
         await clic('[data-fk="md-deudas"]');
-        check('Deudas: lo que debes de la tarjeta, por confirmar', await texto('[data-fk="t-credito"]'), (t) => t.includes('~$300') && t.includes('por confirmar'));
+        // Ajuste 7 (punto 2, APROBADO por Victor 2026-10-22): «~» → «aprox.», con centavos y después del monto.
+        check('Deudas: lo que debes de la tarjeta, por confirmar', await texto('[data-fk="t-credito"]'), (t) => t.includes('$300.00 aprox.') && t.includes('por confirmar'));
         check('Deudas: «Agregar otra deuda o tarjeta»', await texto('[data-fk="md-deuda"]'), 'Agregar otra deuda o tarjeta');
         await foto('A-deudas');
     }
@@ -314,9 +315,9 @@ try {
         const visible = `(m) => (m ? [...m.childNodes].filter((n) => !(n.classList && n.classList.contains('sr-only'))).map((n) => n.textContent).join('').trim() : null)`;
         // Ajuste 6 (punto 4, APROBADO por Victor 2026-10-22): lo que sale va sin «−» (la lista entera es lo que sale).
         const pagos = await ev(`[...document.querySelectorAll('.pl-lista .pl-m .monto:not(.monto--ingreso)')].map(${visible})`);
-        check('lo que sale, sin «−»: «$12.00», «~$35.00» o «faltan $X»', pagos, (x) => x.length > 0 && x.every((m) => /^(\$|~\$|faltan \$)/.test(m)) && !x.some((m) => m.includes('−')));
+        check('lo que sale, sin «−»: «$12.00», «$35.00 aprox.» o «faltan $X» (ajuste 7)', pagos, (x) => x.length > 0 && x.every((m) => /^(\$|faltan \$)/.test(m)) && !x.some((m) => m.includes('−') || m.includes('~')));
         const ingresos = await ev(`[...document.querySelectorAll('.pl-lista .pl-m .monto--ingreso')].map(${visible})`);
-        check('todo ingreso suma («+», también el estimado: «+~»)', ingresos, (x) => x.length > 0 && x.every((m) => /^\+~?\$/.test(m)));
+        check('todo ingreso suma («+», también el estimado: «+$600.00 aprox.»)', ingresos, (x) => x.length > 0 && x.every((m) => /^\+\$/.test(m) && !m.includes('~')));
         check('el lector de pantalla oye «Gasto:», «Ingreso:» o «No suma aparte:» en cada monto', await ev(`[...document.querySelectorAll('.pl-lista .pl-m .monto')].map((m) => m.querySelector('.sr-only')?.textContent || '')`), (x) => x.length > 0 && x.every((t) => /^(Gasto|Ingreso|No suma aparte|Pagaste)/.test(t)));
         await foto('D-pagos-calendario');
         // Contraste de las marcas en los 4 temas (nunca solo color, y cuando hay color, ≥ 4.5:1).
@@ -338,7 +339,7 @@ try {
         // Ajuste 5 (puntos 4 y 9): «Ver por tipo» con «Ingresos»; lo del mes («Al mes, más o menos…») está en la pestaña Mes:
         // «Entra ~$X · Sale ~$Y».
         await clic('[data-fk="ver-tipo"]');
-        check('«Ver por tipo»: «Ingresos»; Mes: «Entra … · Sale …»', await texto('#pantalla'), (t) => t.includes('Ingresos') && /Entra ~?\$[\d,.]+ · Sale ~?\$/.test(t) && !/te entra|Lo que te pagan/i.test(t));
+        check('«Ver por tipo»: «Ingresos»; Mes: «Entra … · Sale …»', await texto('#pantalla'), (t) => t.includes('Ingresos') && /Entra \$[\d,.]+( aprox\.)? · Sale \$/.test(t) && !/te entra|Lo que te pagan/i.test(t));
         await foto('D-pagos-lista');
         await clic('[data-fk="ver-fecha"]');
     }

@@ -573,7 +573,7 @@
         const n = (t) => M.normalizar(t || '');
         const vars = M.variablesInfo(st).map((x) => ({ v: 'var:' + x.v.id, t: x.v.nombre, e: x.v.emoji, s: x.pasado ? `te pasaste ${dinero(x.pasado)}` : `te quedan ${dinero(x.falta)}` }));
         const vistos = new Set(vars.map((o) => n(o.t)));
-        const cats = [...D.CATEGORIAS.map((k) => P.cat(k.id, st)).filter((k) => !['servicios', 'cuotas'].includes(k.id) && (!k.oculta || k.id === valor)).map((k) => ({ v: k.id, t: k.nombre, e: k.emoji })), ...P.categoriasDe(st, 'variable').map((c) => ({ v: 'p:' + c.id, t: c.nombre, e: c.emoji }))].filter((o) => !vistos.has(n(o.t)) && vistos.add(n(o.t)));
+        const cats = [...D.CATEGORIAS.map((k) => P.cat(k.id, st)).filter((k) => !['servicios', 'cuotas'].includes(k.id) && (!k.oculta || k.id === valor)).map((k) => ({ v: k.id, t: k.nombre, e: k.emoji })), ...[...P.categoriasDe(st, 'gasto'), ...P.categoriasDe(st, 'variable')].map((c) => ({ v: 'p:' + c.id, t: c.nombre, e: c.emoji }))].filter((o) => !vistos.has(n(o.t)) && vistos.add(n(o.t)));
         const desde = M.sumarDias(st.hoy, -60);
         const cuenta = {};
         for (const r of st.registros) if (r.tipo === 'gasto' && !r.pago && r.fecha >= desde && r.fecha <= st.hoy) cuenta[r.propia ? 'p:' + r.propia : r.categoria] = (cuenta[r.propia ? 'p:' + r.propia : r.categoria] || 0) + 1;
@@ -1027,7 +1027,7 @@
             if (d.tipo === 'ingreso') return opciones(h, { campo: 'categoriaIngreso', label: '¿Qué es?', accion: 'anotarValor', valor: d.ingresoRef ? 'esperado' : d.tipoIng ? 'tipo:' + d.tipoIng : null, lista: [...(d.ingresoRef ? [{ v: 'esperado', t: d.nombre, e: d.emoji }] : []), ...D.TIPOS_INGRESO.filter((x) => !x.principal).map((x) => ({ v: 'tipo:' + x.id, t: x.nombre, e: x.emoji })), { v: 'prestamo', t: 'Me prestaron', e: '🤝' }] });
             // FM-7: «¿En qué?»: primero tus gastos variables con lo que queda; después los tipos de gasto, tus categorías y «Otra» (FM-5).
             if (d.tipo === 'gasto' && !d.soloDeudas) {
-                return chipsEnQue(st, h, { valor: enQueDe(st, d), mas: !!d.enQueMas }) + (d.otraCat ? P.nuevaCategoriaHtml(h, 'variable', { accion: 'anotarValor', catNombre: d.catNombre, catEmoji: d.catEmoji, catDup: d.catDup }) : '') + campoTexto(h, { campo: 'nombre', label: '¿Qué fue?', valor: d.nombre || '', placeholder: 'Ej. Pupusas', errorTexto: 'Escribe en qué fue' });
+                return chipsEnQue(st, h, { valor: enQueDe(st, d), mas: !!d.enQueMas }) + (d.otraCat ? P.nuevaCategoriaHtml(h, 'gasto', { accion: 'anotarValor', catNombre: d.catNombre, catEmoji: d.catEmoji, catDup: d.catDup }) : '') + campoTexto(h, { campo: 'nombre', label: '¿Qué fue?', valor: d.nombre || '', placeholder: 'Ej. Pupusas', errorTexto: 'Escribe en qué fue' });
             }
             if (d.tipo === 'prestamo') return campoTexto(h, { campo: 'nombre', label: '¿Cómo se llama esta deuda?', valor: d.nombre || '', placeholder: 'Ej. Préstamo de mi mamá', errorTexto: 'Ponle un nombre' });
             // FM-8: «pago» como sustantivo, solo para deudas («¿Cuál pago?» → «¿Cuál?», «¿Qué pago?» → «¿Qué es?»).
@@ -1647,7 +1647,7 @@
         // FM-5: «Otra» necesita el nombre de la categoría nueva (que no esté ya en «¿En qué?»).
         if (d.tipo === 'gasto' && d.otraCat) {
             const n = M.normalizar(d.catNombre || '');
-            d.catDup = n ? [...D.CATEGORIAS.map((k) => k.nombre), ...P.categoriasDe(st, 'variable').map((c) => c.nombre)].find((y) => M.normalizar(y) === n) || null : null;
+            d.catDup = n ? [...D.CATEGORIAS.map((k) => P.cat(k.id, st).nombre), ...P.categoriasDe(st, 'gasto').map((c) => c.nombre), ...P.categoriasDe(st, 'variable').map((c) => c.nombre)].find((y) => M.normalizar(y) === n) || null : null;
             if (!n || d.catDup) faltan.unshift('catNombre');
         }
         if (faltan.length) {
@@ -1703,7 +1703,8 @@
                     texto = `Anotamos tu préstamo: debes ${dinero(d.monto)}`;
                 } else if (d.tipo === 'gasto') {
                     // FM-5: «Otra» guarda la categoría nueva; FM-7: el gasto variable que elegiste lo consume.
-                    const cat = d.otraCat ? P.crearCategoria(s, { grupo: 'variable', nombre: d.catNombre.trim(), emoji: d.catEmoji || '🏷️' }) : null;
+                    // Ajuste 7 (punto 3): la que creas al anotar es del día a día.
+                    const cat = d.otraCat ? P.crearCategoria(s, { grupo: 'gasto', nombre: d.catNombre.trim(), emoji: d.catEmoji || '🏷️' }) : null;
                     const r = conOrden(P.registrar(s, { tipo: 'gasto', fecha: d.fecha, monto: d.monto, nombre: d.nombre, categoria: d.categoria, emoji: cat ? cat.emoji : d.emoji, medio: d.medio, anotado: true, nuevo: true, ...(d.variableNo ? { variable: null } : d.variableElegido ? { variable: d.variableElegido } : {}), ...(cat || d.propia ? { propia: cat ? cat.id : d.propia } : {}) }));
                     if (d.usarApartado && d.usarApartado !== 'no') {
                         const u = P.usarApartado(s, d.usarApartado, r);
@@ -4119,12 +4120,12 @@
     };
     // ================================================================== v2.8 AJUSTE 3 «Formularios claros» (APROBADO por Victor, 2026-10-22)
     /** FM-5: los grupos donde se crean categorías propias, con la categoría de base de lo que se guarda. */
-    const GRUPOS_CAT = { suscripcion: { t: 'Suscripciones', categoria: 'suscripciones' }, servicio: { t: 'Facturas y servicios', categoria: 'servicios' }, otro: { t: 'Otros gastos fijos', categoria: 'otros' }, variable: { t: 'Presupuestos', categoria: 'otros' } };
+    const GRUPOS_CAT = { gasto: { t: 'Gastos del día a día', categoria: 'otros' }, suscripcion: { t: 'Suscripciones', categoria: 'suscripciones' }, servicio: { t: 'Facturas y servicios', categoria: 'servicios' }, otro: { t: 'Otros gastos fijos', categoria: 'otros' }, variable: { t: 'Presupuestos', categoria: 'otros' } };
     P.GRUPOS_CAT = GRUPOS_CAT;
     /** FM-5: los íconos que se pueden elegir (los mismos dibujos de emoji de la app). */
     const ICONOS_CAT = ['🧾', '💡', '💧', '🔥', '📱', '🌐', '📺', '📡', '🗑️', '🏠', '🔑', '🛡️', '🎓', '📚', '💪', '🎬', '🎵', '🎮', '🐾', '🍼', '🧸', '🚗', '⛽', '🛒', '🍽️', '🧺', '💊', '🩺', '🎁', '🤝', '✂️', '🧩'];
     /** FM-6: lo frecuente de un gasto variable. */
-    const VARIABLES_FRECUENTES = [{ id: 'super', nombre: 'Súper', emoji: '🛒', categoria: 'super' }, { id: 'gasolina', nombre: 'Gasolina', emoji: '⛽', categoria: 'transporte' }, { id: 'comida', nombre: 'Comida', emoji: '🍽️', categoria: 'comida' }, { id: 'mercado', nombre: 'Mercado', emoji: '🧺', categoria: 'mercado' }, { id: 'transporte', nombre: 'Transporte', emoji: '🚌', categoria: 'transporte' }, { id: 'comidaAfuera', nombre: 'Comida afuera', emoji: '🍔', categoria: 'comida' }];
+    const VARIABLES_FRECUENTES = [{ id: 'super', nombre: 'Súper', emoji: '🛒', categoria: 'super' }, { id: 'gasolina', nombre: 'Gasolina', emoji: '⛽', categoria: 'transporte' }, { id: 'mercado', nombre: 'Mercado', emoji: '🧺', categoria: 'mercado' }, { id: 'transporte', nombre: 'Transporte', emoji: '🚌', categoria: 'transporte' }, { id: 'comidaAfuera', nombre: 'Comida afuera', emoji: '🍔', categoria: 'comida' }];
     // ================================================================== v2.8 AJUSTE 6, punto 2: categorías predefinidas editables
     // (APROBADO por Victor, 2026-10-22). Lo que la persona cambia vive en `st.categoriasBase[clave]`: { nombre, emoji, oculta }.
     // Renombrar cambia el nombre que se ve en todo el historial (los montos no); ocultar solo la quita de donde se crea.
@@ -4148,6 +4149,7 @@
     function catSuscripciones(st = P.st) {
         return window.DATOS.SUSCRIPCIONES.map((x) => conBase(st, 'suscripcion:' + x.id, x));
     }
+    P.catSuscripciones = catSuscripciones;
     function catVariables(st = P.st) {
         return VARIABLES_FRECUENTES.map((x) => conBase(st, claveVar(x.id), x));
     }
@@ -4189,7 +4191,7 @@
     };
     /** FM-5: los nombres que ya salen en «¿Cuál?» de un grupo (para no repetir una categoría). */
     function nombresDelGrupo(st, grupo) {
-        const fijos = grupo === 'suscripcion' ? catSuscripciones().filter((x) => x.id !== 'otra').map((x) => x.nombre) : grupo === 'variable' ? catVariables(st).map((x) => x.nombre) : catFrecuentes().filter((f) => !f.deuda && f.grupo === grupo).flatMap((f) => [f.nombre, f.etiqueta].filter(Boolean));
+        const fijos = grupo === 'gasto' ? D.CATEGORIAS.map((k) => P.cat(k.id, st).nombre) : grupo === 'suscripcion' ? catSuscripciones().filter((x) => x.id !== 'otra').map((x) => x.nombre) : grupo === 'variable' ? catVariables(st).map((x) => x.nombre) : catFrecuentes().filter((f) => !f.deuda && f.grupo === grupo).flatMap((f) => [f.nombre, f.etiqueta].filter(Boolean));
         return [...fijos, ...P.categoriasDe(st, grupo).map((c) => c.nombre)];
     }
     /** FM-5: «Otra»: la categoría nueva necesita un nombre que no esté ya en «¿Cuál?». */
@@ -4206,7 +4208,7 @@
     P.elegirIcono = elegirIcono;
     /** FM-5: «Otra»: el nombre y el ícono de la categoría nueva (se guarda con lo que estás agregando). */
     function nuevaCategoriaHtml(h, grupo, { accion = 'valor', catNombre = h.catNombre, catEmoji = h.catEmoji, catDup = h.catDup } = {}) {
-        return `<div class="ob-det cat-nueva">${campoTexto(h, { campo: 'catNombre', label: '¿Cómo se llama la categoría nueva?', valor: catNombre || '', placeholder: grupo === 'suscripcion' ? 'Ej. Crunchyroll' : grupo === 'variable' ? 'Ej. Farmacia' : 'Ej. Clases de inglés', errorTexto: catDup ? `Ya tienes «${catDup}»: elígela arriba` : 'Ponle un nombre' })}${elegirIcono({ accion, valor: catEmoji || '' })}<p class="fila-s">La guardo en ${esc(GRUPOS_CAT[grupo].t)}: la verás en «¿Cuál?» la próxima vez.</p></div>`;
+        return `<div class="ob-det cat-nueva">${campoTexto(h, { campo: 'catNombre', label: '¿Cómo se llama la categoría nueva?', valor: catNombre || '', placeholder: grupo === 'suscripcion' ? 'Ej. Crunchyroll' : grupo === 'variable' || grupo === 'gasto' ? 'Ej. Farmacia' : 'Ej. Clases de inglés', errorTexto: catDup ? `Ya tienes «${catDup}»: elígela arriba` : 'Ponle un nombre' })}${elegirIcono({ accion, valor: catEmoji || '' })}<p class="fila-s">La guardo en ${esc(GRUPOS_CAT[grupo].t)}: la verás en «¿Cuál?» la próxima vez.</p></div>`;
     }
     P.nuevaCategoriaHtml = nuevaCategoriaHtml;
     /** FM-1: lo que ya está en tu plan con ese nombre (sin mayúsculas ni tildes): gasto fijo, gasto variable o ingreso. */
@@ -4316,20 +4318,60 @@
             const st = P.st;
             const fila = (attrs, fk, emoji, nombre, marca = '') => `<li class="fila fila--cat"><button type="button" class="fila-main" ${attrs} data-fk="${fk}">${caja(emoji, 'emo--sm')}<span class="fila-txt"><span class="fila-t">${esc(nombre)}</span></span>${marca}${icon('chevron-right', 'ico-xs')}</button></li>`;
             const oculta = '<span class="cat-marca">Oculta</span>';
-            const grupos = catalogoBase(st).map((g) => {
+            const grupos = Object.fromEntries(catalogoBase(st).map((g) => [g.grupo, g]));
+            const lista = (grupo) => {
+                const g = grupos[grupo];
                 const filas = [
-                    ...g.items.map((x) => fila(`data-a="catAbrir" data-v="${x.clave}"`, 'catb-' + x.clave.replace(':', '-'), x.emoji, x.etiqueta || x.nombre, x.oculta ? oculta : '')),
-                    ...(g.grupo === 'gasto' ? [] : P.categoriasDe(st, g.grupo, { archivadas: true })).map((c) => fila(`data-a="hoja" data-hoja="categoria" data-id="${c.id}"`, 'cat-' + c.id, c.emoji, c.nombre, c.archivada ? oculta : '')),
+                    ...(g ? g.items : []).map((x) => fila(`data-a="catAbrir" data-v="${x.clave}"`, 'catb-' + x.clave.replace(':', '-'), x.emoji, x.etiqueta || x.nombre, x.oculta ? oculta : '')),
+                    ...P.categoriasDe(st, grupo, { archivadas: true }).map((c) => fila(`data-a="hoja" data-hoja="categoria" data-id="${c.id}"`, 'cat-' + c.id, c.emoji, c.nombre, c.archivada ? oculta : '')),
                 ];
-                return `<h3 class="campo-l campo-l--sec">${esc(g.t)}</h3><ul class="lista card">${filas.join('')}</ul>`;
-            });
+                return `<ul class="lista card">${filas.join('')}</ul>`;
+            };
+            // Ajuste 7 (punto 3, APROBADO por Victor 2026-10-22): cada grupo dice para qué es.
+            const titulo = (t, s = '') => `<h3 class="campo-l campo-l--sec cat-g">${esc(t)}</h3>${s ? `<p class="fila-s cat-g-s">${esc(s)}</p>` : ''}`;
+            const sub = (t) => `<p class="cat-sub">${esc(t)}</p>`;
             const fijas = CAT_FIJAS.map((x, k) => fila(`data-a="catAbrir" data-v="fija:${k}"`, 'catf-' + k, x.e, x.t, `<span class="cat-marca" aria-label="Fija">${emo('🔒', 16)}</span>`));
             return {
                 titulo: 'Mis categorías',
-                cuerpo: `<p class="txt">Cámbiales el nombre o el ícono, u ocúltalas. Lo anotado no cambia.</p>${grupos.join('')}<h3 class="campo-l campo-l--sec">Fijas</h3><ul class="lista card">${fijas.join('')}</ul>`,
+                cuerpo: `<button type="button" class="btn btn--full" data-a="hoja" data-hoja="categoriaNueva" data-fk="cat-nueva">${icon('plus', 'ico-s')}Nueva categoría</button>
+                    ${titulo('Gastos del día a día', 'Las eliges al anotar lo que gastas')}${lista('gasto')}
+                    ${titulo('Presupuestos', `Con un máximo ${P.cadaPlan(st)}`)}${lista('variable')}
+                    ${titulo('Gastos fijos')}${sub('Suscripciones')}${lista('suscripcion')}${sub('Facturas y servicios')}${lista('servicio')}${sub('Otros')}${lista('otro')}
+                    ${titulo('Fijas', 'La app las usa para tus cuentas')}<ul class="lista card">${fijas.join('')}</ul>`,
                 pie: pie1('cerrarHoja', 'Listo', 'cat-listo'),
             };
         },
+    };
+    /** Ajuste 7 (punto 3): «+ Nueva categoría»: «¿En qué grupo?», luego nombre e ícono (como «Otra», FM-5). */
+    const GRUPOS_NUEVA = [['gasto', 'Gastos del día a día'], ['variable', 'Presupuestos'], ['suscripcion', 'Suscripciones'], ['servicio', 'Facturas y servicios'], ['otro', 'Otros gastos fijos']];
+    H.categoriaNueva = {
+        iniciar(h) {
+            Object.assign(h, { grupo: null, otraCat: true, catNombre: '', catEmoji: '' });
+        },
+        html(h) {
+            return {
+                titulo: 'Nueva categoría',
+                cuerpo: `${opciones(h, { campo: 'grupo', label: '¿En qué grupo?', lista: GRUPOS_NUEVA.map(([v, t]) => ({ v, t })), valor: h.grupo || '', errorTexto: 'Elige el grupo' })}${h.grupo ? nuevaCategoriaHtml(h, h.grupo) : ''}`,
+                pie: `<button type="button" class="btn btn--48" data-a="hoja" data-hoja="categorias" data-fk="cat-volver">Volver</button><button type="button" class="btn btn--48 btn--prim" data-a="categoriaNuevaOk" data-fk="cat-nueva-ok">Guardar</button>`,
+            };
+        },
+        alValor(h, campo, v) {
+            h[campo] = v;
+            if (campo === 'grupo') h.catDup = null;
+        },
+        alCampo(h, campo, el) {
+            h[campo] = el.value;
+        },
+    };
+    P.acciones.categoriaNuevaOk = () => {
+        const h = P.ui.hoja;
+        const st = P.st;
+        if (!validar(h, h.grupo ? faltaCategoria(st, h, h.grupo) : ['grupo'])) return;
+        const nombre = nombreNuevo(h.catNombre);
+        const grupo = h.grupo;
+        P.ui.hoja = null;
+        P.cambiar((s) => P.crearCategoria(s, { grupo, nombre, emoji: h.catEmoji || '🏷️' }), { aviso: `${nombre}: lista en ${GRUPOS_CAT[grupo].t}`, claves: ['guardado:categoria', 'guardado:categoria:nueva'] });
+        P.abrirHoja('categorias');
     };
     P.acciones.catAbrir = (d) => P.abrirHoja('categoria', String(d.v).startsWith('fija:') ? { fija: Number(String(d.v).slice(5)) } : { clave: d.v });
     H.categoria = {
@@ -4354,12 +4396,15 @@
             }
             const c = h.clave ? baseDe(P.st, h.clave) : (P.st.categoriasPropias || []).find((x) => x.id === h.id);
             const cambiada = h.clave && (P.st.categoriasBase || {})[h.clave];
+            // Ajuste 7 (punto 3): una del día a día (predefinida o tuya) puede volverse presupuesto.
+            const delDia = h.clave ? h.clave.startsWith('gasto:') : c.grupo === 'gasto';
             return {
                 titulo: `Editar ${esc(h.clave ? c.etiqueta || c.nombre : c.nombre)}`,
                 cuerpo: `${campoTexto(h, { campo: 'catNombre', label: '¿Cómo se llama?', valor: h.catNombre, errorTexto: h.catDup ? `Ya tienes «${esc(h.catDup)}»` : 'Ponle un nombre' })}
                     ${elegirIcono({ valor: h.catEmoji })}
                     <div class="chips"><button type="button" class="chip" aria-pressed="${!!h.archivada}" data-a="valor" data-campo="archivada" data-v="${!h.archivada}" data-fk="cat-archivar">${h.archivada ? icon('check', 'ico-xs') : ''}Ocultarla</button></div>
                     <p class="fila-s">Oculta no sale al crear. Lo que ya anotaste no cambia.</p>
+                    ${delDia ? `<p><button type="button" class="link link--start" data-a="categoriaMaximo" data-fk="cat-maximo">${icon('plus', 'ico-s')}Ponerle un máximo</button></p>` : ''}
                     ${cambiada ? `<p><button type="button" class="link link--start" data-a="categoriaOriginal" data-fk="cat-original">${icon('rotate-ccw', 'ico-s')}Volver al original («${esc(c.original.etiqueta || c.original.nombre)}»)</button></p>` : ''}`,
                 pie: `${volver}<button type="button" class="btn btn--48 btn--prim" data-a="categoriaOk" data-fk="cat-ok">Guardar cambios</button>`,
             };
@@ -4411,6 +4456,15 @@
             { aviso: oculta ? `Ocultaste ${nuevo}` : `${nuevo}: cambios guardados`, claves: ['guardado:categoria:editar', ...(oculta ? ['guardado:categoria:archivar'] : [])] },
         );
         P.abrirHoja('categorias');
+    };
+    /** Ajuste 7: «Ponerle un máximo»: «+ Presupuesto» con el nombre y el ícono de esa categoría (FM-1 si ya existe). */
+    P.acciones.categoriaMaximo = () => {
+        const h = P.ui.hoja;
+        const st = P.st;
+        const c = h.clave ? baseDe(st, h.clave) : (st.categoriasPropias || []).find((x) => x.id === h.id);
+        if (!c) return;
+        const pre = h.clave ? { nombre: c.nombre, emoji: c.emoji, categoria: c.id } : { nombre: c.nombre, emoji: c.emoji, categoria: 'otros', propia: c.id };
+        P.abrirHoja('nuevoPago', { fecha: 'variable', pre });
     };
     /** «Volver al original»: el nombre, el ícono y que se vea al crear, como venían. */
     P.acciones.categoriaOriginal = () => {
@@ -5153,7 +5207,7 @@
             ${top.sugerencias.length ? P.tarjetaSeccion('2. ¿Quieres ahorrar algo?', `<p class="txt txt--card">Te sugerimos; tú decides. Nada se ahorra solo.</p><ul class="sugs">${sug}</ul>`, { id: 'rep-sug' }) : P.tarjetaSeccion('2. ¿Quieres ahorrar algo?', `<p class="txt txt--card">Cuando tengas un ahorro, aquí te sugeriremos cuánto ponerle. Nada se ahorra solo.</p>`, { id: 'rep-sug' })}
             ${prox}
             ${cuadreReparte(st, top, prox ? 4 : 3)}
-            <section class="portada portada--quieta app-home-pattern" aria-label="Tu libre"><svg class="app-home-pattern-art" viewBox="0 0 320 180" preserveAspectRatio="xMaxYMax meet" aria-hidden="true" focusable="false">${ART.circles}</svg><div class="portada-b portada-b--quieta"><span class="portada-h">${esc(P.textoHorizonte(hz))}</span><span class="portada-l">Te queda libre</span><span class="portada-n" aria-live="polite">${dinero(k.libre)}</span><span class="portada-s">${k.porDia !== null ? `~${dinero(k.porDia, { aprox: true }).replace('~', '')} por día` : k.libre <= 0 ? esc(P.textoCero(k)) : ''}</span></div></section>
+            <section class="portada portada--quieta app-home-pattern" aria-label="Tu libre"><svg class="app-home-pattern-art" viewBox="0 0 320 180" preserveAspectRatio="xMaxYMax meet" aria-hidden="true" focusable="false">${ART.circles}</svg><div class="portada-b portada-b--quieta"><span class="portada-h">${esc(P.textoHorizonte(hz))}</span><span class="portada-l">Te queda libre</span><span class="portada-n" aria-live="polite">${dinero(k.libre)}</span><span class="portada-s">${k.porDia !== null ? `${dinero(k.porDia, { aprox: true })} por día` : k.libre <= 0 ? esc(P.textoCero(k)) : ''}</span></div></section>
             <button type="button" class="btn btn--prim btn--48 btn--full" data-a="reparteListo" data-fk="rep-listo">Listo</button>
         </div>`;
     };
@@ -5350,7 +5404,7 @@
         return `<div class="pg pg--flujo pg--logro">
             <div class="ilus-centro"><svg class="app-illustration" viewBox="0 0 200 150" aria-hidden="true" focusable="false">${ART.illus.bienvenida}</svg></div>
             <h1 class="h1 centro" tabindex="-1">¡Listo, estás al día!</h1>
-            <section class="portada portada--quieta app-home-pattern" aria-label="Tu libre"><svg class="app-home-pattern-art" viewBox="0 0 320 180" preserveAspectRatio="xMaxYMax meet" aria-hidden="true" focusable="false">${ART.circles}</svg><div class="portada-b portada-b--quieta"><span class="portada-h">${esc(P.textoHorizonte(k.hz))}</span><span class="portada-l">Libre</span><span class="portada-n">${dinero(k.libre)}</span><span class="portada-s">${k.porDia !== null ? `~${dinero(k.porDia, { aprox: true }).replace('~', '')} por día` : ''}</span></div></section>
+            <section class="portada portada--quieta app-home-pattern" aria-label="Tu libre"><svg class="app-home-pattern-art" viewBox="0 0 320 180" preserveAspectRatio="xMaxYMax meet" aria-hidden="true" focusable="false">${ART.circles}</svg><div class="portada-b portada-b--quieta"><span class="portada-h">${esc(P.textoHorizonte(k.hz))}</span><span class="portada-l">Libre</span><span class="portada-n">${dinero(k.libre)}</span><span class="portada-s">${k.porDia !== null ? `${dinero(k.porDia, { aprox: true })} por día` : ''}</span></div></section>
             <button type="button" class="btn btn--prim btn--48 btn--full" data-a="aldiaFin" data-fk="ad-fin">Ir a Hoy</button>
             <button type="button" class="link centro" data-a="aldiaDeshacer" data-fk="ad-deshacer">Deshacer todo</button>
         </div>`;
@@ -6291,7 +6345,7 @@
         if (k.hz.ingreso && k.proxima && (k.proxima.entra || k.proxima.pagos)) pend.push(`${esc(P.tituloPeriodo(k.proxima, k.hz))}: ${esc(P.lineaPeriodo(k.proxima))}${P.incluyePeriodo(k.proxima) ? ` (${esc(P.incluyePeriodo(k.proxima))})` : ''}.`);
         return `<div class="pg pg--flujo">
             <header class="pg-head"><p class="paso">¡Listo!</p><h1 class="h1" tabindex="-1">Tu primer número</h1><p class="sub">Es lo que puedes gastar ${esc(P.textoHorizonte(k.hz).split(" · ")[0].toLowerCase())} sin tocar tus pagos, tus deudas ni tus tarjetas.</p></header>
-            <section class="portada portada--quieta app-home-pattern" aria-label="Tu libre"><svg class="app-home-pattern-art" viewBox="0 0 320 180" preserveAspectRatio="xMaxYMax meet" aria-hidden="true" focusable="false">${ART.circles}</svg><div class="portada-b portada-b--quieta"><span class="portada-h">${esc(P.textoHorizonte(k.hz))}</span><span class="portada-l">Libre</span><span class="portada-n">${dinero(k.libre)}</span><span class="portada-s">${k.porDia !== null ? `~${dinero(k.porDia, { aprox: true }).replace('~', '')} por día` : ''}</span></div></section>
+            <section class="portada portada--quieta app-home-pattern" aria-label="Tu libre"><svg class="app-home-pattern-art" viewBox="0 0 320 180" preserveAspectRatio="xMaxYMax meet" aria-hidden="true" focusable="false">${ART.circles}</svg><div class="portada-b portada-b--quieta"><span class="portada-h">${esc(P.textoHorizonte(k.hz))}</span><span class="portada-l">Libre</span><span class="portada-n">${dinero(k.libre)}</span><span class="portada-s">${k.porDia !== null ? `${dinero(k.porDia, { aprox: true })} por día` : ''}</span></div></section>
             ${P.tarjetaSeccion('Así lo calculamos', `<ul class="d-items d-items--card"><li><span>Tienes</span><span>${dinero(k.tienes)}</span></li><li><span>Por pagar antes de tu ingreso</span><span>${k.porPagar + k.enTarjetas ? dinero(-(k.porPagar + k.enTarjetas)) : dinero(0)}</span></li>${k.reservadoPagos + k.reservadoProxima ? `<li><span>Reservado para pagos</span><span>${dinero(-(k.reservadoPagos + k.reservadoProxima))}</span></li>` : ''}<li class="d-total-li"><span>Libre</span><span>${dinero(k.libre)}</span></li></ul>`, { id: 'pn-calc' })}
             ${pend.length ? `<div class="nota nota--info" role="note">${icon('info')}<div><p><strong>Bueno saber</strong></p><ul class="mini-lista">${pend.map((x) => `<li>${x}</li>`).join('')}</ul></div></div>` : ''}
             <button type="button" class="btn btn--prim btn--48 btn--full" data-a="primerNumeroListo" data-fk="pn-listo">Ir a Hoy</button>
