@@ -18,6 +18,15 @@ Versión visible en la app y en la guía: **«Prototipo v2.9.2 · 2026-10-23»**
 
 ---
 
+## Prototipo v2.9.3 · Hoy claro (2026-10-23) — cierre y publicación
+
+**APROBADO por Victor (2026-10-23):** «si todo bien», tras re-probar Hoy C ronda 2 (equivale a su «todo aprobado, lancemos»). Se publica Hoy C con:
+
+1. **Arreglo C-2** (aprobado el 21 oct: ninguna pantalla dice «apartar», «apartado» ni «reservar»): en «Reparte tu quincena», la sección pasa a **«1. Ya no cuenta en tu libre»**, debajo se queda «Todavía no está pagado: lo marcas cuando pagues.» y «Total contado» pasa a **«Total»**. Se quita la excepción de `palabras-v28` (la prueba vuelve a estar como antes).
+2. **Limpieza:** fuera la vista previa (`vista-previa.js`, su `<script>`, el caso «8 presupuestos», `#ejemplo=`, la línea de githack y la clave de la vista previa) y las propuestas A y B con sus estilos; `S.hoy` llama directo a Hoy C. El entrenamiento, la guía de la computadora y los textos de casos pasan a Hoy C; después se quitan el Hoy anterior y el selector. En la portada, los círculos decorativos no restan contraste al texto.
+3. **Cierre:** versión «Prototipo v2.9.3 · 2026-10-23», service worker nuevo y un cuadrito de novedades, una sola vez.
+4. **Batería completa**, una prueba a la vez, y publicar en `main` solo con todo en verde; revisión en vivo en Pages con datos de la v2.9.2.
+
 ## Rama v2-9-3 · Rediseño de Hoy: A o B (vista previa, sin publicar · 2026-10-23)
 
 **APROBADO por Victor (2026-10-23)**, en modo ajuste: sin subir versión, sin cuadrito de novedades, sin tocar `main` ni `VERSION_SW`. Dos propuestas de Hoy para elegir; las dos leen los mismos números del motor y usan las mismas acciones de siempre (`hoy.js`).
