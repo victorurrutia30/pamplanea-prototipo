@@ -4697,7 +4697,11 @@ html.con-hazlo .mask {
     text-align: left;
 }
 .hoyA-pend > span {
+    display: -webkit-box;
     flex: 1;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
 }
 .hoyA-pend > .ico-s {
     color: var(--color-primary);

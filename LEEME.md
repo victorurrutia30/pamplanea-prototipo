@@ -18,6 +18,22 @@ Versión visible en la app y en la guía: **«Prototipo v2.9.2 · 2026-10-23»**
 
 ---
 
+## Rama v2-9-3 · Rediseño de Hoy: A o B (vista previa, sin publicar · 2026-10-23)
+
+**APROBADO por Victor (2026-10-23)**, en modo ajuste: sin subir versión, sin cuadrito de novedades, sin tocar `main` ni `VERSION_SW`. Dos propuestas de Hoy para elegir; las dos leen los mismos números del motor y usan las mismas acciones de siempre (`hoy.js`).
+
+- **A «Hoy claro»** (consistente con Mi plan y Mes): la portada con una sola línea; lo pendiente en una línea que abre «Por revisar»; presupuestos en 3 chips (los más cerca de su máximo); «Lo que viene» en dos grupos; un solo «+ Anotar» (el de abajo).
+- **B «Sin límites»**: el número con una barra Libre · Sale · Ahorros (los números de «Esta quincena»); «Para hoy» con cada cosa y su botón; «Lo que viene»; presupuestos con su barra. Plano, sin portada de color.
+- **Las dos:** «Lo que viene» va por con qué se paga: «Baja tu libre de hoy» y «Con tu quincena del 30 · no baja tu libre de hoy» (cada parte repartida en su grupo, con «de $X»); una línea por fila, 3 por grupo; «Ya lo pagué» a la vista solo si vence hoy o venció (las demás, al tocar la fila).
+- **«decisión técnica — REVISAR»:**
+  1. Las preguntas de una vez («¿Cuál es?», «¿Lo vas gastando en varias compras?», «Revisemos unos pagos de antes…») y «No se están guardando tus datos» siguen como tarjetas en Hoy (no dentro de la línea de pendientes): son raras, «nada cambia sin tu respuesta» y la fila V45 lo pide.
+  2. «Te faltan $X para cubrir lo que viene» ya no se repite en la lista de pendientes: lo dice el libre (y, si ya falta para lo que viene, tampoco «Faltan $Y para cubrir tus ahorros»).
+  3. Mientras un recorrido del entrenamiento, un ejercicio o la guía de la computadora están activos, se ve el Hoy de la v2.9.2 (lo señalan); al publicar hay que pasarlos al Hoy elegido.
+- **VISTA PREVIA — QUITAR ANTES DE PUBLICAR:** `vista-previa.js` (selector «Hoy A / Hoy B» arriba de Hoy y «Cargar ejemplo» con Pam, Majo, Toño y Rosa × 7 casos; recarga con `#ejemplo=` y no guarda nada), su `<script>` en `telefono.html`, la línea `#ejemplo=` de `arranque.js` y la de `ayuda.js` que no registra el service worker en raw.githack.com. Al publicar también se quita la propuesta que no se elija y `hoyClasico` si ya no hace falta.
+- **Pruebas:** `invariantes` 69 de 69 (con A); `personas-v29 --hoy=A` y `--hoy=B`: 0 diferencias; `palabras-v28`: 0 de 903. La comparación con capturas está en `pamplanea-capturas/prototipo-hoy-opciones/index.html`.
+
+---
+
 ## Prototipo v2.9.2 · Cada peso una vez (2026-10-23)
 
 **Base:** `main` en `c99221f` (v2.9.1 publicada). Rama `v2-9-2`. Con la autorización de Victor de la v2.9 («te dejo aprobado todo y bajo tu criterio … debe estar fix sin necesidad de que yo apruebe nada») y sus mismos límites: cero pérdidas, sin dependencias, no se borran pruebas y solo se publica con todo en verde. Las 2 decisiones de abajo («Manda con qué lo pagas» y las opciones de «¿Con qué ingreso la pagas?»): **APROBADAS por Victor (2026-10-23)**, tras la explicación del auditor.

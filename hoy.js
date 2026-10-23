@@ -208,7 +208,8 @@
         }
         for (const x of P.atencion(k)) {
             // «Te faltan $X para cubrir lo que viene» ya lo dice el libre (con «¿De dónde sale?»): no se repite.
-            if (x.id === 'falta' || (!conPagos && ['vencidos', 'hoy', 'manana'].includes(x.id))) continue;
+            // Y si ya falta para lo que viene, «Faltan $X para cubrir tus ahorros» es lo mismo dicho con otro número.
+            if (x.id === 'falta' || (x.id === 'ahorros' && k.faltaPagos > 0) || (!conPagos && ['vencidos', 'hoy', 'manana'].includes(x.id))) continue;
             items.push({ id: x.id, nivel: x.nivel, corto: x.titulo, sub: x.texto, html: `<div class="nota ${cls(x.nivel)}">${icon(x.nivel === 'info' ? 'bell' : 'triangle-alert')}<div><p class="nota-t">${esc(x.titulo)}</p>${x.texto ? `<p>${esc(x.texto)}</p>` : ''}<div class="nota-acc">${x.acciones}</div></div></div>`, acciones: x.acciones });
         }
         for (const x of k.variables.filter((y) => M.preguntarVariable(st, y))) {
@@ -272,7 +273,8 @@
         // Lo pendiente: una sola línea. ⚠ solo si algo pide atención de verdad; si no, una campana.
         const pend = pendientes(k);
         const urgente = pend.some((x) => x.nivel === 'rojo' || x.nivel === 'ambar');
-        const lineaPend = pend.length ? `<button type="button" class="hoyA-pend${urgente ? ' hoyA-pend--urg' : ''}" data-a="hoja" data-hoja="hoyRevisar" data-fk="hoy-revisar" aria-haspopup="dialog">${icon(urgente ? 'triangle-alert' : 'bell', 'ico-s')}<span>${pend.length === 1 ? '1 cosa por revisar' : `${pend.length} cosas por revisar`}</span>${icon('chevron-right', 'ico-xs')}</button>` : '';
+        // Con una sola cosa, la línea dice cuál es; con más, cuántas.
+        const lineaPend = pend.length ? `<button type="button" class="hoyA-pend${urgente ? ' hoyA-pend--urg' : ''}" data-a="hoja" data-hoja="hoyRevisar" data-fk="hoy-revisar" aria-haspopup="dialog">${icon(urgente ? 'triangle-alert' : 'bell', 'ico-s')}<span>${pend.length === 1 ? esc(pend[0].corto) : `${pend.length} cosas por revisar`}</span>${icon('chevron-right', 'ico-xs')}</button>` : '';
         // Presupuestos: 3 chips, los más cerca de su máximo; el resto, en «Ver todos».
         const pres = presupuestos(k);
         const todos = !!P.ui.hoyPresTodos;
@@ -334,7 +336,7 @@
               : [['libre', k.libre, 'Libre', k.libre], ['sale', S, 'Sale', S], ['ahorro', A, 'Ahorros', A]];
         const visibles = partes.filter(([, , , m]) => m > 0 || 0);
         const barra = T > 0 || S > 0
-            ? `<p class="hb-de">Tienes ${dinero(T)} en ${esc(st.lugares.length === 1 ? st.lugares[0].nombre : plural(st.lugares.length, 'cuenta', 'cuentas'))}${k.faltaPagos > 0 ? '' : ', así se reparte:'}</p>
+            ? `<p class="hb-de">${k.faltaPagos > 0 ? `Tienes ${dinero(T)}` : `Tus ${dinero(T)} se reparten así:`}</p>
                 <div class="hb-barra" aria-hidden="true">${visibles.filter(([, w]) => w > 0).map(([c, w]) => `<span class="hb-seg hb-seg--${c}" style="flex-grow:${w}"></span>`).join('')}</div>
                 <ul class="hb-ley hb-ley--${visibles.length}">${visibles.map(([c, , t, m]) => `<li${c === 'falta' ? ' class="hb-ley-falta"' : ''}><span class="hb-ley-t"><span class="hb-pt hb-seg--${c}" aria-hidden="true"></span>${esc(t)}</span><span class="monto">${dinero(m)}</span></li>`).join('')}</ul>`
             : '';
