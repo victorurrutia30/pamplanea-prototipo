@@ -222,7 +222,8 @@ if (partes.includes('a')) {
         const desglose = await texto('.hoja');
         notas.A.desglose = desglose;
         check('«¿De dónde sale?»: por pagar $0.00, libre $1,000.00', desglose, (t) => t.includes('Por pagar antes del 30') && t.includes('$1,000.00'));
-        check('«¿De dónde sale?»: la tarjeta, con la quincena del 30', desglose, contiene('Crédito BAC ($100.00 aprox., vence el 14 nov): se paga con tu quincena del 30, no con lo que tienes hoy.'));
+        // v2.9 (R3): «¿De dónde sale?» de hoy solo con lo de hoy: la tarjeta (con la quincena del 30) está en Mi plan → Próxima.
+        check('«¿De dónde sale?»: la tarjeta no cuenta hoy (va con la quincena del 30)', desglose, (t) => typeof t === 'string' && !t.includes('Crédito BAC') && t.includes('$1,000.00'));
         await foto('A-desglose');
         await abrirTarjeta('Crédito BAC');
         const con = await seccionCon('Lo pagas con');
@@ -444,7 +445,7 @@ if (partes.includes('e')) {
             await ev(`P.irTab('hoy'); true`);
             notas['E ' + n].proximaQuincena = pantalla;
             if (n === '14 y 29') {
-                check('«Próxima quincena (29)»: entra $550.00 aprox. · sale $157.00 aprox. · te quedarían $393.00 aprox.', pantalla, contiene('Entra $550.00 aprox. · Sale $157.00 aprox.', 'Te quedarían', '$393.00 aprox.'));
+                check('«Próxima quincena (29)»: entra $550.00 aprox. · sale $157.00 aprox. · te quedarían $393.00 aprox.', pantalla, contiene('Entra $550.00 aprox. · Sale $157.00', 'Te quedarían', '$393.00 aprox.')); // v2.9 (R11): «Sale» sin estimados, sin «aprox.»
                 await foto('E-hoy');
                 // Pagos → Próxima: el préstamo con la del 29.
                 await ev(`P.irTab('pagos'); true`);
@@ -563,7 +564,7 @@ if (partes.includes('f')) {
         await ev(`(() => { P.sinGuardar = true; localStorage.clear(); localStorage.setItem('pamplanea-uso:v1', ${js(datos)}); localStorage.setItem('pamplanea-entrenamiento', ${js(progreso)}); localStorage.setItem('pamplanea-modo', JSON.stringify({ modo: 'uso', notaAvisos: true, ofertaTarjetas: 'no', tips: { hoy: true, pagos: true, midinero: true, mes: true, anotar: true, pago: true, cuentas: true, ahorros: true, deudas: true } })); return true; })()`);
         await abrirApp();
         // v2.7: la versión que abre estos datos ya es la v2.7 (la prueba sigue midiendo lo mismo).
-        check('es la v2.6.7 o más nueva', await ev('window.VERSION_PROTOTIPO'), (v) => /2\.6\.7|2\.[78]\.\d/.test(v));
+        check('es la v2.6.7 o más nueva', await ev('window.VERSION_PROTOTIPO'), (v) => /2\.6\.7|2\.[789]\.\d/.test(v));
         const n = await numeros();
         notas.F1 = { numeros: n, tarjeta: await infoTarjeta('Crédito Agrícola') };
         check('el libre se recalcula: $50.00 − $25.00 del Internet (con lo que tiene) = $25.00', n.libre, 2500);

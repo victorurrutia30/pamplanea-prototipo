@@ -1244,8 +1244,9 @@
             if (x && x.soloFechas) notas.push(`Ojo: ${P.textoFaltaFechas(x).replace(/^El /, 'el ')}`);
             // R1: «este mes llevas $X en ventas» es de este mes: en las otras pestañas solo se dice que tus ventas cuentan al anotarlas.
             if (P.variable() && modelo.entra) notas.push('tus ventas cuentan cuando las anotas');
-            // R4 / R11: qué incluye «Te quedarían», en palabras simples (y lo mismo en Hoy y en «¿De dónde sale?»).
-            notas.push(TE_QUEDARIAN);
+            // R4 / R11: qué incluye «Te quedarían», en palabras simples (y lo mismo en Hoy y en «¿De dónde sale?»). Quien vende y no
+            // espera nada ve «Sale»: ahí no aplica.
+            if (!(P.variable() && !modelo.entra)) notas.push(TE_QUEDARIAN);
         }
         const q = rango.tipo === 'actual' ? 'libre' : vista === 'proxima' ? 'proxima' : 'planMes';
         return `<div class="plan-res-w"><button type="button" class="plan-res${falta ? ' plan-res--falta' : ''}" data-a="hoja" data-hoja="desglose" data-vista="${vista}" data-fk="plan-resumen">

@@ -448,7 +448,9 @@ if (partes.includes('e')) {
         check('Pagos: su pago el 14 nov', await ocTarjeta('Crédito BAC'), ['2026-11-14:pendiente:10000']);
         check('Mes: octubre no cuenta ese pago', await ev(`MOTOR.pagosDelMes(P.st, 2026, 10).pagos`), 0);
         await clic('[data-fk="portada"]', 400);
-        check('desglose: «vence el 14 nov»', await texto('.hoja'), (t) => t.includes('Crédito BAC ($100.00 aprox., vence el 14 nov): se paga con tu quincena del 30') && !t.includes('14 oct'));
+        // v2.9 (R3): «¿De dónde sale?» de hoy solo con lo de hoy; la tarjeta del 14 nov está en Mi plan → Próxima.
+        check('desglose de hoy: sin la tarjeta del 14 nov (no cuenta hoy)', await texto('.hoja'), (t) => typeof t === 'string' && !t.includes('Crédito BAC') && !t.includes('14 oct'));
+        check('Mi plan → Próxima: «14 nov · Crédito BAC $100.00 aprox.»', await ev(`(() => { P.cerrarHoja({ sinFoco: true }); P.ui.pagosVista = 'proxima'; P.ui.pagosModo = 'fecha'; P.irTab('pagos'); const b = document.querySelector('[data-fk^="t-"][data-fk$="-2026-11-14"]'); const t = b ? b.textContent : ''; P.ui.pagosVista = 'actual'; P.irTab('hoy'); return t; })()`), (t) => typeof t === 'string' && t.includes('$100.00 aprox.'));
         await ev('P.cerrarHoja(); true');
         await ev(`P.irTab('midinero'); P.abrir('tarjeta', P.st.tarjetas[0].id); true`);
         await esperar(400);
