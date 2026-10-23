@@ -47,6 +47,16 @@ Las preguntas de una vez y «No se están guardando tus datos» siguen como tarj
 - **decisión técnica — REVISAR:** como en A, de un pago con algo vencido (que ya está en «Para hoy») «Lo que viene» no muestra el del mes siguiente (V2-80); la elección A/B/C de la vista previa usa una clave nueva, para que C se vea primero aunque antes se eligiera A o B.
 - **Pruebas (con C por defecto):** `invariantes` 69 de 69; `personas-v29 --hoy=C`: 0 diferencias (4 personas, 72 días); `palabras-v28`: 0 de 903. Capturas de C revisadas con Pam y Rosa en los 7 casos, Serena claro y Ancla oscuro.
 
+### Hoy C · ronda 2 (APROBADO por Victor, 2026-10-23)
+
+Victor aprobó los 5 puntos del auditor, a partir de sus pruebas de Hoy C. Sus frases: «Nada pendiente para hoy, ¿ese siempre va estar?», «los chips pueden en vez de "ver más" swipe to right para ver más? como carrusel? solo que sin auto moverse», «al darle pagar me apareció en con tu quincena del 30 y aún me aparece que lo puedo pagar», «Reparte tu quincena … ¿y aquí marca como pagado?» y «revisemos detalladamente cómo se ven los chips cuando se expanden verticalmente».
+
+1. **«Para hoy» vacío:** sin título ni caja verde, una sola línea discreta y neutral: «✓ Nada pendiente para hoy». Con algo pendiente, igual que ahora. Con Libre en $0 o negativo, nada en verde.
+2. **Presupuestos en carrusel, sin moverse solo:** una fila que se desliza con el dedo (scroll-snap), con el siguiente chip asomado (~⅓); primero los pasados de su máximo y después los más cerca; deslizar a los lados no traba el scroll vertical; es una lista con etiqueta, se recorre con Tab, el foco se ve y lleva el chip a la vista; con «reducir movimiento» nada se anima. «Ver todos (N)», chico en el encabezado, abre la lista completa que ya existe (sin «Ver menos»). Si todos caben (pantallas anchas), una fila sin carrusel. Se mantiene: misma altura, nombre de máximo 2 líneas con «…», monto completo y el pasado con ⚠ y texto.
+3. **La luz de noviembre (no pagar dos veces la equivocada):** en «Lo que viene», lo que no vence hoy ni está vencido dice de cuál se trata: mensual «Ya pagué la de noviembre»; semanal, catorcenal o tarjeta «Ya pagué la del 12 nov». Lo de hoy o vencido sigue con «Ya lo pagué». La hoja de pago lleva el mes en el título («Luz de noviembre · vence el 12 nov», «Luz de octubre · venció el 12 oct»). Al pagar, si la siguiente ya está en «Lo que viene», el aviso dice «Luz de octubre pagada ✓ · la de noviembre sigue en tu plan» (con «Cambiar» y «Deshacer»). Mientras la de octubre está vencida, la de noviembre no se muestra.
+4. **Reparte tu quincena:** «1. Ya está contado» pasa a «1. Apartado para tus pagos», con la línea «Todavía no está pagado: lo marcas cuando pagues.». Filas y números iguales.
+5. **La tarjeta con un solo nombre:** con apodo, el apodo en Hoy, Reparte, Mi plan y Mes; en su ficha, el apodo y el nombre del banco. Si el monto de una misma tarjeta es distinto entre pantallas (p. ej. $120 el 5 nov en Hoy y $165 en Reparte), se explica en la misma fila («$120 del 5 nov + $45 de compras nuevas»). Ningún número ni cálculo cambia.
+
 ---
 
 ## Prototipo v2.9.2 · Cada peso una vez (2026-10-23)
