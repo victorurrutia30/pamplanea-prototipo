@@ -62,6 +62,11 @@ Versión visible en la app y en la guía: **«Prototipo v2.9.1 · 2026-10-23»**
 - **Tarjeta, Mi plan y Mes:** `v267` (a–c, d–f), `v267-editar`, `v262`, `v265`, `v266` (a–d, e–g), `v231`, `v24`, `qa-v261`, `humo`, `montos`, `contraste`, `contraste-v23`, `aceptacion-v23`, `entrega2-v23`, `viaje-v23` y `v25` (a–f, g–k): sin fallos.
 - **`palabras-v28`:** 0 de 903.
 - **`capturas-v291`** (nueva) a 390×844, revisadas como imágenes: Editar con el 14, la ficha (todo dice 14 nov), Mi plan → Mes de noviembre, Hoy y «¿Cuál es?».
+- **Publicada (main `8852530`) y revisada en vivo en Pages**, con un perfil de prueba:
+  - la app instalada con la v2.9.0 y la tarjeta de Victor mostró «Hay una versión nueva · Actualizar»;
+  - abrió la v2.9.1 con solo su caché y el cuadrito «¿Cuál es?»; con «14 nov», todo dice el 14 nov;
+  - la copia «antes de la v2.9.1» es idéntica a lo guardado. Lo único que cambia es que `cerrados` y `reservas`, si faltaban, quedan como listas vacías (`arranque.js`, como antes);
+  - con datos sin nada que cambie, no sale el cuadrito.
 
 ---
 
