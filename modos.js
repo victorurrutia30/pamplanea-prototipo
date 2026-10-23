@@ -171,6 +171,8 @@
     const anteriorA29 = (v) => !numVersion(v) || cmpVersion(numVersion(v), [2, 9, 0]) < 0;
     /** v2.9.1: ¿lo guardó una versión anterior a la v2.9.1? */
     const anteriorA291 = (v) => !numVersion(v) || cmpVersion(numVersion(v), [2, 9, 1]) < 0;
+    /** v2.9.2: ¿lo guardó una versión anterior a la v2.9.2? */
+    const anteriorA292 = (v) => !numVersion(v) || cmpVersion(numVersion(v), [2, 9, 2]) < 0;
     /**
      * v2.7 (DATOS-2, F20): ¿se puede usar? `estricto` (al restaurar una copia): la forma de cada cosa, sus montos en
      * centavos enteros, sus fechas y que lo que se nombra exista. Siempre: calcular en una copia aparte, antes de escribir
@@ -345,6 +347,51 @@
         }
         if (tarjetas.length) u.novedades = { ...(u.novedades || {}), 'v2.9.1': { fecha: new Date().toISOString(), visto: null, de: crudo.version || null, tarjetas } };
     }
+    /**
+     * v2.9.2 (APROBADO por Victor, 2026-10-23): lo que pagas con un ingreso de otro periodo se cuenta una sola vez, también en
+     * Mi plan → Mes. El cuadrito sale solo a quien le cambió el número de algún mes, con una línea amable con el antes y el
+     * después («Tu mes de noviembre: te quedarían $X; antes decía $Y porque la tarjeta se contaba dos veces»).
+     */
+    function lineasMes292(x) {
+        const k = M.calcular(x);
+        const [y0, m0] = M.partes(x.hoy);
+        const queda = (q) => (q >= 0 ? `te quedarían ${dinero(q)}` : `te faltarían ${dinero(-q)}`);
+        const meses = [];
+        for (let i = 0; i < 4; i++) {
+            const [y, m] = M.mesMas(y0, m0, i);
+            const rango = { desde: `${y}-${M.pad(m)}-01`, hasta: M.fechaDe(y, m, 31), t: '', vacio: '', tipo: 'mes' };
+            const ahora = P.planPestana(rango, k, { st: x });
+            const antes = P.planPestana(rango, k, { st: x, antes292: true });
+            if (ahora.quedan !== antes.quedan) meses.push({ m, ahora, antes, grises: ahora.filas.filter((f) => f.cubierta) });
+        }
+        const nombres = (xs) => P.lista([...new Set(xs.map((f) => f.nombre))]);
+        const lineas = [];
+        for (const z of meses.filter((z) => z.ahora.quedan > z.antes.quedan && z.grises.length)) {
+            const unaSola = z.grises.length === 1 && z.grises[0].cubierta.length === 1;
+            const varias = new Set(z.grises.map((f) => f.nombre)).size > 1;
+            lineas.push(`Tu mes de ${M.MESES[z.m - 1]}: ${queda(z.ahora.quedan)}; antes decía ${dinero(z.antes.quedan)} porque ${nombres(z.grises)} se contaba${varias ? 'n' : ''} dos veces.`);
+            lineas.push(unaSola ? `Ahora cuenta en ${M.MESES[M.partes(z.grises[0].cubierta[0].fecha)[1] - 1]}, con ${z.grises[0].cubierta[0].fuente}.` : `Ahora cada parte cuenta una sola vez, con el ingreso que la paga.`);
+        }
+        if (!lineas.length) {
+            for (const z of meses.filter((z) => z.ahora.quedan < z.antes.quedan)) {
+                const movidas = z.ahora.filas.filter((f) => f.vence && f.cuenta && !z.antes.filas.some((g) => g.fk === f.fk));
+                if (movidas.length) lineas.push(`Tu mes de ${M.MESES[z.m - 1]}: ${queda(z.ahora.quedan)}; antes decía ${dinero(z.antes.quedan)}. Ahí se paga ${nombres(movidas)}, con el ingreso que elegiste.`);
+            }
+        }
+        return lineas.slice(0, 4);
+    }
+    function prepararNovedades292(u, crudo) {
+        if (!u.st || !u.st.configurado || u.st.persona !== 'uso' || esDeEjemplo(u.st) || !anteriorA292(crudo.version) || (u.novedades && u.novedades['v2.9.2'])) return;
+        let lineas = [];
+        try {
+            const x = structuredClone(u.st);
+            x.hoy = hoy();
+            lineas = lineasMes292(x);
+        } catch {
+            lineas = [];
+        }
+        if (lineas.length) u.novedades = { ...(u.novedades || {}), 'v2.9.2': { fecha: new Date().toISOString(), visto: null, de: crudo.version || null, lineas } };
+    }
 
     let uso = null;
     /** v2.6.1 (QA H-01): otra pestaña (o Safari y la app instalada a la vez) guardó tus datos y aquí todavía no se cargan. */
@@ -371,6 +418,7 @@
             const tmp = structuredClone(g.uso);
             prepararNovedades(tmp, crudo);
             prepararNovedades291(tmp, crudo);
+            prepararNovedades292(tmp, crudo);
             g.novedades = tmp.novedades || null;
         }
         const u = structuredClone(g.uso);
@@ -555,13 +603,26 @@
     const NOV_TITULO = '¡Tus números, más claros! ✨';
     const NOV_CIERRE = 'Tus datos están completos y a salvo.';
     let novPrevio = null;
-    /** La clave del cuadrito que toca: el de la v2.9 primero; el de la v2.9.1 (si le toca algo) cuando ya se vio el otro. */
+    /**
+     * La clave del cuadrito que toca: el de la v2.9 primero; el de la v2.9.1 y el de la v2.9.2 (si le toca algo) cuando ya
+     * se vio el anterior.
+     */
     function novedadPendiente() {
         if (P.modo !== 'uso' || bloqueo || !uso || !uso.st || !uso.st.configurado || uso.st.persona !== 'uso') return null;
         const n = uso.novedades || {};
         if (n['v2.9'] && !n['v2.9'].visto) return 'v2.9';
         if (n['v2.9.1'] && !n['v2.9.1'].visto) return 'v2.9.1';
+        if (n['v2.9.2'] && !n['v2.9.2'].visto) return 'v2.9.2';
         return null;
+    }
+    /** v2.9.2: lo que cambió en Mi plan → Mes, con su antes y después. */
+    function cuerpo292() {
+        const n = uso.novedades['v2.9.2'];
+        return `<h2 class="nov-t" id="nov-t" tabindex="-1">Tu mes, bien contado ✨</h2>
+            <ul class="nov-lista" id="nov-x">${(n.lineas || []).map((l) => `<li>${icon('check', 'ico-xs')}<span>${esc(l)}</span></li>`).join('')}</ul>
+            <p class="nov-cierre">${esc(NOV_CIERRE)}</p>
+            <button type="button" class="btn btn--prim btn--48 btn--full" data-a="novedadesOk" data-fk="nov-ok">¡Entendido!</button>
+            <button type="button" class="link nov-recuperar" data-a="novedadesRecuperar" data-fk="nov-recuperar">¿Algo se ve raro? Recupera tus datos</button>`;
     }
     const novedadesPendientes = () => !!novedadPendiente();
     /** v2.9.1: las respuestas de este cuadrito (la línea con el antes y el después). */
@@ -611,7 +672,7 @@
         const lineas = clave === 'v2.9' ? lineasNovedades(uso) : [];
         novPrevio = document.activeElement;
         const capa = Object.assign(document.createElement('div'), { id: 'capa-novedades', className: 'capa-novedades' });
-        capa.innerHTML = M.unPunto(`<div class="nov-fondo"></div><section class="nov" role="dialog" aria-modal="true" aria-labelledby="nov-t" aria-describedby="nov-x">${clave === 'v2.9.1' ? cuerpo291() : `
+        capa.innerHTML = M.unPunto(`<div class="nov-fondo"></div><section class="nov" role="dialog" aria-modal="true" aria-labelledby="nov-t" aria-describedby="nov-x">${clave === 'v2.9.1' ? cuerpo291() : clave === 'v2.9.2' ? cuerpo292() : `
             <h2 class="nov-t" id="nov-t" tabindex="-1">${esc(NOV_TITULO)}</h2>
             <ul class="nov-lista" id="nov-x">${lineas.map((l) => `<li>${icon('check', 'ico-xs')}<span>${esc(l)}</span></li>`).join('')}</ul>
             <p class="nov-cierre">${esc(NOV_CIERRE)}</p>
@@ -637,7 +698,7 @@
             if (el) el.inert = ['vista', 'nav'].includes(id) && !!(P.ui && P.ui.hoja);
         }
         // Una sola vez: queda guardado con tus datos (al recargar no vuelve). Si traía lo de la v2.8 o la v2.7, también queda visto.
-        if (clave === 'v2.9.1' && uso && uso.novedades && uso.novedades['v2.9.1']) uso.novedades['v2.9.1'].visto = new Date().toISOString();
+        if ((clave === 'v2.9.1' || clave === 'v2.9.2') && uso && uso.novedades && uso.novedades[clave]) uso.novedades[clave].visto = new Date().toISOString();
         else if (uso && uso.novedades && uso.novedades['v2.9']) {
             const ahora = new Date().toISOString();
             const n = uso.novedades['v2.9'];

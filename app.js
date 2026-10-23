@@ -1027,10 +1027,12 @@
      * - Mes: lo de sus fechas, con tus presupuestos y tu ahorro de cada periodo que empieza ese mes.
      * Las filas en gris no suman: van en una tarjeta, se descuentan de tu salario, ya las pagaste o ya las contaste.
      * Un ingreso de una vez está solo mientras lo esperas (R8): cuando llega ya es parte de lo que tienes y lo ves en Mes.
-     * Devuelve las filas y Entra, Sale y lo que queda.
+     * v2.9.2 «Manda con qué lo pagas» (APROBADO por Victor, 2026-10-23): lo que pagas con un ingreso de otro periodo que el de
+     * su vencimiento suma solo donde está ese ingreso, bajo su fecha («29 oct · Tarjeta Liss · vence el 14 nov»), también en
+     * Mes; en su vencimiento se ve en gris, sin sumar («ya cubierta con tu quincena del 29 oct»). Lo normal queda igual.
+     * Devuelve las filas y Entra, Sale y lo que queda. `st` y `antes292` (como la v2.9.1): para el cuadrito de novedades.
      */
-    function planPestana(rango, k) {
-        const st = P.st;
+    function planPestana(rango, k, { st = P.st, antes292 = false } = {}) {
         const filas = [];
         const fila = (x) => filas.push({ cuenta: true, aprox: false, hecha: false, marca: '', de: null, fecha: null, sub: '', ...x });
         const lugarDe = (id) => M.lugar(st, id)?.nombre || '—';
@@ -1053,6 +1055,27 @@
             fila({ grupo: grupoPago(p), tipo: 'pago', fecha: o.fecha, fk: `p-${p.id}-${o.fecha}`, abrir: abrirPago(p), emoji: p.emoji, nombre: p.nombre, monto: monto !== null ? monto : pagado ? (o.hecho && o.hecho.monto) || o.monto : total || 0, de, aprox: !pagado && !!o.estimado, hecha: pagado || o.estado === 'saltado', cuenta: cuenta && !va && o.estado !== 'saltado', va, marca: marca !== null ? (marca === va ? '' : marca) : va ? '' : pagado ? `✓${sr(' Pagado')}` : o.estado === 'saltado' ? 'saltado' : o.parcial ? `faltan ${dinero(o.parcial.falta)}` : o.estado === 'vencido' ? 'venció' : '', sub: va || saleDe(st, p) });
         };
         const tarjetaSub = (t) => `se paga desde: ${lugarDe(M.pagoTarjetaPropuesto(st, t).lugar)}`;
+        // v2.9.2: con qué se paga cada parte (null: lo normal, en su fecha). Lo pagado sigue donde lo pagaste.
+        const hz = k.hz;
+        const fechaRegistro = (h) => (h && h.registro ? (st.registros.find((r) => r.id === h.registro) || {}).fecha || null : null);
+        const cubiertaPago = (p, o, monto) => (antes292 || P.vaEn(st, p) || o.estado === 'saltado' ? null : M.cubiertaDe(st, p, o, monto, { hz, pagadoEl: fechaRegistro(o.hecho) }));
+        const ultimoAbono = (t, o) => (st.registros.filter((r) => r.tipo === 'pagoTarjeta' && r.tarjeta === t.id && (!o.estadoCuenta || r.fecha >= o.estadoCuenta.corte) && r.fecha <= M.sumarDias(o.fecha, 45)).map((r) => r.fecha).sort().at(-1) || null);
+        const cubiertaTarjeta = (t, o, monto) => (antes292 || o.monto === null || o.estado === 'arrastrado' || o.estado === 'porConfirmar' ? null : M.cubiertaDe(st, M.pagoDeTarjeta(t, o.fecha, monto), o, monto, { hz, crudo: (t.asignaciones || {})[o.fecha], pagadoEl: o.estado === 'pagado' ? ultimoAbono(t, o) : null }));
+        /** «tu quincena del 29 oct», «tu aguinaldo del 12 dic» o «lo que tienes ahora». */
+        const fuenteDe = (y) => {
+            if (y.de === 'ahora') return 'lo que tienes ahora';
+            if (y.de === 'despues') return 'lo que tengas cuando venza';
+            const ing = M.esUnico(y.de) ? M.ingresoDeClave(st, y.de) : M.principal(st);
+            if (!ing) return 'lo que tienes ahora';
+            if (M.esUnico(y.de)) return `tu ${ing.nombre.toLowerCase()} del ${M.fechaCorta(y.fecha)}`;
+            return ing.frecuencia === 'quincenal' ? `tu quincena del ${M.fechaCorta(y.fecha)}` : ing.frecuencia === 'semanal' || ing.frecuencia === 'catorcenal' ? `tu pago del ${M.fechaCorta(y.fecha)}` : `tu ${ing.nombre.toLowerCase()} del ${M.fechaCorta(y.fecha)}`;
+        };
+        /** En su vencimiento: «ya cubierta con tu quincena del 29 oct», o cómo quedó repartida («$50.19 con el 29 oct · $50.19 con el 14 nov»). */
+        const textoCubierta = (partes) => (partes.length === 1 ? `ya cubierta con ${fuenteDe(partes[0])}` : partes.map((y) => `${dinero(y.monto)} ${y.de === 'ahora' || y.de === 'despues' || M.esUnico(y.de) ? 'con ' + fuenteDe(y) : 'con el ' + M.fechaCorta(y.fecha)}`).join(' · '));
+        /** Una parte que cuenta en la fecha de su ingreso: «29 oct · Tarjeta Liss · vence el 14 nov». */
+        const filaParte = (base, o, y, total, extra = {}) => fila({ ...base, fecha: y.fecha, fk: `${base.fk}-de-${y.fecha}`, monto: y.monto, de: y.monto < total ? total : null, marca: extra.marca !== undefined ? extra.marca : y.monto < total ? `de ${dinero(total, { aprox: base.aprox })}` : '', bajo: y.fecha !== o.fecha ? `vence el ${M.fechaCorta(o.fecha)}` : '', vence: y.fecha !== o.fecha ? o.fecha : null, ...extra, cuenta: true });
+        /** En su vencimiento, en gris y sin sumar. */
+        const filaCubierta = (base, partes, extra = {}) => fila({ ...base, bajo: textoCubierta(partes), cubierta: partes.map((y) => ({ ...y, fuente: fuenteDe(y) })), ...extra, cuenta: false });
         if (rango.tipo === 'actual') {
             for (const ing of st.ingresos.filter((i) => i.activo !== false)) {
                 for (const o of M.ocurrenciasIngreso(st, ing, rango.desde, rango.hasta)) {
@@ -1066,13 +1089,31 @@
                 const pagado = o.estado === 'pagado';
                 fila({ grupo: 'deudas', tipo: 'tarjeta', fecha: o.fecha, fk: `t-${o.tarjeta.id}-${o.fecha}`, abrir: abrirTarjeta(o.tarjeta), emoji: o.tarjeta.emoji, nombre: P.nombreTarjeta(o.tarjeta), monto: o.monto || 0, cuenta: o.monto !== null && o.estado !== 'arrastrado', aprox: !!o.estimado && !pagado, hecha: pagado || o.estado === 'arrastrado', marca: o.monto === null ? 'por confirmar' : pagado ? `✓${sr(' Pagado')}` : o.estado === 'arrastrado' ? 'pasó al siguiente' : o.parcial ? `faltan ${dinero(o.parcial.falta)}` : '', sub: tarjetaSub(o.tarjeta) });
             }
+            // v2.9.2: lo que pagas con lo que tienes ahora y vence después de este periodo cuenta hoy («vence el 14 nov»).
+            if (!antes292) {
+                const reservados = new Map();
+                for (const y of k.reservados) {
+                    if (y.fecha <= rango.hasta) continue;
+                    const clave = `${y.tarjeta ? 't:' + y.tarjeta.id : 'p:' + y.pago.id}:${y.fecha}`;
+                    if (reservados.has(clave)) reservados.get(clave).parte += y.parte;
+                    else reservados.set(clave, { ...y });
+                }
+                for (const y of reservados.values()) {
+                    const parte = { de: 'ahora', monto: y.parte, fecha: st.hoy };
+                    if (y.tarjeta) filaParte({ grupo: 'deudas', tipo: 'tarjeta', fk: `t-${y.tarjeta.id}-${y.fecha}`, abrir: abrirTarjeta(y.tarjeta), emoji: y.tarjeta.emoji, nombre: P.nombreTarjeta(y.tarjeta), aprox: !!y.estimado, sub: tarjetaSub(y.tarjeta) }, y, parte, y.monto);
+                    else {
+                        const p = M.pago(st, y.pago.id) || y.pago;
+                        filaParte({ grupo: grupoPago(p), tipo: 'pago', fk: `p-${p.id}-${y.fecha}`, abrir: abrirPago(p), emoji: p.emoji, nombre: p.nombre, aprox: !!y.estimado, sub: saleDe(st, p) }, y, parte, y.monto);
+                    }
+                }
+            }
             for (const x of k.variables) {
                 // Revisión de diseñador (R12): aquí el monto es lo que te queda (lo que está en «Sale»), no el máximo.
-                const marca = x.saltado ? `saltado ${P.estePlan()}` : x.listo ? `te sobró ${dinero(x.sobro)} ✓` : x.pasado ? `te pasaste ${dinero(x.pasado)}` : 'te quedan';
+                const marca = x.saltado ? `saltado ${P.estePlan(st)}` : x.listo ? `te sobró ${dinero(x.sobro)} ✓` : x.pasado ? `te pasaste ${dinero(x.pasado)}` : 'te quedan';
                 fila({ grupo: 'presupuestos', tipo: 'presupuesto', fk: `pl-v-${x.v.id}`, abrir: `data-a="abrir" data-tipo="variable" data-id="${x.v.id}"`, emoji: x.v.emoji, nombre: x.v.nombre, monto: x.falta, hecha: !x.falta, marca, sub: `${marca === 'te quedan' ? `te quedan ${dinero(x.falta)}` : marca} de ${dinero(x.tope)}`, falta: x.falta });
             }
             for (const x of k.programado) {
-                const marca = x.guardado ? `ya lo guardaste ✓` : x.falta ? `${P.estePlan()}` : 'ya llegaste a tu meta';
+                const marca = x.guardado ? `ya lo guardaste ✓` : x.falta ? `${P.estePlan(st)}` : 'ya llegaste a tu meta';
                 fila({ grupo: 'ahorro', tipo: 'programado', fk: `pl-a-${x.a.id}`, abrir: `data-a="abrir" data-tipo="apartado" data-id="${x.a.id}"`, emoji: x.a.emoji, nombre: x.a.nombre, monto: x.falta, hecha: !x.falta, marca, falta: x.falta, sub: M.ahorroAparte(x.a) ? 'va a: aparte' : `va a: dentro de ${M.lugar(st, M.lugarAhorro(st, x.a))?.nombre || 'tu cuenta'}` });
             }
         } else {
@@ -1083,36 +1124,70 @@
                 for (const r of x.adelantos) fila({ grupo: 'ingresos', tipo: 'ingreso', fecha: r.adelanto.fecha, fk: `i-${r.adelanto.ingreso.id}-${r.adelanto.fecha}`, abrir: abrirIng(r.adelanto.ingreso), emoji: r.adelanto.ingreso.emoji, nombre: r.adelanto.ingreso.nombre, monto: r.monto, marca: 'llegó antes', sub: 'llegó antes: es de este periodo' });
                 if (x.entraGuardado) fila({ grupo: 'ingresos', tipo: 'reserva', fk: 'res-in', abrir: 'data-a="hoja" data-hoja="pasarProxima"', emoji: '📅', nombre: 'Lo que pasaste de antes', monto: x.entraGuardado, sub: 'lo pasaste de tu periodo anterior' });
                 const contadas = new Set();
+                // v2.9.2: lo que paga este ingreso y vence en otro periodo va bajo la fecha de este ingreso («vence el 14 nov»).
+                const cubiertas = new Map();
                 for (const y of x.partes) {
                     if (y.tarjeta) {
                         const ti = k.tarjetas.find((z) => z.t.id === y.tarjeta.id);
                         const total = ti ? (ti.ult.inicial ? ti.usual : ti.porPagarEstado) : y.parte;
+                        const cub = cubiertaTarjeta(y.tarjeta, y, y.monto);
+                        const parte = cub && cub.find((z) => z.de === y.de);
+                        if (parte) {
+                            cubiertas.set(`t:${y.tarjeta.id}:${y.fecha}`, cub);
+                            const comprado = total - y.monto;
+                            filaParte({ grupo: 'deudas', tipo: 'tarjeta', fk: `t-${y.tarjeta.id}-${y.fecha}`, abrir: abrirTarjeta(y.tarjeta), emoji: y.tarjeta.emoji, nombre: P.nombreTarjeta(y.tarjeta), aprox: !!y.estimado, sub: comprado > 0 ? `${dinero(comprado)} ya los contaste al comprar` : tarjetaSub(y.tarjeta) }, y, { ...parte, monto: y.parte }, total);
+                            continue;
+                        }
                         fila({ grupo: 'deudas', tipo: 'tarjeta', fecha: y.fecha, fk: `t-${y.tarjeta.id}-${y.fecha}`, abrir: abrirTarjeta(y.tarjeta), emoji: y.tarjeta.emoji, nombre: P.nombreTarjeta(y.tarjeta), monto: y.parte, de: total > y.parte ? total : null, aprox: !!y.estimado, marca: total > y.parte ? `de ${dinero(total)}` : '', sub: total > y.parte ? `${dinero(total - y.parte)} ya los contaste al comprar` : tarjetaSub(y.tarjeta) });
                         contadas.add(`t:${y.tarjeta.id}:${y.fecha}`);
                     } else {
                         const p = M.pago(st, y.pago.id) || y.pago;
+                        const cub = cubiertaPago(p, y, y.monto);
+                        const parte = cub && cub.find((z) => z.de === y.de);
+                        if (parte) {
+                            cubiertas.set(`p:${p.id}:${y.fecha}`, cub);
+                            filaParte({ grupo: grupoPago(p), tipo: 'pago', fk: `p-${p.id}-${y.fecha}`, abrir: abrirPago(p), emoji: p.emoji, nombre: p.nombre, aprox: !!y.estimado, sub: saleDe(st, p) }, y, { ...parte, monto: y.parte }, y.monto);
+                            continue;
+                        }
                         filaPagoDe(p, y, { monto: y.parte, de: y.parte < y.monto ? y.monto : null, marca: y.parte < y.monto ? `de ${dinero(y.monto, { aprox: y.estimado })}` : null });
                         contadas.add(`p:${p.id}:${y.fecha}`);
                     }
                 }
                 // Lo de estas fechas que no paga este ingreso, en gris: va en tu tarjeta, ya lo pagaste o ya lo contaste.
+                // v2.9.2: si lo paga otro ingreso, lo dice: «ya cubierta con tu quincena del 29 oct».
                 for (const p of st.pagos.filter((q) => q.activo !== false)) {
                     for (const o of M.ocurrenciasPago(st, p, rango.desde, rango.hasta)) {
-                        if (contadas.has(`p:${p.id}:${o.fecha}`) || o.estado === 'vencido') continue;
+                        const clave = `p:${p.id}:${o.fecha}`;
+                        if (o.estado === 'vencido') continue;
+                        const pagado = o.estado === 'pagado';
+                        const cub = cubiertas.get(clave) || (contadas.has(clave) ? null : cubiertaPago(p, o, pagado ? (o.hecho && o.hecho.monto) || o.monto : o.parcial ? o.parcial.total : o.monto));
+                        if (cub) {
+                            filaCubierta({ grupo: grupoPago(p), tipo: 'pago', fecha: o.fecha, fk: `p-${p.id}-${o.fecha}`, abrir: abrirPago(p), emoji: p.emoji, nombre: p.nombre, monto: pagado ? (o.hecho && o.hecho.monto) || o.monto : o.parcial ? o.parcial.total : o.monto, aprox: !pagado && !!o.estimado, hecha: pagado, marca: pagado ? `✓${sr(' Pagado')}` : '', sub: saleDe(st, p) }, cub);
+                            continue;
+                        }
+                        if (contadas.has(clave)) continue;
                         const va = P.vaEn(st, p);
                         filaPagoDe(p, o, { cuenta: false, marca: va || (o.estado === 'pagado' ? `✓${sr(' Pagado')}` : o.estado === 'saltado' ? 'saltado' : 'ya contado') });
                     }
                 }
                 // Una tarjeta sin monto todavía («por confirmar») o ya pagada, en gris: se ve, pero no suma aquí.
                 for (const o of M.ocurrenciasTarjeta(st, rango.desde, rango.hasta)) {
-                    if (contadas.has(`t:${o.tarjeta.id}:${o.fecha}`) || o.estado === 'vencido') continue;
+                    const clave = `t:${o.tarjeta.id}:${o.fecha}`;
+                    if (o.estado === 'vencido') continue;
+                    const ti = o.info;
+                    const cub = cubiertas.get(clave) || (contadas.has(clave) ? null : cubiertaTarjeta(o.tarjeta, o, o.estado === 'pendiente' && ti && o.fecha === ti.vence ? ti.comoPago : o.monto));
+                    if (cub) {
+                        filaCubierta({ grupo: 'deudas', tipo: 'tarjeta', fecha: o.fecha, fk: `t-${o.tarjeta.id}-${o.fecha}`, abrir: abrirTarjeta(o.tarjeta), emoji: o.tarjeta.emoji, nombre: P.nombreTarjeta(o.tarjeta), monto: o.monto || 0, aprox: !!o.estimado && o.estado !== 'pagado', hecha: o.estado === 'pagado', marca: o.estado === 'pagado' ? `✓${sr(' Pagado')}` : '', sub: tarjetaSub(o.tarjeta) }, cub);
+                        continue;
+                    }
+                    if (contadas.has(clave)) continue;
                     fila({ grupo: 'deudas', tipo: 'tarjeta', fecha: o.fecha, fk: `t-${o.tarjeta.id}-${o.fecha}`, abrir: abrirTarjeta(o.tarjeta), emoji: o.tarjeta.emoji, nombre: P.nombreTarjeta(o.tarjeta), monto: o.monto || 0, cuenta: false, hecha: o.estado === 'pagado', marca: o.monto === null ? 'por confirmar' : o.estado === 'pagado' ? `✓${sr(' Pagado')}` : 'ya contado', sub: tarjetaSub(o.tarjeta) });
                 }
                 if (x.saleRes) fila({ grupo: 'ahorro', tipo: 'reserva', fk: 'res-out', abrir: 'data-a="hoja" data-hoja="pasarProxima"', emoji: '📅', nombre: 'Lo que pasas al siguiente', monto: x.saleRes, sub: 'para tu periodo siguiente' });
-                for (const v of x.variables) fila({ grupo: 'presupuestos', tipo: 'presupuesto', fk: `pl-v-${v.id}`, abrir: `data-a="abrir" data-tipo="variable" data-id="${v.id}"`, emoji: v.emoji, nombre: v.nombre, monto: v.tope, marca: P.cadaPlan(), sub: `lo máximo ${P.cadaPlan()}` });
+                for (const v of x.variables) fila({ grupo: 'presupuestos', tipo: 'presupuesto', fk: `pl-v-${v.id}`, abrir: `data-a="abrir" data-tipo="variable" data-id="${v.id}"`, emoji: v.emoji, nombre: v.nombre, monto: v.tope, marca: P.cadaPlan(st), sub: `lo máximo ${P.cadaPlan(st)}` });
                 for (const a of x.programados) {
                     const monto = a.meta ? Math.min(a.programado.monto, a.meta - a.monto) : a.programado.monto;
-                    fila({ grupo: 'ahorro', tipo: 'programado', fk: `pl-a-${a.id}`, abrir: `data-a="abrir" data-tipo="apartado" data-id="${a.id}"`, emoji: a.emoji, nombre: a.nombre, monto, marca: P.cadaPlan(), sub: M.ahorroAparte(a) ? 'va a: aparte' : `va a: dentro de ${M.lugar(st, M.lugarAhorro(st, a))?.nombre || 'tu cuenta'}` });
+                    fila({ grupo: 'ahorro', tipo: 'programado', fk: `pl-a-${a.id}`, abrir: `data-a="abrir" data-tipo="apartado" data-id="${a.id}"`, emoji: a.emoji, nombre: a.nombre, monto, marca: P.cadaPlan(st), sub: M.ahorroAparte(a) ? 'va a: aparte' : `va a: dentro de ${M.lugar(st, M.lugarAhorro(st, a))?.nombre || 'tu cuenta'}` });
                 }
             } else {
                 // Mes (o un periodo sin proyección): lo de sus fechas.
@@ -1122,25 +1197,53 @@
                         filaIngreso(o);
                     }
                 }
-                for (const p of st.pagos) for (const o of M.ocurrenciasPago(st, p, rango.desde, rango.hasta)) if (!(p.activo === false && !o.hecho)) filaPagoDe(p, o);
-                for (const o of M.ocurrenciasTarjeta(st, rango.desde, rango.hasta)) {
+                // v2.9.2: lo que pagas con un ingreso de otro periodo cuenta en la fecha de ese ingreso (aunque venza otro mes) y en
+                // su vencimiento se ve en gris. Por eso se mira desde antes y hasta después de este mes.
+                const enMes = (f) => f >= rango.desde && f <= rango.hasta;
+                const desde = antes292 ? rango.desde : M.sumarDias(rango.desde, -120);
+                const hasta = antes292 ? rango.hasta : M.sumarDias(rango.hasta, 120);
+                const PAGADO = `✓${sr(' Pagado')}`;
+                for (const p of st.pagos) {
+                    for (const o of M.ocurrenciasPago(st, p, desde, hasta)) {
+                        if (p.activo === false && !o.hecho) continue;
+                        const pagado = o.estado === 'pagado';
+                        const monto = pagado ? (o.hecho && o.hecho.monto) || o.monto : o.parcial ? o.parcial.total : o.monto;
+                        const cub = cubiertaPago(p, o, monto);
+                        if (!cub) {
+                            if (enMes(o.fecha)) filaPagoDe(p, o);
+                            continue;
+                        }
+                        const base = { grupo: grupoPago(p), tipo: 'pago', fk: `p-${p.id}-${o.fecha}`, abrir: abrirPago(p), emoji: p.emoji, nombre: p.nombre, aprox: !pagado && !!o.estimado, sub: saleDe(st, p) };
+                        for (const y of cub) if (enMes(y.fecha)) filaParte(base, o, y, monto, pagado ? { hecha: true, marca: PAGADO } : {});
+                        if (enMes(o.fecha)) filaCubierta({ ...base, fecha: o.fecha, monto, hecha: pagado, marca: pagado ? PAGADO : o.estado === 'vencido' ? 'venció' : '' }, cub);
+                    }
+                }
+                for (const o of M.ocurrenciasTarjeta(st, desde, hasta)) {
                     const e = o.estadoCuenta || null;
                     // De un estado de cuenta, lo que no contaste al comprar (lo demás bajó tu libre el día de la compra).
                     const contado = e ? Math.min(e.aPagar, (e.anotadoLibre !== undefined ? e.anotadoLibre : e.anotado) || 0) : 0;
                     const monto = o.monto === null ? 0 : e ? e.aPagar - contado : o.monto;
                     const pagado = o.estado === 'pagado';
+                    const cub = cubiertaTarjeta(o.tarjeta, o, monto);
+                    if (cub) {
+                        const base = { grupo: 'deudas', tipo: 'tarjeta', fk: `t-${o.tarjeta.id}-${o.fecha}`, abrir: abrirTarjeta(o.tarjeta), emoji: o.tarjeta.emoji, nombre: P.nombreTarjeta(o.tarjeta), aprox: !!o.estimado && !pagado, sub: contado ? `${dinero(contado)} ya los contaste al comprar` : tarjetaSub(o.tarjeta) };
+                        for (const y of cub) if (enMes(y.fecha)) filaParte(base, o, y, monto, pagado ? { hecha: true, marca: PAGADO } : {});
+                        if (enMes(o.fecha)) filaCubierta({ ...base, fecha: o.fecha, monto, hecha: pagado, marca: pagado ? PAGADO : o.estado === 'vencido' ? 'venció' : '' }, cub);
+                        continue;
+                    }
+                    if (!enMes(o.fecha)) continue;
                     fila({ grupo: 'deudas', tipo: 'tarjeta', fecha: o.fecha, fk: `t-${o.tarjeta.id}-${o.fecha}`, abrir: abrirTarjeta(o.tarjeta), emoji: o.tarjeta.emoji, nombre: P.nombreTarjeta(o.tarjeta), monto, de: contado ? e.aPagar : null, cuenta: o.monto !== null && o.estado !== 'arrastrado', aprox: !!o.estimado && !pagado, hecha: pagado || o.estado === 'arrastrado', marca: o.monto === null ? 'por confirmar' : contado ? `de ${dinero(e.aPagar)}` : pagado ? `✓${sr(' Pagado')}` : o.estado === 'arrastrado' ? 'pasó al siguiente' : '', sub: contado ? `${dinero(contado)} ya los contaste al comprar` : tarjetaSub(o.tarjeta) });
                 }
                 for (const v of M.variablesActivas(st)) {
                     const veces = periodosEntre(st, rango.desde, rango.hasta, v.desde).filter((f) => !((v.cierres || {})[f] && v.cierres[f].estado === 'saltado'));
                     if (!veces.length) continue;
-                    fila({ grupo: 'presupuestos', tipo: 'presupuesto', fk: `pl-v-${v.id}`, abrir: `data-a="abrir" data-tipo="variable" data-id="${v.id}"`, emoji: v.emoji, nombre: v.nombre, monto: v.tope * veces.length, marca: veces.length > 1 ? `${dinero(v.tope)} × ${veces.length}` : P.cadaPlan(), sub: `lo máximo ${P.cadaPlan()}` });
+                    fila({ grupo: 'presupuestos', tipo: 'presupuesto', fk: `pl-v-${v.id}`, abrir: `data-a="abrir" data-tipo="variable" data-id="${v.id}"`, emoji: v.emoji, nombre: v.nombre, monto: v.tope * veces.length, marca: veces.length > 1 ? `${dinero(v.tope)} × ${veces.length}` : P.cadaPlan(st), sub: `lo máximo ${P.cadaPlan(st)}` });
                 }
                 for (const a of M.programados(st)) {
                     const veces = periodosEntre(st, rango.desde, rango.hasta, a.programado.desde);
                     if (!veces.length) continue;
                     const monto = M.suma(veces, (f) => ((a.guardados || {})[f] ? a.guardados[f].monto : a.programado.monto));
-                    fila({ grupo: 'ahorro', tipo: 'programado', fk: `pl-a-${a.id}`, abrir: `data-a="abrir" data-tipo="apartado" data-id="${a.id}"`, emoji: a.emoji, nombre: a.nombre, monto, marca: veces.length > 1 ? `${dinero(a.programado.monto)} × ${veces.length}` : P.cadaPlan(), sub: M.ahorroAparte(a) ? 'va a: aparte' : `va a: dentro de ${M.lugar(st, M.lugarAhorro(st, a))?.nombre || 'tu cuenta'}` });
+                    fila({ grupo: 'ahorro', tipo: 'programado', fk: `pl-a-${a.id}`, abrir: `data-a="abrir" data-tipo="apartado" data-id="${a.id}"`, emoji: a.emoji, nombre: a.nombre, monto, marca: veces.length > 1 ? `${dinero(a.programado.monto)} × ${veces.length}` : P.cadaPlan(st), sub: M.ahorroAparte(a) ? 'va a: aparte' : `va a: dentro de ${M.lugar(st, M.lugarAhorro(st, a))?.nombre || 'tu cuenta'}` });
                 }
             }
         }

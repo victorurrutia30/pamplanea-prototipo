@@ -229,3 +229,13 @@ Pruebas: `invariantes` (las filas V2 a V34), `palabras-v28`, `actualizar`, `flui
 | Q-3 | Lo editado llega a lo pendiente | Días del ingreso (llegada, descuento del adelanto, «Ya lo guardé», «Ya terminé»); monto de un pago («Lo pagas con» de todo el pago, lo que falta de uno pagado en partes) | P1 | ✅ | invariantes V46 |
 | Q-4 | Adelanto | Con más de un descuento, cada línea con su fecha y nunca dos iguales; la fila con el nombre completo y «− adelanto» abajo | P2 | ✅ | invariantes V47, capturas-v291 |
 | Q-5 | Actualizar a la v2.9.1 | Desde a0cddba y 79748f3: cero pérdidas (también con un estado de cuenta pendiente); el cuadrito solo a quien le cambió algo | P1 | ✅ | actualizar ×2 |
+
+## R. v2.9.2 · Lo que pagas con otra quincena cuenta una sola vez (reporte de Victor, 2026-10-23)
+
+| # | Tema | Qué se comprueba | Prioridad | Estado | Prueba |
+|---|---|---|---|---|---|
+| R-1 | Manda con qué lo pagas | La Tarjeta Liss ($100.38, vence el 14 nov) pagada «Con tu quincena del 29» (oct): Mes de octubre la cuenta bajo el 29 oct («vence el 14 nov»), Mes de noviembre la muestra en gris sin sumar («ya cubierta con tu quincena del 29 oct»), Próxima la pone bajo el 29 oct; «Te quedarían» de noviembre sube $100.38; Hoy no cambia; repartida y «Con lo que tienes ahora» | P0 | ✅ | invariantes V48, capturas-v292 |
+| R-2 | Cada peso una vez | Tarjeta, gasto fijo y cuota (lo normal, cambiada, repartida, «con lo que tienes ahora» y «con la quincena anterior») suman exactamente una vez en todos los periodos y en todos los meses | P0 | ✅ | invariantes V49, personas-v29 |
+| R-3 | «¿Con qué ingreso la pagas?» | Primero «Con lo que tienes ahora», después por fecha, «(lo normal)» en el que corresponde; nunca un ingreso que ya llegó (ni el adelanto del 14 oct); lo ya guardado no cambia | P1 | ✅ | invariantes V50, v231, v267 |
+| R-4 | El cuadrito de la v2.9.2 | Solo a quien le cambió un número de Mes: el antes y el después y dónde cuenta ahora | P2 | ✅ | novedades G, actualizar ×3 |
+| R-5 | Actualizar a la v2.9.2 | Desde a0cddba, 79748f3 y c99221f: cero pérdidas, también con pagos cambiados de quincena («Cambiada P») | P1 | ✅ | actualizar ×3 |

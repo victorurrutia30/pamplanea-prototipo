@@ -250,6 +250,52 @@ await seccion('F v2.9.1', async () => {
     check('y la siguiente vez, el de la fecha', await ev(`document.getElementById('nov-t')?.innerText.trim()`), 'Una fecha por revisar 📅');
 });
 
+// ------------------------------------------------------------------ G) v2.9.2: solo a quien le cambió un número de Mes
+/**
+ * Lo guardado por la v2.9.1 (con sus cuadritos ya vistos); `liss`: una Tarjeta Liss de $100.38 que vence el 20 nov y que
+ * eligió pagar con la quincena del 30 oct (en la v2.9.1, Mes de noviembre la contaba otra vez).
+ */
+async function sembrar291(liss, version = 'Prototipo v2.9.1 · 2026-10-23') {
+    await ev(`(() => {
+        if (window.P) P.sinGuardar = true;
+        localStorage.clear();
+        const s = DATOS.crearAna();
+        Object.assign(s, { persona: 'uso', nombre: 'Marta', hoy: '2026-10-21', inicio: '2026-10-01' });
+        if (${js(!!liss)}) {
+            s.tarjetas.push({ id: 't1', nombre: 'Crédito Liss', apodo: 'Tarjeta Liss', emoji: '💳', tipo: 'tarjeta', corte: 21, pagoDia: 20, cupo: null, interesesAnio: 0, desde: '2026-10-01', medio: 'transferencia', estados: [{ corte: '2026-10-21', total: 10038, minimo: 2500, aPagar: 10038, opcion: 'total', vence: '2026-11-20', anotado: 0, seq: 900 }], asignaciones: { '2026-11-20': [{ de: '2026-10-30', monto: 10038 }] } });
+            s.medios.push({ id: 'mt1', nombre: 'Crédito Liss', emoji: '💳', tarjeta: 't1' });
+        }
+        const visto = { visto: '2026-10-23T08:00:00.000Z' };
+        localStorage.setItem('pamplanea-modo', JSON.stringify({ modo: 'uso', notaAvisos: true, ofertaTarjetas: 'no' }));
+        localStorage.setItem('pamplanea-uso:v1', JSON.stringify({ esquema: 2, version: ${js(version)}, creado: '2026-10-10T10:00:00.000Z', st: s, tab: 'hoy', tema: null, introVista: true, nombre: 'Marta', novedades: { 'v2.7': visto, 'v2.8': visto, 'v2.9': visto }, metricas: { dias: ['2026-10-20'], anotaciones: 3, cuadres: 1, pagados: 1, reparte: 0, alDia: 0, pantallas: {}, noEntendio: 0, instalada: false }, feedback: [], feedbackEnDias: 0, feedbackPospuesto: null, ultimaCopia: null }));
+        return true;
+    })()`);
+}
+await seccion('G v2.9.2', async () => {
+    await sembrar291(false);
+    await abrirApp();
+    check('de la v2.9.1 sin nada que le cambie: no sale', [await ev(`P.modo`), await hay()], ['uso', false]);
+    await sembrar291(true);
+    const antes = await guardadoSt();
+    await abrirApp();
+    check('con la tarjeta que paga con la quincena del 30 oct: sale', await hay(), true);
+    check('título amable', await ev(`document.getElementById('nov-t').innerText.trim()`), 'Tu mes, bien contado ✨');
+    const n = await ev(`(() => { const k = P.calc(); const r = (m) => P.planPestana({ desde: m + '-01', hasta: m + '-30', tipo: 'mes' }, k).quedan; return { nov: r('2026-11'), antes: P.planPestana({ desde: '2026-11-01', hasta: '2026-11-30', tipo: 'mes' }, k, { antes292: true }).quedan }; })()`);
+    const d = (c) => '$' + (c / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    check('el antes y el después, con números de verdad (noviembre sube $100.38)', [n.nov - n.antes, await lineas()], [10038, [`Tu mes de noviembre: te quedarían ${d(n.nov)}; antes decía ${d(n.antes)} porque Tarjeta Liss se contaba dos veces.`, 'Ahora cuenta en octubre, con tu quincena del 30 oct.']]);
+    const todas = [...(await lineas()), await ev(`document.querySelector('.nov-cierre').innerText.trim()`)];
+    check('corto y sin palabras técnicas; cierre «Tus datos están completos y a salvo.»', [todas.filter((l) => l.split(/\s+/).length > 20), todas.filter((l) => TECNICAS.test(l)), todas.at(-1)], [[], [], 'Tus datos están completos y a salvo.']);
+    check('no cambia nada de lo guardado', await guardadoSt(), antes);
+    await foto('G-v292');
+    await ev(`document.querySelector('[data-fk="nov-ok"]').click(); true`);
+    await esperar(300);
+    check('se cierra, queda visto y no vuelve', [await hay(), await ev(`!!JSON.parse(localStorage.getItem('pamplanea-uso:v1')).novedades['v2.9.2'].visto`), (await abrirApp(), await hay())], [false, true, false]);
+    // Guardado ya por esta versión: no sale.
+    await sembrar291(true, await ev('window.VERSION_PROTOTIPO'));
+    await abrirApp();
+    check('con datos de esta versión: no sale', await hay(), false);
+});
+
 const resultado = { version: await ev('window.VERSION_PROTOTIPO').catch(() => null), checks, fallos, errores: b.errores, fallidas: b.fallidas };
 console.log(JSON.stringify(resultado, null, 1));
 b.cerrar();

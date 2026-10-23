@@ -1,4 +1,4 @@
-# Producto v2 · prototipo de teléfono — versión 2.9.1
+# Producto v2 · prototipo de teléfono — versión 2.9.2
 
 **Qué es:** un prototipo clicable de la app completa propuesta en Producto v2. Desde la v2.2 tiene **dos modos**: **entrenamiento** (datos inventados de Ana, Carlos y Rosa; entrenamiento en dos versiones —fecha fija o ingresos que varían— con «Lo esencial» y «Aprende más», 18 ejercicios y la prueba A/B para testers) y **uso normal** (la familia cercana de Victor la usa 1–2 semanas con su dinero real, guardado solo en su teléfono). Desde la v2.6, la persona solo ve tres caminos —«Usarla con mis datos», «Aprender a usarla» y «Prueba guiada»— y las herramientas de Victor (casos, sets, moderador) se abren con `?victor=1`. Es una maqueta de flujo y comprensión, no producción.
 
@@ -12,9 +12,59 @@
 
 Sin servidor propio, sin dependencias, sin CDN, sin analítica ni rastreadores. Fuentes, emoji, íconos y los íconos de la app instalable son locales, con sus licencias (`recursos/licencias`).
 
-**Estado:** brief y acuerdos V2-01…V2-22 APROBADOS por Victor (2026-10-16); **V2-23 a V2-30** y **V2-31 (respuestas v2.1)** APROBADOS por Victor (2026-10-16); **V2-34 a V2-49** APROBADOS por Victor (2026-10-17) — V2-15 y V2-31 #7 quedan REEMPLAZADAS por V2-34. **V2-50 a V2-55** y la corrección adicional (adelanto de salario) APROBADOS por Victor (2026-10-17). **v2.4 «Entrenamiento a prueba de todo»** y sus tres ajustes previos APROBADOS por Victor (2026-10-17). **V2-56 a V2-58** y el **entrenamiento en dos versiones** (v2.4.1) APROBADOS por Victor (2026-10-18). **v2.5 «Entrenamiento sencillo y a fondo»** (estructura, ritmo y claridad) y **V2-59** (respuestas 26–29) APROBADOS por Victor (2026-10-18). **V2-60 a V2-63** (v2.6 «Simplificar para la prueba familiar») APROBADOS por Victor (2026-10-19). **V2-64 a V2-78** (QA profundo, deudas y tarjetas, Primer día, lenguaje, botón atrás, iPhone y entrenamiento; v2.6.1 a v2.6.3) APROBADOS por Victor (2026-10-19). **V2-79 a V2-84** (salir del entrenamiento sin perder tus datos, duplicados, pagos futuros y formularios; v2.6.4 y v2.6.5) APROBADOS por Victor (2026-10-19). **V2-85 y V2-86** (lo de antes de empezar no se cobra solo y la revisión para quienes ya usan la app; v2.6.6) APROBADOS por Victor (2026-10-19). **V2-87 y V2-88** (lo que pagas normalmente de una tarjeta se paga como cualquier otro pago, y editar = los mismos campos que crear; v2.6.7) y su agregado (el caso de la segunda tester y la ficha de la tarjeta) APROBADOS por Victor (2026-10-19). **v2.7 «Tus números bien»**: D-1 a D-12 y C-1 a C-10 (aquí solo D-6, D-7, D-8 y C-6), la protección de datos DATOS-1 a DATOS-5, el cuadrito de novedades y el cambio de roadmap APROBADOS por Victor (2026-10-21). **v2.8 «Más claro»**: D-1 a D-12 y C-1 a C-10 completos, P-1, la opción de la pendiente 4 y «recibí 50 en efectivo» (APROBADOS por Victor, 2026-10-21) y el trabajo de noche sin supervisión (APROBADO por Victor, 2026-10-22). **v2.9 «Números claros»:** AUTORIZADO por Victor (2026-10-23) todo, bajo criterio, y publicarla como actualización (ver abajo). **v2.9.1 (fechas de tarjeta y adelanto):** con la misma autorización (2026-10-23). Nada de esto está documentado todavía en el repo de la app: se documentará después de las pruebas con personas. Este prototipo no cambia nada del repo de la app.
+**Estado:** brief y acuerdos V2-01…V2-22 APROBADOS por Victor (2026-10-16); **V2-23 a V2-30** y **V2-31 (respuestas v2.1)** APROBADOS por Victor (2026-10-16); **V2-34 a V2-49** APROBADOS por Victor (2026-10-17) — V2-15 y V2-31 #7 quedan REEMPLAZADAS por V2-34. **V2-50 a V2-55** y la corrección adicional (adelanto de salario) APROBADOS por Victor (2026-10-17). **v2.4 «Entrenamiento a prueba de todo»** y sus tres ajustes previos APROBADOS por Victor (2026-10-17). **V2-56 a V2-58** y el **entrenamiento en dos versiones** (v2.4.1) APROBADOS por Victor (2026-10-18). **v2.5 «Entrenamiento sencillo y a fondo»** (estructura, ritmo y claridad) y **V2-59** (respuestas 26–29) APROBADOS por Victor (2026-10-18). **V2-60 a V2-63** (v2.6 «Simplificar para la prueba familiar») APROBADOS por Victor (2026-10-19). **V2-64 a V2-78** (QA profundo, deudas y tarjetas, Primer día, lenguaje, botón atrás, iPhone y entrenamiento; v2.6.1 a v2.6.3) APROBADOS por Victor (2026-10-19). **V2-79 a V2-84** (salir del entrenamiento sin perder tus datos, duplicados, pagos futuros y formularios; v2.6.4 y v2.6.5) APROBADOS por Victor (2026-10-19). **V2-85 y V2-86** (lo de antes de empezar no se cobra solo y la revisión para quienes ya usan la app; v2.6.6) APROBADOS por Victor (2026-10-19). **V2-87 y V2-88** (lo que pagas normalmente de una tarjeta se paga como cualquier otro pago, y editar = los mismos campos que crear; v2.6.7) y su agregado (el caso de la segunda tester y la ficha de la tarjeta) APROBADOS por Victor (2026-10-19). **v2.7 «Tus números bien»**: D-1 a D-12 y C-1 a C-10 (aquí solo D-6, D-7, D-8 y C-6), la protección de datos DATOS-1 a DATOS-5, el cuadrito de novedades y el cambio de roadmap APROBADOS por Victor (2026-10-21). **v2.8 «Más claro»**: D-1 a D-12 y C-1 a C-10 completos, P-1, la opción de la pendiente 4 y «recibí 50 en efectivo» (APROBADOS por Victor, 2026-10-21) y el trabajo de noche sin supervisión (APROBADO por Victor, 2026-10-22). **v2.9 «Números claros»:** AUTORIZADO por Victor (2026-10-23) todo, bajo criterio, y publicarla como actualización (ver abajo). **v2.9.1 (fechas de tarjeta y adelanto):** con la misma autorización (2026-10-23). **v2.9.2 (lo que pagas con otra quincena cuenta una sola vez):** con la misma autorización y sus 2 decisiones APROBADAS por Victor (2026-10-23). Nada de esto está documentado todavía en el repo de la app: se documentará después de las pruebas con personas. Este prototipo no cambia nada del repo de la app.
 
-Versión visible en la app y en la guía: **«Prototipo v2.9.1 · 2026-10-23»** (en el LEEME: «Prototipo v2.9.1 · Fechas de tarjeta y adelanto»).
+Versión visible en la app y en la guía: **«Prototipo v2.9.2 · 2026-10-23»** (en el LEEME: «Prototipo v2.9.2 · Cada peso una vez»).
+
+---
+
+## Prototipo v2.9.2 · Cada peso una vez (2026-10-23)
+
+**Base:** `main` en `c99221f` (v2.9.1 publicada). Rama `v2-9-2`. Con la autorización de Victor de la v2.9 («te dejo aprobado todo y bajo tu criterio … debe estar fix sin necesidad de que yo apruebe nada») y sus mismos límites: cero pérdidas, sin dependencias, no se borran pruebas y solo se publica con todo en verde. Las 2 decisiones de abajo («Manda con qué lo pagas» y las opciones de «¿Con qué ingreso la pagas?»): **APROBADAS por Victor (2026-10-23)**, tras la explicación del auditor.
+
+**El reporte de Victor (2026-10-23, con capturas):** «Le di que voy a pagarla con la quincena del 29 de oct, y no me lo quita del 14 de nov? Pagaré 2 veces entonces?». Su Tarjeta Liss ($100.38) vence el 14 nov; en Editar → «¿Con qué ingreso la pagas?» eligió «Con tu quincena del 29» (oct).
+
+**La causa (confirmada por el auditor):** Próxima contaba la tarjeta con el ingreso que la paga (la quincena del 29 oct, con la fecha «14 nov», fuera de ese periodo) y Mes la contaba por su fecha: otra vez en noviembre, que restaba $100.38 de más. Hoy y el libre estaban bien.
+
+### Lo que cambió
+
+- **«Manda con qué lo pagas» (APROBADO):** cada peso cuenta en un solo periodo, el del ingreso que lo paga, también en Mes.
+  - Lo que pagas con un ingreso de otro periodo (tarjeta, gasto fijo o cuota) suma solo ahí, bajo la fecha de ese ingreso: «29 oct · Tarjeta Liss · vence el 14 nov · $100.38».
+  - En su vencimiento, en cualquier vista donde caiga, se ve en gris y sin sumar: «Tarjeta Liss · ya cubierta con tu quincena del 29 oct». Así no se olvida pagarle al banco.
+  - Repartido entre dos ingresos: cada parte en su periodo; en el vencimiento, la fila gris dice cómo quedó («$50.19 con el 29 oct · $50.19 con el 14 nov»).
+  - «Con lo que tienes ahora»: cuenta en el periodo de hoy (Esta quincena la pone hoy, con «vence el 14 nov») y en el mes en que lo elegiste.
+  - Mes suma lo que se paga con el dinero de ese mes. Lo normal (sin cambiar nada) queda igual que antes.
+  - Igual en Esta quincena, Próxima y Mes, por fecha y por tipo, y en «¿De dónde sale?» («29 oct · vence el 14 nov»). Hoy no cambia.
+- **«¿Con qué ingreso la pagas?» (APROBADO):** en Editar tarjeta y en «Cambiar o repartir» (de la tarjeta, los gastos fijos y las cuotas):
+  - primero «Con lo que tienes ahora»; después solo los ingresos que todavía no llegan y llegan antes del vencimiento (o ese mismo día), por fecha, con «(lo normal)» en el que corresponde;
+  - nunca un ingreso que ya llegó (como «tu adelanto del 14 oct»): ese dinero ya está en «lo que tienes ahora»;
+  - lo ya guardado no cambia: si apuntaba a uno que ya no se ofrece, se sigue calculando igual y Editar no lo toca si no eliges otra cosa.
+- **El cuadrito de la v2.9.2:** solo a quien le cambió un número de Mes. «Tu mes, bien contado ✨», con el antes y el después («Tu mes de noviembre: te quedarían $1,000.00; antes decía $899.62 porque Tarjeta Liss se contaba dos veces.») y dónde cuenta ahora («Ahora cuenta en octubre, con tu quincena del 29 oct.»). A nadie más le sale.
+
+### DECIDIDO por criterio (autorizado por Victor, 2026-10-23)
+
+27. **«Un periodo distinto»** es el del día de pago con que lo pagas frente al del día de pago de su vencimiento. Lo normal (el ingreso de antes de que venza) siempre es el mismo periodo: no se mueve.
+28. **«Con lo que tienes ahora» guarda el día en que lo elegiste** (`el`, dentro de lo elegido; solo cuando lo eliges desde ahora). Así Mes lo cuenta en ese mes aunque pase el tiempo. Lo elegido antes de la v2.9.2 no tiene ese día: cuenta hoy mientras no se paga y, ya pagado, el día que lo pagaste.
+29. **Ya pagado, se queda donde lo pagaste:** con un día de pago o un ingreso de una vez, en esa fecha; con lo que tenías, el día que lo elegiste.
+30. **Repartido con una parte «lo normal»:** esa parte cuenta en su vencimiento (su fila, con «de $100.38») y, junto a ella, la fila gris dice cómo quedó.
+31. **Una quincena por confirmar (ya pasó su día y no dijiste que llegó) sigue en las opciones:** la app todavía la espera (Hoy pregunta «¿ya llegó?»). Un ingreso de una vez cuya fecha ya pasó no: o ya está en lo que tienes, o no llegó.
+32. **En «Cambiar o repartir» siempre se ve «Con lo que tienes ahora»:** con más de 3 opciones, esa, la más cercana antes de que venza y la de siempre; «Ver más» muestra las demás.
+33. **Sin ingreso fijo (Rosa), el periodo es el mes** (o sus 15 días): «Con lo que tienes ahora» para algo del mes que viene cuenta en este.
+34. **El cuadrito mira 4 meses desde hoy** y sale solo si un «Te quedarían» de Mes cambió: dos líneas por mes (el antes y el después, con las palabras del brief, y dónde cuenta ahora).
+
+### Pruebas (una a la vez, en primer plano, con la memoria primero: entre 5.0 y 5.7 GB libres)
+
+- **`invariantes`: 69 de 69.** Nuevas V48 a V50 (el caso de Victor; cada obligación una vez en todos los periodos y todos los meses; las opciones). Las tres fallan sobre `c99221f`: Mes de octubre sin la tarjeta y noviembre contándola; «Esta quincena» sin lo de «con lo que tienes ahora»; «tu adelanto del 14 oct» ofrecido.
+- **`personas-v29`: 0 diferencias.** Ahora las 4 personas cambian con qué pagan y reparten: la tarjeta (dos veces), el alquiler y el agua. El contador independiente aplica la misma regla. Sobre `c99221f`, la misma prueba encuentra 22 grupos de diferencias.
+- **`actualizar --ref=c99221f`, `--ref=79748f3` y `--ref=a0cddba`:** 0 fallos y cero pérdidas en 8 juegos. El nuevo, «Cambiada P», tiene una tarjeta y la luz pagadas con su próximo día de pago. Ve el cuadrito de la v2.9.2 y su libre no cambia. Desde la v2.6/2.8 lo ve la siguiente vez, después del de la v2.9.
+- **`novedades`:** 53 checks, con la nueva sección G (el cuadrito solo a quien le cambió un número).
+- **Tarjeta, Mi plan y Mes:** `v267` (a–c, d–f), `v267-editar`, `v262`, `v265`, `v266` (a–d, e–g), `v231`, `v24`, `qa-v261`, `humo`, `montos`, `contraste`, `contraste-v23`, `aceptacion-v23`, `entrega2-v23`, `viaje-v23`, `capturas-v291` y `v25` (a–f, g–k): sin fallos.
+- **Pruebas viejas que cambiaron por las decisiones aprobadas (ninguna se borró):**
+  - `v231`: las 3 opciones a la vista ahora empiezan con «lo que tienes ahora»;
+  - `v267`: el orden de las opciones, y lo elegido guarda su día (`el`).
+- **`palabras-v28`:** 0 de 903.
+- **`capturas-v292`** (nueva) a 390×844, revisadas como imágenes: «¿Con qué ingreso la pagas?», Próxima, Mes de octubre, Mes de noviembre, repartida y Hoy.
+- `diario-antes` sigue fallando en el mismo paso viejo que en la v2.9.1 (`tour-sig`; no es parte de la batería verde).
 
 ---
 

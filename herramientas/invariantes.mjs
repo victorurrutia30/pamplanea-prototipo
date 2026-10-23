@@ -45,6 +45,9 @@
 // v2.9 «Números claros»: V35 a V43 (ver cada fila).
 // v2.9.1 (reporte de Victor, 2026-10-23): V44 la fecha de la tarjeta = la de Editar (corte 21, pago 15 → 14) · V45 «¿Cuál es?»
 //  una vez · V46 lo editado llega a lo pendiente en los demás formularios · V47 el adelanto con su fecha y su fila completa
+// v2.9.2 (reporte de Victor, 2026-10-23; APROBADO por Victor): V48 la tarjeta que pagas con la quincena del 29 oct cuenta en
+//  octubre y en noviembre se ve en gris · V49 cada obligación suma una sola vez en todos los periodos y en todos los meses ·
+//  V50 «¿Con qué ingreso la pagas?» nunca ofrece un ingreso que ya llegó (primero lo que tienes ahora, después por fecha)
 // Uso: node herramientas/invariantes.mjs [--base=http://…/] [--puerto=9961] [--solo=I01,F13] [--raiz=<otra copia>]
 //      (--raiz: las mismas filas sobre otra copia, por ejemplo la v2.6.7 sacada de git, para ver cuáles fallaban antes)
 import { mkdir } from 'node:fs/promises';
@@ -1988,6 +1991,142 @@ await filaDe('V47', 'v2.9.1: con dos descuentos del adelanto, cada línea del re
     const fila = await ev(`(() => { const b = document.querySelector('[data-fk="i-quincena-2026-11-14"]'); const n = b.querySelector('.pl-n'); const s = b.querySelector('.pl-sub'); return { n: n.textContent.trim(), entero: n.scrollWidth <= n.clientWidth + 1 && n.scrollHeight <= n.clientHeight + 1, abajo: s ? s.textContent.trim() : null, chico: s ? parseFloat(getComputedStyle(s).fontSize) < parseFloat(getComputedStyle(n).fontSize) : false, debajo: s ? s.getBoundingClientRect().top >= n.getBoundingClientRect().bottom - 1 : false }; })()`);
     check('la fila: «Mi Quincena» completo arriba y «− adelanto $328.00» abajo, en chico', fila, { n: 'Mi Quincena', entero: true, abajo: '− adelanto $328.00', chico: true, debajo: true });
     await foto('V47-mes-noviembre');
+});
+
+// ================================================================== v2.9.2 (reporte de Victor, 2026-10-23; APROBADO por Victor)
+// La Tarjeta Liss de Victor: $100.38, vence el 14 nov; su quincena el 14 y el 29.
+const contieneTodo = (...ts) => (x) => typeof x === 'string' && ts.every((s) => x.includes(s));
+const hay = (sel) => ev(`!!document.querySelector(${js(sel)})`);
+const LISS_14 = `(st) => { (${QUINCENA_14})(st); (${TARJETA_LISS})(st, { pagoDia: 14 }); Object.assign(st.tarjetas[0].estados[0], { total: 10038, minimo: 2500, aPagar: 10038, vence: '2026-11-14' }); }`;
+/** Lo que cuenta (data-cuenta) de cada cosa en una pestaña: por su fk sin la fecha del ingreso que la paga. */
+const cuentaPor = (x) => {
+    const out = {};
+    for (const f of x.filas) if (f.cuenta && /^(mp-)?[pt]-/.test(f.fk)) { const k = f.fk.replace(/^mp-/, '').replace(/-de-\d{4}-\d{2}-\d{2}$/, ''); out[k] = (out[k] || 0) + f.monto; }
+    return out;
+};
+// ------------------------------------------------------------------ V48 (el caso de Victor)
+await filaDe('V48', 'v2.9.2: «Con tu quincena del 29» (oct) para la Tarjeta Liss que vence el 14 nov: cuenta en octubre bajo el 29 oct, en noviembre se ve en gris sin sumar, Próxima la muestra bajo el 29 oct; Hoy no cambia', async () => {
+    await ev(`__armar(${LISS_14}); ${LEER_PLAN}`);
+    const libre0 = await ev(`P.calc().libre`);
+    const nov0 = await ev(`__plan('mes', 'fecha', '2026-11')`);
+    // Como Victor: la ficha → Editar → «¿Con qué ingreso la pagas?» → «Con tu quincena del 29» → Guardar cambios.
+    await ev(`P.ui.stack = []; P.abrir('tarjeta', 't1'); true`);
+    await clic('[data-fk="editar-tarjeta"]');
+    await clic('[data-fk="op-fuenteT-2026-10-29"]');
+    await clic('[data-fk="deuda-ok"]');
+    check('se guardó con la quincena del 29 oct', await ev(`P.st.tarjetas[0].asignaciones`), { '2026-11-14': [{ de: '2026-10-29', monto: 10038 }] });
+    check('Hoy no cambia', await ev(`P.calc().libre`), libre0);
+    for (const modo of ['fecha', 'tipo']) {
+        const oct = await ev(`__plan('mes', ${js(modo)}, '2026-10')`);
+        const nov = await ev(`__plan('mes', ${js(modo)}, '2026-11')`);
+        const prox = await ev(`__plan('proxima', ${js(modo)})`);
+        check(`Mes de octubre (${modo}): la incluye, bajo el 29 oct`, oct.filas.filter((f) => /t-t1-/.test(f.fk)).map((f) => [f.fk.replace(/^mp-/, ''), f.monto, f.cuenta]), [['t-t1-2026-11-14-de-2026-10-29', 10038, true]]);
+        check(`Mes de noviembre (${modo}): en gris y sin sumar`, nov.filas.filter((f) => /t-t1-/.test(f.fk)).map((f) => [f.fk.replace(/^mp-/, ''), f.monto, f.cuenta]), [['t-t1-2026-11-14', 0, false]]);
+        check(`Mes de noviembre (${modo}): «ya cubierta con tu quincena del 29 oct»`, nov.texto, contieneTodo('Tarjeta Liss', 'ya cubierta con tu quincena del 29 oct'));
+        check(`Próxima (${modo}): bajo el 29 oct, con «vence el 14 nov»`, [prox.filas.filter((f) => /t-t1-/.test(f.fk)).map((f) => [f.fk.replace(/^mp-/, ''), f.monto, f.cuenta]), prox.texto.includes('vence el 14 nov'), fueraDe(prox)], [[['t-t1-2026-11-14-de-2026-10-29', 10038, true]], true, []]);
+        check(`Mes y Próxima (${modo}): nada de otro periodo`, [fueraDe(oct), fueraDe(nov)], [[], []]);
+        if (modo === 'fecha') {
+            check('«Te quedarían» de noviembre sube $100.38', nov.res.n, nov0.res.n + 10038);
+            check('«¿De dónde sale?» de octubre la explica', oct.des.texto, contieneTodo('Tarjeta Liss', '29 oct · vence el 14 nov', '$100.38'));
+            check('«¿De dónde sale?» de noviembre no la suma', /Tarjeta Liss/.test(nov.des.texto), false);
+        }
+    }
+    await ev(`P.ui.pagosVista = 'proxima'; P.ui.pagosModo = 'fecha'; P.irTab('pagos'); true`);
+    await foto('V48-proxima');
+    await ev(`P.ui.pagosVista = 'mes'; P.ui.pagosMes = '2026-11'; P.irTab('pagos'); true`);
+    await foto('V48-mes-noviembre');
+    // Repartida entre las dos quincenas: cada parte en su periodo; en el vencimiento, la fila gris dice cómo quedó.
+    await ev(`P.cambiar((s) => { s.tarjetas[0].asignaciones = { '2026-11-14': [{ de: '2026-10-29', monto: 5019 }, { de: '2026-11-14', monto: 5019 }] }; }, { aviso: null }); true`);
+    const oct = await ev(`__plan('mes', 'fecha', '2026-10')`);
+    const nov = await ev(`__plan('mes', 'fecha', '2026-11')`);
+    check('repartida: $50.19 en octubre (29 oct) y $50.19 en noviembre (14 nov)', [cuentaPor(oct)['t-t1-2026-11-14'], cuentaPor(nov)['t-t1-2026-11-14']], [5019, 5019]);
+    check('y en su vencimiento, en gris: «$50.19 con el 29 oct · $50.19 con el 14 nov»', [nov.filas.some((f) => f.fk === 't-t1-2026-11-14' && !f.cuenta), nov.texto.includes('$50.19 con el 29 oct · $50.19 con el 14 nov')], [true, true]);
+    check('Hoy sigue igual', await ev(`P.calc().libre`), libre0);
+    // «Con lo que tienes ahora»: cuenta en el periodo de hoy (y en el mes de hoy).
+    await ev(`P.cambiar((s) => { s.tarjetas[0].asignaciones = { '2026-11-14': [{ de: 'ahora', monto: 10038, el: '2026-10-21' }] }; }, { aviso: null }); true`);
+    const act = await ev(`__plan('actual', 'fecha')`);
+    const oct2 = await ev(`__plan('mes', 'fecha', '2026-10')`);
+    const nov2 = await ev(`__plan('mes', 'fecha', '2026-11')`);
+    check('«Con lo que tienes ahora»: Esta quincena la cuenta hoy y Mes de octubre también; noviembre, en gris', [cuentaPor(act)['t-t1-2026-11-14'], cuentaPor(oct2)['t-t1-2026-11-14'], cuentaPor(nov2)['t-t1-2026-11-14'] || 0, nov2.texto.includes('ya cubierta con lo que tienes ahora')], [10038, 10038, 0, true]);
+    check('Esta quincena: «Sale» es lo de sus filas (y lo mismo que cuenta tu libre)', [act.res.l.includes('Sale $100.38'), await ev(`P.calc().obligaciones`)], [true, 10038]);
+    // Sin cambiar nada (lo normal), todo como antes: en noviembre, el 14.
+    await ev(`P.cambiar((s) => { s.tarjetas[0].asignaciones = {}; }, { aviso: null }); true`);
+    const nov3 = await ev(`__plan('mes', 'fecha', '2026-11')`);
+    check('lo normal: Mes de noviembre la cuenta el 14 nov, como siempre', [nov3.filas.filter((f) => /t-t1-/.test(f.fk)).map((f) => [f.fk, f.monto, f.cuenta]), nov3.res.n], [[['t-t1-2026-11-14', 10038, true]], nov0.res.n]);
+});
+// ------------------------------------------------------------------ V49 (cada peso una vez)
+await filaDe('V49', 'v2.9.2: cada obligación (tarjeta, gasto fijo y cuota; lo normal, cambiada, repartida y «con lo que tienes ahora») suma exactamente una vez al juntar todos los periodos y todos los meses', async () => {
+    await ev(`__armar((st) => {
+        (${LISS_14})(st);
+        st.tarjetas[0].asignaciones = { '2026-11-14': [{ de: '2026-10-29', monto: 10038 }] };
+        const pago = (x) => st.pagos.push({ estimado: false, frecuencia: 'mensual', medio: 'debito', avisos: [], desde: '2026-10-22', creado: '2026-10-21', hechos: {}, previos: [], ...x });
+        pago({ id: 'luz', nombre: 'Luz', emoji: '💡', categoria: 'servicios', monto: 3500, dia: 3, asignaciones: { '2026-11-03': [{ de: 'ahora', monto: 3500, el: '2026-10-21' }] } });
+        pago({ id: 'agua', nombre: 'Agua', emoji: '💧', categoria: 'servicios', monto: 1200, dia: 20, asignaciones: { '2026-11-20': [{ de: '2026-10-29', monto: 600 }, { de: '2026-11-14', monto: 600 }] } });
+        pago({ id: 'alquiler', nombre: 'Alquiler', emoji: '🏠', categoria: 'casa', monto: 20000, dia: 1, pagarCon: { modo: 'antes' } });
+        pago({ id: 'pr', nombre: 'Préstamo', emoji: '🏦', categoria: 'cuotas', tipoDeuda: 'prestamo', monto: 5000, dia: 25, deuda: { debe: 50000 }, asignaciones: { '2026-12-25': [{ de: '2026-11-29', monto: 5000 }] } });
+        pago({ id: 'net', nombre: 'Internet', emoji: '🌐', categoria: 'servicios', monto: 2500, dia: 10 });
+    }); ${LEER_PLAN}`);
+    const k = await ev(`(() => { const k = P.calc(); return { periodos: k.periodos.map((x) => ({ desde: x.inicio, hasta: x.fin })) }; })()`);
+    const leerRango = (r) => ev(`(() => { const m = P.planPestana(${js(r)}, P.calc()); return m.filas.filter((f) => f.cuenta).map((f) => ({ fk: f.fk, monto: f.monto })); })()`);
+    const sumar = (listas) => {
+        const out = {};
+        for (const l of listas) for (const f of l) if (/^[pt]-/.test(f.fk)) { const k2 = f.fk.replace(/-de-\d{4}-\d{2}-\d{2}$/, ''); out[k2] = (out[k2] || 0) + f.monto; }
+        return out;
+    };
+    // Lo que debe sumar cada una: su monto, una vez (las que vencen hasta el 31 dic).
+    const esperado = await ev(`(() => {
+        const out = {};
+        for (const p of P.st.pagos) for (const o of MOTOR.ocurrenciasPago(P.st, p, '2026-10-22', '2026-12-31')) out['p-' + p.id + '-' + o.fecha] = o.monto;
+        out['t-t1-2026-11-14'] = 10038;
+        return out;
+    })()`);
+    // Todos los periodos: el de hoy y los que vienen (los que terminan antes del 15 ene).
+    const per = sumar([await leerRango({ ...(await ev(`P.rangoPlan('actual')`)), tipo: 'actual' }), ...(await Promise.all(k.periodos.filter((x) => x.desde <= '2026-12-31').map((x) => leerRango({ desde: x.desde, hasta: x.hasta, tipo: 'futuro' }))))]);
+    // Todos los meses: de octubre a enero.
+    const mes = sumar(await Promise.all(['2026-10', '2026-11', '2026-12', '2027-01'].map((m) => leerRango({ desde: m + '-01', hasta: m === '2026-11' ? m + '-30' : m + '-31', tipo: 'mes' }))));
+    const malos = (x) => Object.entries(esperado).filter(([fk, m]) => x[fk] !== m).map(([fk, m]) => `${fk}: ${x[fk] || 0} ≠ ${m}`);
+    check('todos los periodos juntos: cada una, una vez', malos(per), []);
+    check('todos los meses juntos: cada una, una vez', malos(mes), []);
+    check('lo pagado con un ingreso de otro mes cuenta en ese mes (alquiler del 1 dic con la quincena anterior: el 14 nov)', await ev(`P.planPestana({ desde: '2026-11-01', hasta: '2026-11-30', tipo: 'mes' }, P.calc()).filas.filter((f) => f.cuenta && f.fk.startsWith('p-alquiler-2026-12-01')).map((f) => f.fk)`), ['p-alquiler-2026-12-01-de-2026-11-14']);
+    check('y lo normal queda en su fecha (Internet el 10 nov)', await ev(`P.planPestana({ desde: '2026-11-01', hasta: '2026-11-30', tipo: 'mes' }, P.calc()).filas.filter((f) => f.fk.startsWith('p-net-')).map((f) => [f.fk, f.cuenta])`), [['p-net-2026-11-10', true]]);
+});
+// ------------------------------------------------------------------ V50 («¿Con qué ingreso la pagas?»)
+await filaDe('V50', 'v2.9.2: «¿Con qué ingreso la pagas?» primero ofrece lo que tienes ahora y después los ingresos que todavía no llegan, por fecha; nunca uno que ya llegó; lo ya guardado no cambia', async () => {
+    const armar = `__armar((st) => {
+        (${LISS_14})(st);
+        st.ingresos.push({ id: 'ad', nombre: 'Adelanto', emoji: '💵', categoria: 'otro', tipoIngreso: 'adelanto', monto: 30000, aprox: false, frecuencia: 'unico', fecha: '2026-10-14', lugar: 'banco', principal: false, extra: true, desde: '2026-10-16', creado: '2026-10-16', llegadas: {} });
+        st.ingresos.push({ id: 'bono', nombre: 'Bono', emoji: '🎁', categoria: 'otro', monto: 5000, aprox: false, frecuencia: 'unico', fecha: '2026-10-18', lugar: 'banco', principal: false, extra: true, desde: '2026-10-01', llegadas: { '2026-10-18': { monto: 5000 } } });
+        st.ingresos.push({ id: 'aguinaldo', nombre: 'Aguinaldo', emoji: '🎁', categoria: 'aguinaldo', monto: 30000, aprox: true, frecuencia: 'unico', fecha: '2026-11-05', lugar: 'banco', principal: false, extra: true, desde: '2026-10-01', llegadas: {} });
+        st.pagos.push({ id: 'agua', nombre: 'Agua', emoji: '💧', categoria: 'servicios', monto: 1200, estimado: false, frecuencia: 'mensual', dia: 20, medio: 'debito', avisos: [], desde: '2026-10-22', creado: '2026-10-21', hechos: {}, previos: [] });
+    })`;
+    await ev(armar);
+    const llegaron = ['2026-10-14', 'unico:ad', 'unico:bono'];
+    const fuentes = await ev(`MOTOR.fuentesPara(P.st, '2026-11-14')`);
+    check('el motor no ofrece la quincena del 14 oct, el adelanto del 14 oct ni el bono que ya llegó', fuentes.filter((f) => llegaron.includes(f)), []);
+    await ev(`P.ui.stack = []; P.abrir('tarjeta', 't1'); true`);
+    await clic('[data-fk="editar-tarjeta"]');
+    check('Editar: primero lo que tienes ahora, después por fecha, «(lo normal)» en la del 14 nov', await ev(`[...document.querySelectorAll('#fuente-t .chip')].map((b) => b.textContent.trim())`), ['Con lo que tienes ahora', 'Con tu quincena del 29', 'Con tu aguinaldo del 5 nov', 'Con tu quincena del 14 de noviembre (lo normal)']);
+    await ev(`P.cerrarHoja({ sinFoco: true }); P.ui.stack = []; P.abrir('tarjeta', 't1'); true`);
+    await clic('[data-fk="t-pagar-con"]');
+    if (await hay('[data-fk="pc-ver-mas"]')) await clic('[data-fk="pc-ver-mas"]');
+    check('«Cambiar o repartir»: lo mismo, en el mismo orden', await ev(`[...document.querySelectorAll('[data-fk^="pc-uno:"]')].map((b) => b.dataset.fk)`), ['pc-uno:ahora', 'pc-uno:2026-10-29', 'pc-uno:unico:aguinaldo', 'pc-uno:2026-11-14']);
+    await ev(`P.cerrarHoja({ sinFoco: true }); true`);
+    // Un gasto fijo: lo mismo.
+    await ev(`P.ui.stack = []; P.abrir('pago', 'agua'); true`);
+    await clic('[data-fk="pagar-con"]');
+    if (await hay('[data-fk="pc-ver-mas"]')) await clic('[data-fk="pc-ver-mas"]');
+    const op = await ev(`[...document.querySelectorAll('[data-fk^="pc-uno:"]')].map((b) => b.dataset.fk.slice(7))`);
+    check('el gasto fijo del 20 nov: lo que tienes, el 29 oct, el aguinaldo (5 nov) y el 14 nov (lo normal); nada que ya llegó', [op, op.filter((f) => llegaron.includes(f))], [['ahora', '2026-10-29', 'unico:aguinaldo', '2026-11-14'], []]);
+    check('«(lo normal)» en el que corresponde', await texto('[data-fk="pc-uno:2026-11-14"]'), contieneTodo('(lo normal)'));
+    await ev(`P.cerrarHoja({ sinFoco: true }); true`);
+    // Lo ya guardado no cambia: si apuntaba al adelanto del 14 oct, Editar sin tocarlo lo deja igual y se calcula igual que antes.
+    await ev(`${armar}; P.cambiar((s) => { s.tarjetas[0].asignaciones = { '2026-11-14': [{ de: 'unico:ad', monto: 10038 }] }; }, { aviso: null }); true`);
+    const antes = await ev(`JSON.stringify({ a: P.st.tarjetas[0].asignaciones, libre: P.calc().libre, partes: MOTOR.tarjetaInfo(P.st, P.st.tarjetas[0]).partes })`);
+    await ev(`P.ui.stack = []; P.abrir('tarjeta', 't1'); true`);
+    await clic('[data-fk="editar-tarjeta"]');
+    check('no lo ofrece (ninguna opción es el adelanto)', await ev(`[...document.querySelectorAll('#fuente-t .chip')].some((b) => /adelanto/i.test(b.textContent))`), false);
+    await clic('[data-fk="deuda-ok"]');
+    check('y al guardar sin tocarlo, sigue igual', await ev(`JSON.stringify({ a: P.st.tarjetas[0].asignaciones, libre: P.calc().libre, partes: MOTOR.tarjetaInfo(P.st, P.st.tarjetas[0]).partes })`), antes);
 });
 
 const resultado = { version: await ev('window.VERSION_PROTOTIPO').catch(() => null), filas: filas.map((f) => ({ id: f.id, ok: f.ok, nombre: f.nombre, checks: f.checks.length, malas: f.checks.filter((c) => !c.ok) })), resumen: `${filas.filter((f) => f.ok).length} de ${filas.length} filas bien`, fallos, errores: b.errores, fallidas: b.fallidas };

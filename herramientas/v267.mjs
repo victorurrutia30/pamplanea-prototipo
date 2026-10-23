@@ -243,7 +243,8 @@ if (partes.includes('b')) {
         await abrirTarjeta('Crédito BAC');
         await clic('[data-fk="t-pagar-con"]', 400);
         check('el mismo control de los demás pagos', await texto('#hoja-t'), '¿Con qué pagas tu tarjeta Crédito BAC?');
-        check('opciones: la quincena del 30 (lo normal) y lo que tienes', await ev(`[...document.querySelectorAll('.opciones-grandes .opcion-g-t')].map((e) => e.textContent.trim())`), ['Con tu quincena del 30 (lo normal)', 'Con lo que tienes ahora', 'Repartirlo']);
+        // v2.9.2 (APROBADO por Victor, 2026-10-23): primero lo que tienes ahora; después, por fecha.
+        check('opciones: lo que tienes y la quincena del 30 (lo normal)', await ev(`[...document.querySelectorAll('.opciones-grandes .opcion-g-t')].map((e) => e.textContent.trim())`), ['Con lo que tienes ahora', 'Con tu quincena del 30 (lo normal)', 'Repartirlo']);
         await foto('B1-lo-pagas-con');
         await clic('[data-fk="pc-uno:ahora"]');
         await clic('[data-fk="pc-ok"]', 400);
@@ -253,7 +254,8 @@ if (partes.includes('b')) {
         check('el libre baja $100 (queda reservado de lo que tienes)', n0.libre - n1.libre, 10000);
         check('reservado $100', n1.reservado, 10000);
         check('la próxima quincena ya no la paga', p1[0][2], p0[0][2] - 10000);
-        check('lo elegido se guarda en la tarjeta', await ev(`P.st.tarjetas.find((x) => x.nombre === 'Crédito BAC').asignaciones`), { '2026-11-14': [{ de: 'ahora', monto: 10000 }] });
+        // v2.9.2: «lo que tienes ahora» guarda el día en que lo elegiste (para Mi plan → Mes).
+        check('lo elegido se guarda en la tarjeta', await ev(`P.st.tarjetas.find((x) => x.nombre === 'Crédito BAC').asignaciones`), { '2026-11-14': [{ de: 'ahora', monto: 10000, el: '2026-10-19' }] });
         // v2.8 (C-2): sin «reservar» fuera de «¿De dónde sale?».
         check('la ficha lo dice', await seccionCon('Lo pagas con'), contiene('Ya contado de lo que tienes ahora'));
         check('el aviso «Deshacer»', await hay('[data-fk="toast-deshacer"]'), true);
@@ -273,7 +275,7 @@ if (partes.includes('b')) {
         check('por defecto, la quincena del 15 nov (la de antes del 20)', (await infoTarjeta('Crédito BAC')).partes, [{ de: '2026-11-15', monto: 10000 }]);
         await abrirTarjeta('Crédito BAC');
         await clic('[data-fk="t-pagar-con"]', 400);
-        check('tres opciones y repartir', await ev(`[...document.querySelectorAll('.opciones-grandes .opcion-g-t')].map((e) => e.textContent.trim())`), ['Con tu quincena del 15 de noviembre (lo normal)', 'Con tu quincena del 30', 'Con lo que tienes ahora', 'Repartirlo']);
+        check('tres opciones y repartir', await ev(`[...document.querySelectorAll('.opciones-grandes .opcion-g-t')].map((e) => e.textContent.trim())`), ['Con lo que tienes ahora', 'Con tu quincena del 30', 'Con tu quincena del 15 de noviembre (lo normal)', 'Repartirlo']);
         await clic('[data-fk="pc-uno:2026-10-30"]');
         await clic('[data-fk="pc-ok"]', 400);
         const n1 = await numeros();

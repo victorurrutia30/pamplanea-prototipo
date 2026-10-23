@@ -175,6 +175,15 @@ function eventosDel(p, f, cont) {
     if (f === '2026-11-10') ev.push({ t: 'cuadre', lugar: 'efectivo', menos: c(5) });
     // El adelanto: llega a efectivo y se descuenta (con $10 de comisión) del primer pago que viene después.
     if (p.principal && f === cont.adelanto.fecha) ev.push({ t: 'adelanto', monto: cont.adelanto.monto, descuento: cont.adelanto.descuento, de: cont.adelanto.de, lugar: 'efectivo' });
+    // v2.9.2: cambia con qué paga y reparte (la tarjeta y dos gastos fijos), con «¿Con qué lo pagas?» (Cambiar o repartir).
+    const q = p.tipo === 'quincena';
+    const sem = p.tipo === 'semana';
+    const vari = p.tipo === 'variable';
+    const mitades = (total, a, b) => [{ de: a, monto: Math.floor(total / 2) }, ...(b ? [{ de: b, monto: total - Math.floor(total / 2) }] : [])];
+    if (f === '2026-10-23') ev.push({ t: 'pagarCon', tarjeta: true, pago: 'bac', ocu: cont.tarjetaInfo().vence, partes: [{ de: 'ahora', monto: cont.tarjetaInfo().comoPago }] });
+    if (f === '2026-11-10') ev.push({ t: 'pagarCon', pago: 'alquiler', ocu: '2026-12-01', partes: [{ de: q ? '2026-11-15' : sem ? '2026-11-20' : 'ahora', monto: c(200) }] });
+    if (f === '2026-11-17') ev.push({ t: 'pagarCon', tarjeta: true, pago: 'bac', ocu: cont.tarjetaInfo().vence, repartir: true, partes: sem ? mitades(cont.tarjetaInfo().comoPago, '2026-11-27', '2026-12-04') : vari ? mitades(cont.tarjetaInfo().comoPago, 'ahora') : mitades(cont.tarjetaInfo().comoPago, 'ahora', '2026-11-30') });
+    if (f === '2026-11-20') ev.push({ t: 'pagarCon', pago: 'agua', ocu: '2026-12-18', repartir: true, partes: q ? mitades(c(12), '2026-11-30', '2026-12-15') : sem ? mitades(c(12), '2026-12-11', '2026-12-18') : vari ? mitades(c(12), 'ahora', 'unico:aguinaldo') : mitades(c(12), 'ahora', '2026-11-30') });
     return ev;
 }
 
@@ -201,6 +210,7 @@ function contador(p) {
         cargosTarjeta: [],
         descuentos: {}, // fecha del pago principal → monto
         adelanto: null,
+        elegidos: {}, // v2.9.2: `${pago}:${ocu}` (o `bac:${vence}`) → [{ de, monto, el }]: lo que eligió en «¿Con qué lo pagas?»
     };
     const pr = p.principal;
     const dias = (desde, hasta) => (pr ? fechasDe(pr, desde, hasta) : []);
@@ -224,6 +234,39 @@ function contador(p) {
         if (pend.length) return { fecha: pend[0], porConfirmar: true };
         return { fecha: dias(mas(k.hoy, 1), mas(k.hoy, 40))[0] };
     };
+    // ---- v2.9.2 «Manda con qué lo pagas» (en palabras en el LEEME): cada parte cuenta con el ingreso que la paga.
+    /** Con qué se paga, si no eligió nada: el día de pago de antes de que venza (sin ingreso fijo: lo que tiene, o lo que tenga después). */
+    k.defDe = (f) => (pr ? dias(mas(f, -100), f).at(-1) || 'ahora' : f < k.horizonte().fecha ? 'ahora' : 'despues');
+    const fechaUnico = (de) => (p.ingresos.find((i) => i.id === de.slice(6)) || {}).fecha;
+    /** ¿Ese dinero ya lo tiene? Lo que tiene ahora, un día de pago que ya llegó o un ingreso de una vez que ya llegó. */
+    k.fundada = (de) => de === 'ahora' || (de !== 'despues' && (de.startsWith('unico:') ? k.llegado[`${de.slice(6)}:${fechaUnico(de)}`] !== undefined : llegoPrincipal(de)));
+    /** Las partes de algo que vence en `f` por `monto`: lo elegido (cada parte hasta su monto; la tarjeta, si eligió uno, todo) y lo que falta, con lo normal. */
+    k.partesDe = (clave, f, monto, tarjeta = false) => {
+        const def = k.defDe(f);
+        const el = k.elegidos[clave];
+        const lista = [];
+        if (el && el.length && tarjeta && el.length === 1) lista.push({ ...el[0], monto });
+        else if (el && el.length) {
+            let resta = monto;
+            for (const z of el) {
+                const m = Math.min(resta, z.monto);
+                if (m > 0) lista.push({ ...z, monto: m });
+                resta -= m;
+            }
+            if (resta > 0) lista.push({ de: def, monto: resta, resto: true });
+        } else lista.push({ de: def, monto });
+        return { def, lista };
+    };
+    /** El periodo de una fecha (su día de pago; sin ingreso fijo, su mes). */
+    k.tramo = (f) => (pr ? dias(mas(f, -100), f).at(-1) || '' : f.slice(0, 8) + '01');
+    /** En Mes: dónde cuenta una parte (el día de su ingreso; «lo que tienes ahora», el día que lo eligió) y si cambió de periodo. */
+    k.enMes = (y, f, def) => {
+        const conEl = y.de === 'ahora' && y.el && !y.resto;
+        const lugar = conEl ? y.el : y.de === def || y.de === 'despues' || y.de === 'ahora' ? f : y.de.startsWith('unico:') ? fechaUnico(y.de) : y.de;
+        return { lugar, cambiada: (conEl || y.de !== def) && k.tramo(lugar) !== k.tramo(f) };
+    };
+    /** En los periodos que vienen: la parte que paga un ingreso que todavía no llega, en la fecha de ese ingreso (lo normal, en su fecha). */
+    k.enPeriodo = (y, f, def) => (y.de === def ? f : y.de.startsWith('unico:') ? fechaUnico(y.de) : y.de);
     k.tienes = () => Object.values(k.cuentas).reduce((a, b) => a + b, 0);
     k.ahorrosDentro = () => Object.values(k.ahorros).filter((a) => a.donde !== 'aparte').reduce((s, a) => s + a.monto, 0);
     k.ahorrosAparte = () => Object.values(k.ahorros).filter((a) => a.donde === 'aparte').reduce((s, a) => s + a.monto, 0);
@@ -258,20 +301,25 @@ function contador(p) {
     k.libre = () => {
         const hz = k.horizonte();
         const lineas = [];
+        // v2.9.2: lo que vence antes de tu próximo ingreso y, de lo que vence después, lo que elegiste pagar con lo que ya
+        // tienes: cada parte que paga dinero que ya está (lo normal de lo que vence después es un ingreso que todavía no llega).
         for (const x of p.pagos) {
             if (enTarjeta(x)) continue; // C-7: va dentro del pago de la tarjeta
-            for (const f of fechasDe(x, p.inicio, mas(hz.fecha, -1), pr)) {
+            for (const f of fechasDe(x, p.inicio, mas(hz.fecha, 120), pr)) {
                 if (f <= p.inicio && x.id !== 'cuchubal') continue;
                 if (x.id === 'cuchubal' && f < p.inicio) continue;
                 const falta = faltaDe(x, f);
-                if (falta > 0 && !(x.id === 'cuchubal' && f === p.inicio)) lineas.push({ q: 'pago', id: x.id, f, monto: falta });
+                if (!(falta > 0) || (x.id === 'cuchubal' && f === p.inicio)) continue;
+                const ya = k.partesDe(`${x.id}:${f}`, f, falta).lista.filter((y) => k.fundada(y.de)).reduce((s, y) => s + y.monto, 0);
+                if (ya > 0) lineas.push({ q: 'pago', id: x.id, f, monto: ya });
             }
         }
         const ti = k.tarjetaInfo();
-        // Lo que ya compraste con ella (bajó tu libre ese día) y la parte del pago que toca a este periodo.
+        // Lo que ya compraste con ella (bajó tu libre ese día) y la parte del pago que se paga con lo que ya tienes.
         if (ti.deCompras) lineas.push({ q: 'tarjeta-compras', monto: ti.deCompras });
         if (ti.comprasLibre) lineas.push({ q: 'tarjeta-nuevas', monto: ti.comprasLibre });
-        if (ti.comoPago && ti.vence < hz.fecha) lineas.push({ q: 'tarjeta-pago', monto: ti.comoPago });
+        const yaT = ti.comoPago ? k.partesDe(`bac:${ti.vence}`, ti.vence, ti.comoPago, true).lista.filter((y) => k.fundada(y.de)).reduce((s, y) => s + y.monto, 0) : 0;
+        if (yaT) lineas.push({ q: 'tarjeta-pago', monto: yaT });
         const per = k.periodoDe(k.hoy);
         const clave = per ? per.ini : null;
         const perPlan = k.periodoPlan();
@@ -308,8 +356,10 @@ function contador(p) {
     /** Lo que vale para el plan el pago de la tarjeta que vence en un periodo futuro: lo que todavía no contaste. */
     k.tarjetaFutura = (desde, hasta) => {
         const ti = k.tarjetaInfo();
-        if (ti.vence >= desde && ti.vence <= hasta && ti.comoPago > 0) return [{ id: 'bac', f: ti.vence, monto: ti.comoPago, total: ti.ult.inicial ? p.tarjeta.usual : ti.ult.aPagar, aprox: !!ti.ult.inicial }];
-        return [];
+        if (!(ti.comoPago > 0)) return [];
+        // v2.9.2: cada parte con el ingreso que la paga (aunque venza en otro periodo).
+        const { def, lista } = k.partesDe(`bac:${ti.vence}`, ti.vence, ti.comoPago, true);
+        return lista.filter((y) => !k.fundada(y.de)).map((y) => ({ id: 'bac', f: k.enPeriodo(y, ti.vence, def), monto: y.monto, total: ti.ult.inicial ? p.tarjeta.usual : ti.ult.aPagar, aprox: !!ti.ult.inicial })).filter((y) => y.f >= desde && y.f <= hasta);
     };
     /** El plan de un periodo que todavía no empieza (Próxima): lo que entra y lo que sale con ese dinero. */
     k.planFuturo = (desde, hasta, cuantos = 1) => {
@@ -324,9 +374,15 @@ function contador(p) {
         const sale = [];
         for (const x of p.pagos) {
             if (enTarjeta(x)) continue;
-            for (const f of fechasDe(x, desde, hasta, pr)) {
+            // v2.9.2: lo que paga el ingreso de este periodo, aunque venza después (en la fecha de ese ingreso).
+            for (const f of fechasDe(x, desde, mas(hasta, 120), pr)) {
                 const falta = faltaDe(x, f);
-                if (falta > 0) sale.push({ q: x.tipoDeuda ? 'deuda' : 'fijo', id: x.id, f, monto: falta, aprox: !!x.estimado && !k.pagado[`${x.id}:${f}`] });
+                if (!(falta > 0)) continue;
+                const { def, lista } = k.partesDe(`${x.id}:${f}`, f, falta);
+                for (const y of lista) {
+                    const lugar = k.enPeriodo(y, f, def);
+                    if (!k.fundada(y.de) && lugar >= desde && lugar <= hasta) sale.push({ q: x.tipoDeuda ? 'deuda' : 'fijo', id: x.id, f: lugar, monto: y.monto, aprox: !!x.estimado && !k.pagado[`${x.id}:${f}`] });
+                }
             }
         }
         for (const t of k.tarjetaFutura(desde, hasta)) sale.push({ q: 'tarjeta', ...t });
@@ -356,19 +412,31 @@ function contador(p) {
             }
         }
         const sale = [];
+        // v2.9.2: lo que elegiste pagar con un ingreso de otro periodo cuenta en el mes de ese ingreso (todas sus partes, cada una
+        // en la fecha de su ingreso); lo normal, en su fecha. Por eso se mira desde 120 días antes hasta 120 después.
+        const enMes = (f) => f >= desde && f <= hasta;
+        const poner = (base, clave, f, monto, tarjeta) => {
+            const { def, lista } = k.partesDe(clave, f, monto, tarjeta);
+            const partes = lista.map((y) => ({ ...y, ...k.enMes(y, f, def) }));
+            if (!partes.some((y) => y.cambiada)) {
+                if (enMes(f)) sale.push({ ...base, f, monto });
+                return;
+            }
+            for (const y of partes) if (enMes(y.lugar)) sale.push({ ...base, f: y.lugar, monto: y.monto });
+        };
         for (const x of p.pagos) {
             if (enTarjeta(x)) continue;
-            for (const f of fechasDe(x, desde, hasta, pr)) {
+            for (const f of fechasDe(x, mas(desde, -120), mas(hasta, 120), pr)) {
                 if (f <= p.inicio && !(x.id === 'cuchubal' && f >= p.inicio)) continue;
                 const h = k.pagado[`${x.id}:${f}`];
                 const monto = h && (x.estimado || h.monto >= x.monto) ? h.monto : x.monto;
-                sale.push({ q: x.tipoDeuda ? 'deuda' : 'fijo', id: x.id, f, monto, aprox: !h && !!x.estimado });
+                poner({ q: x.tipoDeuda ? 'deuda' : 'fijo', id: x.id, aprox: !h && !!x.estimado }, `${x.id}:${f}`, f, monto, false);
             }
         }
         for (const e of k.tarjeta.estados) {
-            if (e.vence < desde || e.vence > hasta) continue;
-            if (e.inicial) sale.push({ q: 'tarjeta', id: 'bac', f: e.vence, monto: p.tarjeta.usual, aprox: true });
-            else if (e.aPagar > 0) sale.push({ q: 'tarjeta', id: 'bac', f: e.vence, monto: e.aPagar - Math.min(e.aPagar, e.anotadoLibre), total: e.aPagar });
+            if (e.vence < mas(desde, -120) || e.vence > mas(hasta, 120)) continue;
+            if (e.inicial) poner({ q: 'tarjeta', id: 'bac', aprox: true }, `bac:${e.vence}`, e.vence, p.tarjeta.usual, true);
+            else if (e.aPagar > 0) poner({ q: 'tarjeta', id: 'bac', total: e.aPagar }, `bac:${e.vence}`, e.vence, e.aPagar - Math.min(e.aPagar, e.anotadoLibre), true);
         }
         const inicioPlan = k.periodoPlan.inicioCreacion;
         const veces = pr ? fechasDe(pr, desde > inicioPlan ? desde : inicioPlan, hasta).length : 1;
@@ -464,6 +532,9 @@ function aplicarContador(p, k, ev) {
         k.llegado[`adelanto:${k.hoy}`] = ev.monto;
         k.ingresos.push({ fecha: k.hoy, monto: ev.monto, categoria: 'adelanto' });
         k.descuentos[ev.de] = ev.descuento;
+    } else if (ev.t === 'pagarCon') {
+        // v2.9.2: lo que eligió; «lo que tienes ahora» recuerda el día en que lo eligió.
+        k.elegidos[`${ev.pago}:${ev.ocu}`] = ev.partes.map((y) => ({ ...y, ...(y.de === 'ahora' ? { el: k.hoy } : {}) }));
     }
 }
 
@@ -544,6 +615,19 @@ window.__p29 = (() => {
             s.ingresos.push({ id, nombre: 'Adelanto de salario', emoji: '💵', categoria: 'otro', tipoIngreso: 'adelanto', monto: ev.monto, aprox: false, frecuencia: 'unico', fecha: s.hoy, lugar: ev.lugar, principal: false, extra: true, desde: s.hoy, llegadas: {} });
             P.llegoIngreso(s, id, s.hoy, { monto: ev.monto, lugar: ev.lugar, fecha: s.hoy });
             M.ingreso(s, id).adelanto = { descuentos: [{ ingreso: 'sueldo', fecha: ev.de, monto: ev.descuento }] };
+        } else if (ev.t === 'pagarCon') {
+            // v2.9.2: «Cambiar o repartir» de su ficha, con las opciones que ofrece la app.
+            P.abrirHoja('pagarCon', ev.tarjeta ? { id: ev.pago, deTarjeta: true, fecha: ev.ocu } : { id: ev.pago, fecha: ev.ocu });
+            const h = P.ui.hoja;
+            const faltan = ev.partes.filter((y) => !h.fuentes.includes(y.de)).map((y) => y.de);
+            if (faltan.length) throw new Error('«¿Con qué lo pagas?» no ofrece ' + faltan.join(', ') + ' (ofrece ' + h.fuentes.join(', ') + ')');
+            if (!ev.repartir) h.modo = 'uno:' + ev.partes[0].de;
+            else {
+                h.modo = 'repartir';
+                for (const f of h.fuentes) h.partes[f] = '0.00';
+                for (const y of ev.partes) h.partes[y.de] = (y.monto / 100).toFixed(2);
+            }
+            P.acciones.pagarConOk();
         }
         P.ui.hoja = null;
     }

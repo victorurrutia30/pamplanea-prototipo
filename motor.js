@@ -675,10 +675,13 @@
         const l = ing && ing.llegadas && ing.llegadas[ing.fecha];
         return !!(l && !l.noLlego);
     }
-    /** Los ingresos de una vez que todavía no llegan y caen en o antes de `fecha`. */
+    /**
+     * Los ingresos de una vez que todavía no llegan y caen en o antes de `fecha`. v2.9.2 (APROBADO por Victor, 2026-10-23):
+     * nunca uno cuya fecha ya pasó («tu adelanto del 14 oct»): ese dinero ya está en lo que tienes ahora.
+     */
     const unicosPara = (st, fecha) =>
         st.ingresos
-            .filter((i) => i.activo !== false && i.frecuencia === 'unico' && i.fecha && i.fecha <= fecha && !(i.llegadas && i.llegadas[i.fecha]))
+            .filter((i) => i.activo !== false && i.frecuencia === 'unico' && i.fecha && i.fecha >= st.hoy && i.fecha <= fecha && !(i.llegadas && i.llegadas[i.fecha]))
             .sort((a, b) => (a.fecha < b.fecha ? -1 : a.fecha > b.fecha ? 1 : 0))
             .map((i) => 'unico:' + i.id);
     /** 'ahora' es lo que ya tienes; 'despues', lo que tengas cuando venza (sin ingreso principal). */
@@ -840,6 +843,14 @@
         return lista;
     }
     /**
+     * v2.9.2 (APROBADO por Victor, 2026-10-23): «¿Con qué ingreso la pagas?» en orden: primero lo que tienes ahora y después
+     * cada ingreso por su fecha (el de por defecto, en la suya).
+     */
+    function ordenFuentes(st, lista, fecha) {
+        const cuando = (f) => (f === 'ahora' ? '' : f === 'despues' ? fecha : esUnico(f) ? (ingresoDeClave(st, f) || {}).fecha || fecha : f);
+        return lista.map((f, i) => ({ f, i, c: cuando(f) })).sort((a, b) => (a.c < b.c ? -1 : a.c > b.c ? 1 : a.i - b.i)).map((x) => x.f);
+    }
+    /**
      * «Lo pagas con» de una ocurrencia (V2-34): lo que la persona eligió para esa fecha
      * (`asignaciones`); si no, su regla (`pagarCon`: «un día de pago antes» o «repartirlo parejo»);
      * si no, el día de pago por defecto. Lo que no cubren los montos elegidos va al de por defecto.
@@ -879,6 +890,30 @@
             else junto.push({ ...x });
         }
         return junto;
+    }
+    /** v2.9.2: el periodo de tu plan en que cae una fecha: su día de pago (sin ingreso fijo, su mes o sus 15 días). */
+    function tramoDe(st, f) {
+        if (principal(st)) return cortes(st, sumarDias(f, -100), f).at(-1) || '';
+        const [y, m, d] = partes(f);
+        return fechaDe(y, m, st.horizonteVariable === 'quince' && d > 15 ? 16 : 1);
+    }
+    /**
+     * v2.9.2 «Manda con qué lo pagas» (APROBADO por Victor, 2026-10-23): cada parte de algo de tu plan (`x`, como en «Lo
+     * pagas con») y la fecha en que cuenta: la del ingreso que la paga. Lo normal (el ingreso de antes de que venza) cuenta
+     * en su fecha, como siempre; un día de pago, ese día; un ingreso de una vez, el día que llega; «Con lo que tienes ahora»,
+     * el día que lo elegiste (`el`) o, si no se guardó, hoy (o el día que lo pagaste). `cambiada`: la paga un ingreso de otro
+     * periodo que el de su vencimiento. null si ninguna parte cambió (todo queda como siempre).
+     */
+    function cubiertaDe(st, x, o, monto, { hz = null, crudo = null, pagadoEl = null } = {}) {
+        if (!(monto > 0)) return null;
+        const def = periodoDe(st, o.fecha, hz);
+        const elegidos = crudo || (x.asignaciones && x.asignaciones[o.fecha]) || [];
+        const el = (elegidos.find((z) => z && z.de === 'ahora' && z.el) || {}).el || null;
+        const lista = asignacion(st, x, o.fecha, monto, hz).map((y) => {
+            const fecha = y.de === def || y.de === 'despues' ? o.fecha : y.de === 'ahora' ? el || (o.estado === 'pendiente' ? st.hoy : o.estado === 'vencido' ? o.fecha : pagadoEl || o.fecha) : esUnico(y.de) ? (ingresoDeClave(st, y.de) || {}).fecha || o.fecha : y.de;
+            return { ...y, fecha, cambiada: y.de !== def && tramoDe(st, fecha) !== tramoDe(st, o.fecha) };
+        });
+        return lista.some((y) => y.cambiada) ? lista : null;
     }
 
     /** «~$ por día» (V2-29 #12): hacia abajo; dólares enteros desde $10 y, por debajo, de 10 en 10 centavos («~$7.90»). */
@@ -1688,7 +1723,7 @@
         despues, despuesCuadre, cuadreAnotar, lugarGasto, saldoLugar, anteriorAlCuadre, lugaresDe, tienes, explicadoPorCuadre, sinDetalle, apartadoTotal, ultimaActividad, fechasRegla, ocurrenciasPago, ocurrenciasIngreso, tarjetaInfo, ocurrenciasTarjeta,
         horizonte, calcular, resumenMes, pagosDelMes, medioUsual, normalizar, entender, faltan, puedeCobrarSolo, principalPendiente, nombreEnPlan, capital, porDiaDe, apartadosVencidos, esDiaDeIngreso, coincide,
         inicioDe, cortes, corteAntes, corteDespues, fundado, esFundado, periodoDe, fuentesPara, asignacion, reglaPago, recurrentes, descuentosDe, proyectar, claveVigente, reservasDe,
-        esUnico, ingresoDeClave, llegoUnico, unicosPara,
+        esUnico, ingresoDeClave, llegoUnico, unicosPara, ordenFuentes, tramoDe, cubiertaDe,
         porPagar, porRecibir, ingresoEsperado, aplicarEsperado, pagoParecido,
         pasadaDelPeriodo, desdeSegun, inicioUso, antesDeEmpezar,
         pagoDeTarjeta, pagoTarjetaPropuesto, puntoSaldo,

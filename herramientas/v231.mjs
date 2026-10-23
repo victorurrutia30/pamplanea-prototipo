@@ -314,8 +314,9 @@ try {
     const idMat = await pagoUnaVez('Matrícula', 10000, '2027-01-15');
     await ev(`P.abrir("pago", ${js(idMat)}); true`);
     await clic('[data-fk="pagar-con"]');
-    // Antes de la v2.4: de un pago lejano, como mucho 3 opciones (la de siempre + las 2 más cercanas) y «Ver más quincenas».
-    check('pago lejano: 3 opciones a la vista', await ev('[...document.querySelectorAll("[data-fk^=pc-uno]")].map((e) => e.dataset.fk)'), ['pc-uno:2027-01-14', 'pc-uno:2026-12-29', 'pc-uno:2026-12-14']);
+    // Antes de la v2.4: de un pago lejano, como mucho 3 opciones y «Ver más quincenas». v2.9.2 (APROBADO por Victor,
+    // 2026-10-23): primero «Con lo que tienes ahora» y después por fecha: la más cercana antes de que venza y la de siempre.
+    check('pago lejano: 3 opciones a la vista', await ev('[...document.querySelectorAll("[data-fk^=pc-uno]")].map((e) => e.dataset.fk)'), ['pc-uno:ahora', 'pc-uno:2026-12-29', 'pc-uno:2027-01-14']);
     check('pago lejano: «Ver más quincenas»', await texto('[data-fk="pc-ver-mas"]'), 'Ver más quincenas (5)');
     await foto('pagar-con-tres-opciones');
     await clic('[data-fk="pc-ver-mas"]');

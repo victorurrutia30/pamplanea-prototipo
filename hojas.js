@@ -385,7 +385,7 @@
             const a = nuevo.find((y) => y.de === fuente);
             if (a) a.monto += mueve;
             else nuevo.unshift({ de: fuente, monto: mueve });
-            p.asignaciones = { ...(p.asignaciones || {}), [x.fecha]: nuevo.filter((y) => y.monto > 0) };
+            p.asignaciones = { ...(p.asignaciones || {}), [x.fecha]: P.conElegido(st, nuevo.filter((y) => y.monto > 0), (p.asignaciones || {})[x.fecha]) };
             resta -= mueve;
         }
         return monto - resta;
@@ -1853,7 +1853,8 @@
         const k = P.calc();
         const modelo = P.planPestana(P.rangoPlan(vista), k);
         const r = modelo.rango;
-        const item = (x) => `<li><span>${emo(x.emoji, 16)} ${esc(x.nombre)} <span class="d-sub">${[x.fecha ? M.fechaCorta(x.fecha) : '', x.descuento ? `${dinero(x.bruto)} − adelanto ${dinero(x.descuento)}${x.comision ? ` (incluye ${dinero(x.comision)} de comisión)` : ''}` : '', x.de ? `de ${dinero(x.de)}${x.tipo === 'tarjeta' ? `: ${x.sub}` : ''}` : '', x.grupo === 'presupuestos' || x.grupo === 'ahorro' ? x.marca : ''].filter(Boolean).join(' · ')}</span></span><span>${dinero(x.monto, { aprox: x.aprox })}</span></li>`;
+        // v2.9.2: lo que paga un ingreso de otro periodo dice cuándo vence («29 oct · vence el 14 nov»).
+        const item = (x) => `<li><span>${emo(x.emoji, 16)} ${esc(x.nombre)} <span class="d-sub">${[x.fecha ? M.fechaCorta(x.fecha) : '', x.vence ? `vence el ${M.fechaCorta(x.vence)}` : '', x.descuento ? `${dinero(x.bruto)} − adelanto ${dinero(x.descuento)}${x.comision ? ` (incluye ${dinero(x.comision)} de comisión)` : ''}` : '', x.de ? `de ${dinero(x.de)}${x.tipo === 'tarjeta' && /ya los contaste/.test(x.sub) ? `: ${x.sub}` : ''}` : '', x.grupo === 'presupuestos' || x.grupo === 'ahorro' ? x.marca : ''].filter(Boolean).join(' · ')}</span></span><span>${dinero(x.monto, { aprox: x.aprox })}</span></li>`;
         const fila = (signo, titulo, xs, ir, fk) => (xs.length ? `<li class="d-fila"><button type="button" class="d-b" data-a="desgloseIr" data-ir="${ir}" data-fk="d-${fk}"><span class="d-signo" aria-hidden="true">${signo}</span><span class="d-t">${titulo}</span><span class="d-m">${dinero(M.suma(xs, (x) => x.monto), { aprox: xs.some((x) => x.aprox) })}</span>${icon('chevron-right', 'ico-xs')}</button><ul class="d-items">${xs.map(item).join('')}</ul></li>` : '');
         const de = (g) => modelo.filas.filter((x) => x.cuenta && x.grupo === g);
         const vende = P.variable() && !modelo.entra;
@@ -2300,9 +2301,10 @@
             const repetido = !h.deTarjeta && p.frecuencia !== 'unico' && !!M.principal(st);
             const etiqueta = (f) => (f === 'ahora' ? 'Con lo que tienes ahora' : M.capital('con ' + P.etiquetaFuente(f)));
             const op = (v, t, s) => `<button type="button" class="opcion-g" role="radio" aria-checked="${h.modo === v}" data-a="valor" data-campo="modo" data-v="${v}" data-fk="pc-${v}"><span class="opcion-g-txt"><span class="opcion-g-t">${esc(t)}</span>${s ? `<span class="fila-s">${esc(s)}</span>` : ''}</span>${h.modo === v ? icon('circle-check', 'ico-ok') : ''}</button>`;
-            const vis = fuentesVisibles(h);
+            // v2.9.2 (APROBADO por Victor, 2026-10-23): primero lo que tienes ahora; después, por fecha.
+            const vis = M.ordenFuentes(st, fuentesVisibles(h), h.fecha);
             const ocultas = h.fuentes.length - vis.length;
-            const opciones1 = [...vis].reverse().map((f) => op('uno:' + f, etiqueta(f) + (f === h.def ? ' (lo normal)' : ''), quedaEn(k, f))).join('');
+            const opciones1 = vis.map((f) => op('uno:' + f, etiqueta(f) + (f === h.def ? ' (lo normal)' : ''), quedaEn(k, f))).join('');
             const repartir = h.fuentes.length > 1 ? op('repartir', 'Repartirlo', 'Tú eliges cuánto de cada uno') : '';
             const verMas = ocultas ? `<button type="button" class="link link--start" data-a="valor" data-campo="verTodas" data-v="true" data-fk="pc-ver-mas">${icon('chevron-down', 'ico-s')}Ver más ${M.principal(st) && M.principal(st).frecuencia === 'quincenal' ? 'quincenas' : 'opciones'} (${ocultas})</button>` : '';
             const suma = M.suma(h.fuentes, (f) => M.leerMonto(h.partes[f]) || 0);
@@ -2356,9 +2358,19 @@
     function fuentesVisibles(h) {
         if (h.verTodas || h.fuentes.length <= 3) return h.fuentes;
         const fechaDe = (f) => (f === 'ahora' ? P.st.hoy : f === 'despues' ? h.fecha : M.esUnico(f) ? M.ingresoDeClave(P.st, f)?.fecha || P.st.hoy : f);
-        const cerca = h.fuentes.filter((f) => f !== h.def).sort((a, b) => (fechaDe(a) < fechaDe(b) ? 1 : fechaDe(a) > fechaDe(b) ? -1 : 0)).slice(0, 2);
-        return h.fuentes.filter((f) => f === h.def || cerca.includes(f) || h.modo === 'uno:' + f || (h.modo === 'repartir' && M.leerMonto(h.partes[f])));
+        // v2.9.2 (APROBADO por Victor, 2026-10-23): «Con lo que tienes ahora» siempre se ve (primero), con la de siempre y la más
+        // cercana antes de que venza.
+        const cerca = h.fuentes.filter((f) => f !== h.def && f !== 'ahora').sort((a, b) => (fechaDe(a) < fechaDe(b) ? 1 : fechaDe(a) > fechaDe(b) ? -1 : 0)).slice(0, 1);
+        return h.fuentes.filter((f) => f === 'ahora' || f === h.def || cerca.includes(f) || h.modo === 'uno:' + f || (h.modo === 'repartir' && M.leerMonto(h.partes[f])));
     }
+    /**
+     * v2.9.2: «Con lo que tienes ahora» guarda el día en que lo elegiste (`el`; si ya estaba elegido, el de entonces): así Mes
+     * lo cuenta en ese mes aunque pase el tiempo.
+     */
+    P.conElegido = (s, lista, previo = null) => {
+        const el = ((previo || []).find((z) => z && z.de === 'ahora' && z.el) || {}).el || s.hoy;
+        return lista.map((y) => (y.de === 'ahora' ? { ...y, el } : y));
+    };
     /** El día de pago justo antes del de por defecto, como fuente («la quincena anterior»). */
     function antesDeDef(st, h) {
         if (!h.def || h.def === 'ahora' || h.def === 'despues') return null;
@@ -2387,9 +2399,10 @@
                 else if (h.siempre && elegido && elegido === antesDeDef(s, h)) x.pagarCon = { modo: 'antes' };
                 else if (h.siempre && h.modo === 'repartir' && h.parejo) x.pagarCon = { modo: 'parejo', desde: M.horizonte(s).inicioPeriodo || s.hoy };
                 else {
-                    if (!h.siempre && x.pagarCon && elegido === h.def) asign[h.fecha] = [{ de: h.def, monto: h.total }];
-                    else if (elegido && elegido !== h.def) asign[h.fecha] = [{ de: elegido, monto: h.total }];
-                    else if (h.modo === 'repartir') asign[h.fecha] = repartido.filter((y) => y.monto > 0);
+                    const previo = (x.asignaciones || {})[h.fecha];
+                    if (!h.siempre && x.pagarCon && elegido === h.def) asign[h.fecha] = P.conElegido(s, [{ de: h.def, monto: h.total }], previo);
+                    else if (elegido && elegido !== h.def) asign[h.fecha] = P.conElegido(s, [{ de: elegido, monto: h.total }], previo);
+                    else if (h.modo === 'repartir') asign[h.fecha] = P.conElegido(s, repartido.filter((y) => y.monto > 0), previo);
                 }
                 x.asignaciones = asign;
             },
@@ -3357,9 +3370,13 @@
         const fuentes = M.fuentesPara(st, vence);
         if (fuentes.length < 2) return '';
         const def = fuentes.at(-1);
-        // Lo elegido que ya no alcanza a llegar antes de la fecha nueva vuelve a lo normal.
-        if (h.fuenteT && !fuentes.includes(h.fuenteT)) h.fuenteT = def;
-        const lista = [...fuentes].reverse().map((f) => ({ v: f, t: (f === 'ahora' ? 'Con lo que tienes ahora' : M.capital('con ' + P.etiquetaFuente(f))) + (f === def ? ' (lo normal)' : '') }));
+        // Lo elegido que ya no alcanza a llegar antes de la fecha nueva vuelve a lo normal. v2.9.2: lo ya guardado que ya no se
+        // ofrece (un ingreso que ya llegó) no cambia mientras no elijas otra cosa.
+        const fechaDeFuente = (f) => (M.esUnico(f) ? (M.ingresoDeClave(st, f) || {}).fecha || '9999-12-31' : /^\d{4}-\d{2}-\d{2}$/.test(f) ? f : '');
+        const sigue = h.fuenteT === h.fuenteTAntes && fechaDeFuente(h.fuenteT) <= vence;
+        if (h.fuenteT && !fuentes.includes(h.fuenteT) && !sigue) h.fuenteT = def;
+        // v2.9.2 (APROBADO por Victor, 2026-10-23): primero lo que tienes ahora; después, por fecha.
+        const lista = M.ordenFuentes(st, fuentes, vence).map((f) => ({ v: f, t: (f === 'ahora' ? 'Con lo que tienes ahora' : M.capital('con ' + P.etiquetaFuente(f))) + (f === def ? ' (lo normal)' : '') }));
         return `${opciones(h, { campo: 'fuenteT', label: `¿Con qué ingreso la pagas? <span class="opcional">(vence el ${esc(M.fechaCorta(vence))}: ${dinero(info.comoPago, { aprox: !!info.ult.inicial })})</span>`, lista, valor: h.fuenteT, columnas: true })}`;
     }
     const diaValido = (v) => /^\d{1,2}$/.test(String(v || '').trim()) && +v >= 1 && +v <= 31;
@@ -3561,7 +3578,7 @@
                             const asign = { ...(t.asignaciones || {}) };
                             const fuentes = M.fuentesPara(s, info.vence);
                             if (h.fuenteT === fuentes.at(-1) || !fuentes.includes(h.fuenteT)) delete asign[info.vence];
-                            else asign[info.vence] = [{ de: h.fuenteT, monto: info.comoPago }];
+                            else asign[info.vence] = P.conElegido(s, [{ de: h.fuenteT, monto: info.comoPago }], asign[info.vence]);
                             t.asignaciones = asign;
                         }
                     },
