@@ -57,6 +57,16 @@ Victor aprobó los 5 puntos del auditor, a partir de sus pruebas de Hoy C. Sus f
 4. **Reparte tu quincena:** «1. Ya está contado» pasa a «1. Apartado para tus pagos», con la línea «Todavía no está pagado: lo marcas cuando pagues.». Filas y números iguales.
 5. **La tarjeta con un solo nombre:** con apodo, el apodo en Hoy, Reparte, Mi plan y Mes; en su ficha, el apodo y el nombre del banco. Si el monto de una misma tarjeta es distinto entre pantallas (p. ej. $120 el 5 nov en Hoy y $165 en Reparte), se explica en la misma fila («$120 del 5 nov + $45 de compras nuevas»). Ningún número ni cálculo cambia.
 
+- **decisión técnica — REVISAR:**
+  1. El botón concuerda con el nombre: «Ya pagué **la** de noviembre» (la luz, el agua, una tarjeta) y «Ya pagué **el** de noviembre» (el alquiler, el internet, el préstamo); igual el aviso («Luz de octubre pagada ✓», «Alquiler de octubre pagado ✓»).
+  2. «Ver todos (N)» sale con 3 presupuestos o más y abre «Presupuestos» de Mi plan → Esta quincena (por fecha, o por tipo con la sección abierta), con el foco en su título.
+  3. Con Libre en $0, «✓ Nada pendiente para hoy» puede salir (neutral, nunca en verde): lo que falta ya lo dice la portada.
+  4. En Reparte, si las partes de la tarjeta no suman lo que se muestra, se dice como antes («ya estaba contado»).
+  5. El apodo también va en Anotar (la tarjeta elegida), en «Pagar …», en «Estado de cuenta · …» y en «¿De dónde sale?».
+  6. `palabras-v28` acepta solo la frase exacta «Apartado para tus pagos» (aprobada); «apartar» y «apartado» siguen fuera en todo lo demás. La guía de casos ya dice «Apartado para tus pagos».
+- **Vista previa:** el caso «8 presupuestos» (solo en el ejemplo) para ver el carrusel con muchos.
+- **Pruebas:** `invariantes` 69 de 69; `personas-v29 --hoy=C`: 0 diferencias (4 personas, 72 días); `palabras-v28`: 0 de 903. Capturas a 390×844 en Serena claro y Ancla oscuro: Pam en los 7 casos, «Algo vencido → Ya lo pagué → aviso → Lo que viene», el carrusel con 4 y con 8, Rosa con nombres largos y Reparte tu quincena después de «Sí, ya llegó».
+
 ---
 
 ## Prototipo v2.9.2 · Cada peso una vez (2026-10-23)

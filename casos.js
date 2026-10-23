@@ -72,11 +72,11 @@ window.CASOS = [
         pasos: [
             { t: 'Hoy es 30 de octubre: el número dice «Libre por ahora». Toca «¿Ya llegó?» (o la notificación).', clave: 'hoja:ingresoLlego' },
             { t: 'Revisa el monto ($600.00 en Banco Agrícola) y toca Siguiente.', clave: 'ingreso:llego:quincena' },
-            { t: 'En «Reparte tu quincena» mira «Ya está contado».', clave: 'pantalla:reparte:quincena' },
+            { t: 'En «Reparte tu quincena» mira «Apartado para tus pagos».', clave: 'pantalla:reparte:quincena' },
             { t: 'Acepta o no la sugerencia de guardar.', clave: 'reparte:apartar' },
             { t: 'Mira «3. ¿Cómo quedas la próxima?» y «4. ¿Cuadramos?» (opcional); toca Listo y mira Hoy.', clave: 'reparte:fin' },
         ],
-        esperado: 'Antes: «Libre por ahora» $285.60 con «¿Ya llegó?» y una sola tarjeta (aunque lleva 10 días sin anotar, V2-31 #10). Después: $815.60 «Hasta tu quincena del 15»; «Ya está contado» trae el colegio y la luz de noviembre (se pagan con esta quincena) y la tarjeta. Sugiere $60.00 a Emergencias (10 %), nunca más que tu libre; con eso, $755.60. «3. ¿Cómo quedas la próxima?» muestra la quincena del 15 y ofrece pasar algo a la próxima; luego «4. ¿Cuadramos?».',
+        esperado: 'Antes: «Libre por ahora» $285.60 con «¿Ya llegó?» y una sola tarjeta (aunque lleva 10 días sin anotar, V2-31 #10). Después: $815.60 «Hasta tu quincena del 15»; «Apartado para tus pagos» trae el colegio y la luz de noviembre (se pagan con esta quincena) y la tarjeta. Sugiere $60.00 a Emergencias (10 %), nunca más que tu libre; con eso, $755.60. «3. ¿Cómo quedas la próxima?» muestra la quincena del 15 y ofrece pasar algo a la próxima; luego «4. ¿Cuadramos?».',
         observar: '¿Entiende que los pagos ya estaban restados? ¿Siente la sugerencia como opcional? ¿Le gustaría hacer esto cada quincena?',
     },
     {

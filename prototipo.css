@@ -4737,11 +4737,47 @@ html.con-hazlo .mask {
     font-size: 14px;
     font-weight: 500;
 }
-/* Tres por renglón: el nombre arriba y cuánto te queda abajo (nunca se corta: si no cabe, baja de línea). */
+/*
+ * v2.9.3 ronda 2 (APROBADO por Victor, 2026-10-23): un carrusel que no se mueve solo. Una fila que se desliza con el dedo
+ * (sin trabar el scroll vertical), de borde a borde, con el siguiente chip asomado (~⅓); se detiene en cada chip. Si todos
+ * caben (pantallas anchas), una fila sin carrusel. Sin animación: con «reducir movimiento» tampoco se mueve nada.
+ */
 .hp-chips {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-auto-columns: minmax(150px, 1fr);
+    grid-auto-flow: column;
     gap: 8px;
+    margin: 0 -16px;
+    padding: 4px 16px 10px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-padding-inline: 16px;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+}
+.hp-chips::-webkit-scrollbar {
+    display: none;
+}
+.hp-li {
+    display: grid;
+    min-width: 0;
+    scroll-snap-align: start;
+}
+.hp-todos {
+    font-size: 13px;
+}
+.hoy-nada {
+    display: flex;
+    min-height: 44px;
+    align-items: center;
+    gap: 8px;
+    padding: 0 4px;
+    color: var(--color-text-muted);
+    font-size: 15px;
+    line-height: 20px;
+}
+.hoy-nada .ico-s {
+    color: var(--color-text-muted);
 }
 .hp-chip {
     display: grid;
@@ -4792,8 +4828,9 @@ html.con-hazlo .mask {
 .hp-m {
     white-space: nowrap;
 }
-.hp-chips > .hp-chip {
-    align-self: stretch;
+.hp-li > .hp-chip {
+    width: 100%;
+    height: 100%;
     grid-template-rows: auto 1fr;
 }
 .hp--cerca .hp-e {

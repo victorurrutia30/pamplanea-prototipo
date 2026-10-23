@@ -1069,7 +1069,7 @@
             out.push(montoChip());
             // v2.7 (F07): a qué tarjeta va, a la vista antes de guardar (y se cambia aquí).
             const t = M.tarjeta(st, d.tarjeta);
-            out.push(chip('tarjeta', t ? `${emo(t.emoji, 16)} ${esc(t.nombre)}` : '¿Cuál tarjeta?', { falta: !t, abierto: h.editando === 'tarjeta', etiqueta: 'A la tarjeta' }));
+            out.push(chip('tarjeta', t ? `${emo(t.emoji, 16)} ${esc(P.nombreTarjeta(t))}` : '¿Cuál tarjeta?', { falta: !t, abierto: h.editando === 'tarjeta', etiqueta: 'A la tarjeta' }));
             out.push(chip('lugar', `Desde ${esc(M.lugar(st, d.lugar)?.nombre || '¿dónde?')}`, { falta: !d.lugar, abierto: h.editando === 'lugar', etiqueta: 'De dónde' }));
             out.push(fechaChip());
         }
@@ -1235,7 +1235,7 @@
         if (d.tipo === 'pagoTarjeta' && d.tarjeta) {
             const t = M.tarjeta(st, d.tarjeta);
             const info = M.tarjetaInfo(st, t);
-            out.push(`<div class="nota nota--info" role="note">${icon('info')}<p>Pagas tu tarjeta <strong>${esc(t.nombre)}</strong>${d.lugar ? ` desde ${esc(M.lugar(st, d.lugar)?.nombre || '')}` : ''}. No es un gasto nuevo: mueve dinero de tu banco a la tarjeta.</p></div>`);
+            out.push(`<div class="nota nota--info" role="note">${icon('info')}<p>Pagas tu tarjeta <strong>${esc(P.nombreTarjeta(t))}</strong>${d.lugar ? ` desde ${esc(M.lugar(st, d.lugar)?.nombre || '')}` : ''}. No es un gasto nuevo: mueve dinero de tu banco a la tarjeta.</p></div>`);
             if (!info.ult.inicial) out.push(notaMinimo(d.monto, info.ult.minimo, info.pagado));
         }
         // v2.7 (P-3): lo de antes del último cuadre de esa cuenta ya está en lo que contaste; el mismo día, se pregunta.
@@ -1893,22 +1893,22 @@
             const parteDe = (o) => (o.parte < o.monto ? ` · ${dinero(o.parte)} de ${dinero(o.monto, { aprox: o.estimado })}` : '');
             const items = k.items.map((o) => linea(o, `${o.estado === 'vencido' ? 'venció el ' : 'el '}${M.partes(o.fecha)[2]}${parteDe(o)}`));
             for (const t of k.tarjetas) {
-                if (t.pendiente && !t.usual) items.push(`<li><span>${emo(t.t.emoji, 16)} ${esc(t.t.nombre)} <span class="d-sub">estado de cuenta por anotar</span></span><span>Por confirmar</span></li>`);
+                if (t.pendiente && !t.usual) items.push(`<li><span>${emo(t.t.emoji, 16)} ${esc(P.nombreTarjeta(t.t))} <span class="d-sub">estado de cuenta por anotar</span></span><span>Por confirmar</span></li>`);
                 // V2-54: hasta su primer estado de cuenta, lo que paga normalmente.
                 // v2.6.6 (V2-85): la fecha del ciclo que se cuenta (antes decía la del ciclo de antes de agregarla: «venció el 14 oct»).
                 // v2.6.7 (V2-87): solo lo que sale de lo que ya tienes (vence antes de tu próximo ingreso); lo que paga un
                 // ingreso que todavía no llega va en la pestaña de ese periodo (v2.9, R3), y lo reservado, en «Reservado para pagos».
-                if (t.estimadoAhora > 0) items.push(`<li><span>${emo(t.t.emoji, 16)} ${esc(t.t.nombre)} <span class="d-sub">lo que pagas normalmente, ${t.vence < st.hoy ? 'venció' : 'vence'} el ${M.fechaCorta(t.vence)}${t.vence >= st.hoy && hz.ingreso && !hz.esHoy && !hz.atrasada ? `, antes de tu ${esc(P.nombreIngreso(hz))}` : ''}</span></span><span>${dinero(t.estimadoAhora, { aprox: true })}</span></li>`);
+                if (t.estimadoAhora > 0) items.push(`<li><span>${emo(t.t.emoji, 16)} ${esc(P.nombreTarjeta(t.t))} <span class="d-sub">lo que pagas normalmente, ${t.vence < st.hoy ? 'venció' : 'vence'} el ${M.fechaCorta(t.vence)}${t.vence >= st.hoy && hz.ingreso && !hz.esHoy && !hz.atrasada ? `, antes de tu ${esc(P.nombreIngreso(hz))}` : ''}</span></span><span>${dinero(t.estimadoAhora, { aprox: true })}</span></li>`);
                 // V2-29 #1: vence después del ingreso, pero ya baja el libre; se dice cuándo vence.
-                if (t.porPagarAhora > 0) items.push(`<li><span>${emo(t.t.emoji, 16)} ${esc(t.t.nombre)} <span class="d-sub">estado de cuenta, ${t.ult.vence < st.hoy ? 'venció' : 'vence'} el ${M.partes(t.ult.vence)[2]} ${M.MESES_CORTOS[M.partes(t.ult.vence)[1] - 1]}${t.porPagarAhora < t.porPagarEstado ? ` · ${dinero(t.porPagarAhora)} de ${dinero(t.porPagarEstado)}` : ''}</span></span><span>${dinero(t.porPagarAhora)}</span></li>`);
+                if (t.porPagarAhora > 0) items.push(`<li><span>${emo(t.t.emoji, 16)} ${esc(P.nombreTarjeta(t.t))} <span class="d-sub">estado de cuenta, ${t.ult.vence < st.hoy ? 'venció' : 'vence'} el ${M.partes(t.ult.vence)[2]} ${M.MESES_CORTOS[M.partes(t.ult.vence)[1] - 1]}${t.porPagarAhora < t.porPagarEstado ? ` · ${dinero(t.porPagarAhora)} de ${dinero(t.porPagarEstado)}` : ''}</span></span><span>${dinero(t.porPagarAhora)}</span></li>`);
                 const compras = t.comprasNetas - t.reservado;
-                if (compras > 0) items.push(`<li><span>${emo(t.t.emoji, 16)} ${esc(t.t.nombre)} <span class="d-sub">compras nuevas, se pagan el ${M.partes(t.venceCompras)[2]} ${M.MESES_CORTOS[M.partes(t.venceCompras)[1] - 1]}</span></span><span>${dinero(compras)}</span></li>`);
+                if (compras > 0) items.push(`<li><span>${emo(t.t.emoji, 16)} ${esc(P.nombreTarjeta(t.t))} <span class="d-sub">compras nuevas, se pagan el ${M.partes(t.venceCompras)[2]} ${M.MESES_CORTOS[M.partes(t.venceCompras)[1] - 1]}</span></span><span>${dinero(compras)}</span></li>`);
             }
             // V2-41: lo reservado se ve en una línea (y dentro de cada pago).
             const reservados = [
                 ...k.reservados.map((o) => linea(o, `vence el ${M.fechaCorta(o.fecha)}${parteDe(o)}`)),
                 ...k.reservasProxima.map((r) => filaReserva(r)),
-                ...k.tarjetas.filter((t) => t.reservado).map((t) => `<li><span>${emo(t.t.emoji, 16)} ${esc(t.t.nombre)} <span class="d-sub">de tu ahorro ${esc(t.reservas.map((r) => r.de).join(', '))}, para tu pago del ${esc(P.diaPago(t, t.venceCompras))}</span></span><span>${dinero(t.reservado)}</span></li>`),
+                ...k.tarjetas.filter((t) => t.reservado).map((t) => `<li><span>${emo(t.t.emoji, 16)} ${esc(P.nombreTarjeta(t.t))} <span class="d-sub">de tu ahorro ${esc(t.reservas.map((r) => r.de).join(', '))}, para tu pago del ${esc(P.diaPago(t, t.venceCompras))}</span></span><span>${dinero(t.reservado)}</span></li>`),
             ];
             const reservado = k.reservadoPagos + k.reservadoProxima + k.reservadoTarjetas;
             // v2.9 (R3): aquí solo lo que cuenta hoy; lo que viene (tu próxima quincena, el aguinaldo) está en su pestaña de Mi plan.
@@ -2047,6 +2047,18 @@
      * (la primera sin pagar ni saltar; una vencida, primero); si todavía no vence, se pregunta «¿Ya lo pagaste por
      * adelantado?». V2-29 #8 sigue: con monto fijo no se pregunta cuánto ni con qué.
      */
+    /**
+     * v2.9.3 ronda 2 (APROBADO por Victor, 2026-10-23): al pagar, si la siguiente ya está en «Lo que viene» (45 días), el aviso
+     * dice cuál pagaste y cuál sigue: «Luz de octubre pagada ✓ · la de noviembre sigue en tu plan». Si no, el aviso de siempre.
+     */
+    const avisoPago = (p, fecha, base) => () => {
+        const pp = M.pago(P.st, p.id);
+        const sig = pp ? M.porPagar(P.st, pp) : null;
+        if (!sig || sig.fecha <= fecha || sig.fecha > M.sumarDias(P.st.hoy, 45)) return base;
+        const a = P.cualPago(pp, fecha);
+        const b = P.cualPago(pp, sig.fecha);
+        return `${a.nombre} ${a.pagado} ✓ · ${b.la} ${b.de} sigue en tu plan`;
+    };
     P.acciones.pagado = (d) => {
         const st = P.st;
         if (d.tipo === 'pago') {
@@ -2070,7 +2082,7 @@
                 if (!p.estimado && x && x.estado === 'pendiente') {
                     const m = M.medio(s0, p.medio);
                     // v2.7 (D-6): si ya pagaste una parte, se marca lo que falta.
-                    P.cambiar((s) => P.marcarPagado(s, p.id, d.fecha, { monto: x.monto, medio: p.medio, fecha: s.hoy }), { aviso: `Pagado con ${m ? m.nombre : 'tu medio'}`, cambiar: (r) => r.id, claves: ['guardado:pagado', 'guardado:pagado:' + claveNombre(p.nombre)] });
+                    P.cambiar((s) => P.marcarPagado(s, p.id, d.fecha, { monto: x.monto, medio: p.medio, fecha: s.hoy }), { aviso: avisoPago(p, d.fecha, `Pagado con ${m ? m.nombre : 'tu medio'}`), cambiar: (r) => r.id, claves: ['guardado:pagado', 'guardado:pagado:' + claveNombre(p.nombre)] });
                     return;
                 }
                 P.abrirHoja('pagado', { tipoPago: d.tipo, id: d.id, fecha: d.fecha });
@@ -2175,7 +2187,7 @@
                 const t = M.tarjeta(st, h.id);
                 const bancos = st.lugares.filter((l) => l.tipo === 'banco');
                 return {
-                    titulo: `Pagar ${esc(t.nombre)}`,
+                    titulo: `Pagar ${esc(P.nombreTarjeta(t))}`,
                     cuerpo: `${campoMonto(h, { label: '¿Cuánto vas a pagar?', valor: h.monto })}
                         <div id="pagado-vivo" aria-live="polite">${vivoPagado(st, h)}</div>
                         ${bancos.length > 1 ? opciones(h, { campo: 'lugar', label: '¿Desde cuál cuenta?', lista: lugares(st), valor: h.lugar }) : `<p class="txt">Desde ${esc(M.lugar(st, h.lugar).nombre)}.</p>`}
@@ -2193,7 +2205,8 @@
             const p = M.pago(st, h.id);
             const m = M.medio(st, h.medio);
             return {
-                titulo: `${esc(p.nombre)} · ${h.vencido ? 'venció' : 'vence'} el ${M.partes(h.fecha)[2]} ${M.MESES_CORTOS[M.partes(h.fecha)[1] - 1]}`,
+                // v2.9.3 ronda 2: de cuál se trata («Luz de noviembre · vence el 12 nov»).
+                titulo: `${esc(P.cualPago(p, h.fecha).mensual ? P.cualPago(p, h.fecha).nombre : p.nombre)} · ${h.vencido ? 'venció' : 'vence'} el ${M.partes(h.fecha)[2]} ${M.MESES_CORTOS[M.partes(h.fecha)[1] - 1]}`,
                 cuerpo: `${campoMonto(h, { label: '¿Cuánto pagaste?', valor: h.monto, ayuda: p.estimado ? `Era un estimado de ${dinero(p.monto, { aprox: true })}. Escribe lo que dice tu recibo.` : '', errorTexto: 'Escribe cuánto pagaste' })}
                     <div id="pagado-vivo" aria-live="polite">${vivoPagado(st, h)}</div>
                     ${opciones(h, { campo: 'medio', label: '¿Con qué lo pagaste?', lista: medios(st).map((x) => ({ ...x, s: x.v === p.medio ? 'el de siempre' : '' })), valor: h.medio })}
@@ -2233,13 +2246,13 @@
         P.ui.hoja = null;
         if (h.tipoPago === 'tarjeta') {
             const t = M.tarjeta(st, h.id);
-            P.cambiar((s) => P.pagarTarjeta(s, h.id, { monto, lugar: h.lugar, fecha: h.cuando }), { aviso: `${t.nombre}: pago guardado`, claves: ['guardado:pagoTarjeta'] });
+            P.cambiar((s) => P.pagarTarjeta(s, h.id, { monto, lugar: h.lugar, fecha: h.cuando }), { aviso: `${P.nombreTarjeta(t)}: pago guardado`, claves: ['guardado:pagoTarjeta'] });
         } else {
             const p = M.pago(st, h.id);
             const m = M.medio(st, h.medio);
             const l = m && m.lugar ? M.lugar(st, m.lugar) : null;
             const sube = l && l.cuadre && h.cuando < l.cuadre.fecha ? contadoDe(st, p.id, h.fecha) : null;
-            P.cambiar((s) => P.marcarPagado(s, h.id, h.fecha, { monto, medio: h.medio, fecha: h.cuando }), { aviso: sube ? `Pagado. Tu libre sube ${dinero(sube)}` : `Pagado con ${m ? m.nombre : 'tu medio'}`, cambiar: (r) => r.id, claves: ['guardado:pagado', 'guardado:pagado:' + claveNombre(p.nombre)] });
+            P.cambiar((s) => P.marcarPagado(s, h.id, h.fecha, { monto, medio: h.medio, fecha: h.cuando }), { aviso: avisoPago(p, h.fecha, sube ? `Pagado. Tu libre sube ${dinero(sube)}` : `Pagado con ${m ? m.nombre : 'tu medio'}`), cambiar: (r) => r.id, claves: ['guardado:pagado', 'guardado:pagado:' + claveNombre(p.nombre)] });
         }
         const el = h.disparador && document.querySelector(`[data-fk="${CSS.escape(h.disparador)}"]`);
         (el || document.querySelector('#pantalla h1'))?.focus({ preventScroll: true });
@@ -4968,7 +4981,7 @@
             const minimo = M.leerMonto(h.minimo);
             if (h.paso === 1) {
                 return {
-                    titulo: `Estado de cuenta · ${esc(t.nombre)}`,
+                    titulo: `Estado de cuenta · ${esc(P.nombreTarjeta(t))}`,
                     cuerpo: `${h.sinCorte ? `<p class="txt">Vence el ${esc(M.fechaLarga(pend.vence))}.</p>${campoDia(h, 'corte', 'Día de corte', 'Está en tu estado de cuenta')}` : `<p class="txt">Corte del ${esc(M.fechaLarga(pend.corte))}. Vence el ${esc(M.fechaLarga(pend.vence))}.</p>`}
                         <p class="campo-l">¿Cuánto te salió?</p>
                         ${campoMonto(h, { campo: 'total', label: '¿Cuánto es el pago de contado (total)?', valor: h.total, id: 'f-total', errorTexto: 'Escribe el pago de contado' })}
@@ -5328,6 +5341,20 @@
         if (!em || diez <= 0) return [];
         return [{ id: em.id, monto: em.meta ? Math.min(diez, Math.max(0, em.meta - em.monto)) : diez, regla: 'El 10 % de lo que te llegó' }].filter((x) => x.monto > 0);
     }
+    /**
+     * v2.9.3 ronda 2 (APROBADO por Victor, 2026-10-23): la tarjeta en Reparte dice de qué es su monto, para que se entienda si
+     * en Hoy se ve otro («$120.00 del 5 nov + $45.00 de compras nuevas»). Ningún número cambia: si las partes no suman lo que
+     * se muestra, se dice como antes («ya estaba contado»).
+     */
+    function partesTarjeta(t) {
+        const partes = [];
+        if (t.porPagarAhora > 0) partes.push([t.porPagarAhora, `${dinero(t.porPagarAhora)} del ${M.fechaCorta(t.ult.vence)}`, `estado de cuenta del ${M.fechaCorta(t.ult.vence)}`]);
+        if (t.estimadoAhora > 0) partes.push([t.estimadoAhora, `${dinero(t.estimadoAhora, { aprox: true })} de lo que pagas normalmente`, 'lo que pagas normalmente']);
+        const compras = t.comprasNetas - t.reservado;
+        if (compras > 0) partes.push([compras, `${dinero(compras)} de compras nuevas`, 'compras nuevas']);
+        if (!partes.length || partes.reduce((n, [m]) => n + m, 0) !== t.enLibre) return 'ya estaba contado';
+        return partes.length === 1 ? partes[0][2] : partes.map((x) => x[1]).join(' + ');
+    }
     S.reparte = function (top) {
         const st = P.st;
         const ing = M.ingreso(st, top.id);
@@ -5348,7 +5375,7 @@
         const linea = (o, sub) => `<li><span>${emo(o.pago.emoji, 16)} ${esc(o.pago.nombre)} <span class="d-sub">${sub}</span></span><span>${dinero(o.parte, { aprox: o.estimado })}</span></li>`;
         const contado = [
             ...k.items.map((o) => linea(o, o.estado === 'vencido' ? 'venció el ' + M.partes(o.fecha)[2] : M.fechaCorta(o.fecha))),
-            ...k.tarjetas.filter((t) => t.enLibre).map((t) => `<li><span>${emo(t.t.emoji, 16)} ${esc(t.t.nombre)} <span class="d-sub">ya estaba contado</span></span><span>${dinero(t.enLibre)}</span></li>`),
+            ...k.tarjetas.filter((t) => t.enLibre).map((t) => `<li><span>${emo(t.t.emoji, 16)} ${esc(P.nombreTarjeta(t.t))} <span class="d-sub">${esc(partesTarjeta(t))}</span></span><span>${dinero(t.enLibre)}</span></li>`),
             ...k.reservados.map((o) => linea(o, `reservado · vence el ${M.fechaCorta(o.fecha)}`)),
             ...k.reservasProxima.map((r) => filaReserva(r)),
         ];
@@ -5380,7 +5407,7 @@
             <header class="pg-head"><p class="paso">${emo(ing.emoji, 18)} Llegó ${esc(quePalabra)}</p><h1 class="h1" tabindex="-1">Reparte ${esc(quePalabra)}</h1><p class="sub">Te cayeron <strong>${dinero(top.monto)}</strong> en ${esc(M.lugar(st, ing.lugar).nombre)}.${(top.otros || []).length ? ` Y también ${esc(P.lista(top.otros.map((o) => `${dinero(o.monto)} de ${o.nombre}`)))}.` : ''}</p></header>
             ${adelanto ? `<div class="nota nota--info" role="note">${icon('calendar-days')}<p><strong>Llegó antes de ${esc(P.etiquetaFuente(adelanto.para))}:</strong> la guardamos para esa quincena, así que no suma a tu libre de hoy. <button type="button" class="link link--inline" data-a="usarAdelanto" data-id="${ing.id}" data-fecha="${top.fecha}" data-fk="rep-usar-adelanto">Usarla desde ya</button></p></div>` : ''}
             ${otrosHtml}
-            ${P.tarjetaSeccion('1. Ya está contado', `<p class="txt txt--card">Esto vence antes de ${esc(proximo)} o ya lo dejaste listo, y ya no cuenta en tu libre:</p><ul class="d-items d-items--card">${contado.join('') || '<li><span>Nada por pagar en estas fechas.</span><span></span></li>'}${contado.length ? `<li class="d-total-li"><span>Total contado</span><span>${dinero(totalContado)}</span></li>` : ''}</ul>`, { id: 'rep-contado' })}
+            ${P.tarjetaSeccion('1. Apartado para tus pagos', `<p class="txt txt--card rep-nota"><strong>Todavía no está pagado: lo marcas cuando pagues.</strong></p><p class="txt txt--card">Esto vence antes de ${esc(proximo)} o ya lo dejaste listo, y ya no cuenta en tu libre:</p><ul class="d-items d-items--card">${contado.join('') || '<li><span>Nada por pagar en estas fechas.</span><span></span></li>'}${contado.length ? `<li class="d-total-li"><span>Total contado</span><span>${dinero(totalContado)}</span></li>` : ''}</ul>`, { id: 'rep-contado' })}
             ${top.sugerencias.length ? P.tarjetaSeccion('2. ¿Quieres ahorrar algo?', `<p class="txt txt--card">Te sugerimos; tú decides. Nada se ahorra solo.</p><ul class="sugs">${sug}</ul>`, { id: 'rep-sug' }) : P.tarjetaSeccion('2. ¿Quieres ahorrar algo?', `<p class="txt txt--card">Cuando tengas un ahorro, aquí te sugeriremos cuánto ponerle. Nada se ahorra solo.</p>`, { id: 'rep-sug' })}
             ${prox}
             ${cuadreReparte(st, top, prox ? 4 : 3)}
@@ -5438,7 +5465,7 @@
         if (t && (res || top.pagoYa)) {
             const banco = st.lugares.find((l) => l.tipo === 'banco');
             const cuerpo = top.pagoYa
-                ? `<p class="txt centro">Pagaste ${dinero(top.pagoYa)} a tu ${esc(t.nombre)} desde ${esc(banco ? banco.nombre : 'tu banco')}.${res ? ` Quedan ${dinero(info.reservado)} guardados para el pago del ${esc(P.diaPago(info, info.venceCompras))}.` : ' La reserva ya no hace falta.'}</p>
+                ? `<p class="txt centro">Pagaste ${dinero(top.pagoYa)} a tu ${esc(P.nombreTarjeta(t))} desde ${esc(banco ? banco.nombre : 'tu banco')}.${res ? ` Quedan ${dinero(info.reservado)} guardados para el pago del ${esc(P.diaPago(info, info.venceCompras))}.` : ' La reserva ya no hace falta.'}</p>
                    <div class="nota nota--ok" role="note">${icon('check')}<p>Tu libre sigue en ${dinero(k.libre)}: ese dinero ya estaba en tus ahorros.</p></div>
                    <div class="pila"><button type="button" class="btn btn--prim btn--48 btn--full" data-a="irTab" data-tab="midinero" data-fk="logro-entendido">Entendido</button></div>`
                 : `<p class="txt centro">Pagaste con tu tarjeta, así que tus <strong>${dinero(res.monto)}</strong> quedan guardados para el pago del ${esc(P.diaPago(info, info.venceCompras))}.</p>
@@ -5481,7 +5508,7 @@
             const op = (v, titulo, sub) => `<button type="button" class="opcion-g" role="radio" aria-checked="${h.opcion === v}" data-a="valor" data-campo="opcion" data-v="${v}" data-fk="py-${v}"><span class="opcion-g-txt"><span class="opcion-g-t">${titulo}</span><span class="fila-s">${sub}</span></span>${h.opcion === v ? icon('circle-check', 'ico-ok') : ''}</button>`;
             return {
                 titulo: '¿Cuánto pagas?',
-                cuerpo: `<p class="txt">Desde ${esc(M.lugar(st, h.lugar).nombre)} a tu ${esc(t.nombre)}. Pagar la tarjeta mueve tu dinero: no es un gasto nuevo y tu libre no cambia.</p>
+                cuerpo: `<p class="txt">Desde ${esc(M.lugar(st, h.lugar).nombre)} a tu ${esc(P.nombreTarjeta(t))}. Pagar la tarjeta mueve tu dinero: no es un gasto nuevo y tu libre no cambia.</p>
                     <div class="opciones-grandes" role="radiogroup" aria-label="Cuánto pagas">
                         ${op('compra', `Solo ${esc(res.de ? P.conArticulo(res.de) : 'la compra')} · ${dinero(res.monto)}`, info.porPagarEstado ? `Tu pago del ${esc(P.diaPago(info, info.ult.vence))} (${dinero(info.porPagarEstado)}) sigue igual.` : 'Lo que usaste de tu ahorro.')}
                         ${op('todo', `Todo lo que debes · ${dinero(info.debeTotal)}`, 'Estado de cuenta y compras nuevas.')}

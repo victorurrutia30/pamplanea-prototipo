@@ -138,7 +138,11 @@
         const dia = `<span class="pl-dia" aria-hidden="true"><span class="pl-dia-n">${M.partes(o.fecha)[2]}</span><span class="pl-dia-m">${o.fecha === st.hoy ? 'hoy' : M.MESES_CORTOS[M.partes(o.fecha)[1] - 1]}</span></span>`;
         const cuando = o.estado === 'vencido' ? `Venció el ${M.fechaCorta(o.fecha)}` : o.fecha === st.hoy ? 'Vence hoy' : M.capital(M.fechaCorta(o.fecha));
         const dentro = `${dia}${sr(`${cuando}: `)}${caja(emoji, 'emo--sm')}<span class="pl-n">${esc(nombre)}</span>${marca}<span class="pl-m">${monto}</span>`;
-        const btnPagar = puedePagar ? `<button type="button" class="btn btn--sm${urgente ? ' btn--prim' : ''}${espera ? ' btn--espera' : ''}" data-a="pagado" data-tipo="${tipo}" data-id="${id}" data-fecha="${o.fecha}" data-fk="pagado-${fk}" aria-label="${espera ? `Marcar ${esc(nombre)} como pagado: primero el del ${esc(P.diaMes(sig.fecha))}` : `Marcar ${esc(nombre)} como pagado`}">Ya lo pagué</button>` : '';
+        // v2.9.3 ronda 2 (APROBADO por Victor, 2026-10-23): lo que no vence hoy ni venció dice cuál es («Ya pagué la de noviembre»,
+        // «Ya pagué la del 5 nov»), para no pagar dos veces el equivocado. Lo de hoy o vencido: «Ya lo pagué».
+        const cual = P.cualPago(esTarjeta ? o.tarjeta : o.pago, o.fecha);
+        const textoPagar = esUrgente(o) ? 'Ya lo pagué' : `Ya pagué ${cual.la} ${cual.de}`;
+        const btnPagar = puedePagar ? `<button type="button" class="btn btn--sm${urgente ? ' btn--prim' : ''}${espera ? ' btn--espera' : ''}" data-a="pagado" data-tipo="${tipo}" data-id="${id}" data-fecha="${o.fecha}" data-fk="pagado-${fk}" aria-label="${espera ? `Marcar ${esc(cual.nombre)} como ${cual.pagado}: primero el del ${esc(P.diaMes(sig.fecha))}` : `Marcar ${esc(cual.nombre)} como ${cual.pagado}`}">${esc(textoPagar)}</button>` : '';
         const btnDeshacer = pagadoHoy ? `<button type="button" class="btn btn--sm" data-a="pagoDeshacer" data-id="${o.pago.id}" data-fecha="${o.fecha}" data-fk="deshacer-${fk}" aria-label="Deshacer: ${esc(nombre)} ya no está pagado">Deshacer</button>` : '';
         const btnVer = `<button type="button" class="link" data-a="abrir" data-tipo="${tipo}" data-id="${id}" data-fk="ver-${fk}">Ver detalle${icon('chevron-right', 'ico-xs')}</button>`;
         // Lo urgente: la fila abre su ficha y «Ya lo pagué» está a la vista. Lo demás: la fila abre sus acciones.
@@ -270,19 +274,33 @@
             </div>`;
     }
     /**
-     * Presupuestos en chips (A y C): 3, los más cerca de su máximo; el resto en «Ver todos». El nombre en máximo 2 líneas
-     * (completo para el lector de pantalla) y lo que queda en su propia línea, sin partir el monto.
+     * Presupuestos en chips (A y C). v2.9.3 ronda 2 (APROBADO por Victor, 2026-10-23): un carrusel que no se mueve solo: todos
+     * en una fila que se desliza con el dedo, con el siguiente asomado; primero los pasados de su máximo y luego los más cerca.
+     * Es una lista con etiqueta (se recorre con Tab: el chip con foco se ve). «Ver todos (N)» abre tus presupuestos en Mi plan.
+     * Cada chip: el nombre en máximo 2 líneas (completo para el lector de pantalla) y lo que queda en su línea, sin partir el
+     * monto; todos de la misma altura.
      */
     function presChipsHtml(k) {
         const pres = presupuestos(k);
         if (!pres.length) return '';
-        const todos = !!P.ui.hoyPresTodos;
         const chip = (x) => {
             const e = estadoPresupuesto(x, { corto: true });
-            return `<button type="button" class="chip hp-chip ${e.cls}" data-a="abrir" data-tipo="variable" data-id="${x.v.id}" data-fk="hp-${x.v.id}" aria-label="${esc(`${x.v.nombre}: ${e.t}`)}"><span class="hp-l1" aria-hidden="true">${P.emo(x.v.emoji, 18)}<span class="hp-n">${esc(x.v.nombre)}</span></span><span class="hp-e" aria-hidden="true">${e.cls === 'hp--pasado' ? icon('triangle-alert', 'ico-xs') : ''}<span>${esc(e.pre)}${e.monto ? ` <span class="hp-m">${esc(e.monto)}</span>` : ''}</span></span></button>`;
+            return `<li class="hp-li"><button type="button" class="chip hp-chip ${e.cls}" data-a="abrir" data-tipo="variable" data-id="${x.v.id}" data-fk="hp-${x.v.id}" aria-label="${esc(`${x.v.nombre}: ${e.t}`)}"><span class="hp-l1" aria-hidden="true">${P.emo(x.v.emoji, 18)}<span class="hp-n">${esc(x.v.nombre)}</span></span><span class="hp-e" aria-hidden="true">${e.cls === 'hp--pasado' ? icon('triangle-alert', 'ico-xs') : ''}<span>${esc(e.pre)}${e.monto ? ` <span class="hp-m">${esc(e.monto)}</span>` : ''}</span></span></button></li>`;
         };
-        return `<section class="hoyA-pres" aria-labelledby="hp-t"><div class="hoyA-pres-h"><h2 class="hoyA-h" id="hp-t">Presupuestos <span class="hoyA-h-s">${esc(P.estePlan())}</span></h2>${pres.length > 3 ? `<button type="button" class="link" data-a="hoyPresTodos" data-fk="hp-todos" aria-expanded="${todos}">${todos ? 'Ver menos' : `Ver todos (${pres.length})`}</button>` : ''}</div><div class="chips hp-chips">${(todos ? pres : pres.slice(0, 3)).map(chip).join('')}</div></section>`;
+        const todos = pres.length > 2 ? `<button type="button" class="link hp-todos" data-a="hoyVerPresupuestos" data-fk="hp-todos">Ver todos (${pres.length})</button>` : '';
+        return `<section class="hoyA-pres" aria-labelledby="hp-t"><div class="hoyA-pres-h"><h2 class="hoyA-h" id="hp-t">Presupuestos <span class="hoyA-h-s">${esc(P.estePlan())}</span></h2>${todos}</div><ul class="hp-chips" aria-label="${esc(`${plural(pres.length, 'presupuesto', 'presupuestos')} ${P.estePlan()}`)}">${pres.map(chip).join('')}</ul></section>`;
     }
+    /** «Ver todos (N)»: tus presupuestos de este periodo en Mi plan (la lista que ya existe), por fecha o por tipo. */
+    P.acciones.hoyVerPresupuestos = () => {
+        P.ui.pagosVista = 'actual';
+        const porTipo = P.modoPlan && P.modoPlan() === 'tipo';
+        if (porTipo) P.ui.planAbiertas = { ...(P.ui.planAbiertas || {}), variables: true };
+        P.irTab('pagos');
+        const h = document.getElementById(porTipo ? 'mp-gastos-variables' : 'pl-h-presupuestos');
+        if (!h) return;
+        h.scrollIntoView({ block: 'start' });
+        (h.querySelector('button') || h).focus({ preventScroll: true });
+    };
     /**
      * «Para hoy» (B y C): lo que te pide algo hoy, una fila cada uno, con su botón. Primero «¿Ya llegó?» (una sola vez), luego
      * lo vencido y lo que vence hoy («Ya lo pagué») y los avisos: con una sola acción, a la vista; si no, «Responder» (si es
@@ -313,9 +331,11 @@
         }
         const verTodas = !!P.ui.hoyParaHoyTodas;
         const filaHoy = (x) => `<li class="hb-f${x.venc ? ' hb-f--venc' : ''}">${x.abrir ? `<button type="button" class="hb-f-b" ${x.abrir}>` : '<div class="hb-f-b hb-f-b--quieta">'}${x.emoji ? caja(x.emoji, 'emo--sm') : `<span class="emo emo--sm emo--ico${x.ico === 'triangle-alert' ? ' emo--aviso' : ''}" aria-hidden="true">${icon(x.ico)}</span>`}<span class="hb-f-txt"><span class="hb-f-t">${esc(x.t)}</span>${x.s ? `<span class="hb-f-s">${x.venc ? icon('clock', 'ico-xs') : ''}${esc(x.s)}</span>` : ''}</span>${x.abrir ? '</button>' : '</div>'}<span class="hb-f-acc">${x.boton}</span></li>`;
+        // v2.9.3 ronda 2 (APROBADO por Victor, 2026-10-23): sin nada, una sola línea discreta, sin título ni caja (nunca en verde).
+        if (!filas.length) return `<p class="hoy-nada">${icon('check', 'ico-s')}Nada pendiente para hoy</p>`;
         return `<section class="hb-sec" aria-labelledby="hb-hoy-t">
                 <div class="hb-sec-h"><h2 class="hb-h" id="hb-hoy-t">Para hoy</h2>${filas.length > 3 ? `<button type="button" class="link" data-a="hoyParaHoyTodas" data-fk="hb-hoy-todas" aria-expanded="${verTodas}">${verTodas ? 'Ver menos' : `Ver las ${filas.length}`}</button>` : ''}</div>
-                ${filas.length ? `<ul class="hb-lista">${(verTodas ? filas : filas.slice(0, 3)).map(filaHoy).join('')}</ul>` : `<p class="hb-nada">${icon('check', 'ico-s')}Nada pendiente para hoy</p>`}
+                <ul class="hb-lista">${(verTodas ? filas : filas.slice(0, 3)).map(filaHoy).join('')}</ul>
             </section>`;
     }
     /** Las preguntas de una vez y la revisión de lo de antes de empezar: siguen como tarjetas (fila V45). */

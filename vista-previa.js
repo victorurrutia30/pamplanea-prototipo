@@ -21,7 +21,7 @@
         }
     };
     const PERSONAS = { pam: 'Pam · quincena', majo: 'Majo · mes', tono: 'Toño · semana', rosa: 'Rosa · ventas' };
-    const CASOS = { tranquilo: 'Día tranquilo', cobro: 'Día de cobro (¿Ya llegó?)', vencido: 'Algo vencido', cero: 'Libre en cero', pasado: 'Presupuesto pasado', nueva: 'Persona nueva', largos: 'Nombres largos, 6 cifras' };
+    const CASOS = { tranquilo: 'Día tranquilo', cobro: 'Día de cobro (¿Ya llegó?)', vencido: 'Algo vencido', cero: 'Libre en cero', pasado: 'Presupuesto pasado', nueva: 'Persona nueva', largos: 'Nombres largos, 6 cifras', muchos: '8 presupuestos' };
     const elegido = { persona: 'pam', caso: 'tranquilo' };
     const ej = hash().get('ejemplo');
     if (ej) [elegido.persona, elegido.caso] = ej.split('-');
@@ -150,6 +150,8 @@
                 ['comida', largo ? 'Comida afuera con la familia los domingos' : 'Comida afuera', '🍽️', 'comida', 40, 'efectivo'],
                 ['gasolina', 'Gasolina', '⛽', 'transporte', 60, 'efectivo'],
                 ['farmacia', 'Farmacia', '💊', 'salud', 30, 'efectivo'],
+                // «8 presupuestos» (solo en este ejemplo): para ver el carrusel con muchos.
+                ...(caso === 'muchos' ? [['mercado', 'Mercado', '🧺', 'mercado', 80, 'efectivo'], ['salidas', 'Salidas', '🎉', 'salidas', 50, 'efectivo'], ['regalos', 'Regalos', '🎁', 'regalos', 40, 'efectivo'], ['mascota', 'Comida del perro', '🐶', 'mascotas', 30, 'efectivo']] : []),
             ].map(([id, n, emoji, categoria, tope, medio]) => ({ id, nombre: n, emoji, categoria, tope: e(tope), medio, desde: inicio, creado: inicio, cierres: {}, activo: true }));
             st.apartados = [
                 { id: 'emerg', nombre: 'Emergencias', emoji: '🛟', portada: 'general-alcancia', monto: m(200), meta: null, metaFecha: null, historial: [{ fecha: inicio, tipo: 'inicial', monto: m(200) }], donde: { lugar: 'agricola' }, programado: { monto: e(25), desde: inicio } },
@@ -183,6 +185,11 @@
             gasto(1, 'Farmacia', 'salud', e(5), 'efectivo');
             gasto(2, 'Zapatos', 'ropa', m(45), 'bac');
             if (caso === 'pasado') gasto(1, 'Pizza', 'comida', e(25), 'efectivo');
+            if (caso === 'muchos') {
+                gasto(2, 'Mercado', 'mercado', e(70), 'efectivo');
+                gasto(1, 'Salidas', 'salidas', e(55), 'efectivo');
+                gasto(3, 'Regalos', 'regalos', e(10), 'efectivo');
+            }
             // Libre en cero: un gasto grande deja lo que tienes $60 por debajo de lo que viene.
             if (caso === 'cero') {
                 const k0 = M.calcular(st);

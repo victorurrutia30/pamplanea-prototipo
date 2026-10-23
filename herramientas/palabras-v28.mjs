@@ -179,7 +179,9 @@ for (const x of textos) {
     if (x.nav && /\bPagos\b/.test(x.texto)) malas.push(`${x.donde}: «${x.texto}»`);
     // «¿De dónde sale?» puede explicar la reserva (C-2); ahí solo se revisan «apartar» y «apartado».
     const re = x.desglose ? /\bapart(ar|ado|ados|ada|adas|é|aste|amos|aron)\b/i : PROHIBIDAS;
-    const m = re.exec(x.texto);
+    // v2.9.3 ronda 2 (APROBADO por Victor, 2026-10-23): el título «Apartado para tus pagos» de Reparte tu quincena sí se dice
+    // (solo esa frase exacta; «apartar» y «apartado» siguen fuera en todo lo demás).
+    const m = re.exec(x.texto.replace(/Apartado para tus pagos/g, ''));
     if (m) malas.push(`${x.donde}: «…${x.texto.slice(Math.max(0, m.index - 50), m.index + 50)}…»`);
     const y = YA_NO.exec(x.texto) || YA_NO_MAYUS.exec(x.texto);
     if (y) malas.push(`${x.donde}: «…${x.texto.slice(Math.max(0, y.index - 50), y.index + 50)}…»`);
