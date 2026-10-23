@@ -3,7 +3,7 @@
 // sin decir dónde tocar). Un paso con `clave` se marca solo cuando el teléfono avisa ese evento
 // (una clave o varias alternativas); sin `clave`, lo marca quien observa.
 'use strict';
-window.VERSION_PROTOTIPO = 'Prototipo v2.9.1 · 2026-10-23';
+window.VERSION_PROTOTIPO = 'Prototipo v2.9.2 · 2026-10-23';
 window.CASOS = [
     {
         id: 'C01', titulo: 'Primer día', persona: 'nueva',
