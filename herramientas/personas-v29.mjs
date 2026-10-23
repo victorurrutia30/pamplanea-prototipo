@@ -334,6 +334,52 @@ function contador(p) {
         const S = sale.reduce((s, x) => s + x.monto, 0);
         return { entra, sale, E, S, quedan: E - S, aprox: entra.some((x) => x.aprox) || sale.some((x) => x.aprox) };
     };
+    /**
+     * Mes (por fecha): lo que entra y sale ese mes. Lo pagado, por lo que pagaste; lo que falta, por tu plan. De un estado de
+     * cuenta, solo lo que no contaste al comprar. Tus presupuestos y tu ahorro, una vez por cada periodo que empieza ese mes.
+     * Un ingreso de una vez que ya pasó no está (está en Mes, la pantalla).
+     */
+    k.planMes = (mes) => {
+        const [y, m] = mes.split('-').map(Number);
+        const desde = `${mes}-01`;
+        const hasta = fecha(y, m, 31);
+        const entra = [];
+        for (const ing of [pr && { ...pr, id: 'sueldo' }, ...p.ingresos].filter((x) => x && !x.anotadas)) {
+            for (const f of fechasDe(ing, desde, hasta)) {
+                if (f < p.inicio) continue;
+                if (ing.frecuencia === 'unico' && (f < k.hoy || k.llegado[`${ing.id}:${f}`] !== undefined)) continue;
+                const llego = k.llegado[`${ing.id}:${f}`];
+                const monto = llego !== undefined ? llego : ing.id === 'sueldo' ? ing.monto - k.descuentoDe(f) : ing.monto;
+                entra.push({ id: ing.id, f, monto, aprox: llego === undefined && !!ing.aprox });
+            }
+        }
+        const sale = [];
+        for (const x of p.pagos) {
+            if (enTarjeta(x)) continue;
+            for (const f of fechasDe(x, desde, hasta, pr)) {
+                if (f <= p.inicio && !(x.id === 'cuchubal' && f >= p.inicio)) continue;
+                const h = k.pagado[`${x.id}:${f}`];
+                const monto = h && (x.estimado || h.monto >= x.monto) ? h.monto : x.monto;
+                sale.push({ q: x.tipoDeuda ? 'deuda' : 'fijo', id: x.id, f, monto, aprox: !h && !!x.estimado });
+            }
+        }
+        for (const e of k.tarjeta.estados) {
+            if (e.vence < desde || e.vence > hasta) continue;
+            if (e.inicial) sale.push({ q: 'tarjeta', id: 'bac', f: e.vence, monto: p.tarjeta.usual, aprox: true });
+            else if (e.aPagar > 0) sale.push({ q: 'tarjeta', id: 'bac', f: e.vence, monto: e.aPagar - Math.min(e.aPagar, e.anotadoLibre), total: e.aPagar });
+        }
+        const inicioPlan = k.periodoPlan.inicioCreacion;
+        const veces = pr ? fechasDe(pr, desde > inicioPlan ? desde : inicioPlan, hasta).length : 1;
+        for (const v of p.variables) if (veces) sale.push({ q: 'presupuesto', id: v.id, monto: v.tope * veces });
+        for (const a of p.ahorros.filter((x) => x.programado)) if (veces) sale.push({ q: 'programado', id: a.id, monto: a.programado * veces });
+        const E = entra.reduce((s2, x) => s2 + x.monto, 0);
+        const S = sale.reduce((s2, x) => s2 + x.monto, 0);
+        return { entra, sale, E, S, quedan: E - S, aprox: entra.some((x) => x.aprox) || sale.some((x) => x.aprox) };
+    };
+    // El primer periodo de tu plan (desde cuándo cuentan tus presupuestos y tu ahorro): el que tenías al empezar.
+    k.periodoPlan.inicioCreacion = pr ? dias(mas(p.inicio, -40), p.inicio).at(-1) : p.inicio.slice(0, 8) + '01';
+    /** R10: las pestañas que debe tener. */
+    k.tabs = p.tipo === 'quincena' ? ['Esta quincena', 'Próxima', 'Mes'] : p.tipo === 'semana' ? ['Esta semana', 'Próxima', 'Mes'] : ['Este mes', 'Próximo mes'];
     return k;
 }
 
@@ -623,11 +669,15 @@ async function correr(p, b) {
         for (const modo of ['fecha', 'tipo']) {
             const a = await ev(`__p29.leerPlan('actual', '${modo}')`);
             revisarActual(p, k, f, a, per.actual, L);
+            if (JSON.stringify(a.tabs) !== JSON.stringify(k.tabs)) hallazgo(p.id, f, 'Mi plan · pestañas', 'R10: las pestañas no siguen al ingreso principal', a.tabs.join(' · '), k.tabs.join(' · '));
             const x = await ev(`__p29.leerPlan('proxima', '${modo}')`);
-            revisarFuturo(p, k, f, x, per.proxima, 'Próxima');
-            const mesAct = f.slice(0, 7);
-            const m = await ev(`__p29.leerPlan('mes', '${modo}', '${mesAct}')`);
-            revisarMes(p, k, f, m, mesAct);
+            revisarFuturo(p, k, f, x, per.proxima, k.tabs[1]);
+            if (k.tabs.length === 3) {
+                for (const mes of [f.slice(0, 7), mas(f.slice(0, 8) + '28', 7).slice(0, 7)]) {
+                    const m = await ev(`__p29.leerPlan('mes', '${modo}', '${mes}')`);
+                    revisarMes(p, k, f, m, mes);
+                }
+            }
         }
         // --- Mes (pantalla): lo que entró y salió en el mes de hoy, hasta hoy.
         const mes = await ev(`__p29.leerMes('${f.slice(0, 7)}')`);
@@ -662,8 +712,19 @@ function revisarComun(p, f, v, desde, hasta, nombre) {
     if (v.desglose && v.desglose.lineas.length) {
         let t = 0;
         for (const l of v.desglose.lineas) t += (l.signo === '−' ? -1 : 1) * (l.m || 0);
-        if (v.desglose.total !== null && t !== v.desglose.total && !(v.desglose.total === 0 && t < 0)) hallazgo(p.id, f, `Mi plan · ${nombre} · ¿De dónde sale?`, 'R4: las líneas no suman el número grande', `${$(t)} ≠ ${$(v.desglose.total)}`, 'suma exacta');
+        // «Te faltarían $X» se muestra en positivo: es lo que falta.
+        const signoTotal = /faltar/i.test(v.desglose.totalT || '') ? -1 : 1;
+        if (v.desglose.total !== null && t !== signoTotal * v.desglose.total && !(v.desglose.total === 0 && t < 0)) hallazgo(p.id, f, `Mi plan · ${nombre} · ¿De dónde sale?`, 'R4: las líneas no suman el número grande', `${$(t)} ≠ ${$(v.desglose.total)}`, 'suma exacta');
     }
+}
+/** R1–R2: las filas que suman (por fecha) son las del contador, con su monto. Solo las que tienen fecha. */
+function revisarFilas(p, f, v, x, nombre) {
+    if (v.modo !== 'fecha' || !v.filas.some((y) => y.cuenta !== null)) return;
+    const app = v.filas.filter((y) => y.cuenta && /\d{4}-\d{2}-\d{2}$/.test(y.fk || '')).map((y) => `${(y.fk.match(/\d{4}-\d{2}-\d{2}$/) || [])[0]} ${$(y.monto)}`).sort();
+    const esperado = [...x.entra, ...x.sale].filter((y) => y.f).map((y) => `${y.f} ${$(y.monto)}`).sort();
+    const sobran = app.filter((y, i) => app.indexOf(y) === i && app.filter((z) => z === y).length > esperado.filter((z) => z === y).length);
+    const faltan = esperado.filter((y, i) => esperado.indexOf(y) === i && esperado.filter((z) => z === y).length > app.filter((z) => z === y).length);
+    if (sobran.length || faltan.length) hallazgo(p.id, f, `Mi plan · ${nombre} (filas)`, 'Las filas que suman no son las del contador', `de más: ${sobran.join(', ') || '—'}`, `faltan: ${faltan.join(', ') || '—'}`, 'P0', true);
 }
 function revisarActual(p, k, f, v, rango, L) {
     revisarComun(p, f, v, rango.ini, rango.fin, 'Esta quincena');
@@ -672,7 +733,9 @@ function revisarActual(p, k, f, v, rango, L) {
 }
 function revisarFuturo(p, k, f, v, rango, nombre) {
     revisarComun(p, f, v, rango.ini, rango.fin, nombre);
-    const x = k.planFuturo(rango.ini, rango.fin);
+    // Sin ingreso fijo, el próximo mes es un mes del calendario (por fecha).
+    const x = p.tipo === 'variable' ? k.planMes(rango.ini.slice(0, 7)) : k.planFuturo(rango.ini, rango.fin);
+    revisarFilas(p, f, v, x, nombre);
     if (v.res.n !== Math.abs(x.quedan)) hallazgo(p.id, f, `Mi plan · ${nombre}`, '«Te quedarían» no es el del contador', `${v.res.l} → ${v.res.nTxt}`, `Entra ${$(x.E)} · Sale ${$(x.S)} → ${$(x.quedan)}`, 'P0', true);
     if (/aprox/.test(v.res.nTxt || '') !== x.aprox) hallazgo(p.id, f, `Mi plan · ${nombre}`, `R11: «aprox.» ${x.aprox ? 'falta' : 'sin un estimado'}`, v.res.nTxt, x.aprox ? 'con aprox.' : 'sin aprox.', 'P1');
     if (v.desglose && /libre/i.test(v.desglose.titulo || '')) hallazgo(p.id, f, `Mi plan · ${nombre} · ¿De dónde sale?`, 'R4: «¿De dónde sale?» explica el libre de hoy, no esta pestaña', v.desglose.titulo, 'Entra − Sale = Te quedarían', 'P0');
@@ -680,6 +743,9 @@ function revisarFuturo(p, k, f, v, rango, nombre) {
 function revisarMes(p, k, f, v, mes) {
     const [y, m] = mes.split('-').map(Number);
     revisarComun(p, f, v, `${mes}-01`, fecha(y, m, 31), 'Mes');
+    const x = k.planMes(mes);
+    if (v.res.n !== Math.abs(x.quedan)) hallazgo(p.id, f, `Mi plan · Mes (${mes})`, '«Te quedarían» de Mes no es el del contador', `${v.res.l} → ${v.res.nTxt}`, `Entra ${$(x.E)} · Sale ${$(x.S)} → ${$(x.quedan)}`, 'P0', true);
+    revisarFilas(p, f, v, x, `Mes (${mes})`);
     if (v.desglose && /libre/i.test(v.desglose.titulo || '')) hallazgo(p.id, f, 'Mi plan · Mes · ¿De dónde sale?', 'R4: «¿De dónde sale?» explica el libre de hoy, no el mes', v.desglose.titulo, 'Entra − Sale = Te quedarían', 'P0');
     if (/gastos del día a día/.test(v.texto || '')) hallazgo(p.id, f, 'Mi plan · Mes', 'R11: «Sin tus gastos del día a día» no dice qué no incluye', 'Sin tus gastos del día a día', 'una frase más clara', 'P1');
     if (v.tip && /en qué se te fue/i.test(v.tip)) hallazgo(p.id, f, 'Mi plan · Mes', 'R9: el consejo es el de la pantalla Mes', v.tip, 'el de Mi plan', 'P1');

@@ -49,8 +49,15 @@
         P.ui.pagosVista = 'proxima';
         P.irTab('pagos');
     };
-    /** Un bloque de Mi plan por su título («Más adelante», «Presupuestos»…). */
-    const grupo = (titulo) => [...document.querySelectorAll('.pl-bloque')].find((g) => (g.querySelector('.pl-h')?.textContent || '').trim().startsWith(titulo)) || null;
+    /** v2.9 (R3): lo que viene después se ve en su mes: el aguinaldo está en Mi plan → Mes de diciembre. */
+    const aguinaldo = () => P.st.ingresos.find((x) => x.categoria === 'aguinaldo' && x.activo !== false) || null;
+    const abrirMesAguinaldo = () => {
+        cerrarHoja();
+        P.ui.pagosModo = 'fecha';
+        P.ui.pagosVista = 'mes';
+        P.ui.pagosMes = (aguinaldo()?.fecha || P.st.hoy).slice(0, 7);
+        P.irTab('pagos');
+    };
     /** Una tarjeta de la pantalla por su título («Lo pagas con», «Tus ahorros»…). */
     const seccion = (titulo) => () => [...document.querySelectorAll('#pantalla section.card')].find((s) => (s.querySelector('.card-t')?.textContent || '').trim().startsWith(titulo)) || null;
     const enPantalla = (tab) => P.ui.tab === tab && !P.ui.stack.length;
@@ -464,7 +471,7 @@
             'fijo:extras',
         ),
         pasos: [
-            { que: 'Aquí ves tu aguinaldo', g: 'aguinaldo', ejemplo: ej.aguinaldo, antes: abrirPagos, sel: () => grupo('Más adelante') },
+            { que: 'Aquí ves tu aguinaldo', g: 'aguinaldo', ejemplo: ej.aguinaldo, antes: abrirMesAguinaldo, sel: () => (aguinaldo() ? document.querySelector(`[data-fk^="i-${aguinaldo().id}-"]`)?.closest('li') || null : null) },
             { que: 'Aquí ves la matrícula de enero', g: 'pagarConExtra', ejemplo: ej.matricula, antes: abrirEn('pagos', 'pago', 'matricula'), sel: seccion('Lo pagas con') },
             { que: 'Con «+ Agregar» sumas un adelanto de salario', g: 'adelanto', antes: abrirPagos, sel: '[data-fk="plan-agregar"]' },
         ],

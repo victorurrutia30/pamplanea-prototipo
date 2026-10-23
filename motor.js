@@ -699,6 +699,8 @@
         const fin = h.fecha > st.hoy ? sumarDias(h.fecha, -1) : st.hoy;
         return { clave: inicio, inicio, fin, cada: p.frecuencia === 'quincenal' ? 'quincena' : p.frecuencia === 'semanal' ? 'semana' : p.frecuencia === 'catorcenal' ? 'catorcena' : p.frecuencia === 'mensual' ? 'mes' : 'periodo' };
     }
+    /** v2.9 (H1): otros nombres de un tipo de gasto que lo abarcan entero (el presupuesto «Comida afuera» es toda la comida). */
+    const NOMBRES_TIPO = { comida: ['comida afuera', 'comer afuera', 'comidas'] };
     /** v2.8 (C-3): los gastos variables que siguen activos. */
     const variablesActivas = (st) => (st.variables || []).filter((v) => v && v.activo !== false);
     /**
@@ -715,7 +717,11 @@
         if (porNombre) return porNombre;
         // v2.8 ajuste 6 (punto 2): con el nombre de ahora de la categoría (si la persona la renombró, el dinero no cambia).
         const nombreCat = (id) => ((st.categoriasBase && st.categoriasBase['gasto:' + id]) || {}).nombre || categoria(id).nombre;
-        return activas.find((v) => v.categoria && v.categoria !== 'otros' && v.categoria === r.categoria && normalizar(v.nombre) === normalizar(nombreCat(v.categoria))) || null;
+        // v2.9 (auditoría H1, DECIDIDO por criterio, autorizado por Victor 2026-10-23): también si se llama como uno de los nombres
+        // de ese tipo: «Comida afuera» (el presupuesto sugerido desde el ajuste 7) se lleva cada gasto de comida. «Gasolina» sigue
+        // solo por su nombre (un «bus 1» no es gasolina).
+        const deTipo = (v) => [normalizar(nombreCat(v.categoria)), ...(NOMBRES_TIPO[v.categoria] || [])].includes(normalizar(v.nombre));
+        return activas.find((v) => v.categoria && v.categoria !== 'otros' && v.categoria === r.categoria && deTipo(v)) || null;
     }
     /**
      * v2.8 (C-3): cada gasto variable en esta quincena: su tope, lo anotado (cada gasto de ese tipo lo consume una vez), lo
@@ -732,7 +738,9 @@
                 const anotado = suma(gastos, (r) => r.monto);
                 const cierre = (v.cierres || {})[per.clave] || null;
                 const listo = !!cierre && cierre.estado === 'listo';
-                return { v, tope: v.tope, anotado, gastos, falta: listo ? 0 : Math.max(0, v.tope - anotado), pasado: Math.max(0, anotado - v.tope), sobro: listo ? Math.max(0, v.tope - anotado) : 0, cierre, listo, periodo: per };
+                // v2.9 (R5, DECIDIDO por criterio, autorizado por Victor 2026-10-23): «Saltar esta quincena»: este periodo no cuenta.
+                const saltado = !!cierre && cierre.estado === 'saltado';
+                return { v, tope: v.tope, anotado, gastos, falta: listo || saltado ? 0 : Math.max(0, v.tope - anotado), pasado: Math.max(0, anotado - v.tope), sobro: listo ? Math.max(0, v.tope - anotado) : 0, cierre, listo, saltado, periodo: per };
             });
     }
     /**

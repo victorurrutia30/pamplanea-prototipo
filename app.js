@@ -844,7 +844,7 @@
         if (!lista.length) return '';
         return lista
             .slice(0, 2)
-            .map((x) => `<section class="card card--aviso" aria-labelledby="vc-${x.v.id}"><div class="aviso-cab">${caja(x.v.emoji)}<div><h2 class="card-t" id="vc-${x.v.id}">Ibas a gastar ${dinero(x.tope)} en ${esc(x.v.nombre)} y anotaste ${dinero(x.anotado)}. ¿Ya terminaste?</h2><p class="txt">Si ya terminaste, los ${dinero(x.falta)} que sobran vuelven a tu libre.</p></div></div><div class="chips"><button type="button" class="chip" data-a="variableCierre" data-id="${x.v.id}" data-v="listo" data-fk="vc-listo-${x.v.id}">Sí, ya terminé</button><button type="button" class="chip" data-a="variableCierre" data-id="${x.v.id}" data-v="falta" data-fk="vc-falta-${x.v.id}">Me falta</button><button type="button" class="chip" data-a="variableCierre" data-id="${x.v.id}" data-v="anotar" data-fk="vc-anotar-${x.v.id}">Se me olvidó anotar</button></div></section>`)
+            .map((x) => `<section class="card card--aviso" aria-labelledby="vc-${x.v.id}"><div class="aviso-cab">${caja(x.v.emoji)}<div><h2 class="card-t" id="vc-${x.v.id}">Ibas a gastar ${dinero(x.tope)} en ${esc(x.v.nombre)} y anotaste ${dinero(x.anotado)}. ¿Ya terminaste?</h2><p class="txt">Si ya terminaste, los ${dinero(x.falta)} que sobran vuelven a tu libre.</p></div></div><div class="chips"><button type="button" class="chip" data-a="variableCierre" data-id="${x.v.id}" data-v="listo" data-fk="vc-listo-${x.v.id}">Sí, ya no gasto más en esto</button><button type="button" class="chip" data-a="variableCierre" data-id="${x.v.id}" data-v="falta" data-fk="vc-falta-${x.v.id}">Todavía voy a gastar</button><button type="button" class="chip" data-a="variableCierre" data-id="${x.v.id}" data-v="anotar" data-fk="vc-anotar-${x.v.id}">Me falta anotar algo</button></div></section>`)
             .join('');
     }
     P.cierreVariables = cierreVariables;
@@ -924,29 +924,40 @@
     P.pendientesAlDia = pendientesAlDia;
 
     // ---- Pagos
-    /** Esta quincena / Próxima: del día de pago al día antes del siguiente (el pago del mismo día va con ese ingreso). */
+    /**
+     * v2.9 «Números claros» (R10, DECIDIDO por criterio, autorizado por Victor 2026-10-23): los periodos siguen a tu ingreso
+     * principal. Por quincena: Esta quincena · Próxima · Mes. Por semana: Esta semana · Próxima · Mes. Por mes: Este mes ·
+     * Próximo mes (con flechas a los siguientes). Sin ingreso fijo: Este mes · Próximo mes (con flechas), o Estos 15 días ·
+     * Próximos 15 días · Mes. «Mes» es el del calendario. Nunca «quincena» para quien no cobra por quincena.
+     */
     function periodos() {
         const st = P.st;
         const p = M.principal(st);
         if (!p) {
-            const [y, m] = M.partes(st.hoy);
+            const [y, m, d] = M.partes(st.hoy);
+            if (st.horizonteVariable === 'quince') {
+                const ini = d > 15 ? M.fechaDe(y, m, 16) : M.fechaDe(y, m, 1);
+                const fin = d > 15 ? M.fechaDe(y, m, 31) : M.fechaDe(y, m, 15);
+                const sig = M.sumarDias(fin, 1);
+                const [sy, sm, sd] = M.partes(sig);
+                return { actual: { desde: ini, hasta: fin, t: 'Estos 15 días', vacio: 'en estos 15 días' }, proxima: { desde: sig, hasta: sd > 15 ? M.fechaDe(sy, sm, 31) : M.fechaDe(sy, sm, 15), t: 'Próximos 15 días', vacio: 'en los próximos 15 días' }, mes: true, porMes: null, semanal: false };
+            }
             const [ny, nm] = M.mesMas(y, m, 1);
-            return { actual: { desde: `${y}-${M.pad(m)}-01`, hasta: M.fechaDe(y, m, 31), t: 'Este mes', vacio: 'este mes' }, proxima: { desde: `${ny}-${M.pad(nm)}-01`, hasta: M.fechaDe(ny, nm, 31), t: 'Próximo mes', vacio: 'el próximo mes' }, semanal: false };
+            return { actual: { desde: `${y}-${M.pad(m)}-01`, hasta: M.fechaDe(y, m, 31), t: 'Este mes', vacio: 'este mes' }, proxima: { desde: `${ny}-${M.pad(nm)}-01`, hasta: M.fechaDe(ny, nm, 31), t: 'Próximo mes', vacio: 'el próximo mes' }, mes: false, porMes: 'calendario', semanal: false };
         }
-        const semanal = p.frecuencia === 'semanal' || p.frecuencia === 'catorcenal';
+        const f = p.frecuencia;
         const ini = M.cortes(st, M.sumarDias(st.hoy, -100), st.hoy).at(-1) || st.hoy;
         const sig = M.corteDespues(st, st.hoy) || M.sumarDias(st.hoy, 15);
         const sig2 = M.corteDespues(st, sig) || M.sumarDias(sig, 15);
-        const t = semanal ? 'Esta semana' : p.frecuencia === 'quincenal' ? 'Esta quincena' : 'Este periodo';
-        return {
-            // v2.8 (ajuste 5, punto 10): `vacio` para «Nada que pagar esta quincena».
-            actual: { desde: ini, hasta: M.sumarDias(sig, -1), t, vacio: t.toLowerCase() },
-            proxima: { desde: sig, hasta: M.sumarDias(sig2, -1), t: 'Próxima', vacio: semanal ? 'la próxima semana' : p.frecuencia === 'quincenal' ? 'la próxima quincena' : 'en tu próximo periodo' },
-            semanal,
-        };
+        const [t, tp, vacio, vacioP] =
+            f === 'quincenal' ? ['Esta quincena', 'Próxima', 'esta quincena', 'la próxima quincena']
+            : f === 'semanal' ? ['Esta semana', 'Próxima', 'esta semana', 'la próxima semana']
+            : f === 'catorcenal' ? ['Estas 2 semanas', 'Próximas 2', 'estas 2 semanas', 'las próximas 2 semanas']
+            : f === 'mensual' ? ['Este mes', 'Próximo mes', 'este mes', 'el próximo mes']
+            : ['Este periodo', 'Próximo', 'este periodo', 'tu próximo periodo'];
+        return { actual: { desde: ini, hasta: M.sumarDias(sig, -1), t, vacio }, proxima: { desde: sig, hasta: M.sumarDias(sig2, -1), t: tp, vacio: vacioP }, mes: f !== 'mensual', porMes: f === 'mensual' ? 'ingreso' : null, semanal: f === 'semanal' || f === 'catorcenal' };
     }
     P.periodos = periodos;
-    // v2.8 (ajuste 5 «Mi plan más ligero», opción A): Mi plan se ve por fecha (lo principal) o por tipo.
     /** «Del 15 al 29 oct», «Del 30 oct al 14 nov». */
     function rangoCorto(desde, hasta) {
         const [, m1, d1] = M.partes(desde);
@@ -954,102 +965,250 @@
         const mc = (m) => M.MESES_CORTOS[m - 1];
         return m1 === m2 ? `Del ${d1} al ${d2} ${mc(m2)}` : `Del ${d1} ${mc(m1)} al ${d2} ${mc(m2)}`;
     }
-    /** Las fechas de cada pestaña: Esta quincena, Próxima o el mes elegido (con sus flechas). */
-    function rangoPlan(vista, per) {
-        if (vista === 'actual') return per.actual;
-        if (vista === 'proxima') return per.proxima;
-        const [y, m] = (P.ui.pagosMes || P.st.hoy.slice(0, 7)).split('-').map(Number);
-        return { desde: `${y}-${M.pad(m)}-01`, hasta: M.fechaDe(y, m, 31), t: `${M.capital(M.MESES[m - 1])} ${y}`, vacio: `en ${M.MESES[m - 1]}` };
-    }
-    /** Lo que pasa entre dos fechas: gastos fijos, deudas, tarjetas e ingresos. Lo vencido va en «Por confirmar». */
-    function ocurrenciasPlan(desde, hasta) {
-        const st = P.st;
-        const xs = [];
-        for (const p of st.pagos) {
-            for (const o of M.ocurrenciasPago(st, p, desde, hasta)) {
-                if ((p.activo === false && !o.hecho) || o.estado === 'vencido') continue;
-                xs.push({ fecha: o.fecha, tipo: p.tipoDeuda || p.descuento ? 'deuda' : 'fijo', o });
+    /**
+     * Las fechas de cada pestaña: el periodo de hoy, el próximo (si te pagan por mes o no tienes ingreso fijo, con flechas a
+     * los siguientes: `P.ui.planPaso`) o el mes del calendario (con sus flechas). `tipo`: actual, futuro (por el ingreso que lo
+     * paga) o mes (por fecha).
+     */
+    function rangoPlan(vista, per, k) {
+        if (vista === 'actual') return { ...per.actual, tipo: 'actual' };
+        if (vista === 'proxima') {
+            const paso = per.porMes ? Math.max(0, P.ui.planPaso || 0) : 0;
+            if (per.porMes === 'ingreso') {
+                const lista = k.periodos.filter((x) => x.inicio >= per.proxima.desde);
+                const x = lista[Math.min(paso, lista.length - 1)] || null;
+                return x ? { desde: x.inicio, hasta: x.fin, t: per.proxima.t, vacio: per.proxima.vacio, tipo: 'futuro', paso: Math.min(paso, lista.length - 1), maxPaso: lista.length - 1 } : { ...per.proxima, tipo: 'futuro', paso: 0, maxPaso: 0 };
             }
+            if (per.porMes === 'calendario') {
+                const [y, m] = M.mesMas(...M.partes(per.proxima.desde).slice(0, 2), paso);
+                return { desde: `${y}-${M.pad(m)}-01`, hasta: M.fechaDe(y, m, 31), t: per.proxima.t, vacio: `en ${M.MESES[m - 1]}`, tipo: 'mes', paso, maxPaso: 11 };
+            }
+            return { ...per.proxima, tipo: 'futuro' };
         }
-        for (const o of M.ocurrenciasTarjeta(st, desde, hasta)) if (o.estado !== 'vencido') xs.push({ fecha: o.fecha, tipo: 'tarjeta', o });
-        for (const ing of st.ingresos.filter((i) => i.activo !== false)) for (const o of M.ocurrenciasIngreso(st, ing, desde, hasta)) xs.push({ fecha: o.fecha, tipo: 'ingreso', ing, o });
-        // El mismo día: primero lo que te cae y después lo que pagas con eso.
-        const orden = (x) => (x.tipo === 'ingreso' ? 0 : 1);
-        return xs.sort((a, b) => (a.fecha < b.fecha ? -1 : a.fecha > b.fecha ? 1 : orden(a) - orden(b)));
+        const [y, m] = (P.ui.pagosMes || P.st.hoy.slice(0, 7)).split('-').map(Number);
+        return { desde: `${y}-${M.pad(m)}-01`, hasta: M.fechaDe(y, m, 31), t: `${M.capital(M.MESES[m - 1])} ${y}`, vacio: `en ${M.MESES[m - 1]}`, tipo: 'mes' };
     }
-    /** Lo que vale entera una ocurrencia pagada en parte: un pago guarda el total aparte; una tarjeta, en su monto. */
-    const enteroDe = (o) => (o.parcial && o.parcial.total !== undefined ? o.parcial.total : o.monto || 0);
     /** El día a la izquierda de la fila: «29 oct», o «22 hoy». */
     const diaPlan = (f) => `<span class="pl-dia" aria-hidden="true"><span class="pl-dia-n">${M.partes(f)[2]}</span><span class="pl-dia-m">${f === P.st.hoy ? 'hoy' : M.MESES_CORTOS[M.partes(f)[1] - 1]}</span></span>`;
     /**
-     * Punto 6: una línea por fila: el día (solo en la primera de ese día), emoji, nombre y monto. «~» si es aproximado,
-     * «+» si es ingreso, ✓ y en gris si ya está, «faltan $X» si pagaste una parte. Al tocarla se abre su ficha.
+     * v2.9 (R7): la comisión de un adelanto: si te descuentan más de lo que te dieron, la diferencia (repartida entre sus
+     * descuentos). Para «Quincena $600.00 − adelanto $210.00 = $390.00 (incluye $10.00 de comisión)».
      */
-    function filaPlan(x, { primera = true, fk = null } = {}) {
-        const st = P.st;
-        const o = x.o;
-        const f = x.fecha;
-        let abrir, clave, emoji, nombre, monto;
-        let marca = '';
-        let hecha = false;
-        let va = null;
-        if (x.tipo === 'ingreso') {
-            const ing = x.ing;
-            abrir = `data-a="abrir" data-tipo="ingreso" data-id="${ing.id}"`;
-            clave = `i-${ing.id}-${f}`;
-            emoji = ing.emoji;
-            nombre = ing.nombre;
-            hecha = o.estado === 'llego' || o.estado === 'noLlego';
-            marca = o.estado === 'llego' ? `✓${sr(' Llegó')}` : o.estado === 'noLlego' ? 'no llegó' : o.estado === 'porConfirmar' ? 'por confirmar' : o.estado === 'hoy' ? '¿ya llegó?' : '';
-            // Todo ingreso lleva «+», también el estimado («+~$150.00»): así no depende solo del color.
-            monto = montoPlan(o.monto, 'ingreso', { aprox: o.estado !== 'llego' && !!o.aprox });
-        } else {
-            const esTarjeta = x.tipo === 'tarjeta';
-            abrir = esTarjeta ? `data-a="abrir" data-tipo="tarjeta" data-id="${o.tarjeta.id}"` : `data-a="abrir" data-tipo="pago" data-id="${o.pago.id}"`;
-            clave = (esTarjeta ? 't-' + o.tarjeta.id : 'p-' + o.pago.id) + '-' + f;
-            emoji = esTarjeta ? o.tarjeta.emoji : o.pago.emoji;
-            nombre = esTarjeta ? P.nombreTarjeta(o.tarjeta) : o.pago.nombre;
-            hecha = o.estado === 'pagado' || o.estado === 'saltado';
-            marca = o.estado === 'pagado' ? `✓${sr(' Pagado')}` : o.estado === 'saltado' ? 'saltado' : o.estado === 'arrastrado' ? 'sin pagar completo' : '';
-            va = esTarjeta ? null : P.vaEn(st, o.pago);
-            monto = o.parcial && o.estado !== 'arrastrado' ? `<span class="monto monto--sale">${sr('Pagaste una parte: ')}faltan ${dinero(o.parcial.falta)}</span>` : montoPlan(o.monto, 'gasto', { aprox: o.estimado, va });
+    function comisionAdelanto(st, ingresoId, fecha) {
+        let c = 0;
+        for (const a of st.ingresos) {
+            if (a.activo === false || !a.adelanto || !Array.isArray(a.adelanto.descuentos)) continue;
+            const total = M.suma(a.adelanto.descuentos, (d) => Math.max(0, d.monto || 0));
+            const extra = Math.max(0, total - (a.monto || 0));
+            if (!extra || !total) continue;
+            for (const d of a.adelanto.descuentos) if (d.ingreso === ingresoId && d.fecha === fecha) c += Math.round((extra * Math.max(0, d.monto || 0)) / total);
         }
-        const cls = `pl-fila${primera ? ' pl-fila--dia' : ''}${f === st.hoy ? ' pl-fila--hoy' : ''}${hecha ? ' pl-fila--hecha' : ''}${va ? ' pl-fila--va' : ''}`;
-        return `<li class="${cls}">${primera ? diaPlan(f) : '<span class="pl-dia" aria-hidden="true"></span>'}<button type="button" class="pl-b" ${abrir} data-fk="${fk || clave}">${sr(`${f === st.hoy ? 'Hoy, ' : ''}${M.fechaCorta(f)}: `)}${caja(emoji, 'emo--sm')}<span class="pl-n">${esc(nombre)}</span>${marca ? `<span class="pl-e">${marca}</span>` : ''}<span class="pl-m">${monto}</span></button></li>`;
+        return c;
     }
-    /** Punto 6: la lista por fecha. Hoy se marca aunque ese día no haya nada. Punto 10: sin nada, un mensaje amable. */
-    function lineaPlan(rango) {
-        const st = P.st;
-        const xs = ocurrenciasPlan(rango.desde, rango.hasta);
-        if (!xs.length) return `<p class="vacio plan-vacio">Nada que pagar ${esc(rango.vacio)}.</p>`;
-        const hoyVacio = () => `<li class="pl-fila pl-fila--dia pl-fila--hoy">${diaPlan(st.hoy)}<p class="pl-nada">${sr('Hoy: ')}Nada que pagar hoy</p></li>`;
-        let hoyPuesto = st.hoy < rango.desde || st.hoy > rango.hasta || xs.some((x) => x.fecha === st.hoy);
-        let ultimo = null;
-        const filas = [];
-        for (const x of xs) {
-            if (!hoyPuesto && x.fecha > st.hoy) {
-                filas.push(hoyVacio());
-                hoyPuesto = true;
-            }
-            filas.push(filaPlan(x, { primera: x.fecha !== ultimo }));
-            ultimo = x.fecha;
+    /** Cuántos periodos de tu plan empiezan entre dos fechas (desde `desde`): para tus presupuestos y tu ahorro en un mes. */
+    function periodosEntre(st, ini, fin, desde = null) {
+        const a = desde && desde > ini ? desde : ini;
+        if (a > fin) return [];
+        if (M.principal(st)) return M.cortes(st, a, fin);
+        const out = [];
+        const [y, m] = M.partes(ini);
+        for (const d of st.horizonteVariable === 'quince' ? [1, 16] : [1]) {
+            const f = M.fechaDe(y, m, d);
+            if (f >= ini && f <= fin && (!desde || M.sumarDias(f, st.horizonteVariable === 'quince' ? 14 : 27) >= desde)) out.push(f);
         }
-        if (!hoyPuesto) filas.push(hoyVacio());
-        return `<ul class="pl-lista card">${filas.join('')}</ul>`;
+        return out;
     }
     /**
-     * Punto 4: UN resumen por periodo: las fechas, lo que entra y sale, y un número grande. En «Esta quincena» es tu libre,
-     * el mismo número de Hoy (D-3): «Tienes − Sale = Tu libre», como en «¿De dónde sale?», que se abre al tocarlo.
+     * v2.9 «Números claros» (R1 a R4, DECIDIDO por criterio, autorizado por Victor 2026-10-23): lo que cae en una pestaña.
+     * Cada peso está en un solo periodo: en el que lo pagas.
+     * - El periodo de hoy: lo de sus fechas (lo ya pagado con ✓), tus presupuestos y tu ahorro programado de este periodo.
+     * - El próximo: lo que pagas con ese ingreso. De tu tarjeta, solo lo que no contaste al comprar («$13.00 de $103.00»).
+     * - Mes: lo de sus fechas, con tus presupuestos y tu ahorro de cada periodo que empieza ese mes.
+     * Las filas en gris no suman: van en una tarjeta, se descuentan de tu salario, ya las pagaste o ya las contaste.
+     * Un ingreso de una vez está solo mientras lo esperas (R8): cuando llega ya es parte de lo que tienes y lo ves en Mes.
+     * Devuelve las filas y Entra, Sale y lo que queda.
      */
-    function resumenPlan(vista, rango, k) {
+    function planPestana(rango, k) {
         const st = P.st;
-        const ap = { aprox: true, centavos: true };
+        const filas = [];
+        const fila = (x) => filas.push({ cuenta: true, aprox: false, hecha: false, marca: '', de: null, fecha: null, sub: '', ...x });
+        const lugarDe = (id) => M.lugar(st, id)?.nombre || '—';
+        const abrirIng = (ing) => `data-a="abrir" data-tipo="ingreso" data-id="${ing.id}"`;
+        const abrirPago = (p) => `data-a="abrir" data-tipo="pago" data-id="${p.id}"`;
+        const abrirTarjeta = (t) => `data-a="abrir" data-tipo="tarjeta" data-id="${t.id}"`;
+        const grupoPago = (p) => (p.tipoDeuda || p.descuento ? 'deudas' : 'fijos');
+        /** Un ingreso esperado o que ya llegó. R7: con el descuento de un adelanto, dice de cuánto era. */
+        const filaIngreso = (o, extra = {}) => {
+            const ing = o.ingreso;
+            const llego = o.estado === 'llego';
+            const com = o.descuento ? comisionAdelanto(st, ing.id, o.fecha) : 0;
+            fila({ grupo: 'ingresos', tipo: 'ingreso', fecha: o.fecha, fk: `i-${ing.id}-${o.fecha}`, abrir: abrirIng(ing), emoji: ing.emoji, nombre: ing.nombre, monto: o.monto, aprox: !llego && !!o.aprox, hecha: llego, marca: llego ? `✓${sr(' Llegó')}` : o.estado === 'porConfirmar' ? 'por confirmar' : o.estado === 'hoy' ? '¿ya llegó?' : o.descuento ? `− adelanto ${dinero(o.descuento)}` : '', sub: `llega a: ${lugarDe(ing.lugar)}`, descuento: o.descuento || 0, comision: com, bruto: o.monto + (o.descuento || 0), ...extra });
+        };
+        /** Un gasto fijo o una cuota en una fecha, con su estado. */
+        const filaPagoDe = (p, o, { cuenta = true, marca = null, monto = null, de = null } = {}) => {
+            const va = P.vaEn(st, p);
+            const pagado = o.estado === 'pagado';
+            const total = o.parcial ? o.parcial.total : o.monto;
+            fila({ grupo: grupoPago(p), tipo: 'pago', fecha: o.fecha, fk: `p-${p.id}-${o.fecha}`, abrir: abrirPago(p), emoji: p.emoji, nombre: p.nombre, monto: monto !== null ? monto : pagado ? (o.hecho && o.hecho.monto) || o.monto : total || 0, de, aprox: !pagado && !!o.estimado, hecha: pagado || o.estado === 'saltado', cuenta: cuenta && !va && o.estado !== 'saltado', va, marca: marca !== null ? (marca === va ? '' : marca) : va ? '' : pagado ? `✓${sr(' Pagado')}` : o.estado === 'saltado' ? 'saltado' : o.parcial ? `faltan ${dinero(o.parcial.falta)}` : o.estado === 'vencido' ? 'venció' : '', sub: va || saleDe(st, p) });
+        };
+        const tarjetaSub = (t) => `se paga desde: ${lugarDe(M.pagoTarjetaPropuesto(st, t).lugar)}`;
+        if (rango.tipo === 'actual') {
+            for (const ing of st.ingresos.filter((i) => i.activo !== false)) {
+                for (const o of M.ocurrenciasIngreso(st, ing, rango.desde, rango.hasta)) {
+                    if (o.estado === 'noLlego' || (ing.frecuencia === 'unico' && (o.estado === 'llego' || o.fecha < st.hoy))) continue;
+                    filaIngreso(o);
+                }
+            }
+            for (const p of st.pagos) for (const o of M.ocurrenciasPago(st, p, rango.desde, rango.hasta)) if (!(p.activo === false && !o.hecho) && o.estado !== 'vencido') filaPagoDe(p, o);
+            for (const o of M.ocurrenciasTarjeta(st, rango.desde, rango.hasta)) {
+                if (o.estado === 'vencido') continue;
+                const pagado = o.estado === 'pagado';
+                fila({ grupo: 'deudas', tipo: 'tarjeta', fecha: o.fecha, fk: `t-${o.tarjeta.id}-${o.fecha}`, abrir: abrirTarjeta(o.tarjeta), emoji: o.tarjeta.emoji, nombre: P.nombreTarjeta(o.tarjeta), monto: o.monto || 0, cuenta: o.monto !== null && o.estado !== 'arrastrado', aprox: !!o.estimado && !pagado, hecha: pagado || o.estado === 'arrastrado', marca: o.monto === null ? 'por confirmar' : pagado ? `✓${sr(' Pagado')}` : o.estado === 'arrastrado' ? 'pasó al siguiente' : o.parcial ? `faltan ${dinero(o.parcial.falta)}` : '', sub: tarjetaSub(o.tarjeta) });
+            }
+            for (const x of k.variables) {
+                const marca = x.saltado ? `saltado ${P.estePlan()}` : x.listo ? `te sobró ${dinero(x.sobro)} ✓` : x.pasado ? `te pasaste ${dinero(x.pasado)}` : `te quedan ${dinero(x.falta)}`;
+                fila({ grupo: 'presupuestos', tipo: 'presupuesto', fk: `pl-v-${x.v.id}`, abrir: `data-a="abrir" data-tipo="variable" data-id="${x.v.id}"`, emoji: x.v.emoji, nombre: x.v.nombre, monto: x.saltado ? 0 : x.tope, cuenta: !x.saltado, hecha: x.listo || x.saltado, marca, sub: marca, falta: x.falta });
+            }
+            for (const x of k.programado) {
+                const marca = x.guardado ? `ya lo guardaste ✓` : x.falta ? `${P.estePlan()}` : 'ya llegaste a tu meta';
+                fila({ grupo: 'ahorro', tipo: 'programado', fk: `pl-a-${x.a.id}`, abrir: `data-a="abrir" data-tipo="apartado" data-id="${x.a.id}"`, emoji: x.a.emoji, nombre: x.a.nombre, monto: x.monto, hecha: !!x.guardado, marca, falta: x.falta, sub: M.ahorroAparte(x.a) ? 'va a: aparte' : `va a: dentro de ${M.lugar(st, M.lugarAhorro(st, x.a))?.nombre || 'tu cuenta'}` });
+            }
+        } else {
+            const x = rango.tipo === 'futuro' ? k.periodos.find((y) => y.inicio === rango.desde) : null;
+            if (x) {
+                // Lo que pagas con ese ingreso (V2-34, V2-35): lo mismo que cuenta el motor para ese periodo, fila por fila.
+                for (const o of x.ingresos) filaIngreso(o);
+                for (const r of x.adelantos) fila({ grupo: 'ingresos', tipo: 'ingreso', fecha: r.adelanto.fecha, fk: `i-${r.adelanto.ingreso.id}-${r.adelanto.fecha}`, abrir: abrirIng(r.adelanto.ingreso), emoji: r.adelanto.ingreso.emoji, nombre: r.adelanto.ingreso.nombre, monto: r.monto, marca: 'llegó antes', sub: 'llegó antes: es de este periodo' });
+                if (x.entraGuardado) fila({ grupo: 'ingresos', tipo: 'reserva', fk: 'res-in', abrir: 'data-a="hoja" data-hoja="pasarProxima"', emoji: '📅', nombre: 'Lo que pasaste de antes', monto: x.entraGuardado, sub: 'lo pasaste de tu periodo anterior' });
+                const contadas = new Set();
+                for (const y of x.partes) {
+                    if (y.tarjeta) {
+                        const ti = k.tarjetas.find((z) => z.t.id === y.tarjeta.id);
+                        const total = ti ? (ti.ult.inicial ? ti.usual : ti.porPagarEstado) : y.parte;
+                        fila({ grupo: 'deudas', tipo: 'tarjeta', fecha: y.fecha, fk: `t-${y.tarjeta.id}-${y.fecha}`, abrir: abrirTarjeta(y.tarjeta), emoji: y.tarjeta.emoji, nombre: P.nombreTarjeta(y.tarjeta), monto: y.parte, de: total > y.parte ? total : null, aprox: !!y.estimado, marca: total > y.parte ? `de ${dinero(total)}` : '', sub: total > y.parte ? `${dinero(total - y.parte)} ya los contaste al comprar` : tarjetaSub(y.tarjeta) });
+                        contadas.add(`t:${y.tarjeta.id}:${y.fecha}`);
+                    } else {
+                        const p = M.pago(st, y.pago.id) || y.pago;
+                        filaPagoDe(p, y, { monto: y.parte, de: y.parte < y.monto ? y.monto : null, marca: y.parte < y.monto ? `de ${dinero(y.monto, { aprox: y.estimado })}` : null });
+                        contadas.add(`p:${p.id}:${y.fecha}`);
+                    }
+                }
+                // Lo de estas fechas que no paga este ingreso, en gris: va en tu tarjeta, ya lo pagaste o ya lo contaste.
+                for (const p of st.pagos.filter((q) => q.activo !== false)) {
+                    for (const o of M.ocurrenciasPago(st, p, rango.desde, rango.hasta)) {
+                        if (contadas.has(`p:${p.id}:${o.fecha}`) || o.estado === 'vencido') continue;
+                        const va = P.vaEn(st, p);
+                        filaPagoDe(p, o, { cuenta: false, marca: va || (o.estado === 'pagado' ? `✓${sr(' Pagado')}` : o.estado === 'saltado' ? 'saltado' : 'ya contado') });
+                    }
+                }
+                if (x.saleRes) fila({ grupo: 'ahorro', tipo: 'reserva', fk: 'res-out', abrir: 'data-a="hoja" data-hoja="pasarProxima"', emoji: '📅', nombre: 'Lo que pasas al siguiente', monto: x.saleRes, sub: 'para tu periodo siguiente' });
+                for (const v of x.variables) fila({ grupo: 'presupuestos', tipo: 'presupuesto', fk: `pl-v-${v.id}`, abrir: `data-a="abrir" data-tipo="variable" data-id="${v.id}"`, emoji: v.emoji, nombre: v.nombre, monto: v.tope, marca: P.cadaPlan(), sub: `lo máximo ${P.cadaPlan()}` });
+                for (const a of x.programados) {
+                    const monto = a.meta ? Math.min(a.programado.monto, a.meta - a.monto) : a.programado.monto;
+                    fila({ grupo: 'ahorro', tipo: 'programado', fk: `pl-a-${a.id}`, abrir: `data-a="abrir" data-tipo="apartado" data-id="${a.id}"`, emoji: a.emoji, nombre: a.nombre, monto, marca: P.cadaPlan(), sub: M.ahorroAparte(a) ? 'va a: aparte' : `va a: dentro de ${M.lugar(st, M.lugarAhorro(st, a))?.nombre || 'tu cuenta'}` });
+                }
+            } else {
+                // Mes (o un periodo sin proyección): lo de sus fechas.
+                for (const ing of st.ingresos.filter((i) => i.activo !== false)) {
+                    for (const o of M.ocurrenciasIngreso(st, ing, rango.desde, rango.hasta)) {
+                        if (o.estado === 'noLlego' || (ing.frecuencia === 'unico' && (o.estado === 'llego' || o.fecha < st.hoy))) continue;
+                        filaIngreso(o);
+                    }
+                }
+                for (const p of st.pagos) for (const o of M.ocurrenciasPago(st, p, rango.desde, rango.hasta)) if (!(p.activo === false && !o.hecho)) filaPagoDe(p, o);
+                for (const o of M.ocurrenciasTarjeta(st, rango.desde, rango.hasta)) {
+                    const e = o.estadoCuenta || null;
+                    // De un estado de cuenta, lo que no contaste al comprar (lo demás bajó tu libre el día de la compra).
+                    const contado = e ? Math.min(e.aPagar, (e.anotadoLibre !== undefined ? e.anotadoLibre : e.anotado) || 0) : 0;
+                    const monto = o.monto === null ? 0 : e ? e.aPagar - contado : o.monto;
+                    const pagado = o.estado === 'pagado';
+                    fila({ grupo: 'deudas', tipo: 'tarjeta', fecha: o.fecha, fk: `t-${o.tarjeta.id}-${o.fecha}`, abrir: abrirTarjeta(o.tarjeta), emoji: o.tarjeta.emoji, nombre: P.nombreTarjeta(o.tarjeta), monto, de: contado ? e.aPagar : null, cuenta: o.monto !== null && o.estado !== 'arrastrado', aprox: !!o.estimado && !pagado, hecha: pagado || o.estado === 'arrastrado', marca: o.monto === null ? 'por confirmar' : contado ? `de ${dinero(e.aPagar)}` : pagado ? `✓${sr(' Pagado')}` : o.estado === 'arrastrado' ? 'pasó al siguiente' : '', sub: contado ? `${dinero(contado)} ya los contaste al comprar` : tarjetaSub(o.tarjeta) });
+                }
+                for (const v of M.variablesActivas(st)) {
+                    const veces = periodosEntre(st, rango.desde, rango.hasta, v.desde).filter((f) => !((v.cierres || {})[f] && v.cierres[f].estado === 'saltado'));
+                    if (!veces.length) continue;
+                    fila({ grupo: 'presupuestos', tipo: 'presupuesto', fk: `pl-v-${v.id}`, abrir: `data-a="abrir" data-tipo="variable" data-id="${v.id}"`, emoji: v.emoji, nombre: v.nombre, monto: v.tope * veces.length, marca: veces.length > 1 ? `${dinero(v.tope)} × ${veces.length}` : P.cadaPlan(), sub: `lo máximo ${P.cadaPlan()}` });
+                }
+                for (const a of M.programados(st)) {
+                    const veces = periodosEntre(st, rango.desde, rango.hasta, a.programado.desde);
+                    if (!veces.length) continue;
+                    const monto = M.suma(veces, (f) => ((a.guardados || {})[f] ? a.guardados[f].monto : a.programado.monto));
+                    fila({ grupo: 'ahorro', tipo: 'programado', fk: `pl-a-${a.id}`, abrir: `data-a="abrir" data-tipo="apartado" data-id="${a.id}"`, emoji: a.emoji, nombre: a.nombre, monto, marca: veces.length > 1 ? `${dinero(a.programado.monto)} × ${veces.length}` : P.cadaPlan(), sub: M.ahorroAparte(a) ? 'va a: aparte' : `va a: dentro de ${M.lugar(st, M.lugarAhorro(st, a))?.nombre || 'tu cuenta'}` });
+                }
+            }
+        }
+        // El mismo día: primero lo que te cae y después lo que pagas con eso; lo que no tiene fecha (presupuestos y ahorro), al final.
+        const orden = (x) => (x.grupo === 'ingresos' ? 0 : 1);
+        filas.sort((a, b) => (a.fecha && b.fecha ? (a.fecha < b.fecha ? -1 : a.fecha > b.fecha ? 1 : orden(a) - orden(b)) : a.fecha ? -1 : b.fecha ? 1 : 0));
+        const cuentan = filas.filter((x) => x.cuenta);
+        const entra = M.suma(cuentan.filter((x) => x.grupo === 'ingresos'), (x) => x.monto);
+        const sale = M.suma(cuentan.filter((x) => x.grupo !== 'ingresos'), (x) => x.monto);
+        const aproxE = cuentan.some((x) => x.grupo === 'ingresos' && x.aprox);
+        const aproxS = cuentan.some((x) => x.grupo !== 'ingresos' && x.aprox);
+        const x = rango.tipo === 'futuro' ? k.periodos.find((y) => y.inicio === rango.desde) || null : null;
+        return { rango, filas, entra, sale, quedan: entra - sale, aproxE, aproxS, aprox: aproxE || aproxS, periodo: x };
+    }
+    P.planPestana = planPestana;
+    /** El rango de una pestaña de Mi plan (para su «¿De dónde sale?»). */
+    P.rangoPlan = (vista) => rangoPlan(!periodos().mes && vista === 'mes' ? 'proxima' : vista, periodos(), P.calc());
+    /**
+     * Una fila del plan: el día (solo en la primera de ese día), emoji, nombre y monto. «aprox.» solo si es un estimado, «+» si
+     * entra, ✓ y en gris si ya está, en gris si no suma aquí. `data-monto` y `data-cuenta`: lo que suma (para las pruebas).
+     */
+    function filaPlan(x, { primera = true } = {}) {
+        const st = P.st;
+        const f = x.fecha;
+        const monto = x.grupo === 'ingresos' ? montoPlan(x.monto, 'ingreso', { aprox: x.aprox }) : montoPlan(x.monto, 'gasto', { aprox: x.aprox, va: x.va || null, gris: !x.cuenta || x.hecha });
+        const cls = `pl-fila${f ? (primera ? ' pl-fila--dia' : '') : ' pl-fila--corta'}${f === st.hoy ? ' pl-fila--hoy' : ''}${x.hecha ? ' pl-fila--hecha' : ''}${!x.cuenta ? ' pl-fila--va' : ''}`;
+        const dia = f ? (primera ? diaPlan(f) : '<span class="pl-dia" aria-hidden="true"></span>') : '';
+        return `<li class="${cls}">${dia}<button type="button" class="pl-b" ${x.abrir} data-fk="${x.fk}" data-monto="${x.cuenta ? x.monto : 0}" data-cuenta="${x.cuenta ? 1 : 0}"${x.falta !== undefined ? ` data-falta="${x.falta}"` : ''}>${f ? sr(`${f === st.hoy ? 'Hoy, ' : ''}${M.fechaCorta(f)}: `) : ''}${caja(x.emoji, 'emo--sm')}<span class="pl-n">${esc(x.nombre)}</span>${x.marca ? `<span class="pl-e">${x.marca}</span>` : ''}<span class="pl-m">${monto}</span></button></li>`;
+    }
+    /**
+     * La lista por fecha (R1): solo lo de este periodo. Hoy se marca aunque ese día no haya nada. Tus presupuestos y tu ahorro
+     * programado van después, una línea cada uno. Sin nada, un mensaje amable.
+     */
+    function lineaPlan(modelo) {
+        const st = P.st;
+        const rango = modelo.rango;
+        const conFecha = modelo.filas.filter((x) => x.fecha);
+        const sinFecha = (g) => modelo.filas.filter((x) => !x.fecha && x.grupo === g);
+        const hoyVacio = () => `<li class="pl-fila pl-fila--dia pl-fila--hoy">${diaPlan(st.hoy)}<p class="pl-nada">${sr('Hoy: ')}Nada que pagar hoy</p></li>`;
+        let lista = '';
+        if (conFecha.length) {
+            let hoyPuesto = st.hoy < rango.desde || st.hoy > rango.hasta || conFecha.some((x) => x.fecha === st.hoy);
+            let ultimo = null;
+            const filas = [];
+            for (const x of conFecha) {
+                if (!hoyPuesto && x.fecha > st.hoy) {
+                    filas.push(hoyVacio());
+                    hoyPuesto = true;
+                }
+                filas.push(filaPlan(x, { primera: x.fecha !== ultimo }));
+                ultimo = x.fecha;
+            }
+            if (!hoyPuesto) filas.push(hoyVacio());
+            lista = `<ul class="pl-lista card">${filas.join('')}</ul>`;
+        } else lista = `<p class="vacio plan-vacio">Nada que pagar ${esc(rango.vacio)}.</p>`;
+        const bloque = (g, titulo) => {
+            const xs = sinFecha(g);
+            return xs.length ? `<div class="pl-bloque"><h2 class="pl-h">${titulo}</h2><ul class="pl-lista card">${xs.map((x) => filaPlan(x)).join('')}</ul></div>` : '';
+        };
+        return `${lista}${bloque('presupuestos', 'Presupuestos')}${bloque('ahorro', 'Ahorro programado')}`;
+    }
+    /**
+     * Punto 4 y v2.9 (R4, R7, R11): UN resumen por pestaña. En el periodo de hoy, tu libre (el mismo número de Hoy): «Tienes −
+     * Ahorros − Sale». En las demás, «Entra − Sale = Te quedarían», con «aprox.» solo si hay un estimado, el adelanto en una
+     * línea y qué incluye ese número. Al tocarlo se abre su «¿De dónde sale?».
+     */
+    function resumenPlan(modelo, k, vista) {
+        const st = P.st;
+        const rango = modelo.rango;
         const notas = [];
         let linea;
         let etiqueta;
         let numero;
         let falta = false;
-        if (vista === 'actual') {
+        if (rango.tipo === 'actual') {
             const hz = k.hz;
             const porConfirmar = hz.esHoy ? hz.ocurrencia : (hz.atrasadas || []).at(-1) || null;
             // Decisión 43 (APROBADO por Victor, 2026-10-22): Tienes − Ahorros − Sale = Tu libre. Sin ahorros dentro de tus cuentas, sin «Ahorros».
@@ -1060,48 +1219,29 @@
                 falta = true;
                 notas.push(P.textoCero(k));
             }
-        } else if (vista === 'mes') {
-            // V2-55: el mes completo, con las mismas ocurrencias que se ven abajo (y las vencidas de ese mes).
-            const [y, m] = M.partes(rango.desde);
-            const r = M.pagosDelMes(st, y, m);
-            const apm = { aprox: r.aprox, centavos: true };
-            linea = `Entra ${dinero(r.entra, apm)} · Sale ${dinero(r.pagos, apm)}${r.tarjetasSinMonto ? ' + tus tarjetas' : ''}`;
-            etiqueta = r.queda >= 0 ? 'Te quedarían' : 'Te faltarían';
-            numero = dinero(Math.abs(r.queda), apm);
-            falta = r.queda < 0;
-            notas.push('Sin tus gastos del día a día');
         } else {
-            const x = k.periodos.find((y) => y.clave === rango.desde) || (k.proxima && k.proxima.inicio <= rango.desde && rango.desde <= k.proxima.fin ? k.proxima : null);
-            if (x && P.variable() && !x.entra) {
-                // V2-59 (#27): sin ingreso fijo y sin nada esperado, no se dice «entra ~$0».
+            const x = modelo.periodo;
+            if (P.variable() && !modelo.entra) {
+                // V2-59 (#27): sin ingreso fijo y sin nada esperado, no se dice «entra $0»: las ventas cuentan cuando las anotas.
                 linea = 'Tus ventas cuentan cuando las anotas';
                 etiqueta = 'Sale';
-                numero = dinero(x.pagos, ap);
-                // Cierre v2.8: lo vendido este mes, como referencia (V2-59 #27), igual que cuando sí esperas algo.
-                const ventas = ventasPeriodo(x);
-                if (ventas) notas.push(ventas);
-            } else if (x) {
-                linea = `Entra ${dinero(x.entra, ap)} · Sale ${dinero(x.pagos, ap)}`;
-                etiqueta = x.quedan >= 0 ? 'Te quedarían' : 'Te faltarían';
-                numero = dinero(Math.abs(x.quedan), ap);
-                falta = P.faltaPeriodo(x);
-                const inc = incluyePeriodo(x, { centavos: true });
-                if (inc) notas.push(inc);
-                if (x.soloFechas) notas.push(`Ojo: ${P.textoFaltaFechas(x).replace(/^El /, 'el ')}`);
+                numero = dinero(modelo.sale, { aprox: modelo.aproxS });
             } else {
-                // Sin proyección del motor: lo de la lista (ingresos que llegan menos lo que sale).
-                const xs = ocurrenciasPlan(rango.desde, rango.hasta);
-                const entra = M.suma(xs.filter((y) => y.tipo === 'ingreso' && y.o.estado !== 'noLlego'), (y) => y.o.monto);
-                const sale = M.suma(xs.filter((y) => y.tipo !== 'ingreso' && y.o.estado !== 'saltado'), (y) => enteroDe(y.o));
-                linea = `Entra ${dinero(entra, ap)} · Sale ${dinero(sale, ap)}`;
-                etiqueta = entra >= sale ? 'Te quedarían' : 'Te faltarían';
-                numero = dinero(Math.abs(entra - sale), ap);
-                falta = entra < sale;
+                linea = `Entra ${dinero(modelo.entra, { aprox: modelo.aproxE })} · Sale ${dinero(modelo.sale, { aprox: modelo.aproxS })}`;
+                etiqueta = modelo.quedan >= 0 ? 'Te quedarían' : 'Te faltarían';
+                numero = dinero(Math.abs(modelo.quedan), { aprox: modelo.aprox });
+                falta = modelo.quedan < 0 || (!!x && P.faltaPeriodo(x));
             }
+            // R7: el adelanto, en una sola línea («Quincena $600.00 − adelanto $210.00 = $390.00»), con su comisión si la hay.
+            for (const y of modelo.filas.filter((z) => z.cuenta && z.descuento)) notas.push(`${y.nombre} ${dinero(y.bruto)} − adelanto ${dinero(y.descuento)} = ${dinero(y.monto)}${y.comision ? ` (incluye ${dinero(y.comision)} de comisión)` : ''}`);
+            if (x && x.soloFechas) notas.push(`Ojo: ${P.textoFaltaFechas(x).replace(/^El /, 'el ')}`);
+            const ventas = P.variable() ? ventasPeriodo(x || { entra: modelo.entra }) : '';
+            if (ventas) notas.push(ventas);
+            // R4 / R11: qué incluye «Te quedarían», en palabras simples (y lo mismo en Hoy y en «¿De dónde sale?»).
+            notas.push(TE_QUEDARIAN);
         }
-        // Cierre v2.8 (APROBADO por Victor 2026-10-22): lo nuevo se explica con los «?»: el del número grande de cada pestaña.
-        const q = vista === 'actual' ? 'libre' : vista === 'proxima' ? 'proxima' : 'mes';
-        return `<div class="plan-res-w"><button type="button" class="plan-res${falta ? ' plan-res--falta' : ''}" data-a="hoja" data-hoja="desglose" data-fk="plan-resumen">
+        const q = rango.tipo === 'actual' ? 'libre' : vista === 'proxima' ? 'proxima' : 'planMes';
+        return `<div class="plan-res-w"><button type="button" class="plan-res${falta ? ' plan-res--falta' : ''}" data-a="hoja" data-hoja="desglose" data-vista="${vista}" data-fk="plan-resumen">
             <span class="plan-res-r">${esc(rangoCorto(rango.desde, rango.hasta))}</span>
             <span class="plan-res-l">${esc(linea)}</span>
             <span class="plan-res-e">${falta ? icon('triangle-alert', 'ico-xs') : ''}${esc(etiqueta)}</span>
@@ -1110,22 +1250,9 @@
             <span class="plan-res-mas">¿De dónde sale? ${icon('chevron-right', 'ico-xs')}</span>
         </button>${P.qBtn(q)}</div>${P.qTexto(q)}`;
     }
-    /** Punto 7: después de la lista, tus gastos variables y tu ahorro programado, una línea cada uno. */
-    function bloquePlan(vista, k) {
-        const st = P.st;
-        const actual = vista === 'actual';
-        const fila = (fk, a, emoji, nombre, texto) => `<li class="pl-fila pl-fila--corta"><button type="button" class="pl-b" ${a} data-fk="${fk}">${caja(emoji, 'emo--sm')}<span class="pl-n">${esc(nombre)}</span><span class="pl-t">${texto}</span></button></li>`;
-        const variables = k.variables.map((x) => {
-            const texto = !actual ? `${dinero(x.tope)} ${P.cadaPlan()}` : x.listo ? `te sobró ${dinero(x.sobro)} ✓` : x.pasado ? `te pasaste ${dinero(x.pasado)}` : `te quedan ${dinero(x.falta)} de ${dinero(x.tope)}`;
-            return fila(`pl-v-${x.v.id}`, `data-a="abrir" data-tipo="variable" data-id="${x.v.id}"`, x.v.emoji, x.v.nombre, esc(texto));
-        });
-        const ahorros = M.programados(st).map((a) => {
-            const x = actual ? k.programado.find((y) => y.a.id === a.id) : null;
-            const texto = !x ? esc(`${dinero(a.programado.monto)} ${P.cadaPlan()}`) : x.guardado ? `${esc(`${dinero(x.monto)} ${P.estePlan()}`)} ✓${sr(' Ya lo guardaste')}` : x.falta ? esc(`${dinero(x.monto)} ${P.estePlan()}`) : 'ya llegaste a tu meta';
-            return fila(`pl-a-${a.id}`, `data-a="abrir" data-tipo="apartado" data-id="${a.id}"`, a.emoji, a.nombre, texto);
-        });
-        return `${variables.length ? `<div class="pl-bloque"><h2 class="pl-h">Presupuestos</h2><ul class="pl-lista card">${variables.join('')}</ul></div>` : ''}${ahorros.length ? `<div class="pl-bloque"><h2 class="pl-h">Ahorro programado</h2><ul class="pl-lista card">${ahorros.join('')}</ul></div>` : ''}`;
-    }
+    /** v2.9 (R4, DECIDIDO por criterio): «Te quedarían» es lo que entra menos tu plan de ese periodo; lo que te sobre hoy no se suma. */
+    const TE_QUEDARIAN = 'Lo que entra menos tu plan. No suma lo que te sobre hoy.';
+    P.TE_QUEDARIAN = TE_QUEDARIAN;
     /** Cuánto es al mes, más o menos, algo que se repite (para comparar y sumar). */
     function alMes(x, monto = x.monto) {
         const f = x.frecuencia;
@@ -1173,64 +1300,33 @@
     /** «Cada quincena» con mayúscula (para títulos y botones). */
     P.cadaVezT = (st = P.st) => { const t = P.cadaVez(st); return t.charAt(0).toUpperCase() + t.slice(1); };
     /**
-     * v2.8 (ajuste 5, punto 9, opción B): «Ver por tipo»: Ingresos · Gastos fijos · Gastos variables · Ahorro programado ·
-     * Deudas, plegadas, con cuántas son y su total en el periodo. Cada fila, máximo dos líneas: nombre y monto; de dónde
-     * sale y cuándo (C-9 ajustada). «Pago» se dice solo para deudas (D-2).
+     * v2.9 (R1, R2): «Por tipo»: Ingresos · Gastos fijos · Presupuestos · Ahorro programado · Deudas, plegadas, con solo lo
+     * de este periodo. El total de cada una es la suma de sus filas que suman; una sección sin nada no se muestra. Cada fila,
+     * dos líneas: nombre y monto; cuándo y de dónde sale (C-9 ajustada).
      */
-    function planPorTipo(vista, rango, k) {
-        const st = P.st;
-        const activos = st.pagos.filter((p) => p.activo !== false);
-        const xs = ocurrenciasPlan(rango.desde, rango.hasta);
-        // La segunda línea usa todo el ancho (debajo del monto también), para que se lea de dónde sale y cuándo.
-        const fila = (fk, a, emoji, titulo, linea, monto) => `<li class="fila pt-fila"><button type="button" class="fila-main" ${a} data-fk="${fk}">${caja(emoji)}<span class="fila-txt"><span class="pt-l1"><span class="fila-t">${titulo}</span><span class="fila-m">${monto}</span></span>${linea ? `<span class="fila-s pt-s">${esc(linea)}</span>` : ''}</span></button></li>`;
-        const filaP = (p) => {
-            const prox = M.ocurrenciasPago(st, p, M.sumarDias(st.hoy, -62), M.sumarDias(st.hoy, 400)).find((o) => o.estado === 'pendiente' || o.estado === 'vencido');
-            const proxTxt = prox ? `${prox.estado === 'vencido' ? 'venció' : 'próximo'}: ${M.fechaCorta(prox.fecha)}${prox.parcial ? ` · faltan ${dinero(prox.parcial.falta)}` : ''}` : p.terminada ? `terminaste de pagarla el ${M.fechaCorta(p.terminada.fecha)}` : p.sinCuota ? 'sin cuota fija' : 'sin fechas por delante';
-            const debe = p.deuda && Number.isInteger(p.deuda.debe) ? `debes ${dinero(p.deuda.debe, { aprox: true })}` : '';
-            return fila(`mp-${p.id}`, `data-a="abrir" data-tipo="pago" data-id="${p.id}"`, p.emoji, esc(p.nombre), [P.vaEn(st, p) || saleDe(st, p), proxTxt, debe].filter(Boolean).join(' · '), p.sinCuota ? '' : montoPlan(p.monto, 'gasto', { aprox: p.estimado, gris: !!P.vaEn(st, p) }));
+    function planPorTipo(modelo) {
+        const rango = modelo.rango;
+        const fila = (x) => {
+            const monto = x.grupo === 'ingresos' ? montoPlan(x.monto, 'ingreso', { aprox: x.aprox }) : montoPlan(x.monto, 'gasto', { aprox: x.aprox, gris: !x.cuenta || x.hecha });
+            const cuando = x.fecha ? M.fechaCorta(x.fecha) : '';
+            const linea = [cuando, x.marca && x.grupo !== 'presupuestos' && x.grupo !== 'ahorro' ? x.marca.replace(/<[^>]+>/g, '') : '', x.sub].filter(Boolean).join(' · ');
+            return `<li class="fila pt-fila${!x.cuenta ? ' pt-fila--va' : ''}"><button type="button" class="fila-main" ${x.abrir} data-fk="mp-${x.fk}" data-monto="${x.cuenta ? x.monto : 0}" data-cuenta="${x.cuenta ? 1 : 0}">${caja(x.emoji)}<span class="fila-txt"><span class="pt-l1"><span class="fila-t">${esc(x.nombre)}</span><span class="fila-m">${monto}</span></span>${linea ? `<span class="fila-s pt-s">${esc(linea)}</span>` : ''}</span></button></li>`;
         };
-        const ingresos = st.ingresos.filter((i) => i.activo !== false).map((i) => {
-            const prox = M.ocurrenciasIngreso(st, i, i.desde, M.sumarDias(st.hoy, 400)).find((o) => o.estado !== 'llego' && o.estado !== 'noLlego');
-            return fila(`mp-i-${i.id}`, `data-a="abrir" data-tipo="ingreso" data-id="${i.id}"`, i.emoji, `${esc(i.nombre)}${i.principal ? ' <span class="pronto">Principal</span>' : ''}`, `llega a: ${M.lugar(st, i.lugar)?.nombre || '—'}${prox ? ` · próximo: ${M.fechaCorta(prox.fecha)}` : ''}`, montoPlan(i.monto, 'ingreso', { aprox: i.aprox }));
-        });
-        const fijos = activos.filter((p) => !p.tipoDeuda && !p.descuento).map(filaP);
-        const variables = k.variables.map((x) => {
-            const m = M.medio(st, x.v.medio);
-            const l = m && m.lugar ? M.lugar(st, m.lugar) : null;
-            const estado = x.listo ? `te sobró ${dinero(x.sobro)}` : x.pasado ? `te pasaste ${dinero(x.pasado)}` : `te quedan ${dinero(x.falta)}`;
-            return fila(`mp-v-${x.v.id}`, `data-a="abrir" data-tipo="variable" data-id="${x.v.id}"`, x.v.emoji, esc(x.v.nombre), `${estado} · sale de: ${l ? l.nombre : m ? m.nombre : '—'}`, montoPlan(x.tope, 'gasto'));
-        });
-        const programado = M.programados(st).map((a) => {
-            const x = k.programado.find((y) => y.a.id === a.id);
-            const donde = M.ahorroAparte(a) ? 'va a: aparte' : `va a: dentro de ${M.lugar(st, M.lugarAhorro(st, a))?.nombre || 'tu cuenta'}`;
-            return fila(`mp-a-${a.id}`, `data-a="abrir" data-tipo="apartado" data-id="${a.id}"`, a.emoji, esc(a.nombre), `${donde} · ${x && x.guardado ? `ya lo guardaste ${P.estePlan()} ✓` : x && x.falta ? 'toca «Ya lo guardé» cuando lo guardes' : x ? 'ya llegaste a tu meta' : P.cadaPlan()}`, montoHtml(a.programado.monto, null));
-        });
-        const deudas = activos.filter((p) => p.tipoDeuda || p.descuento).map(filaP);
-        const tarjetas = st.tarjetas.map((t) => {
-            const info = M.tarjetaInfo(st, t);
-            const l = M.lugar(st, M.pagoTarjetaPropuesto(st, t).lugar);
-            const cuanto = info.porPagarEstado ? montoPlan(info.porPagarEstado, 'gasto') : info.estimado ? montoPlan(info.estimado, 'gasto', { aprox: true }) : '<span class="monto monto--pend">Por confirmar</span>';
-            return fila(`mp-t-${t.id}`, `data-a="abrir" data-tipo="tarjeta" data-id="${t.id}"`, t.emoji, esc(P.nombreTarjeta(t)), `se paga desde: ${l ? l.nombre : '—'} · vence: ${M.fechaCorta(info.vence)}`, cuanto);
-        });
-        // El total de cada tipo en el periodo de la pestaña (en «Mes», los topes y el ahorro de cada quincena del mes).
-        const veces = vista === 'mes' ? { quincena: 2, quince: 2, semana: 52 / 12, catorcena: 26 / 12 }[M.periodoPlan(st).cada] || 1 : 1;
-        // Ajuste 6 (punto 4): lo que va en una tarjeta o se descuenta del salario no suma aparte (C-7).
-        const deTipo = (...tipos) => xs.filter((x) => tipos.includes(x.tipo) && x.o.estado !== 'saltado' && x.o.estado !== 'noLlego' && !(x.o.pago && P.vaEn(st, x.o.pago)));
-        const total = (lista) => ({ c: M.suma(lista, (x) => enteroDe(x.o)), aprox: lista.some((x) => (x.tipo === 'ingreso' ? x.o.estado !== 'llego' && x.o.aprox : x.o.estimado)) });
-        const porVeces = (c) => ({ c: Math.round(c * veces), aprox: !Number.isInteger(veces) });
         const abiertas = P.ui.planAbiertas || {};
-        const seccion = (clave, titulo, id, filas, t, vacio) => {
+        const seccion = (clave, titulo, id, grupo) => {
+            const xs = modelo.filas.filter((x) => x.grupo === grupo);
+            if (!xs.length) return '';
+            const cuentan = xs.filter((x) => x.cuenta);
+            const total = M.suma(cuentan, (x) => x.monto);
+            const aprox = cuentan.some((x) => x.aprox);
             const abierta = !!abiertas[clave];
             return `<section class="card pt-sec" aria-labelledby="${id}">
-                <h2 class="pt-h" id="${id}"><button type="button" class="pt-b" aria-expanded="${abierta}" aria-controls="pt-${clave}" data-a="planSeccion" data-v="${clave}" data-fk="sec-${clave}">${icon(abierta ? 'chevron-down' : 'chevron-right', 'ico-s')}<span class="pt-t">${titulo}</span><span class="contador">(${filas.length})</span><span class="pt-total">${sr(`Total ${rango.t}: `)}${dinero(t.c, { aprox: t.aprox, centavos: true })}</span></button></h2>
-                <div class="pt-c" id="pt-${clave}"${abierta ? '' : ' hidden'}>${filas.length ? `<ul class="lista">${filas.join('')}</ul>` : `<p class="vacio">${vacio}</p>`}</div>
+                <h2 class="pt-h" id="${id}"><button type="button" class="pt-b" aria-expanded="${abierta}" aria-controls="pt-${clave}" data-a="planSeccion" data-v="${clave}" data-fk="sec-${clave}">${icon(abierta ? 'chevron-down' : 'chevron-right', 'ico-s')}<span class="pt-t">${titulo}</span><span class="contador">(${xs.length})</span><span class="pt-total">${sr(`Total ${rango.t}: `)}${dinero(total, { aprox })}</span></button></h2>
+                <div class="pt-c" id="pt-${clave}"${abierta ? '' : ' hidden'}><ul class="lista">${xs.map(fila).join('')}</ul></div>
             </section>`;
         };
-        return `${seccion('ingresos', 'Ingresos', 'mp-ingresos', ingresos, total(deTipo('ingreso')), 'Todavía no tienes ingresos esperados.')}
-            ${seccion('fijos', 'Gastos fijos', 'mp-gastos-fijos', fijos, total(deTipo('fijo')), 'Agrega la luz, el alquiler o el colegio con «Agregar».')}
-            ${seccion('variables', 'Presupuestos', 'mp-gastos-variables', variables, porVeces(M.suma(k.variables, (x) => x.tope)), `Lo máximo que quieres gastar en algo ${esc(P.cadaVez())}.`)}
-            ${seccion('ahorro', 'Ahorro programado', 'mp-ahorro-programado', programado, porVeces(M.suma(M.programados(st), (a) => a.programado.monto)), `Lo que guardas ${esc(P.cadaVez())} en un ahorro.`)}
-            ${seccion('deudas', 'Deudas', 'mp-pagos-de-deudas', [...deudas, ...tarjetas], total(deTipo('deuda', 'tarjeta')), 'Tus cuotas, préstamos y tarjetas.')}`;
+        const html = `${seccion('ingresos', 'Ingresos', 'mp-ingresos', 'ingresos')}${seccion('fijos', 'Gastos fijos', 'mp-gastos-fijos', 'fijos')}${seccion('variables', 'Presupuestos', 'mp-gastos-variables', 'presupuestos')}${seccion('ahorro', 'Ahorro programado', 'mp-ahorro-programado', 'ahorro')}${seccion('deudas', 'Deudas', 'mp-pagos-de-deudas', 'deudas')}`;
+        return html || `<p class="vacio plan-vacio">Nada que pagar ${esc(rango.vacio)}.</p>`;
     }
     /** V2-39 (antes de la v2.8): la lista completa de lo que pagas y te pagan. */
     function misPagosV27() {
@@ -1285,46 +1381,45 @@
     }
     P.modoPlan = modoPlan;
     S.pagos = function () {
-        const st = P.st;
         const k = P.calc();
         const per = periodos();
-        const vista = P.ui.pagosVista;
-        const rango = rangoPlan(vista, per);
+        // R10: quien cobra por mes (o no tiene ingreso fijo) tiene dos pestañas; «Mes» pasa a «Próximo mes».
+        const vista = !per.mes && P.ui.pagosVista === 'mes' ? 'proxima' : P.ui.pagosVista;
+        const rango = rangoPlan(vista, per, k);
+        const modelo = planPestana(rango, k);
         const modo = modoPlan();
-        // Punto 3: [Esta quincena] [Próxima] [Mes]; quien no cobra por quincena lee «Esta semana» o «Este periodo».
-        const tabs = [['actual', per.actual.t], ['proxima', per.proxima.t], ['mes', 'Mes']]
+        // Punto 3 y R10: las pestañas del periodo.
+        const tabs = [['actual', per.actual.t], ['proxima', per.proxima.t], ...(per.mes ? [['mes', 'Mes']] : [])]
             .map(([v, t]) => `<button type="button" class="app-tab" role="tab" id="pt-tab-${v}" aria-selected="${vista === v}" aria-controls="plan-panel" data-a="pagosVista" data-v="${v}" data-fk="tab-${v}">${esc(t)}</button>`)
             .join('');
-        const mesNav =
-            vista === 'mes'
-                ? `<div class="mes-nav"><button type="button" class="icon-btn" data-a="pagosMes" data-d="-1" aria-label="Mes anterior" data-fk="pm-ant">${icon('chevron-left')}</button><p class="mes-nav-t" aria-live="polite">${esc(rango.t)}</p><button type="button" class="icon-btn" data-a="pagosMes" data-d="1" aria-label="Mes siguiente" data-fk="pm-sig">${icon('chevron-right')}</button></div>`
-                : '';
-        // Punto 5: «Por confirmar» en UNA línea; abre la lista con sus botones de siempre. Sin nada, no sale.
-        const vencidos = vencidosPlan();
+        // R6: «Por fecha | Por tipo», arriba, junto a las pestañas.
+        const verComo = `<div class="plan-modo" role="group" aria-label="Ver">${[['fecha', 'Por fecha'], ['tipo', 'Por tipo']].map(([v, t]) => `<button type="button" class="plan-modo-b" aria-pressed="${modo === v}" data-a="pagosModo" data-v="${v}" data-fk="ver-${v}">${t}</button>`).join('')}</div>`;
+        // Mes (y el próximo mes de quien cobra por mes o no tiene ingreso fijo): flechas para ver otros meses.
+        const conFlechas = vista === 'mes' || (vista === 'proxima' && per.porMes);
+        const navTexto = vista === 'mes' ? rango.t : rango.tipo === 'mes' ? `${M.capital(M.MESES[M.partes(rango.desde)[1] - 1])} ${M.partes(rango.desde)[0]}` : rangoCorto(rango.desde, rango.hasta);
+        const antes = vista === 'mes' ? 'pagosMes' : 'planPaso';
+        const puedeAntes = vista === 'mes' || (rango.paso || 0) > 0;
+        const puedeDespues = vista === 'mes' || (rango.paso || 0) < (rango.maxPaso ?? 0);
+        const mesNav = conFlechas
+            ? `<div class="mes-nav"><button type="button" class="icon-btn" data-a="${antes}" data-d="-1" aria-label="${vista === 'mes' ? 'Mes anterior' : 'Anterior'}" data-fk="pm-ant"${puedeAntes ? '' : ' disabled'}>${icon('chevron-left')}</button><p class="mes-nav-t" aria-live="polite">${esc(navTexto)}</p><button type="button" class="icon-btn" data-a="${antes}" data-d="1" aria-label="${vista === 'mes' ? 'Mes siguiente' : 'Siguiente'}" data-fk="pm-sig"${puedeDespues ? '' : ' disabled'}>${icon('chevron-right')}</button></div>`
+            : '';
+        // Punto 5: «Por confirmar» en UNA línea, solo en el periodo de hoy (es de ahora). Sin nada, no sale.
+        const vencidos = vista === 'actual' ? vencidosPlan() : [];
         const porConfirmar = vencidos.length ? `<button type="button" class="plan-conf" data-a="abrir" data-tipo="porConfirmar" data-fk="plan-por-confirmar">${icon('triangle-alert', 'ico-s')}<span>${vencidos.length} por confirmar</span>${icon('chevron-right', 'ico-xs')}</button>` : '';
-        // Punto 8: «Más adelante» (aguinaldo, Quincena 25…), al final. V2-40: solo los ingresos de una vez.
-        // Corrección v2.3.1: empieza después del periodo «Próxima» (un ingreso de una vez se ve solo en el periodo de su fecha).
-        const finMasAdelante = vista === 'mes' && rango.hasta > per.proxima.hasta ? rango.hasta : per.proxima.hasta;
-        const extras = st.ingresos
-            .filter((i) => i.frecuencia === 'unico' && i.activo !== false)
-            .flatMap((i) => M.ocurrenciasIngreso(st, i, M.sumarDias(finMasAdelante, 1), M.sumarDias(st.hoy, 400)).filter((o) => o.estado === 'esperado').map((o) => ({ fecha: o.fecha, tipo: 'ingreso', ing: i, o })))
-            .sort((a, b) => (a.fecha < b.fecha ? -1 : a.fecha > b.fecha ? 1 : 0));
-        const masAdelante = extras.length ? `<div class="pl-bloque"><h2 class="pl-h">Más adelante <span class="pl-h-s">· suman cuando llegan</span></h2><ul class="pl-lista card">${extras.map((x) => filaPlan(x, { fk: `x-${x.ing.id}` })).join('')}</ul></div>` : '';
-        const cuerpo = modo === 'fecha' ? `${lineaPlan(rango)}${bloquePlan(vista, k)}` : planPorTipo(vista, rango, k);
-        const cambiar = modo === 'fecha' ? ['tipo', 'Ver por tipo'] : ['fecha', 'Ver por fecha'];
+        // R3: sin «Más adelante»: lo que viene después se ve en su periodo (con las flechas de Mes).
+        const cuerpo = modo === 'fecha' ? lineaPlan(modelo) : planPorTipo(modelo);
         // Punto 1: UN botón «+ Agregar» (los mismos formularios de siempre).
         const agregar = `<button type="button" class="btn btn--prim plan-agregar" data-a="hoja" data-hoja="agregar" data-fk="plan-agregar">${icon('plus', 'ico-s')}Agregar</button>`;
         return `<div class="pg">
             ${encabezado('Mi plan', '', { derecha: agregar })}
             ${P.tipHtml('pagos')}
-            <div class="app-tabs tabs-3" role="tablist" aria-label="Periodo">${tabs}</div>
+            <div class="app-tabs ${per.mes ? 'tabs-3' : 'tabs-2'}" role="tablist" aria-label="Periodo">${tabs}</div>
+            ${verComo}
             <div class="plan-panel" id="plan-panel" role="tabpanel" aria-labelledby="pt-tab-${vista}">
                 ${mesNav}
-                ${resumenPlan(vista, rango, k)}
+                ${resumenPlan(modelo, k, vista)}
                 ${porConfirmar}
                 ${cuerpo}
-                ${masAdelante}
-                <p class="plan-ver"><button type="button" class="link" data-a="pagosModo" data-v="${cambiar[0]}" data-fk="ver-${cambiar[0]}">${cambiar[1]}${icon('chevron-right', 'ico-xs')}</button></p>
             </div>
         </div>`;
     };
@@ -1864,8 +1959,11 @@
         const m = M.medio(st, v.medio);
         const l = m && m.lugar ? M.lugar(st, m.lugar) : null;
         const per = x.periodo;
-        const estado = x.listo ? `<p class="estado estado--ok">Ya terminaste ${P.estePlan()} ✓</p><p class="fila-s">Te sobraron ${dinero(x.sobro)}: volvieron a tu libre.</p>` : x.pasado ? `<p class="txt"><strong>Te pasaste ${dinero(x.pasado)}.</strong> Pasa; la próxima quincena empieza de nuevo.</p>` : `<p class="txt">Te quedan <strong>${dinero(x.falta)}</strong>. Ya están contados en tu plan: gastarlos no baja tu libre.</p>`;
-        const cierre = !x.listo && x.falta > 0 ? `<div class="pregunta" role="group" aria-labelledby="var-q"><p class="campo-l" id="var-q">Ibas a gastar ${dinero(x.tope)} y anotaste ${dinero(x.anotado)}. ¿Ya terminaste?</p><div class="chips"><button type="button" class="chip" data-a="variableCierre" data-id="${v.id}" data-v="listo" data-fk="var-listo">Sí, ya terminé</button><button type="button" class="chip" data-a="variableCierre" data-id="${v.id}" data-v="falta" data-fk="var-falta">Me falta</button><button type="button" class="chip" data-a="variableCierre" data-id="${v.id}" data-v="anotar" data-fk="var-anotar">Se me olvidó anotar</button></div></div>` : '';
+        // v2.9 (R5, DECIDIDO por criterio, autorizado por Victor 2026-10-23): «Ya terminé» y «Saltar» se pueden deshacer con «Reabrir»
+        // hasta tu próximo ingreso (son de este periodo).
+        const reabrir = `<button type="button" class="link link--start" data-a="variableCierre" data-id="${v.id}" data-v="reabrir" data-fk="var-reabrir">${icon('rotate-ccw', 'ico-s')}Reabrir</button>`;
+        const estado = x.saltado ? `<p class="estado">Saltaste ${P.estePlan()}: no cuenta en tu plan.</p>${reabrir}` : x.listo ? `<p class="estado estado--ok">Ya terminaste ${P.estePlan()} ✓</p><p class="fila-s">Te sobraron ${dinero(x.sobro)}: volvieron a tu libre.</p>${reabrir}` : x.pasado ? `<p class="txt"><strong>Te pasaste ${dinero(x.pasado)}.</strong> Pasa; la próxima quincena empieza de nuevo.</p>` : `<p class="txt">Te quedan <strong>${dinero(x.falta)}</strong>. Ya están contados en tu plan: gastarlos no baja tu libre.</p>`;
+        const cierre = !x.listo && !x.saltado && x.falta > 0 ? `<div class="pregunta" role="group" aria-labelledby="var-q"><p class="campo-l" id="var-q">Ibas a gastar ${dinero(x.tope)} y anotaste ${dinero(x.anotado)}. ¿Ya terminaste?</p><div class="chips"><button type="button" class="chip" data-a="variableCierre" data-id="${v.id}" data-v="listo" data-fk="var-listo">Sí, ya no gasto más en esto</button><button type="button" class="chip" data-a="variableCierre" data-id="${v.id}" data-v="falta" data-fk="var-falta">Todavía voy a gastar</button><button type="button" class="chip" data-a="variableCierre" data-id="${v.id}" data-v="anotar" data-fk="var-anotar">Me falta anotar algo</button></div></div>` : '';
         return `<div class="pg">
             ${encabezado(`${emo(v.emoji, 28)} ${esc(v.nombre)}`, `Presupuesto · ${esc(P.cadaPlan())} · sale de: ${esc(l ? l.nombre : m ? m.nombre : '—')}`, { atras: P.atrasDe('Mi plan') })}
             <section class="card ficha-cifra" aria-label="Lo máximo">
@@ -1877,7 +1975,7 @@
             </section>
             ${cierre}
             ${tarjetaSeccion(P.estePlan().charAt(0).toUpperCase() + P.estePlan().slice(1), x.gastos.length ? `<ul class="lista">${x.gastos.slice().reverse().map((r) => filaRegistro(r)).join('')}</ul>` : '<p class="vacio">Todavía no anotas nada de esto en esta quincena.</p>', { id: 'var-gastos' })}
-            <div class="pie-acciones"><button type="button" class="btn btn--full" data-a="hoja" data-hoja="editarVariable" data-id="${v.id}" data-fk="editar-variable">${icon('pencil', 'ico-s')}Editar</button><button type="button" class="btn btn--full btn--peligro-txt" data-a="variableQuitar" data-id="${v.id}" data-fk="variable-quitar">${icon('ban', 'ico-s')}Ya no aplica</button></div>
+            <div class="pie-acciones"><button type="button" class="btn btn--full" data-a="hoja" data-hoja="editarVariable" data-id="${v.id}" data-fk="editar-variable">${icon('pencil', 'ico-s')}Editar</button>${!x.listo && !x.saltado ? `<button type="button" class="btn btn--full" data-a="variableCierre" data-id="${v.id}" data-v="saltar" data-fk="var-saltar">${icon('skip-forward', 'ico-s')}Saltar ${esc(P.estePlan())}</button>` : ''}<button type="button" class="btn btn--full btn--peligro-txt" data-a="variableQuitar" data-id="${v.id}" data-fk="variable-quitar">${icon('ban', 'ico-s')}Ya no lo uso</button></div>
         </div>`;
     };
     S.tarjeta = function ({ id }) {
@@ -2184,6 +2282,7 @@
         },
         pagosVista: (d) => {
             P.ui.pagosVista = d.v;
+            P.ui.planPaso = 0;
             render();
             P.emitir('pagos:' + d.v);
         },
@@ -2214,6 +2313,11 @@
             P.cambiar((s) => {
                 delete M.pago(s, d.id).hechos[d.fecha];
             }, { aviso: `${p.nombre}: ya no está saltado`, claves: ['guardado:desSaltar'] });
+        },
+        /** v2.9 (R10): las flechas de «Próximo mes» (quien cobra por mes o no tiene ingreso fijo). */
+        planPaso: (d) => {
+            P.ui.planPaso = Math.max(0, (P.ui.planPaso || 0) + Number(d.d));
+            render();
         },
         pagosMes: (d) => {
             const base = P.ui.pagosMes || P.st.hoy.slice(0, 7);
