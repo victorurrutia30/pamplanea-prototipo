@@ -5346,13 +5346,13 @@
      * en Hoy se ve otro («$120.00 del 5 nov + $45.00 de compras nuevas»). Ningún número cambia: si las partes no suman lo que
      * se muestra, se dice como antes («ya estaba contado»).
      */
-    function partesTarjeta(t) {
+    function partesTarjeta(t, monto) {
         const partes = [];
         if (t.porPagarAhora > 0) partes.push([t.porPagarAhora, `${dinero(t.porPagarAhora)} del ${M.fechaCorta(t.ult.vence)}`, `estado de cuenta del ${M.fechaCorta(t.ult.vence)}`]);
         if (t.estimadoAhora > 0) partes.push([t.estimadoAhora, `${dinero(t.estimadoAhora, { aprox: true })} de lo que pagas normalmente`, 'lo que pagas normalmente']);
         const compras = t.comprasNetas - t.reservado;
         if (compras > 0) partes.push([compras, `${dinero(compras)} de compras nuevas`, 'compras nuevas']);
-        if (!partes.length || partes.reduce((n, [m]) => n + m, 0) !== t.enLibre) return 'ya estaba contado';
+        if (!partes.length || partes.reduce((n, [m]) => n + m, 0) !== monto) return 'ya estaba contado';
         return partes.length === 1 ? partes[0][2] : partes.map((x) => x[1]).join(' + ');
     }
     S.reparte = function (top) {
@@ -5375,7 +5375,12 @@
         const linea = (o, sub) => `<li><span>${emo(o.pago.emoji, 16)} ${esc(o.pago.nombre)} <span class="d-sub">${sub}</span></span><span>${dinero(o.parte, { aprox: o.estimado })}</span></li>`;
         const contado = [
             ...k.items.map((o) => linea(o, o.estado === 'vencido' ? 'venció el ' + M.partes(o.fecha)[2] : M.fechaCorta(o.fecha))),
-            ...k.tarjetas.filter((t) => t.enLibre).map((t) => `<li><span>${emo(t.t.emoji, 16)} ${esc(P.nombreTarjeta(t.t))} <span class="d-sub">${esc(partesTarjeta(t))}</span></span><span>${dinero(t.enLibre)}</span></li>`),
+            // v2.9.3 (revisión en vivo): lo de la tarjeta que pagas con lo que tienes y vence después va en su fila «con lo que
+            // tienes» (abajo); aquí, solo el resto, lo mismo que cuenta el Total (antes salía dos veces y no sumaba el Total).
+            ...k.tarjetas
+                .map((t) => [t, t.enLibre - t.reservadoComo])
+                .filter(([, m]) => m > 0)
+                .map(([t, m]) => `<li><span>${emo(t.t.emoji, 16)} ${esc(P.nombreTarjeta(t.t))} <span class="d-sub">${esc(partesTarjeta(t, m))}</span></span><span>${dinero(m)}</span></li>`),
             // v2.9.3 (C-2): sin «reservado»: lo que pagas con lo que tienes ahora y vence después.
             ...k.reservados.map((o) => linea(o, `con lo que tienes · vence el ${M.fechaCorta(o.fecha)}`)),
             ...k.reservasProxima.map((r) => filaReserva(r)),
