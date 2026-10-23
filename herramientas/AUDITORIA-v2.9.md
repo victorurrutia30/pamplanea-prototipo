@@ -70,3 +70,12 @@ Severidad: **P0** = dinero o un número que confunde o mezcla periodos; **P1** =
 - con flechas, el rango no se repite;
 - «este mes llevas $X en ventas» solo en su mes;
 - el texto del interruptor va centrado.
+
+## v2.9.3 «Hoy claro» (2026-10-23): los mismos números, otro Hoy
+
+Hoy cambió de forma (portada con una línea, «Para hoy», presupuestos en carrusel y «Lo que viene» en dos grupos), pero lee los mismos números del motor:
+
+- `personas-v29` sigue en **0 diferencias** en las cuatro personas, 72 días cada una: el libre de Hoy (la portada) es el del contador todos los días.
+- `invariantes`: **69 de 69**.
+- «Lo que viene» muestra cada parte de cada pago en el grupo del dinero que la paga (lo que baja tu libre de hoy y lo que pagas con tu próximo ingreso): cada peso, una vez, igual que Mi plan desde la v2.9.2.
+- Ningún cálculo cambió. En Reparte, la tarjeta explica su monto («$120.00 del 5 nov + $45.00 de compras nuevas») cuando difiere del de Hoy; si sus partes no suman lo que se muestra, se dice como antes.
