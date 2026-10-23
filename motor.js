@@ -424,7 +424,7 @@
     function pagoDeTarjeta(t, fecha, monto) {
         const elegido = t.asignaciones && t.asignaciones[fecha];
         const lista = Array.isArray(elegido) && elegido.length === 1 ? [{ de: elegido[0].de, monto }] : elegido;
-        return { id: t.id, tarjeta: true, nombre: t.nombre, emoji: t.emoji, asignaciones: Array.isArray(lista) && lista.length ? { [fecha]: lista } : {}, pagarCon: null };
+        return { id: t.id, tarjeta: true, nombre: t.apodo || t.nombre, emoji: t.emoji, asignaciones: Array.isArray(lista) && lista.length ? { [fecha]: lista } : {}, pagarCon: null };
     }
     /**
      * v2.7 (F10): desde cuándo cuenta un abono para un estado de cuenta: después de su corte. Un estado guardado con la
@@ -465,6 +465,43 @@
         const [vy, vm] = partes(vence);
         const [cy, cm] = partes(c);
         return Math.min(1, Math.max(0, vy * 12 + vm - (cy * 12 + cm)));
+    }
+    /**
+     * v2.9.1 (reporte de Victor, 2026-10-23): la fecha con el día `dia` más cercana a `fecha` (el mes de antes, el mismo o el
+     * siguiente; si empatan, la más tarde). Con `despuesDe`, solo las que caen después de ese día (un estado de cuenta vence
+     * después de su corte). Del 15 nov con el día 14: el 14 nov.
+     */
+    function conDiaCerca(fecha, dia, despuesDe = null) {
+        const [y, m] = partes(fecha);
+        const lista = [-1, 0, 1].map((k) => fechaDe(...mesMas(y, m, k), dia)).filter((f) => !despuesDe || f > despuesDe);
+        return lista.sort((a, b) => Math.abs(diasEntre(fecha, a)) - Math.abs(diasEntre(fecha, b)) || (a < b ? 1 : -1))[0] || fechaDe(...mesMas(y, m, 1), dia);
+    }
+    /** v2.9.1: meses del corte de un estado de cuenta a su vencimiento (0 = el mismo mes; 1 = el siguiente). */
+    const desfaseEstado = (e) => {
+        const [cy, cm] = partes(e.corte);
+        const [vy, vm] = partes(e.vence);
+        return Math.min(1, Math.max(0, vy * 12 + vm - (cy * 12 + cm)));
+    };
+    /**
+     * v2.9.1: el pago de la tarjeta que todavía debes y que tiene su fecha guardada: su estado de cuenta sin pagar o, hasta el
+     * primero, su ciclo pendiente. null si ya está pagado (los pagados no cambian) o si su fecha sale del día de la tarjeta.
+     */
+    function pagoPendienteTarjeta(st, t, info = tarjetaInfo(st, t)) {
+        const ult = info.ult;
+        if (!ult.inicial) return info.porPagarEstado > 0 ? { estado: ult, vence: ult.vence } : null;
+        if (!info.pendiente || info.pendiente.siguiente || (info.sinCorte && ult.antes === 'pagado') || (info.usual && info.pagado >= info.usual)) return null;
+        return { estado: ult, vence: info.vence };
+    }
+    /**
+     * v2.9.1: ¿su pago pendiente vence otro día que el de la tarjeta? Pasaba al cambiar el día en Editar antes de la v2.9.1
+     * (la tarjeta decía el 14 y su estado de cuenta, el 15 nov). Nunca se adivina: se pregunta cuál es.
+     */
+    function venceDistinto(st, t) {
+        if (!t || !Array.isArray(t.estados) || !t.estados.length || !t.pagoDia) return null;
+        const p = pagoPendienteTarjeta(st, t);
+        if (!p) return null;
+        const conDia = conDiaCerca(p.vence, t.pagoDia, p.estado.inicial ? null : p.estado.corte);
+        return conDia === p.vence ? null : { vence: p.vence, conDia, conEstado: !p.estado.inicial };
     }
     function tarjetaInfo(st, t, hz = null, opts = {}) {
         const comoAntes = !!opts.comoAntes;
@@ -1656,6 +1693,6 @@
         pasadaDelPeriodo, desdeSegun, inicioUso, antesDeEmpezar,
         pagoDeTarjeta, pagoTarjetaPropuesto, puntoSaldo,
         ahorroAparte, ahorrosAparte, cuentaAhorros, lugarAhorro, periodoPlan, variablesActivas, variableDe, variablesInfo, preguntarVariable, programados, programadoInfo,
-        tarjetaDePago, pagoEnTarjeta, desfaseDe, venceDeCorte, desfaseDesde, lugarNombrado, opcionesPlan,
+        tarjetaDePago, pagoEnTarjeta, desfaseDe, venceDeCorte, desfaseDesde, lugarNombrado, opcionesPlan, conDiaCerca, desfaseEstado, pagoPendienteTarjeta, venceDistinto,
     };
 })();

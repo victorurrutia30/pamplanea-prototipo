@@ -169,6 +169,8 @@
     const anteriorA28 = (v) => !numVersion(v) || cmpVersion(numVersion(v), [2, 8, 0]) < 0;
     /** v2.9: ¿lo guardó una versión anterior a la v2.9? */
     const anteriorA29 = (v) => !numVersion(v) || cmpVersion(numVersion(v), [2, 9, 0]) < 0;
+    /** v2.9.1: ¿lo guardó una versión anterior a la v2.9.1? */
+    const anteriorA291 = (v) => !numVersion(v) || cmpVersion(numVersion(v), [2, 9, 1]) < 0;
     /**
      * v2.7 (DATOS-2, F20): ¿se puede usar? `estricto` (al restaurar una copia): la forma de cada cosa, sus montos en
      * centavos enteros, sus fechas y que lo que se nombra exista. Siempre: calcular en una copia aparte, antes de escribir
@@ -326,6 +328,23 @@
         const v27 = u.novedades && u.novedades['v2.7'];
         u.novedades = { ...(u.novedades || {}), 'v2.9': { fecha: new Date().toISOString(), antes, despues, visto: null, de: crudo.version || null, con28: !(v28 && v28.visto), con27: reglas !== '2.8' && !(v27 && v27.visto) } };
     }
+    /**
+     * v2.9.1 (DECIDIDO por criterio, autorizado por Victor 2026-10-23): el cuadrito sale solo a quien le toca algo: una tarjeta
+     * cuyo pago pendiente vence otro día que el de la tarjeta. Ahí mismo se pregunta cuál es, y con la respuesta, una línea
+     * amable con el antes y el después. A nadie más le sale.
+     */
+    function prepararNovedades291(u, crudo) {
+        if (!u.st || !u.st.configurado || u.st.persona !== 'uso' || esDeEjemplo(u.st) || !anteriorA291(crudo.version) || (u.novedades && u.novedades['v2.9.1'])) return;
+        let tarjetas = [];
+        try {
+            const x = structuredClone(u.st);
+            x.hoy = hoy();
+            tarjetas = x.tarjetas.filter((t) => M.venceDistinto(x, t)).map((t) => t.id);
+        } catch {
+            tarjetas = [];
+        }
+        if (tarjetas.length) u.novedades = { ...(u.novedades || {}), 'v2.9.1': { fecha: new Date().toISOString(), visto: null, de: crudo.version || null, tarjetas } };
+    }
 
     let uso = null;
     /** v2.6.1 (QA H-01): otra pestaña (o Safari y la app instalada a la vez) guardó tus datos y aquí todavía no se cargan. */
@@ -351,6 +370,7 @@
         if (g.novedades === undefined) {
             const tmp = structuredClone(g.uso);
             prepararNovedades(tmp, crudo);
+            prepararNovedades291(tmp, crudo);
             g.novedades = tmp.novedades || null;
         }
         const u = structuredClone(g.uso);
@@ -535,25 +555,70 @@
     const NOV_TITULO = '¡Tus números, más claros! ✨';
     const NOV_CIERRE = 'Tus datos están completos y a salvo.';
     let novPrevio = null;
-    function novedadesPendientes() {
-        if (P.modo !== 'uso' || bloqueo || !uso || !uso.st || !uso.st.configurado || uso.st.persona !== 'uso') return false;
-        const n = uso.novedades && uso.novedades['v2.9'];
-        return !!n && !n.visto;
+    /** La clave del cuadrito que toca: el de la v2.9 primero; el de la v2.9.1 (si le toca algo) cuando ya se vio el otro. */
+    function novedadPendiente() {
+        if (P.modo !== 'uso' || bloqueo || !uso || !uso.st || !uso.st.configurado || uso.st.persona !== 'uso') return null;
+        const n = uso.novedades || {};
+        if (n['v2.9'] && !n['v2.9'].visto) return 'v2.9';
+        if (n['v2.9.1'] && !n['v2.9.1'].visto) return 'v2.9.1';
+        return null;
     }
+    const novedadesPendientes = () => !!novedadPendiente();
+    /** v2.9.1: las respuestas de este cuadrito (la línea con el antes y el después). */
+    const novRespuestas = {};
+    function cuerpo291() {
+        const n = uso.novedades['v2.9.1'];
+        const abiertas = preguntasDia(P.st);
+        const lineas = [];
+        for (const id of n.tarjetas || []) {
+            const clave = 'dia:' + id;
+            const q = abiertas.find((x) => x.clave === clave);
+            if (novRespuestas[clave]) lineas.push(`<li>${icon('check', 'ico-xs')}<span>${esc(novRespuestas[clave])}</span></li>`);
+            else if (q) lineas.push(`<li class="nov-q">${icon('calendar-days', 'ico-xs')}<span>${esc(textoDia(q))}</span>${botonesDia(q, 'novedadDia', 'nov-')}</li>`);
+        }
+        const pendientes = abiertas.some((q) => (n.tarjetas || []).includes(q.tarjeta.id));
+        return `<h2 class="nov-t" id="nov-t" tabindex="-1">${(n.tarjetas || []).length > 1 ? 'Unas fechas por revisar 📅' : 'Una fecha por revisar 📅'}</h2>
+            <ul class="nov-lista" id="nov-x">${lineas.join('')}</ul>
+            <p class="nov-cierre">${pendientes ? 'Nada cambia sin tu respuesta. ' : ''}${esc(NOV_CIERRE)}</p>
+            <button type="button" class="btn${pendientes ? '' : ' btn--prim'} btn--48 btn--full" data-a="novedadesOk" data-fk="nov-ok">${pendientes ? 'Ahora no' : '¡Entendido!'}</button>
+            <button type="button" class="link nov-recuperar" data-a="novedadesRecuperar" data-fk="nov-recuperar">¿Algo se ve raro? Recupera tus datos</button>`;
+    }
+    P.acciones.novedadDia = (d) => {
+        const q = preguntasDia(P.st).find((x) => x.clave === d.id);
+        if (!q) return;
+        let texto = '';
+        P.cambiar((s) => {
+            texto = responderDia(s, q, d.v);
+        }, { aviso: null, claves: ['pregunta28:dia:' + (d.v === q.vence ? 'estado' : 'tarjeta'), 'novedades:dia'] });
+        novRespuestas[d.id] = texto;
+        guardarUso();
+        const sec = document.querySelector('#capa-novedades .nov');
+        if (sec) sec.innerHTML = M.unPunto(cuerpo291());
+        const sig = document.querySelector('#capa-novedades [data-a="novedadDia"]') || document.querySelector('[data-fk="nov-ok"]');
+        if (sig) sig.focus({ preventScroll: true });
+    };
     function abrirNovedades() {
-        if (!novedadesPendientes() || document.getElementById('nov-t')) return;
+        const clave = novedadPendiente();
+        if (!clave || document.getElementById('nov-t')) return;
         // Después de lo que ya esté abierto (Ayuda o una hoja), no encima.
         if ((P.ayuda && P.ayuda.abierto) || (P.ui && P.ui.hoja)) return;
-        const lineas = lineasNovedades(uso);
+        // v2.9.1: a quien ya no le toca nada (lo contestó en Hoy o en la ficha), no le sale.
+        if (clave === 'v2.9.1' && !preguntasDia(P.st).some((q) => (uso.novedades['v2.9.1'].tarjetas || []).includes(q.tarjeta.id))) {
+            uso.novedades['v2.9.1'].visto = new Date().toISOString();
+            guardarUso();
+            return;
+        }
+        const lineas = clave === 'v2.9' ? lineasNovedades(uso) : [];
         novPrevio = document.activeElement;
         const capa = Object.assign(document.createElement('div'), { id: 'capa-novedades', className: 'capa-novedades' });
-        capa.innerHTML = M.unPunto(`<div class="nov-fondo"></div><section class="nov" role="dialog" aria-modal="true" aria-labelledby="nov-t" aria-describedby="nov-x">
+        capa.innerHTML = M.unPunto(`<div class="nov-fondo"></div><section class="nov" role="dialog" aria-modal="true" aria-labelledby="nov-t" aria-describedby="nov-x">${clave === 'v2.9.1' ? cuerpo291() : `
             <h2 class="nov-t" id="nov-t" tabindex="-1">${esc(NOV_TITULO)}</h2>
             <ul class="nov-lista" id="nov-x">${lineas.map((l) => `<li>${icon('check', 'ico-xs')}<span>${esc(l)}</span></li>`).join('')}</ul>
             <p class="nov-cierre">${esc(NOV_CIERRE)}</p>
             <button type="button" class="btn btn--prim btn--48 btn--full" data-a="novedadesOk" data-fk="nov-ok">¡Entendido!</button>
-            <button type="button" class="link nov-recuperar" data-a="novedadesRecuperar" data-fk="nov-recuperar">¿Algo se ve raro? Recupera tus datos</button>
+            <button type="button" class="link nov-recuperar" data-a="novedadesRecuperar" data-fk="nov-recuperar">¿Algo se ve raro? Recupera tus datos</button>`}
         </section>`);
+        capa.dataset.clave = clave;
         document.getElementById('app').appendChild(capa);
         for (const id of ['vista', 'nav', 'aviso-proto', 'capa-hoja', 'capa-banner', 'capa-toast', 'tarea-bar']) {
             const el = document.getElementById(id);
@@ -565,13 +630,15 @@
     function cerrarNovedades() {
         const capa = document.getElementById('capa-novedades');
         if (!capa) return;
+        const clave = capa.dataset.clave;
         capa.remove();
         for (const id of ['vista', 'nav', 'aviso-proto', 'capa-hoja', 'capa-banner', 'capa-toast', 'tarea-bar']) {
             const el = document.getElementById(id);
             if (el) el.inert = ['vista', 'nav'].includes(id) && !!(P.ui && P.ui.hoja);
         }
         // Una sola vez: queda guardado con tus datos (al recargar no vuelve). Si traía lo de la v2.8 o la v2.7, también queda visto.
-        if (uso && uso.novedades && uso.novedades['v2.9']) {
+        if (clave === 'v2.9.1' && uso && uso.novedades && uso.novedades['v2.9.1']) uso.novedades['v2.9.1'].visto = new Date().toISOString();
+        else if (uso && uso.novedades && uso.novedades['v2.9']) {
             const ahora = new Date().toISOString();
             const n = uso.novedades['v2.9'];
             n.visto = ahora;
@@ -745,7 +812,7 @@
         }
         for (const o of M.ocurrenciasTarjeta(st, st.hoy, manana)) {
             if (o.estado !== 'pendiente') continue;
-            out.push({ id: `auto-t-${o.tarjeta.id}-${o.fecha}`, emoji: o.tarjeta.emoji, hora: o.fecha === st.hoy ? 'Hoy' : 'Mañana', titulo: `${o.fecha === st.hoy ? 'Hoy' : 'Mañana'} vence ${o.tarjeta.nombre}`, texto: `${dinero(o.monto)}.`, accion: { tipo: 'tarjeta', id: o.tarjeta.id } });
+            out.push({ id: `auto-t-${o.tarjeta.id}-${o.fecha}`, emoji: o.tarjeta.emoji, hora: o.fecha === st.hoy ? 'Hoy' : 'Mañana', titulo: `${o.fecha === st.hoy ? 'Hoy' : 'Mañana'} vence ${P.nombreTarjeta(o.tarjeta)}`, texto: `${dinero(o.monto)}.`, accion: { tipo: 'tarjeta', id: o.tarjeta.id } });
         }
         ultimosAvisos = out;
         return out;
@@ -885,19 +952,66 @@
         return p.monto;
     }
     const preguntas = { oculta: false, aparte: null };
+    /**
+     * v2.9.1 (reporte de Victor, 2026-10-23; DECIDIDO por criterio, autorizado por Victor): la tarjeta dice un día y su pago
+     * pendiente vence otro (así lo dejaba Editar antes de la v2.9.1). Se pregunta «¿Cuál es?» con las dos fechas; nada cambia
+     * sin respuesta. A cualquiera con sus datos, mientras la diferencia exista.
+     */
+    function preguntasDia(st) {
+        if (!st || !st.configurado || st.persona !== 'uso') return [];
+        const out = [];
+        for (const t of st.tarjetas) {
+            const d = M.venceDistinto(st, t);
+            if (d) out.push({ clave: 'dia:' + t.id, tipo: 'dia', tarjeta: t, ...d });
+        }
+        return out;
+    }
+    /** «Tu estado de cuenta de Tarjeta Liss vence el 15 nov, pero tu tarjeta dice el 14. ¿Cuál es?» */
+    const textoDia = (q) => `${q.conEstado ? 'Tu estado de cuenta' : 'Tu próximo pago'} de ${P.nombreTarjeta(q.tarjeta)} vence el ${M.fechaCorta(q.vence)}, pero tu tarjeta dice el ${q.tarjeta.pagoDia}. ¿Cuál es?`;
+    /** Las dos fechas, sin elegir ninguna: primero la de la tarjeta y luego la de su estado de cuenta. */
+    const botonesDia = (q, accion = 'pregunta28', pre = '') => `<div class="acciones-2" role="group" aria-label="${esc(P.nombreTarjeta(q.tarjeta))}"><button type="button" class="btn" data-a="${accion}" data-id="${esc(q.clave)}" data-v="${q.conDia}" data-fk="${pre}dia-${q.tarjeta.id}-tarjeta">${esc(M.fechaCorta(q.conDia))}</button><button type="button" class="btn" data-a="${accion}" data-id="${esc(q.clave)}" data-v="${q.vence}" data-fk="${pre}dia-${q.tarjeta.id}-estado">${esc(M.fechaCorta(q.vence))}</button></div>`;
+    /**
+     * La respuesta: con la fecha de la tarjeta, su pago pendiente vence ese día (y lo elegido en «Lo pagas con» la sigue si
+     * todavía alcanza); con la de su estado de cuenta, la tarjeta pasa a pagarse ese día. Devuelve el antes y el después.
+     */
+    function responderDia(s, q, fecha) {
+        const t = M.tarjeta(s, q.tarjeta.id);
+        const ult = t.estados.at(-1);
+        const nombre = P.nombreTarjeta(t);
+        if (fecha === q.vence) {
+            t.pagoDia = M.partes(fecha)[2];
+            return `Listo: ${nombre} se paga el ${t.pagoDia} de cada mes.`;
+        }
+        ult.vence = fecha;
+        const desfase = ult.inicial ? (t.corte ? M.desfaseDesde(fecha, t.corte) : null) : M.desfaseEstado(ult);
+        if (desfase !== null && desfase !== M.desfaseDe(t)) t.desfase = desfase;
+        const elegido = t.asignaciones && t.asignaciones[q.vence];
+        if (elegido) {
+            if (!elegido.some((x) => /^\d{4}-\d{2}-\d{2}$/.test(x.de) && x.de > fecha)) t.asignaciones[fecha] = elegido;
+            delete t.asignaciones[q.vence];
+        }
+        return `Listo: ${nombre} vence el ${M.fechaCorta(fecha)} (antes, ${M.fechaCorta(q.vence)}).`;
+    }
+    /** v2.9.1: la misma pregunta en la ficha de la tarjeta. */
+    function preguntaDiaHtml(t) {
+        const q = preguntasDia(P.st).find((x) => x.tarjeta.id === t.id);
+        return q ? `<section class="card card--aviso aviso-p28" aria-labelledby="dia-t"><div class="aviso-cab">${P.caja('📅')}<div><h2 class="card-t" id="dia-t" tabindex="-1">${esc(textoDia(q))}</h2><p class="txt">Nada cambia sin tu respuesta.</p></div></div>${botonesDia(q)}</section>` : '';
+    }
     function preguntas28() {
+        const dias = preguntasDia(P.st);
         // v2.9: también a quien viene de antes de la v2.8 directo a la v2.9 (un solo cuadrito, el de la v2.9).
         const n29 = uso && uso.novedades && uso.novedades['v2.9'];
-        if (P.modo !== 'uso' || !uso || !P.st || !P.st.configurado || P.st.persona !== 'uso' || !((uso.novedades && uso.novedades['v2.8']) || (n29 && anteriorA28(n29.de)))) return [];
+        if (P.modo !== 'uso' || !uso || !P.st || !P.st.configurado || P.st.persona !== 'uso' || !((uso.novedades && uso.novedades['v2.8']) || (n29 && anteriorA28(n29.de)))) return dias;
         const st = P.st;
         const hechas = st.preguntas28 || {};
-        const out = [];
+        const out = [...dias];
         for (const p of st.pagos) {
             if (p.activo === false || p.tipoDeuda || p.descuento || p.frecuencia === 'unico' || !Number.isInteger(p.monto) || !pareceVariable(p) || hechas['variable:' + p.id]) continue;
             out.push({ clave: 'variable:' + p.id, tipo: 'variable', pago: p, tope: topePropuesto(st, p) });
         }
         for (const t of st.tarjetas) {
-            if (!t.corte || hechas['vence:' + t.id]) continue;
+            // v2.9.1: si su fecha no cuadra con su día, primero se contesta «¿Cuál es?».
+            if (!t.corte || hechas['vence:' + t.id] || dias.some((q) => q.tarjeta.id === t.id)) continue;
             const info = M.tarjetaInfo(st, t);
             const actual = info.vence;
             // Si su pago ya venció (lo de antes de empezar, o por confirmar), primero se contesta eso.
@@ -919,6 +1033,7 @@
         const lista = preguntas28();
         if (!lista.length || preguntas.oculta) return '';
         const fila = (q) => {
+            if (q.tipo === 'dia') return `<li class="p28-caso"><div class="p28-caso-t">${P.caja(q.tarjeta.emoji || '💳')}<span class="fila-txt"><span class="fila-t">${esc(textoDia(q))}</span></span></div>${botonesDia(q)}</li>`;
             if (q.tipo === 'ahorro') {
                 const a = q.ahorro;
                 const l = q.actual ? M.lugar(P.st, q.actual) : null;
@@ -946,6 +1061,11 @@
         let aviso = 'Listo';
         preguntas.aparte = null;
         P.cambiar((s) => {
+            // v2.9.1: «¿Cuál es?» no deja nada guardado aparte: con la respuesta, la diferencia desaparece.
+            if (q.tipo === 'dia') {
+                aviso = responderDia(s, q, d.v);
+                return;
+            }
             s.preguntas28 = { ...(s.preguntas28 || {}), [q.clave]: { respuesta: d.v, fecha: s.hoy } };
             if (q.tipo === 'ahorro') {
                 // «Aparte»: el dinero no está en sus cuentas (no se mueve nada): deja de restarse y su libre sube.
@@ -978,9 +1098,9 @@
                 } else t.desfase = M.desfaseDesde(q.actual, t.corte);
                 aviso = `Listo: tu pago de ${P.nombreTarjeta(t)} vence el ${M.fechaCorta(d.v)}`;
             }
-        }, { aviso: () => aviso, claves: ['pregunta28:' + q.tipo + ':' + (q.tipo === 'ahorro' ? (d.v === 'aparte' ? 'aparte' : 'cuenta') : d.v === 'si' || d.v === 'no' ? d.v : 'fecha')] });
+        }, { aviso: () => aviso, claves: ['pregunta28:' + q.tipo + ':' + (q.tipo === 'dia' ? (d.v === q.vence ? 'estado' : 'tarjeta') : q.tipo === 'ahorro' ? (d.v === 'aparte' ? 'aparte' : 'cuenta') : d.v === 'si' || d.v === 'no' ? d.v : 'fecha')] });
         guardarUso();
-        P.render({ foco: preguntas28().length ? '#p28-t' : '#pantalla h1' });
+        P.render({ foco: preguntas28().length && document.getElementById('p28-t') ? '#p28-t' : '#pantalla h1' });
     };
     /** «Aparte (no está en una cuenta)»: primero dice cuánto sube su libre; «Sí, está aparte» lo confirma. */
     P.acciones.pregunta28Aparte = (d) => {
@@ -1637,6 +1757,7 @@
         tarjetasHoy,
         revisionHoy,
         preguntasHoy,
+        preguntaDiaHtml,
         preguntas28,
         casosAntes,
         CLAVE_RESPALDO_ANTES,

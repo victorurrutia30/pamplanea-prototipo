@@ -9,6 +9,8 @@
 //  C) las líneas dependen de los datos: con y sin tarjeta, con y sin pagos, con y sin un número corregido (DATOS-4)
 //  D) amable y corto: máximo 5 líneas de 20 palabras o menos, sin palabras técnicas; accesible (diálogo con título, foco
 //     adentro y de vuelta al cerrar, Escape, nada se mueve con «reducir movimiento»)
+//  F) v2.9.1 (DECIDIDO por criterio, autorizado por Victor 2026-10-23): solo sale a quien le cambió algo (una tarjeta cuya
+//     fecha no cuadra con su estado de cuenta): pregunta cuál es, sin cambiar nada sin respuesta, y dice el antes y después
 // Uso: node herramientas/novedades.mjs [--base=http://…/] [--puerto=9963] [--raiz=<otra copia>]
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
@@ -191,6 +193,61 @@ await seccion('E atrás', async () => {
     await esperar(500);
     check('atrás lo cierra (no sale de la app)', [await hay(), await ev(`location.pathname.endsWith('telefono.html')`)], [false, true]);
     check('y cuenta como visto', await ev(`!!JSON.parse(localStorage.getItem('pamplanea-uso:v1')).novedades['v2.9'].visto`), true);
+});
+
+// ------------------------------------------------------------------ F) v2.9.1: solo a quien le cambió algo (la fecha de su tarjeta)
+/** Lo guardado por la v2.9.0 (con sus cuadritos ya vistos); `liss`: la tarjeta de Victor, que dice el 14 y su estado de cuenta el 15 nov. */
+async function sembrar290(liss) {
+    await ev(`(() => {
+        if (window.P) P.sinGuardar = true;
+        localStorage.clear();
+        const s = DATOS.crearAna();
+        Object.assign(s, { persona: 'uso', nombre: 'Marta', hoy: '2026-10-21', inicio: '2026-10-01' });
+        if (${js(!!liss)}) {
+            s.tarjetas.push({ id: 't1', nombre: 'Crédito Liss', apodo: 'Tarjeta Liss', emoji: '💳', tipo: 'tarjeta', corte: 21, pagoDia: 14, cupo: null, interesesAnio: 0, desde: '2026-10-01', medio: 'transferencia', estados: [{ corte: '2026-10-21', total: 30000, minimo: 5000, aPagar: 30000, opcion: 'total', vence: '2026-11-15', anotado: 0, seq: 900 }] });
+            s.medios.push({ id: 'mt1', nombre: 'Crédito Liss', emoji: '💳', tarjeta: 't1' });
+        }
+        const visto = { visto: '2026-10-23T08:00:00.000Z' };
+        localStorage.setItem('pamplanea-modo', JSON.stringify({ modo: 'uso', notaAvisos: true, ofertaTarjetas: 'no' }));
+        localStorage.setItem('pamplanea-uso:v1', JSON.stringify({ esquema: 2, version: 'Prototipo v2.9.0 · 2026-10-23', creado: '2026-10-10T10:00:00.000Z', st: s, tab: 'hoy', tema: null, introVista: true, nombre: 'Marta', novedades: { 'v2.7': visto, 'v2.8': visto, 'v2.9': visto }, metricas: { dias: ['2026-10-20'], anotaciones: 3, cuadres: 1, pagados: 1, reparte: 0, alDia: 0, pantallas: {}, noEntendio: 0, instalada: false }, feedback: [], feedbackEnDias: 0, feedbackPospuesto: null, ultimaCopia: null }));
+        return true;
+    })()`);
+}
+const guardadoSt = () => ev(`JSON.stringify(JSON.parse(localStorage.getItem('pamplanea-uso:v1')).st.tarjetas)`);
+await seccion('F v2.9.1', async () => {
+    await sembrar290(false);
+    await abrirApp();
+    check('de la v2.9.0 sin nada que le cambie: no sale', [await ev(`P.modo`), await hay()], ['uso', false]);
+    await sembrar290(true);
+    const antes = await guardadoSt();
+    await abrirApp();
+    check('con la tarjeta que dice el 14 y su estado de cuenta el 15 nov: sale', await hay(), true);
+    check('título y la pregunta, con sus dos fechas', [await ev(`document.getElementById('nov-t').innerText.trim()`), await ev(`document.querySelector('.nov-q span').innerText.trim()`), await ev(`[...document.querySelectorAll('.nov-q button')].map((x) => x.innerText.trim())`)], ['Una fecha por revisar 📅', 'Tu estado de cuenta de Tarjeta Liss vence el 15 nov, pero tu tarjeta dice el 14. ¿Cuál es?', ['14 nov', '15 nov']]);
+    check('sin respuesta no cambia nada; «Ahora no»', [await guardadoSt() === antes, await ev(`document.querySelector('[data-fk="nov-ok"]').innerText.trim()`), await ev(`document.querySelector('.nov-cierre').innerText.trim()`)], [true, 'Ahora no', 'Nada cambia sin tu respuesta. Tus datos están completos y a salvo.']);
+    await foto('F-pregunta');
+    await ev(`document.querySelector('[data-fk="nov-dia-t1-tarjeta"]').click(); true`);
+    await esperar(300);
+    check('con la respuesta: una línea amable con el antes y el después', await lineas(), ['Listo: Tarjeta Liss vence el 14 nov (antes, 15 nov).']);
+    check('y «¡Entendido!»', await ev(`[document.querySelector('[data-fk="nov-ok"]').innerText.trim(), document.activeElement.dataset.fk]`), ['¡Entendido!', 'nov-ok']);
+    await foto('F-listo');
+    check('guardado: vence el 14 nov', await ev(`JSON.parse(localStorage.getItem('pamplanea-uso:v1')).st.tarjetas.find((t) => t.id === 't1').estados.at(-1).vence`), '2026-11-14');
+    await ev(`document.querySelector('[data-fk="nov-ok"]').click(); true`);
+    await esperar(300);
+    check('se cierra, queda visto y no vuelve', [await hay(), await ev(`!!JSON.parse(localStorage.getItem('pamplanea-uso:v1')).novedades['v2.9.1'].visto`), (await abrirApp(), await hay())], [false, true, false]);
+    // «Ahora no»: nada cambia; la pregunta sigue en Hoy y en la ficha.
+    await sembrar290(true);
+    await abrirApp();
+    await ev(`document.querySelector('[data-fk="nov-ok"]').click(); true`);
+    await esperar(300);
+    check('«Ahora no»: nada cambia y Hoy sigue preguntando', [await guardadoSt() === antes, await ev(`document.getElementById('pantalla').textContent.includes('¿Cuál es?')`), (await abrirApp(), await hay())], [true, true, false]);
+    // Quien viene de antes de la v2.9 ve primero el de la v2.9; el de la v2.9.1, la siguiente vez que abre.
+    await sembrar(`s.tarjetas.push({ id: 't1', nombre: 'Crédito Liss', emoji: '💳', tipo: 'tarjeta', corte: 21, pagoDia: 14, cupo: null, interesesAnio: 0, desde: '2026-10-01', estados: [{ corte: '2026-10-21', total: 30000, minimo: 5000, aPagar: 30000, opcion: 'total', vence: '2026-11-15', anotado: 0, seq: 900 }] }); s.medios.push({ id: 'mt1', nombre: 'Crédito Liss', emoji: '💳', tarjeta: 't1' });`);
+    await abrirApp();
+    check('de la v2.6.7: primero el de la v2.9', await ev(`document.getElementById('nov-t').innerText.trim()`), '¡Tus números, más claros! ✨');
+    await ev(`document.querySelector('[data-fk="nov-ok"]').click(); true`);
+    await esperar(200);
+    await abrirApp();
+    check('y la siguiente vez, el de la fecha', await ev(`document.getElementById('nov-t')?.innerText.trim()`), 'Una fecha por revisar 📅');
 });
 
 const resultado = { version: await ev('window.VERSION_PROTOTIPO').catch(() => null), checks, fallos, errores: b.errores, fallidas: b.fallidas };

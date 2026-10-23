@@ -219,3 +219,13 @@ Pruebas: `invariantes` (las filas V2 a V34), `palabras-v28`, `actualizar`, `flui
 | P-11 | Pestañas según el ingreso (R10) | Quincena: Esta quincena · Próxima · Mes; semana: Esta semana · Próxima · Mes; mes y sin ingreso fijo: Este mes · Próximo mes (con flechas) | P2 | ✅ | invariantes V41, personas-v29 |
 | P-12 | «aprox.» solo si hay un estimado (R11) | Próxima sin estimados: sin «aprox.»; la frase dice qué incluye «Te quedarían» | P2 | ✅ | personas-v29, palabras-v28 |
 | P-13 | Actualizar a la v2.9 | Desde c640e4e, d702de0 y a0cddba, con datos como los de Pam y Majo: cero pérdidas, copia «antes de la v2.9» que se recupera, cuadrito una vez | P1 | ✅ | actualizar ×3 |
+
+## Q. v2.9.1 · Fechas de tarjeta y adelanto (reporte de Victor, 2026-10-23)
+
+| # | Tema | Qué se comprueba | Prioridad | Estado | Prueba |
+|---|---|---|---|---|---|
+| Q-1 | La fecha de pago de la tarjeta (P0) | Cambiar el día en Editar mueve el vencimiento del estado de cuenta pendiente (corte 21, pago 15 → 14 nov); la ficha, Mi plan, Hoy y «¿De dónde sale?» dicen lo mismo; con qué ingreso se cubre se recalcula; uno ya pagado no cambia | P1 | ✅ | invariantes V44 |
+| Q-2 | «¿Cuál es?» una vez | Si la tarjeta dice un día y su estado de cuenta otro, se pregunta (Hoy, la ficha y el cuadrito); sin respuesta no cambia nada | P1 | ✅ | invariantes V45, novedades F, actualizar --ref=79748f3 |
+| Q-3 | Lo editado llega a lo pendiente | Días del ingreso (llegada, descuento del adelanto, «Ya lo guardé», «Ya terminé»); monto de un pago («Lo pagas con» de todo el pago, lo que falta de uno pagado en partes) | P1 | ✅ | invariantes V46 |
+| Q-4 | Adelanto | Con más de un descuento, cada línea con su fecha y nunca dos iguales; la fila con el nombre completo y «− adelanto» abajo | P2 | ✅ | invariantes V47, capturas-v291 |
+| Q-5 | Actualizar a la v2.9.1 | Desde a0cddba y 79748f3: cero pérdidas (también con un estado de cuenta pendiente); el cuadrito solo a quien le cambió algo | P1 | ✅ | actualizar ×2 |

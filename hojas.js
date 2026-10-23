@@ -444,6 +444,70 @@
         }
     };
 
+    /**
+     * v2.9.1 (el mismo tipo de error que la tarjeta de Victor, 2026-10-23): al cambiar los días de un ingreso (la quincena del
+     * 15 y 30 al 14 y 29), lo que ya estaba guardado con sus fechas pasa a la fecha nueva del mismo periodo: su llegada (y su
+     * movimiento), el descuento de un adelanto, las cuotas que se descuentan de él y, si es tu ingreso principal, «Ya lo
+     * guardé» y «Ya terminé» de ese periodo. Antes se quedaban en la fecha vieja: la quincena que ya llegó volvía a
+     * esperarse y el adelanto se contaba dos veces. Solo con la misma frecuencia y a menos de medio periodo (otra frecuencia
+     * es otro ingreso). Un ingreso de una vez que ya llegó lleva su llegada a su fecha nueva.
+     */
+    P.reubicarIngreso = function (st, ing, antes) {
+        if (!antes || antes.frecuencia !== ing.frecuencia || ing.frecuencia === 'fechas') return;
+        const mapa = {};
+        if (ing.frecuencia === 'unico') {
+            if (antes.fecha && ing.fecha && antes.fecha !== ing.fecha && ing.llegadas[antes.fecha] && !ing.llegadas[ing.fecha]) mapa[antes.fecha] = ing.fecha;
+        } else {
+            const medio = { quincenal: 7, semanal: 3, catorcenal: 6, mensual: 15, meses: 15 }[ing.frecuencia] || 0;
+            const nueva = (f) => M.fechasRegla(ing, f, f).length > 0;
+            const vieja = (f) => M.fechasRegla(antes, f, f).length > 0;
+            const tomadas = new Set(Object.keys(ing.llegadas || {}).filter(nueva));
+            const claves = new Set([...Object.keys(ing.llegadas || {}), ...st.ingresos.flatMap((a) => (a.adelanto && Array.isArray(a.adelanto.descuentos) ? a.adelanto.descuentos.filter((d) => d.ingreso === ing.id).map((d) => d.fecha) : [])), ...(ing.principal ? [...(st.variables || []).flatMap((v) => Object.keys(v.cierres || {})), ...st.apartados.flatMap((a) => Object.keys(a.guardados || {}))] : [])]);
+            for (const f of [...claves].sort()) {
+                if (nueva(f) || !vieja(f)) continue;
+                const mismoMes = (x) => Number(x.slice(0, 7) === f.slice(0, 7));
+                const cerca = M.fechasRegla(ing, M.sumarDias(f, -medio), M.sumarDias(f, medio))
+                    .filter((x) => !(ing.llegadas[f] && tomadas.has(x)))
+                    .sort((a, b) => mismoMes(b) - mismoMes(a) || Math.abs(M.diasEntre(f, a)) - Math.abs(M.diasEntre(f, b)) || (a < b ? 1 : -1))[0];
+                if (!cerca) continue;
+                mapa[f] = cerca;
+                if (ing.llegadas[f]) tomadas.add(cerca);
+            }
+        }
+        if (!Object.keys(mapa).length) return;
+        const mover = (obj) => {
+            const out = {};
+            for (const [f, x] of Object.entries(obj || {})) if (!mapa[f]) out[f] = x;
+            for (const [f, x] of Object.entries(obj || {})) if (mapa[f] && !(mapa[f] in out)) out[mapa[f]] = x;
+            return out;
+        };
+        ing.llegadas = mover(ing.llegadas);
+        for (const r of st.registros) if (r.tipo === 'ingreso' && r.ingreso === ing.id && mapa[r.ocurrencia] && ing.llegadas[mapa[r.ocurrencia]]) r.ocurrencia = mapa[r.ocurrencia];
+        if (ing.desdeAntes && mapa[ing.desde]) ing.desde = mapa[ing.desde];
+        for (const a of st.ingresos) if (a.adelanto && Array.isArray(a.adelanto.descuentos)) for (const d of a.adelanto.descuentos) if (d.ingreso === ing.id && mapa[d.fecha]) d.fecha = mapa[d.fecha];
+        if (ing.principal) {
+            for (const v of st.variables || []) if (v.cierres) v.cierres = mover(v.cierres);
+            for (const a of st.apartados) if (a.guardados) a.guardados = mover(a.guardados);
+        }
+        for (const p of st.pagos) if (p.frecuencia === 'ingreso' && p.conIngreso === ing.id) P.reubicarHechos(st, p);
+    };
+    /**
+     * v2.9.1 (el mismo tipo de error): al cambiar el monto de un gasto fijo o de una cuota, lo pendiente que ya estaba
+     * guardado lo sigue, de este mes en adelante: «Lo pagas con» elegido para todo el pago (antes, la diferencia se iba sola
+     * a otro ingreso) y lo que falta de uno pagado en partes (antes seguía con el monto viejo). Lo ya pagado no cambia; lo
+     * repartido a mano, tampoco.
+     */
+    P.seguirMonto = function (st, p, antes) {
+        if (!Number.isInteger(antes) || !Number.isInteger(p.monto) || antes === p.monto) return;
+        const desde = st.hoy.slice(0, 8) + '01';
+        const hechos = p.hechos || {};
+        for (const [f, lista] of Object.entries(p.asignaciones || {})) {
+            if (f < desde || (hechos[f] && hechos[f].estado !== 'parcial')) continue;
+            if (Array.isArray(lista) && lista.length === 1 && lista[0].monto === antes) p.asignaciones[f] = [{ ...lista[0], monto: p.monto }];
+        }
+        for (const [f, h] of Object.entries(hechos)) if (f >= desde && h && h.estado === 'parcial' && h.debido === antes && Array.isArray(h.pagos) && h.pagos.length) hechos[f] = hechoDe(p.monto, h.pagos);
+    };
+
     // ------------------------------------------------------------------ hojas: abrir, cerrar, dibujar
     P.abrirHoja = function (tipo, datos = {}) {
         const def = H[tipo];
@@ -3252,6 +3316,7 @@
             if (campo === 'pagoDia' || campo === 'corte') {
                 h.venceOtroMes = false;
                 region('vence-linea', venceLinea(P.st, h));
+                if (h.editar && h.tarjetaId) region('fuente-t', fuenteTarjetaCampos(P.st, h));
             }
         },
     };
@@ -3279,16 +3344,23 @@
     }
     /** V2-87 / V2-88: al editar la tarjeta, con qué ingreso pagas lo que pagas normalmente (lo mismo que «Lo pagas con»). */
     function fuenteTarjetaForm(st, h) {
+        // v2.9.1: en su propia región: al cambiar el día, las opciones y la fecha son las del pago con el día nuevo (D-4).
+        return `<div id="fuente-t">${fuenteTarjetaCampos(st, h)}</div>`;
+    }
+    function fuenteTarjetaCampos(st, h) {
         if (h.fuenteTAntes === undefined) return '';
         const t = M.tarjeta(st, h.tarjetaId);
         const info = M.tarjetaInfo(st, t);
         if (!(info.comoPago > 0)) return '';
-        if (h.repartidaT) return `<div class="campo-g"><p class="campo-l">¿Con qué ingreso la pagas?</p><p class="fila-s">La repartiste: ${esc(P.textoPartes({ fecha: info.vence, estado: info.vence < st.hoy ? 'vencido' : 'pendiente' }, info.partes, M.horizonte(st)))}. Se cambia en su ficha, en «Lo pagas con».</p></div>`;
-        const fuentes = M.fuentesPara(st, info.vence);
+        const vence = venceForm(st, h, t, info);
+        if (h.repartidaT) return `<div class="campo-g"><p class="campo-l">¿Con qué ingreso la pagas?</p><p class="fila-s">La repartiste: ${esc(P.textoPartes({ fecha: vence, estado: vence < st.hoy ? 'vencido' : 'pendiente' }, info.partes, M.horizonte(st)))}. Se cambia en su ficha, en «Lo pagas con».</p></div>`;
+        const fuentes = M.fuentesPara(st, vence);
         if (fuentes.length < 2) return '';
         const def = fuentes.at(-1);
+        // Lo elegido que ya no alcanza a llegar antes de la fecha nueva vuelve a lo normal.
+        if (h.fuenteT && !fuentes.includes(h.fuenteT)) h.fuenteT = def;
         const lista = [...fuentes].reverse().map((f) => ({ v: f, t: (f === 'ahora' ? 'Con lo que tienes ahora' : M.capital('con ' + P.etiquetaFuente(f))) + (f === def ? ' (lo normal)' : '') }));
-        return `${opciones(h, { campo: 'fuenteT', label: `¿Con qué ingreso la pagas? <span class="opcional">(vence el ${esc(M.fechaCorta(info.vence))}: ${dinero(info.comoPago, { aprox: !!info.ult.inicial })})</span>`, lista, valor: h.fuenteT, columnas: true })}`;
+        return `${opciones(h, { campo: 'fuenteT', label: `¿Con qué ingreso la pagas? <span class="opcional">(vence el ${esc(M.fechaCorta(vence))}: ${dinero(info.comoPago, { aprox: !!info.ult.inicial })})</span>`, lista, valor: h.fuenteT, columnas: true })}`;
     }
     const diaValido = (v) => /^\d{1,2}$/.test(String(v || '').trim()) && +v >= 1 && +v <= 31;
     const mediosDeTarjeta = (st, id) => st.medios.filter((m) => m.tarjeta === id).map((m) => m.id);
@@ -3312,10 +3384,36 @@
     P.venceTarjeta = venceTarjeta;
     /** v2.8 (D-5): la fecha del próximo pago en «Tarjeta o préstamo» (al agregarla, o al editarla sin estado de cuenta). */
     const venceLinea = (st, h) => {
-        if (h.tipoDeuda !== 'tarjeta' || h.cuotaTarjeta || (h.editar && !h.inicial)) return '';
+        if (h.tipoDeuda !== 'tarjeta' || h.cuotaTarjeta) return '';
+        if (h.editar && !h.inicial) return lineaEstado(st, h);
         const t = h.editar ? M.tarjeta(st, h.tarjetaId) : null;
         return proximoPagoTarjeta(h, t && t.desde && t.desde <= st.hoy ? t.desde : st.hoy, h.corte, h.pagoDia);
     };
+    /**
+     * v2.9.1 (reporte de Victor, 2026-10-23): al editar una tarjeta con estado de cuenta, la fecha completa en que vence con
+     * el día que escribiste, antes de guardar. Si ya está pagado, el día nuevo cuenta desde el siguiente.
+     */
+    function lineaEstado(st, h) {
+        const t = M.tarjeta(st, h.tarjetaId);
+        if (!t || !diaValido(h.pagoDia)) return '';
+        const ult = t.estados.at(-1);
+        const del = `Tu estado de cuenta del ${esc(M.fechaCorta(ult.corte))}`;
+        const info = M.tarjetaInfo(st, t);
+        if (!M.pagoPendienteTarjeta(st, t, info)) {
+            const sig = M.fechaDe(...M.partes(info.venceCompras).slice(0, 2), +h.pagoDia);
+            return `<p class="fila-s">${del} ya está pagado${+h.pagoDia === t.pagoDia ? '.' : `: el día nuevo cuenta desde el siguiente (${esc(M.fechaCorta(sig))}).`}</p>`;
+        }
+        return `<p class="fila-s">${del} vence el ${esc(M.conDia(M.conDiaCerca(ult.vence, +h.pagoDia, ult.corte)))}.</p>`;
+    }
+    /** v2.9.1: la fecha del pago pendiente con lo que dice el formulario (la que se va a guardar). */
+    function venceForm(st, h, t, info) {
+        const ult = info.ult;
+        if (!diaValido(h.pagoDia) || !M.pagoPendienteTarjeta(st, t, info)) return info.vence;
+        if (!ult.inicial) return M.conDiaCerca(ult.vence, +h.pagoDia, ult.corte);
+        const corte = diaValido(h.corte) ? +h.corte : t.corte;
+        if (+h.pagoDia === t.pagoDia && corte === t.corte && !h.venceOtroMes) return info.vence;
+        return corte ? venceTarjeta(t.desde && t.desde <= st.hoy ? t.desde : st.hoy, corte, +h.pagoDia, !!h.venceOtroMes) : M.proximoDia(st.hoy, +h.pagoDia);
+    }
     /**
      * v2.8 (D-5): debajo de «¿Qué día vence tu próximo pago?», la fecha completa a la vista y, si no ha pasado, la opción de
      * que sea la del mes siguiente (nunca se adivina en silencio).
@@ -3418,6 +3516,16 @@
                             const minimo = M.leerMonto(h.ecMinimo) || 0;
                             // v2.7 (D-6, F13): «Otro monto» puede quedar debajo del mínimo; nunca más que el total.
                             if (total !== null && (total !== ult.total || minimo !== ult.minimo)) Object.assign(ult, { total, minimo, aPagar: ult.opcion === 'minimo' ? minimo : ult.opcion === 'otro' ? Math.min(total, ult.aPagar) : total });
+                            // v2.9.1 (reporte de Victor, 2026-10-23): «¿Qué día vence tu próximo pago?» también mueve el
+                            // vencimiento del estado de cuenta que todavía debes, al mes que le toca (el más cercano, después de
+                            // su corte), y lo que sigue cuenta con ese día. Uno ya pagado no cambia: el día nuevo es del siguiente.
+                            if (M.pagoPendienteTarjeta(s, t)) {
+                                const v = M.conDiaCerca(ult.vence, t.pagoDia, ult.corte);
+                                if (v !== ult.vence) {
+                                    ult.vence = v;
+                                    if (M.desfaseEstado(ult) !== M.desfaseDe(t)) t.desfase = M.desfaseEstado(ult);
+                                }
+                            }
                         }
                         if (ult.inicial) {
                             // V2-54 / V2-88: sin estado de cuenta todavía, lo que paga normalmente y lo que debe hoy (los dos opcionales).
@@ -3444,12 +3552,15 @@
                         // V2-87: con qué ingreso la pagas. Lo elegido sigue a la fecha nueva si cambiaste los días.
                         const info = M.tarjetaInfo(s, t);
                         if (t.asignaciones && t.asignaciones[venceAntes] && info.vence !== venceAntes) {
-                            t.asignaciones[info.vence] = t.asignaciones[venceAntes];
+                            // v2.9.1: un ingreso que ahora llega después de que vence ya no la paga: vuelve a lo normal (D-4).
+                            const elegido = t.asignaciones[venceAntes];
+                            if (!elegido.some((x) => /^\d{4}-\d{2}-\d{2}$/.test(x.de) && x.de > info.vence)) t.asignaciones[info.vence] = elegido;
                             delete t.asignaciones[venceAntes];
                         }
                         if (h.fuenteT && h.fuenteT !== h.fuenteTAntes && info.comoPago > 0) {
                             const asign = { ...(t.asignaciones || {}) };
-                            if (h.fuenteT === M.fuentesPara(s, info.vence).at(-1)) delete asign[info.vence];
+                            const fuentes = M.fuentesPara(s, info.vence);
+                            if (h.fuenteT === fuentes.at(-1) || !fuentes.includes(h.fuenteT)) delete asign[info.vence];
                             else asign[info.vence] = [{ de: h.fuenteT, monto: info.comoPago }];
                             t.asignaciones = asign;
                         }
@@ -3484,6 +3595,7 @@
         if (h.editar) {
             P.cambiar((s) => {
                 const nuevas = nuevasPasadas(s, M.pago(s, h.id), { frecuencia: 'mensual', dia: +h.dia });
+                const montoAntes = M.pago(s, h.id).monto;
                 const p = Object.assign(M.pago(s, h.id), { nombre, monto: cuota, dia: +h.dia, medio: h.medio, deuda: debe !== null ? { debe } : null });
                 // V2-88: «¿Qué es?» también se cambia (su emoji, si era el del tipo).
                 if (tipo && p.tipoDeuda !== tipo.id && !h.cuotaTarjeta) {
@@ -3492,6 +3604,8 @@
                     p.tipoDeuda = tipo.id;
                 }
                 P.reubicarHechos(s, p);
+                // v2.9.1: lo pendiente sigue a la cuota nueva.
+                P.seguirMonto(s, p, montoAntes);
                 // V2-85: con el día nuevo no aparece una cuota vencida que antes no estaba (salvo «No, todavía lo debo»).
                 for (const f of nuevas) {
                     if (loDebe && antes && f === antes.fecha) {
@@ -3773,11 +3887,14 @@
                 let x;
                 if (h.editar) {
                     x = M.ingreso(s, h.id);
+                    const antesIng = structuredClone(x);
                     for (const k of ['fecha', 'dias', 'dia', 'diaSemana', 'cadaMeses', 'fechas']) delete x[k];
                     Object.assign(x, datos);
                     // La categoría solo cambia si la persona cambió el tipo (un cuchubal sigue siendo cuchubal).
                     if (tipo) x.tipoIngreso = tipo.id;
                     if (tipo && tipo.id !== 'otro' && tipo.id !== h.tipoIngAntes) x.categoria = tipo.categoria;
+                    // v2.9.1: lo guardado con sus fechas (su llegada, el descuento de un adelanto…) sigue a los días nuevos.
+                    P.reubicarIngreso(s, x, antesIng);
                 } else {
                     const emoji = tipo && tipo.id !== 'otro' ? tipo.emoji : /aguinaldo|quincena 25/.test(n) ? '🎁' : /remesa/.test(n) ? '🌎' : /cuchubal/.test(n) ? '🤝' : /comision|bono/.test(n) ? '📈' : '💼';
                     const categoria = tipo && tipo.id !== 'otro' ? tipo.categoria : /remesa/.test(n) ? 'remesa' : /aguinaldo|quincena 25/.test(n) ? 'aguinaldo' : /cuchubal/.test(n) ? 'cuchubal' : 'otro';
@@ -4766,6 +4883,7 @@
             P.cambiar((s) => {
                 const p = M.pago(s, h.id);
                 const nuevas = nuevasPasadas(s, p, regla);
+                const montoAntes = p.monto;
                 for (const k of ['fecha', 'dias', 'dia', 'diaSemana', 'cadaMeses', 'fechas', 'conIngreso']) delete p[k];
                 Object.assign(p, { nombre, monto, estimado: h.estimado, medio: h.medio, ...P.reglaDe(regla) });
                 if (esCuchubal(h) && h.hasta) p.hasta = h.hasta;
@@ -4775,6 +4893,8 @@
                 else delete p.automatico;
                 if (esCuchubal(h)) guardarTurno(s, p, h.turno, turnoMonto, h.turnoId);
                 P.reubicarHechos(s, p);
+                // v2.9.1: lo pendiente sigue al monto nuevo («Lo pagas con» de todo el pago y lo que falta de uno pagado en partes).
+                P.seguirMonto(s, p, montoAntes);
                 // V2-85: lo que ya pasó y solo aparece por el cambio no se cuenta (salvo «No, todavía lo debo» en la de este periodo).
                 for (const f of nuevas) {
                     if (debe && f === pasada) {
@@ -5413,7 +5533,7 @@
                       .map((o) => {
                           const clave = (o.tarjeta ? 't:' + o.tarjeta.id : 'p:' + o.pago.id) + ':' + o.fecha;
                           const v = top.pagos[clave] || null;
-                          const nombre = o.tarjeta ? o.tarjeta.nombre : o.pago.nombre;
+                          const nombre = o.tarjeta ? P.nombreTarjeta(o.tarjeta) : o.pago.nombre;
                           const ch = (val, txt) => `<button type="button" class="chip" aria-pressed="${v === val}" data-a="aldiaPago" data-k="${clave}" data-v="${val}" data-fk="adp-${val}-${clave}">${v === val ? icon('check', 'ico-xs') : ''}${txt}</button>`;
                           // v2.7 (F17): pagar una tarjeta pide cuánto (con lo mismo que propone «Pagar tarjeta»); nunca un abono de $0.
                           const idT = 'adt-' + clave.replace(/[^\w-]/g, '-');

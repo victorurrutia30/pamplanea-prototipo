@@ -4530,3 +4530,21 @@ html.con-hazlo .mask {
     align-items: center;
     padding-right: 36px;
 }
+
+/* v2.9.1: la fila con adelanto: el nombre completo arriba y «− adelanto $328.00» abajo, en chico (nunca «Mi Q..»). */
+.pl-nn {
+    display: grid;
+    min-width: 0;
+    flex: 1;
+}
+.pl-sub {
+    color: var(--color-text-muted);
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 16px;
+}
+/* v2.9.1: «¿Cuál es?» dentro del cuadrito: la pregunta y sus dos fechas. */
+.nov-q .acciones-2 {
+    grid-column: 1 / -1;
+    margin-top: 4px;
+}

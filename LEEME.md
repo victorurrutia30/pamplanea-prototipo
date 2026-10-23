@@ -1,4 +1,4 @@
-# Producto v2 · prototipo de teléfono — versión 2.9.0
+# Producto v2 · prototipo de teléfono — versión 2.9.1
 
 **Qué es:** un prototipo clicable de la app completa propuesta en Producto v2. Desde la v2.2 tiene **dos modos**: **entrenamiento** (datos inventados de Ana, Carlos y Rosa; entrenamiento en dos versiones —fecha fija o ingresos que varían— con «Lo esencial» y «Aprende más», 18 ejercicios y la prueba A/B para testers) y **uso normal** (la familia cercana de Victor la usa 1–2 semanas con su dinero real, guardado solo en su teléfono). Desde la v2.6, la persona solo ve tres caminos —«Usarla con mis datos», «Aprender a usarla» y «Prueba guiada»— y las herramientas de Victor (casos, sets, moderador) se abren con `?victor=1`. Es una maqueta de flujo y comprensión, no producción.
 
@@ -12,9 +12,56 @@
 
 Sin servidor propio, sin dependencias, sin CDN, sin analítica ni rastreadores. Fuentes, emoji, íconos y los íconos de la app instalable son locales, con sus licencias (`recursos/licencias`).
 
-**Estado:** brief y acuerdos V2-01…V2-22 APROBADOS por Victor (2026-10-16); **V2-23 a V2-30** y **V2-31 (respuestas v2.1)** APROBADOS por Victor (2026-10-16); **V2-34 a V2-49** APROBADOS por Victor (2026-10-17) — V2-15 y V2-31 #7 quedan REEMPLAZADAS por V2-34. **V2-50 a V2-55** y la corrección adicional (adelanto de salario) APROBADOS por Victor (2026-10-17). **v2.4 «Entrenamiento a prueba de todo»** y sus tres ajustes previos APROBADOS por Victor (2026-10-17). **V2-56 a V2-58** y el **entrenamiento en dos versiones** (v2.4.1) APROBADOS por Victor (2026-10-18). **v2.5 «Entrenamiento sencillo y a fondo»** (estructura, ritmo y claridad) y **V2-59** (respuestas 26–29) APROBADOS por Victor (2026-10-18). **V2-60 a V2-63** (v2.6 «Simplificar para la prueba familiar») APROBADOS por Victor (2026-10-19). **V2-64 a V2-78** (QA profundo, deudas y tarjetas, Primer día, lenguaje, botón atrás, iPhone y entrenamiento; v2.6.1 a v2.6.3) APROBADOS por Victor (2026-10-19). **V2-79 a V2-84** (salir del entrenamiento sin perder tus datos, duplicados, pagos futuros y formularios; v2.6.4 y v2.6.5) APROBADOS por Victor (2026-10-19). **V2-85 y V2-86** (lo de antes de empezar no se cobra solo y la revisión para quienes ya usan la app; v2.6.6) APROBADOS por Victor (2026-10-19). **V2-87 y V2-88** (lo que pagas normalmente de una tarjeta se paga como cualquier otro pago, y editar = los mismos campos que crear; v2.6.7) y su agregado (el caso de la segunda tester y la ficha de la tarjeta) APROBADOS por Victor (2026-10-19). **v2.7 «Tus números bien»**: D-1 a D-12 y C-1 a C-10 (aquí solo D-6, D-7, D-8 y C-6), la protección de datos DATOS-1 a DATOS-5, el cuadrito de novedades y el cambio de roadmap APROBADOS por Victor (2026-10-21). **v2.8 «Más claro»**: D-1 a D-12 y C-1 a C-10 completos, P-1, la opción de la pendiente 4 y «recibí 50 en efectivo» (APROBADOS por Victor, 2026-10-21) y el trabajo de noche sin supervisión (APROBADO por Victor, 2026-10-22). **v2.9 «Números claros»:** AUTORIZADO por Victor (2026-10-23) todo, bajo criterio, y publicarla como actualización (ver abajo). Nada de esto está documentado todavía en el repo de la app: se documentará después de las pruebas con personas. Este prototipo no cambia nada del repo de la app.
+**Estado:** brief y acuerdos V2-01…V2-22 APROBADOS por Victor (2026-10-16); **V2-23 a V2-30** y **V2-31 (respuestas v2.1)** APROBADOS por Victor (2026-10-16); **V2-34 a V2-49** APROBADOS por Victor (2026-10-17) — V2-15 y V2-31 #7 quedan REEMPLAZADAS por V2-34. **V2-50 a V2-55** y la corrección adicional (adelanto de salario) APROBADOS por Victor (2026-10-17). **v2.4 «Entrenamiento a prueba de todo»** y sus tres ajustes previos APROBADOS por Victor (2026-10-17). **V2-56 a V2-58** y el **entrenamiento en dos versiones** (v2.4.1) APROBADOS por Victor (2026-10-18). **v2.5 «Entrenamiento sencillo y a fondo»** (estructura, ritmo y claridad) y **V2-59** (respuestas 26–29) APROBADOS por Victor (2026-10-18). **V2-60 a V2-63** (v2.6 «Simplificar para la prueba familiar») APROBADOS por Victor (2026-10-19). **V2-64 a V2-78** (QA profundo, deudas y tarjetas, Primer día, lenguaje, botón atrás, iPhone y entrenamiento; v2.6.1 a v2.6.3) APROBADOS por Victor (2026-10-19). **V2-79 a V2-84** (salir del entrenamiento sin perder tus datos, duplicados, pagos futuros y formularios; v2.6.4 y v2.6.5) APROBADOS por Victor (2026-10-19). **V2-85 y V2-86** (lo de antes de empezar no se cobra solo y la revisión para quienes ya usan la app; v2.6.6) APROBADOS por Victor (2026-10-19). **V2-87 y V2-88** (lo que pagas normalmente de una tarjeta se paga como cualquier otro pago, y editar = los mismos campos que crear; v2.6.7) y su agregado (el caso de la segunda tester y la ficha de la tarjeta) APROBADOS por Victor (2026-10-19). **v2.7 «Tus números bien»**: D-1 a D-12 y C-1 a C-10 (aquí solo D-6, D-7, D-8 y C-6), la protección de datos DATOS-1 a DATOS-5, el cuadrito de novedades y el cambio de roadmap APROBADOS por Victor (2026-10-21). **v2.8 «Más claro»**: D-1 a D-12 y C-1 a C-10 completos, P-1, la opción de la pendiente 4 y «recibí 50 en efectivo» (APROBADOS por Victor, 2026-10-21) y el trabajo de noche sin supervisión (APROBADO por Victor, 2026-10-22). **v2.9 «Números claros»:** AUTORIZADO por Victor (2026-10-23) todo, bajo criterio, y publicarla como actualización (ver abajo). **v2.9.1 (fechas de tarjeta y adelanto):** con la misma autorización (2026-10-23). Nada de esto está documentado todavía en el repo de la app: se documentará después de las pruebas con personas. Este prototipo no cambia nada del repo de la app.
 
-Versión visible en la app y en la guía: **«Prototipo v2.9.0 · 2026-10-23»** (en el LEEME: «Prototipo v2.9 · Números claros»).
+Versión visible en la app y en la guía: **«Prototipo v2.9.1 · 2026-10-23»** (en el LEEME: «Prototipo v2.9.1 · Fechas de tarjeta y adelanto»).
+
+---
+
+## Prototipo v2.9.1 · Fechas de tarjeta y adelanto (2026-10-23)
+
+**Base:** `main` en `79748f3` (v2.9.0 publicada). Rama `v2-9-1`. Con la autorización de Victor de la v2.9 («te dejo aprobado todo y bajo tu criterio … debe estar fix sin necesidad de que yo apruebe nada») y sus mismos límites: cero pérdidas, sin dependencias, no se borran pruebas y solo se publica con todo en verde.
+
+**El reporte de Victor (2026-10-23, en su teléfono):** «la tarjeta en la editing screen le he puesto 14, pero en todos los otros lugares dice 15, no me reconoció el cambio a 14 como fecha de pago». La ficha decía «Corte el 21 · pago el 14» y, a la vez, «Vence 15 nov», «Por pagar el 15 nov» y «Con tu quincena del 14 de noviembre».
+
+**La causa:** al guardar Editar, la tarjeta cambiaba su día (`t.pagoDia`), pero el estado de cuenta ya anotado guarda su propio vencimiento (`t.estados.at(-1).vence`), que es el que leen la ficha, Mi plan y Hoy (`tarjetaInfo`). Solo se recalculaba cuando todavía no había estado de cuenta (V2-57).
+
+### Lo que cambió
+
+- **La fecha de pago de la tarjeta (P0):**
+  - Editar mueve el vencimiento del estado de cuenta que todavía debes al día nuevo: del 15 nov al 14 nov. Uno ya pagado no cambia; el día nuevo cuenta desde el siguiente.
+  - Debajo del día, el formulario dice la fecha antes de guardar: «Tu estado de cuenta del 21 oct vence el sábado 14 de noviembre.» (o «…ya está pagado: el día nuevo cuenta desde el siguiente (14 dic).»).
+  - Con qué ingreso se paga se recalcula con la fecha nueva (D-4). «¿Con qué ingreso la pagas?» cambia en vivo; lo elegido que ya no llega antes de la fecha nueva vuelve a lo normal.
+  - Hoy y los avisos llaman a la tarjeta por su alias, como la ficha y Mi plan («Tarjeta Liss», no «Crédito Liss»).
+- **«¿Cuál es?», una sola pregunta:** si la tarjeta dice un día y su pago pendiente vence otro (lo que dejó la v2.9.0), la app pregunta en Hoy, en la ficha y una vez en el cuadrito: «Tu estado de cuenta de Tarjeta Liss vence el 15 nov, pero tu tarjeta dice el 14. ¿Cuál es?» → [14 nov] [15 nov]. Sin respuesta no cambia nada.
+- **El mismo tipo de error en los otros formularios** (lo encontré con una sonda que edita cada uno; `invariantes` V46):
+  - **Ingresos:** cambiar los días (15 y 30 → 14 y 29) dejaba lo guardado en la fecha vieja. La quincena que ya llegó volvía a esperarse, el descuento del adelanto dejaba de aplicarse (Próxima pasaba de $390 a $600: el adelanto contado dos veces) y se perdían «Ya lo guardé» y «Ya terminé» de esa quincena (el libre bajaba $160 en el ejemplo). Ahora pasan a la fecha nueva del mismo periodo. «Lo pagas con» y «Pasar a la próxima» ya lo hacían solos.
+  - **Gastos fijos y préstamos:** al cambiar el monto, «Lo pagas con» elegido para todo el pago se quedaba con el monto viejo y la diferencia se iba sola a otra quincena ($50 → $80: $30 a la quincena del 30). Y una cuota pagada en partes seguía con el monto viejo («faltan $50» con la cuota nueva de $120). Ahora siguen al monto nuevo, de este mes en adelante.
+  - **Presupuestos y ahorro programado:** sin este error. «Ya terminé» y «Ya lo guardé» de este periodo se quedan; el monto nuevo cuenta desde ahí.
+  - **El monto de la tarjeta** (su estado de cuenta o lo que pagas normalmente) ya seguía a «Lo pagas con».
+- **Adelanto:**
+  - Con más de un descuento en el periodo, cada línea del resumen dice su fecha: «14 nov · Mi Quincena $597.00 − adelanto $328.00 = $269.00 (incluye $14.00 de comisión)». Nunca dos líneas iguales; con uno solo, sin fecha.
+  - En la lista por fecha, la fila dice el nombre completo arriba y «− adelanto $328.00» abajo, en chico (antes, «Mi Q..»). En «Por tipo», en su segunda línea.
+- **El cuadrito de la v2.9.1:** solo a quien le cambió algo (una tarjeta con las dos fechas). «Una fecha por revisar 📅», con la pregunta; al contestar, «Listo: Tarjeta Liss vence el 14 nov (antes, 15 nov).». A nadie más le sale.
+
+### DECIDIDO por criterio (autorizado por Victor, 2026-10-23)
+
+21. **«En el mes que corresponda»** = la fecha con el día nuevo más cercana a la que tenía, después del corte de ese estado de cuenta (del 15 nov con el 14: el 14 nov; del 30 nov con el 1: el 1 dic). Nunca salta un mes por un día.
+22. **En «¿Cuál es?», elegir la fecha del estado de cuenta cambia el día de la tarjeta** (al 15): así Editar, la ficha y el estado de cuenta dicen lo mismo.
+23. **Un día de corte cambiado en Editar cuenta desde el siguiente estado de cuenta:** el que ya llegó conserva su corte. Si se moviera, compras ya incluidas en él se contarían otra vez.
+24. **«Ahora no» no es el botón principal mientras la pregunta está sin contestar.** La pregunta sigue en la ficha, y en Hoy hasta «Ahora no» (por esa vez).
+25. **Quien viene de antes de la v2.9 ve primero el cuadrito de la v2.9;** el de la fecha, la siguiente vez que abre la app.
+26. **Los días nuevos de un ingreso mueven lo guardado solo con la misma frecuencia y a menos de medio periodo.** Otra frecuencia es otro ingreso: no se adivina. Las cuotas que se descuentan del salario siguen al día nuevo, como un pago más.
+
+### Pruebas (una a la vez, en primer plano, con la memoria primero: entre 5.5 y 6.6 GB libres)
+
+- **`invariantes`: 66 de 66.** Nuevas V44 a V47; las cuatro fallan sobre `79748f3` (V44 da `[14, "2026-11-15", "2026-11-15"]`: el caso de Victor).
+- **`personas-v29`:** 0 diferencias.
+- **`actualizar --ref=79748f3` y `--ref=a0cddba`:** 0 fallos y cero pérdidas en 7 juegos (Prueba, Carlos, Rosa, Sintética, Pam, Majo y «Victor P», con su estado de cuenta pendiente). «Victor P» ve «¿Cuál es?» y, al contestar, solo cambia esa fecha.
+- **`novedades`:** 45 checks, con la nueva sección F (el cuadrito solo a quien le cambió algo).
+- **Tarjeta, Mi plan y Mes:** `v267` (a–c, d–f), `v267-editar`, `v262`, `v265`, `v266` (a–d, e–g), `v231`, `v24`, `qa-v261`, `humo`, `montos`, `contraste`, `contraste-v23`, `aceptacion-v23`, `entrega2-v23`, `viaje-v23` y `v25` (a–f, g–k): sin fallos.
+- **`palabras-v28`:** 0 de 903.
+- **`capturas-v291`** (nueva) a 390×844, revisadas como imágenes: Editar con el 14, la ficha (todo dice 14 nov), Mi plan → Mes de noviembre, Hoy y «¿Cuál es?».
 
 ---
 

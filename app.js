@@ -324,7 +324,7 @@
         const st = P.st;
         const esTarjeta = !!o.tarjeta;
         const hzRef = hz || M.horizonte(st);
-        const nombre = esTarjeta ? o.tarjeta.nombre : o.pago.nombre;
+        const nombre = esTarjeta ? P.nombreTarjeta(o.tarjeta) : o.pago.nombre;
         const emoji = esTarjeta ? o.tarjeta.emoji : o.pago.emoji;
         const abrir = esTarjeta ? `data-a="abrir" data-tipo="tarjeta" data-id="${o.tarjeta.id}"` : `data-a="abrir" data-tipo="pago" data-id="${o.pago.id}"`;
         const fk = (esTarjeta ? 't-' + o.tarjeta.id : 'p-' + o.pago.id) + '-' + o.fecha;
@@ -668,7 +668,7 @@
             if (o.estado === 'vencido') vencidos.push(o);
             else if (o.estado === 'pendiente') (o.fecha === st.hoy ? hoyL : manana).push(o);
         }
-        const nombreO = (o) => (o.tarjeta ? o.tarjeta.nombre : o.pago.nombre);
+        const nombreO = (o) => (o.tarjeta ? P.nombreTarjeta(o.tarjeta) : o.pago.nombre);
         // v2.8 (C-4): «Ya lo pagué» lo vuelve gasto.
         const pagadoBtn = (o, fk) => btn('Ya lo pagué', `data-a="pagado" data-tipo="${o.tarjeta ? 'tarjeta' : 'pago'}" data-id="${o.tarjeta ? o.tarjeta.id : o.pago.id}" data-fecha="${o.fecha}" data-fk="${fk}" aria-label="Marcar ${esc(nombreO(o))} como pagado"`, true);
         const grupo = (lista, id, uno, varios, corto) => {
@@ -1043,7 +1043,7 @@
             const ing = o.ingreso;
             const llego = o.estado === 'llego';
             const com = o.descuento ? comisionAdelanto(st, ing.id, o.fecha) : 0;
-            fila({ grupo: 'ingresos', tipo: 'ingreso', fecha: o.fecha, fk: `i-${ing.id}-${o.fecha}`, abrir: abrirIng(ing), emoji: ing.emoji, nombre: ing.nombre, monto: o.monto, aprox: !llego && !!o.aprox, hecha: llego, marca: llego ? `✓${sr(' Llegó')}` : o.estado === 'porConfirmar' ? 'por confirmar' : o.estado === 'hoy' ? '¿ya llegó?' : o.descuento ? `− adelanto ${dinero(o.descuento)}` : '', sub: `llega a: ${lugarDe(ing.lugar)}`, descuento: o.descuento || 0, comision: com, bruto: o.monto + (o.descuento || 0), ...extra });
+            fila({ grupo: 'ingresos', tipo: 'ingreso', fecha: o.fecha, fk: `i-${ing.id}-${o.fecha}`, abrir: abrirIng(ing), emoji: ing.emoji, nombre: ing.nombre, monto: o.monto, aprox: !llego && !!o.aprox, hecha: llego, marca: llego ? `✓${sr(' Llegó')}` : o.estado === 'porConfirmar' ? 'por confirmar' : o.estado === 'hoy' ? '¿ya llegó?' : '', bajo: !llego && o.descuento ? `− adelanto ${dinero(o.descuento)}` : '', sub: `llega a: ${lugarDe(ing.lugar)}`, descuento: o.descuento || 0, comision: com, bruto: o.monto + (o.descuento || 0), ...extra });
         };
         /** Un gasto fijo o una cuota en una fecha, con su estado. */
         const filaPagoDe = (p, o, { cuenta = true, marca = null, monto = null, de = null } = {}) => {
@@ -1168,7 +1168,7 @@
         const monto = x.grupo === 'ingresos' ? montoPlan(x.monto, 'ingreso', { aprox: x.aprox }) : montoPlan(x.monto, 'gasto', { aprox: x.aprox, va: x.va || null, gris: !x.cuenta || x.hecha });
         const cls = `pl-fila${f ? (primera ? ' pl-fila--dia' : '') : ' pl-fila--corta'}${f === st.hoy ? ' pl-fila--hoy' : ''}${x.hecha ? ' pl-fila--hecha' : ''}${!x.cuenta ? ' pl-fila--va' : ''}`;
         const dia = f ? (primera ? diaPlan(f) : '<span class="pl-dia" aria-hidden="true"></span>') : '';
-        return `<li class="${cls}">${dia}<button type="button" class="pl-b" ${x.abrir} data-fk="${x.fk}" data-monto="${x.cuenta ? x.monto : 0}" data-cuenta="${x.cuenta ? 1 : 0}"${x.falta !== undefined ? ` data-falta="${x.falta}"` : ''}>${f ? sr(`${f === st.hoy ? 'Hoy, ' : ''}${M.fechaCorta(f)}: `) : ''}${caja(x.emoji, 'emo--sm')}<span class="pl-n">${esc(x.nombre)}</span>${x.marca ? `<span class="pl-e">${x.marca}</span>` : ''}<span class="pl-m">${monto}</span></button></li>`;
+        return `<li class="${cls}">${dia}<button type="button" class="pl-b" ${x.abrir} data-fk="${x.fk}" data-monto="${x.cuenta ? x.monto : 0}" data-cuenta="${x.cuenta ? 1 : 0}"${x.falta !== undefined ? ` data-falta="${x.falta}"` : ''}>${f ? sr(`${f === st.hoy ? 'Hoy, ' : ''}${M.fechaCorta(f)}: `) : ''}${caja(x.emoji, 'emo--sm')}${x.bajo ? `<span class="pl-nn"><span class="pl-n">${esc(x.nombre)}</span><span class="pl-sub">${x.bajo}</span></span>` : `<span class="pl-n">${esc(x.nombre)}</span>`}${x.marca ? `<span class="pl-e">${x.marca}</span>` : ''}<span class="pl-m">${monto}</span></button></li>`;
     }
     /**
      * La lista por fecha (R1): solo lo de este periodo. Hoy se marca aunque ese día no haya nada. Tus presupuestos y tu ahorro
@@ -1240,7 +1240,9 @@
                 falta = modelo.quedan < 0 || (!!x && P.faltaPeriodo(x));
             }
             // R7: el adelanto, en una sola línea («Quincena $600.00 − adelanto $210.00 = $390.00»), con su comisión si la hay.
-            for (const y of modelo.filas.filter((z) => z.cuenta && z.descuento)) notas.push(`${y.nombre} ${dinero(y.bruto)} − adelanto ${dinero(y.descuento)} = ${dinero(y.monto)}${y.comision ? ` (incluye ${dinero(y.comision)} de comisión)` : ''}`);
+            // v2.9.1: con más de un descuento en el periodo, cada línea dice su fecha («14 nov · Mi Quincena…»); nunca dos iguales.
+            const conDescuento = modelo.filas.filter((z) => z.cuenta && z.descuento);
+            notas.push(...new Set(conDescuento.map((y) => `${conDescuento.length > 1 ? M.fechaCorta(y.fecha) + ' · ' : ''}${y.nombre} ${dinero(y.bruto)} − adelanto ${dinero(y.descuento)} = ${dinero(y.monto)}${y.comision ? ` (incluye ${dinero(y.comision)} de comisión)` : ''}`)));
             if (x && x.soloFechas) notas.push(`Ojo: ${P.textoFaltaFechas(x).replace(/^El /, 'el ')}`);
             // R1: «este mes llevas $X en ventas» es de este mes: en las otras pestañas solo se dice que tus ventas cuentan al anotarlas.
             if (P.variable() && modelo.entra) notas.push('tus ventas cuentan cuando las anotas');
@@ -1317,7 +1319,7 @@
         const fila = (x) => {
             const monto = x.grupo === 'ingresos' ? montoPlan(x.monto, 'ingreso', { aprox: x.aprox }) : montoPlan(x.monto, 'gasto', { aprox: x.aprox, gris: !x.cuenta || x.hecha });
             const cuando = x.fecha ? M.fechaCorta(x.fecha) : '';
-            const linea = [cuando, x.marca && x.grupo !== 'presupuestos' && x.grupo !== 'ahorro' ? x.marca.replace(/<[^>]+>/g, '') : '', x.sub].filter(Boolean).join(' · ');
+            const linea = [cuando, x.marca && x.grupo !== 'presupuestos' && x.grupo !== 'ahorro' ? x.marca.replace(/<[^>]+>/g, '') : '', x.bajo || '', x.sub].filter(Boolean).join(' · ');
             return `<li class="fila pt-fila${!x.cuenta ? ' pt-fila--va' : ''}"><button type="button" class="fila-main" ${x.abrir} data-fk="mp-${x.fk}" data-monto="${x.cuenta ? x.monto : 0}" data-cuenta="${x.cuenta ? 1 : 0}">${caja(x.emoji)}<span class="fila-txt"><span class="pt-l1"><span class="fila-t">${esc(x.nombre)}</span><span class="fila-m">${monto}</span></span>${linea ? `<span class="fila-s pt-s">${esc(linea)}</span>` : ''}</span></button></li>`;
         };
         const abiertas = P.ui.planAbiertas || {};
@@ -2020,6 +2022,7 @@
         const cobrosHtml = tarjetaSeccion(`Se cobra en esta tarjeta <span class="contador">${cobros.length}</span>`, `${cobros.length ? `<ul class="lista">${cobros.map((p) => `<li class="fila"><button type="button" class="fila-main" data-a="abrir" data-tipo="pago" data-id="${p.id}" data-fk="t-cobro-${p.id}">${caja(p.emoji)}<span class="fila-txt"><span class="fila-t">${esc(p.nombre)} ${dinero(p.monto, { aprox: p.estimado })}, se cobra ${esc(p.frecuencia === 'mensual' ? 'el ' + p.dia : textoFrecuencia(p).toLowerCase())}</span><span class="fila-s">Va dentro del pago de la tarjeta: no resta aparte.</span></span></button></li>`).join('')}</ul>` : '<p class="vacio">Nada se cobra solo en esta tarjeta. Una suscripción con esta tarjeta aparece aquí.</p>'}`, { id: 't-cobros' });
         return `<div class="pg">
             ${encabezado(`${emo(t.emoji, 28)} ${esc(P.nombreTarjeta(t))}`, `${t.apodo ? esc(t.nombre) + ' · ' : ''}${t.corte ? `Corte el ${t.corte} · pago el ${t.pagoDia}` : `Pago el ${t.pagoDia} · día de corte por anotar`}`, { atras: atrasTexto })}
+            ${P.modos && P.modos.preguntaDiaHtml ? P.modos.preguntaDiaHtml(t) : ''}
             <section class="card ficha-cifra" aria-label="Lo que debes">
                 <p class="fila-s">Debes en total</p>
                 <p class="cifra">${debeAprox !== null ? dinero(debeAprox, { aprox: true }) : info.usual ? 'Por confirmar' : dinero(info.debeTotal)}</p>

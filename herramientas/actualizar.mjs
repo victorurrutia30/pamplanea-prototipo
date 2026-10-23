@@ -17,6 +17,9 @@
 // cuadrito es el de la v2.9 (de 2 a 4 líneas) y, además de Carlos, Rosa y el sintético, dos juegos como los de Pam y Majo
 // (adelanto con su descuento, aguinaldo, la pareja, la tarjeta y, desde la v2.8, presupuestos y ahorro programado) creados
 // con la versión vieja: cero pérdidas, sus saldos iguales y, si su libre cambió (H1, «Comida afuera»), el cuadrito lo dice.
+// v2.9.1 (reporte de Victor, 2026-10-23): la copia es `antes-de-v2.9.1`. De la v2.9 a la v2.9.1 el cuadrito sale solo a quien
+// le cambió algo: «Victor P» (una tarjeta con su estado de cuenta pendiente cuyo día se cambió en Editar con la v2.9.0) ve
+// «¿Cuál es?»; sin respuesta, cero pérdidas; con ella, solo cambia esa fecha. A los demás no les sale y su libre es el mismo.
 // Uso: node herramientas/actualizar.mjs --ref=7c0d06e   (v2.5)   ·   --ref=ca97256   (v2.6)   [--puerto=8767]
 import { execSync, spawn } from 'node:child_process';
 import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
@@ -101,8 +104,15 @@ const desde29 = (v) => {
     return a > 2 || (a === 2 && b2 >= 9);
 };
 const NUEVA29 = desde29(NUEVA);
-/** v2.8: la clave del cuadrito de la versión nueva. */
-const NOV = NUEVA29 ? 'v2.9' : NUEVA28 ? 'v2.8' : 'v2.7';
+/** v2.9.1: ¿la versión nueva es la v2.9.1 o posterior? ¿Y la vieja ya era la v2.9 (una actualización de arreglos)? */
+const desde291 = (v) => {
+    const [a, b2, c] = numV(v);
+    return a > 2 || (a === 2 && (b2 > 9 || (b2 === 9 && c >= 1)));
+};
+const NUEVA291 = desde291(NUEVA);
+const PARCHE = NUEVA291 && desde29(VIEJA);
+/** v2.8: la clave del cuadrito de la versión nueva. v2.9.1: de la v2.9 a la v2.9.1, solo sale a quien le cambió algo. */
+const NOV = PARCHE ? 'v2.9.1' : NUEVA29 ? 'v2.9' : NUEVA28 ? 'v2.8' : 'v2.7';
 /** v2.8: ¿esta línea del cuadrito dice que un número cambió? (v2.7: «Corregimos…»; v2.8: con antes y después). */
 const lineaCambio = (l) => (NUEVA28 ? /^(Tu libre era|Tu gasto de \S+ era|Lo que debes de .+ era)/.test(l) : l.startsWith('Corregimos'));
 const CLAVE_COPIA = 'pamplanea-uso:respaldo:antes-de-v' + numV(NUEVA).join('.');
@@ -164,6 +174,22 @@ const comoPamMajo = (tipo) => `(() => {
         em.programado = { monto: 2500, desde: per.inicio };
         em.donde = { lugar: 'agricola' };
     }
+    return s;
+})()`;
+/**
+ * v2.9.1 (reporte de Victor, 2026-10-23): datos como los de Victor, creados en la página de la versión VIEJA: una tarjeta con
+ * su estado de cuenta pendiente (corte hace 2 días, vence en 22) cuyo día de pago se cambió en Editar a un día antes, como
+ * lo dejaba la v2.9.0: la tarjeta dice un día y su estado de cuenta, otro.
+ */
+const COMO_VICTOR = `(() => {
+    const s = DATOS.crearAna();
+    const hoy = P.modos.hoy();
+    const d = (n) => MOTOR.sumarDias(hoy, n);
+    Object.assign(s, { persona: 'uso', hoy, inicio: d(-25) });
+    const vence = d(22);
+    const dia = Number(vence.slice(8));
+    s.tarjetas.push({ id: 't1', nombre: 'Crédito Liss', apodo: 'Tarjeta Liss', emoji: '💳', tipo: 'tarjeta', corte: Number(d(-2).slice(8)), pagoDia: dia === 1 ? 2 : dia - 1, cupo: null, interesesAnio: 0, desde: d(-20), medio: 'transferencia', estados: [{ corte: d(-2), total: 30000, minimo: 5000, aPagar: 30000, opcion: 'total', vence, anotado: 0, seq: s.seq++ }] });
+    s.medios.push({ id: 'mt1', nombre: 'Crédito Liss', emoji: '💳', tarjeta: 't1' });
     return s;
 })()`;
 /**
@@ -247,7 +273,7 @@ try {
     const viejos = { Prueba: await ev(NUMEROS) };
     const crudos = {};
     if (NUEVA27) {
-        for (const [nombre, crear] of [['Carlos P', 'DATOS.crearCarlos()'], ['Rosa P', 'DATOS.crearRosa()'], ['Sintética', SINTETICO], ...(NUEVA29 ? [['Pam P', comoPamMajo('quincena')], ['Majo P', comoPamMajo('mes')]] : [])]) {
+        for (const [nombre, crear] of [['Carlos P', 'DATOS.crearCarlos()'], ['Rosa P', 'DATOS.crearRosa()'], ['Sintética', SINTETICO], ...(NUEVA29 ? [['Pam P', comoPamMajo('quincena')], ['Majo P', comoPamMajo('mes')]] : []), ...(NUEVA291 ? [['Victor P', COMO_VICTOR]] : [])]) {
             await ev(`(() => { const s = ${crear}; Object.assign(s, { persona: 'uso', nombre: ${JSON.stringify(nombre)}, hoy: P.modos.hoy() }); P.cargar(s, { tab: 'hoy' }); P.modos.guardarUso(); return true; })()`);
             await esperar(200);
             viejos[nombre] = await ev(NUMEROS);
@@ -276,7 +302,10 @@ try {
     }
     await esperar(800);
     check('la versión nueva y solo su caché', [await ev('window.VERSION_PROTOTIPO'), await ev('caches.keys()')], (x) => x[0] === NUEVA && x[1].includes(CACHE) && x[1].length === 1);
-    if (NUEVA27) {
+    if (PARCHE) {
+        // v2.9.1: de la v2.9 a la v2.9.1, a «Prueba» no le cambió nada: no sale ningún cuadrito.
+        check(`${NOV}: sin nada que le cambie, no sale el cuadrito`, await texto('#nov-t'), null);
+    } else if (NUEVA27) {
         // v2.7 (Parte D): el cuadrito de novedades sale una vez; se cierra para seguir. v2.8: el de la v2.8.
         check(`${NOV}: el cuadrito de novedades`, await texto('#nov-t'), NUEVA29 ? '¡Tus números, más claros! ✨' : NUEVA28 ? '¡PamPlanea está más clara! ✨' : '¡PamPlanea se puso al día! ✨');
         informe.datos.lineasNovedades = await ev(`[...document.querySelectorAll('.nov-lista li')].map((li) => li.innerText.trim())`);
@@ -306,7 +335,9 @@ try {
         const nuevos = await ev(NUMEROS);
         check('los saldos de tus cuentas: iguales', nuevos.saldos, viejos.Prueba.saldos);
         const n = u1.novedades && u1.novedades[NOV];
-        check('DATOS-4: los números «de antes» son los que mostraba la versión vieja', n && n.antes && [n.antes.mes.salio, n.antes.mes.entro, n.antes.libre, Object.fromEntries(n.antes.tarjetas.map((t) => [t.id, t.debe]))], [viejos.Prueba.mes[0], viejos.Prueba.mes[1], viejos.Prueba.libre, viejos.Prueba.tarjetas]);
+        // v2.9.1: de la v2.9 a la v2.9.1 no hay números «de antes» (no cambia ningún número; solo se pregunta una fecha).
+        if (!PARCHE) check('DATOS-4: los números «de antes» son los que mostraba la versión vieja', n && n.antes && [n.antes.mes.salio, n.antes.mes.entro, n.antes.libre, Object.fromEntries(n.antes.tarjetas.map((t) => [t.id, t.debe]))], [viejos.Prueba.mes[0], viejos.Prueba.mes[1], viejos.Prueba.libre, viejos.Prueba.tarjetas]);
+        else check('v2.9.1: tu libre, igual que en la v2.9.0', nuevos.libre, viejos.Prueba.libre);
         // v2.8: si tu libre cambió con las reglas nuevas, se ve el número nuevo y el cuadrito lo dijo con antes y después.
         if (NUEVA28 && n && n.despues) {
             libreNuevo = await ev(`MOTOR.dinero(${n.despues.libre})`);
@@ -348,16 +379,42 @@ try {
             await b.ir(base + 'telefono.html');
             await esperar(900);
             const r = await ev(`({ modo: P.modo, nombre: P.st && P.st.nombre, bloqueo: P.modos.bloqueado(), nov: !!document.getElementById('nov-t'), lineas: [...document.querySelectorAll('.nov-lista li')].map((li) => li.innerText.trim()) })`);
-            check(`${nombre}: abre con sus datos y el cuadrito`, [r.modo, r.nombre, r.bloqueo, r.nov], ['uso', nombre, false, true]);
+            // v2.9.1: de la v2.9 a la v2.9.1, el cuadrito solo sale a quien le cambió algo (la fecha de su tarjeta).
+            const conCuadrito = !PARCHE || nombre === 'Victor P';
+            check(`${nombre}: abre con sus datos${conCuadrito ? ' y el cuadrito' : ' (sin cuadrito: no le cambió nada)'}`, [r.modo, r.nombre, r.bloqueo, r.nov], ['uso', nombre, false, conCuadrito]);
             if (nombre === 'Sintética') await b.captura(path.join(salida, '7-sintetica-novedades.png'));
-            await clic('[data-fk="nov-ok"]');
-            const g = await guardado();
             const viejo = JSON.parse(crudos[nombre]);
+            let fechaElegida = null;
+            if (nombre === 'Victor P') {
+                // Con su estado de cuenta pendiente: sin respuesta no cambia nada; la pregunta está en Hoy (y en el cuadrito de la v2.9.1).
+                check('Victor P: sin respuesta, cero pérdidas (su estado de cuenta pendiente, intacto)', perdidas(viejo.st, (await guardado())['pamplanea-uso:v1'].st), []);
+                if (PARCHE) {
+                    check('Victor P: el cuadrito pregunta cuál es', await texto('.nov-q span'), (t) => typeof t === 'string' && t.startsWith('Tu estado de cuenta de Tarjeta Liss vence el') && t.endsWith('¿Cuál es?'));
+                    fechaElegida = await ev(`document.querySelector('[data-fk="nov-dia-t1-tarjeta"]').dataset.v`);
+                    await clic('[data-fk="nov-dia-t1-tarjeta"]');
+                    check('Victor P: con la respuesta, una línea con el antes y el después', await ev(`[...document.querySelectorAll('.nov-lista li')].map((li) => li.innerText.trim())`), (x) => x.length === 1 && /^Listo: Tarjeta Liss vence el .+ \(antes, .+\)\.$/.test(x[0]));
+                    await b.captura(path.join(salida, '8-victor-fecha.png'));
+                }
+            }
+            if (conCuadrito) await clic('[data-fk="nov-ok"]');
+            if (nombre === 'Victor P' && !PARCHE) check('Victor P: la pregunta sigue en Hoy', await ev(`document.getElementById('pantalla').textContent.includes('¿Cuál es?')`), true);
+            const g = await guardado();
             check(`${nombre}: la copia por versión, intacta`, g[CLAVE_COPIA] && JSON.stringify(g[CLAVE_COPIA].datos) === crudos[nombre], true);
-            check(`${nombre}: cero pérdidas`, perdidas(viejo.st, g['pamplanea-uso:v1'].st), []);
+            // (Victor P, al contestar: solo cambia la fecha de su estado de cuenta pendiente.)
+            check(`${nombre}: cero pérdidas`, perdidas(viejo.st, g['pamplanea-uso:v1'].st).filter((x) => !(fechaElegida && x.startsWith('tarjetas t1.estados:'))), []);
+            if (fechaElegida) {
+                const e0 = viejo.st.tarjetas.find((t) => t.id === 't1').estados;
+                const e1 = g['pamplanea-uso:v1'].st.tarjetas.find((t) => t.id === 't1').estados;
+                check('Victor P: su estado de cuenta, igual salvo la fecha que eligió', [e1.length, JSON.stringify({ ...e1.at(-1), vence: null }) === JSON.stringify({ ...e0.at(-1), vence: null }), e1.at(-1).vence], [e0.length, true, fechaElegida]);
+            }
             const nuevos = await ev(NUMEROS);
             check(`${nombre}: los saldos de sus cuentas, iguales`, nuevos.saldos, viejos[nombre].saldos);
-            const n = g['pamplanea-uso:v1'].novedades[NOV];
+            const n = (g['pamplanea-uso:v1'].novedades || {})[NOV];
+            if (PARCHE) {
+                // (Victor P eligió una fecha: con qué ingreso se paga puede cambiar con ella, D-4.)
+                if (!fechaElegida) check(`${nombre}: tu libre, igual que en la v2.9.0`, nuevos.libre, viejos[nombre].libre);
+                continue;
+            }
             check(`${nombre}: los números «de antes» son los que mostraba la versión vieja (DATOS-4)`, [n.antes.mes.salio, n.antes.mes.entro, n.antes.libre, Object.fromEntries(n.antes.tarjetas.map((t) => [t.id, t.debe]))], [viejos[nombre].mes[0], viejos[nombre].mes[1], viejos[nombre].libre, viejos[nombre].tarjetas]);
             const cambio = n.antes.mes.salio !== n.despues.mes.salio || n.antes.libre !== n.despues.libre || n.antes.tarjetas.some((t) => t.debe !== n.despues.tarjetas.find((x) => x.id === t.id).debe);
             check(`${nombre}: si un número cambió, el cuadrito lo dice (y si no, no)`, r.lineas.some(lineaCambio), cambio);

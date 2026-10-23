@@ -42,6 +42,9 @@
 //  filas de «¿En qué se te fue?» suman «Salieron» · V29 ocultar o renombrar no cambia montos · V30 una fija no se cambia ·
 //  V31 en Mi plan, «Sale» = lo que falta en sus filas (sin «va en»)
 // Ajuste 7 (APROBADO por Victor, 2026-10-22): V32 ninguna pantalla muestra «~$» · V33 «Ponerle un máximo» · V34 «+ Nueva categoría»
+// v2.9 «Números claros»: V35 a V43 (ver cada fila).
+// v2.9.1 (reporte de Victor, 2026-10-23): V44 la fecha de la tarjeta = la de Editar (corte 21, pago 15 → 14) · V45 «¿Cuál es?»
+//  una vez · V46 lo editado llega a lo pendiente en los demás formularios · V47 el adelanto con su fecha y su fila completa
 // Uso: node herramientas/invariantes.mjs [--base=http://…/] [--puerto=9961] [--solo=I01,F13] [--raiz=<otra copia>]
 //      (--raiz: las mismas filas sobre otra copia, por ejemplo la v2.6.7 sacada de git, para ver cuáles fallaban antes)
 import { mkdir } from 'node:fs/promises';
@@ -1847,6 +1850,144 @@ await filaDe('V43', 'v2.9 (R8): un ingreso de una vez ya pasado (llegó o no) no
         check(`Próxima (${modo}): el aguinaldo de diciembre no`, await en('proxima', modo), []);
         check(`Mes de diciembre (${modo}): el aguinaldo, que todavía esperas`, (await en('mes', modo, '2026-12')).length, 1);
     }
+});
+
+// ================================================================== v2.9.1 (reporte de Victor, 2026-10-23; autorizado por Victor)
+// La tarjeta de Victor: corte el 21 y pago el 15, con su estado de cuenta del 21 oct (vence el 15 nov), y su quincena el 14 y el 29.
+const TARJETA_LISS = `(st, extra = {}) => {
+    st.tarjetas.push({ id: 't1', nombre: 'Crédito Liss', apodo: 'Tarjeta Liss', emoji: '💳', tipo: 'tarjeta', corte: 21, pagoDia: 15, cupo: null, interesesAnio: 0, desde: '2026-10-01', medio: 'transferencia',
+        estados: [{ corte: '2026-10-21', total: 30000, minimo: 5000, aPagar: 30000, opcion: 'total', vence: '2026-11-15', anotado: 0, seq: 9 }], ...extra });
+    st.medios.push({ id: 'mt1', nombre: 'Crédito Liss', emoji: '💳', tarjeta: 't1' });
+}`;
+const QUINCENA_14 = `(st) => { Object.assign(st.ingresos[0], { nombre: 'Mi Quincena', dias: [14, 29], llegadas: { '2026-10-14': { monto: 60000 } } }); Object.assign(st.registros.find((r) => r.id === 'r4'), { fecha: '2026-10-14', ocurrencia: '2026-10-14', nombre: 'Mi Quincena' }); }`;
+/** Lo que dicen de la tarjeta la ficha, Mi plan (Mes de noviembre y su «¿De dónde sale?») y Hoy. */
+const LEER_TARJETA = `window.__fechasTarjeta = () => {
+    const txt = (el) => (el ? el.textContent.replace(/\\s+/g, ' ').trim() : '');
+    P.ui.hoja && P.cerrarHoja({ sinFoco: true });
+    P.ui.stack = []; P.abrir('tarjeta', 't1');
+    const ficha = txt(document.getElementById('pantalla'));
+    P.ui.stack = []; P.ui.pagosVista = 'mes'; P.ui.pagosModo = 'fecha'; P.ui.pagosMes = '2026-11'; P.irTab('pagos');
+    const panel = document.getElementById('plan-panel');
+    const filasMes = [...panel.querySelectorAll('[data-fk^="t-t1-"]')].map((b) => b.dataset.fk);
+    panel.querySelector('[data-fk="plan-resumen"]').click();
+    const sale = txt(document.getElementById('capa-hoja'));
+    P.cerrarHoja({ sinFoco: true });
+    P.irTab('hoy');
+    const hoy = txt(document.getElementById('pantalla'));
+    const t = P.st.tarjetas[0];
+    const info = MOTOR.tarjetaInfo(P.st, t);
+    return { pagoDia: t.pagoDia, vence: t.estados.at(-1).vence, infoVence: info.vence, partes: info.partes.map((x) => x.de), ficha, filasMes, sale, hoy };
+}; true`;
+// ------------------------------------------------------------------ V44 (P0: la fecha de pago de la tarjeta)
+await filaDe('V44', 'v2.9.1 (P0): la fecha que muestran la ficha, Mi plan y Hoy = la que dice Editar (corte 21, pago 15 → 14), y con qué ingreso se cubre se recalcula', async () => {
+    await ev(`__armar((st) => { (${QUINCENA_14})(st); (${TARJETA_LISS})(st); }); ${LEER_TARJETA}`);
+    const antes = await ev(`__fechasTarjeta()`);
+    check('antes: todo dice el 15 nov', [antes.vence, antes.ficha.includes('pago el 15'), antes.filasMes], ['2026-11-15', true, ['t-t1-2026-11-15']]);
+    // Como Victor: la ficha → Editar → «¿Qué día vence tu próximo pago?» → 14 → Guardar cambios.
+    await ev(`P.ui.stack = []; P.abrir('tarjeta', 't1'); true`);
+    await clic('[data-fk="editar-tarjeta"]');
+    await escribir('#f-pagoDia', '14');
+    check('Editar dice la fecha completa del estado de cuenta antes de guardar', await texto('#vence-linea'), contiene('sábado 14 de noviembre'));
+    await clic('[data-fk="deuda-ok"]');
+    check('se guardó (sin preguntas)', await ev(`!!P.ui.hoja`), false);
+    const x = await ev(`__fechasTarjeta()`);
+    check('el estado de cuenta pendiente vence el 14 nov', [x.pagoDia, x.vence, x.infoVence], [14, '2026-11-14', '2026-11-14']);
+    check('la ficha: «pago el 14», «Por pagar el 14 nov» y «Vence 14 nov»; ningún 15 nov', [x.ficha.includes('pago el 14'), x.ficha.includes('Por pagar el 14 nov'), /Vence\s*14 nov/.test(x.ficha), /15 (de )?nov/.test(x.ficha)], [true, true, true, false]);
+    check('Mi plan → Mes de noviembre: la tarjeta el 14 nov', x.filasMes, ['t-t1-2026-11-14']);
+    check('«¿De dónde sale?» de noviembre: el 14 nov', [x.sale.includes('Tarjeta Liss'), x.sale.includes('14 nov'), /15 nov/.test(x.sale)], [true, true, false]);
+    check('Hoy: el 14 nov, nunca el 15', [x.hoy.includes('14 nov'), /15 (de )?nov/.test(x.hoy)], [true, false]);
+    check('se cubre con la quincena del 14 nov (llega ese mismo día)', x.partes, ['2026-11-14']);
+    check('Editar vuelve a decir 14', await ev(`(() => { P.abrirHoja('nuevaDeuda', { id: 't1' }); const v = document.getElementById('f-pagoDia').value; P.cerrarHoja({ sinFoco: true }); return v; })()`), '14');
+    // D-4: con la quincena el 15 y el 30, pasar del 15 nov al 14 nov cambia con qué ingreso se paga (la del 15 llega tarde).
+    await ev(`__armar((st) => { (${TARJETA_LISS})(st); }); ${LEER_TARJETA}`);
+    check('quincena 15/30, antes: con la quincena del 15 nov', (await ev(`__fechasTarjeta()`)).partes, ['2026-11-15']);
+    await ev(`P.abrirHoja('nuevaDeuda', { id: 't1' }); true`);
+    await escribir('#f-pagoDia', '14');
+    check('«¿Con qué ingreso la pagas?» ya dice el 14 nov', await texto('#fuente-t'), (t) => typeof t === 'string' && t.includes('vence el 14 nov') && !t.includes('15 de noviembre'));
+    await clic('[data-fk="deuda-ok"]');
+    const d4 = await ev(`__fechasTarjeta()`);
+    check('después: el 14 nov, con la quincena del 30 oct (D-4)', [d4.vence, d4.partes, d4.ficha.includes('Con tu quincena del 30')], ['2026-11-14', ['2026-10-30'], true]);
+    // Un estado de cuenta ya pagado no cambia: el día nuevo cuenta desde el siguiente.
+    await ev(`__armar((st) => { (${TARJETA_LISS})(st); st.registros.push({ id: 'r9', seq: 12, tipo: 'pagoTarjeta', fecha: '2026-10-21', monto: 30000, tarjeta: 't1', lugar: 'banco', nombre: 'Pago Crédito Liss', emoji: '💳' }); }); ${LEER_TARJETA}`);
+    await ev(`P.abrirHoja('nuevaDeuda', { id: 't1' }); true`);
+    await escribir('#f-pagoDia', '14');
+    check('Editar lo dice: ya está pagado', await texto('#vence-linea'), contiene('ya está pagado'));
+    await clic('[data-fk="deuda-ok"]');
+    const pagado = await ev(`({ vence: P.st.tarjetas[0].estados.at(-1).vence, pagoDia: P.st.tarjetas[0].pagoDia, prox: MOTOR.tarjetaInfo(P.st, P.st.tarjetas[0]).venceCompras })`);
+    check('el pagado sigue con su 15 nov y el próximo vence el 14 dic', pagado, { vence: '2026-11-15', pagoDia: 14, prox: '2026-12-14' });
+});
+// ------------------------------------------------------------------ V45 (P0: pregunta de una vez)
+await filaDe('V45', 'v2.9.1 (P0): si la tarjeta dice el 14 y su estado de cuenta el 15 nov, la app pregunta «¿Cuál es?» una vez; sin respuesta no cambia nada', async () => {
+    const armar = `__armar((st) => { (${QUINCENA_14})(st); (${TARJETA_LISS})(st, { pagoDia: 14 }); }); ${LEER_TARJETA}`;
+    await ev(armar);
+    const st0 = await ev(`JSON.stringify(P.st)`);
+    await ev(`P.irTab('hoy'); true`);
+    check('Hoy pregunta con las dos fechas', await texto('#pantalla'), contiene('Tu estado de cuenta de Tarjeta Liss vence el 15 nov, pero tu tarjeta dice el 14. ¿Cuál es?'));
+    check('los botones: [14 nov] [15 nov]', await ev(`[...document.querySelectorAll('[data-fk^="dia-t1-"]')].map((b) => b.textContent.trim())`), ['14 nov', '15 nov']);
+    check('la ficha también lo pregunta', await ev(`(() => { P.ui.stack = []; P.abrir('tarjeta', 't1'); return document.getElementById('pantalla').textContent.includes('¿Cuál es?'); })()`), true);
+    await ev(`P.irTab('hoy'); true`);
+    await clic('[data-fk="p28-luego"]');
+    check('«Ahora no»: nada cambia', await ev(`JSON.stringify(P.st) === ${js(st0)}`), true);
+    // «Ahora no» deja la pregunta de Hoy para otra vez (al volver a abrir la app); en la ficha sigue a la mano.
+    await ev(armar);
+    check('después de «Ahora no», Hoy no insiste por esta vez', await ev(`(() => { P.irTab('hoy'); return document.getElementById('pantalla').textContent.includes('¿Cuál es?'); })()`), false);
+    await ev(`P.ui.stack = []; P.abrir('tarjeta', 't1'); true`);
+    await clic('[data-fk="dia-t1-tarjeta"]');
+    const x = await ev(`__fechasTarjeta()`);
+    check('«14 nov»: el estado de cuenta vence el 14 nov y todo lo dice', [x.vence, /Vence\s*14 nov/.test(x.ficha), x.filasMes, /15 (de )?nov/.test(x.hoy)], ['2026-11-14', true, ['t-t1-2026-11-14'], false]);
+    check('y ya no pregunta', await ev(`(() => { P.ui.stack = []; P.abrir('tarjeta', 't1'); return document.getElementById('pantalla').textContent.includes('¿Cuál es?'); })()`), false);
+    await ev(armar);
+    await ev(`P.ui.stack = []; P.abrir('tarjeta', 't1'); true`);
+    await clic('[data-fk="dia-t1-estado"]');
+    const y = await ev(`__fechasTarjeta()`);
+    check('«15 nov»: la tarjeta pasa a pagarse el 15 y todo dice el 15 nov', [y.pagoDia, y.vence, y.ficha.includes('pago el 15'), y.filasMes], [15, '2026-11-15', true, ['t-t1-2026-11-15']]);
+    // Sin diferencia (o con su estado ya pagado), no pregunta.
+    const pregunta = `(() => { P.ui.stack = []; P.abrir('tarjeta', 't1'); return document.getElementById('pantalla').textContent.includes('¿Cuál es?') || MOTOR.venceDistinto(P.st, P.st.tarjetas[0]) !== null; })()`;
+    await ev(`__armar((st) => { (${TARJETA_LISS})(st); }); true`);
+    check('sin diferencia, no pregunta', await ev(pregunta), false);
+    await ev(`__armar((st) => { (${TARJETA_LISS})(st, { pagoDia: 14 }); st.registros.push({ id: 'r9', seq: 12, tipo: 'pagoTarjeta', fecha: '2026-10-21', monto: 30000, tarjeta: 't1', lugar: 'banco', nombre: 'Pago Crédito Liss', emoji: '💳' }); }); true`);
+    check('con el estado de cuenta ya pagado, no pregunta', await ev(pregunta), false);
+});
+// ------------------------------------------------------------------ V46 (el mismo tipo de error en los demás formularios)
+await filaDe('V46', 'v2.9.1: lo que editas llega a lo pendiente: los días de tu quincena (llegada, adelanto, «Ya lo guardé», «Ya terminé») y el monto de un pago («Lo pagas con», lo que falta)', async () => {
+    // Ingresos: la quincena pasa del 15 y 30 al 14 y 29.
+    await ev(`__armar((st) => {
+        st.ingresos.push({ id: 'ad', nombre: 'Adelanto de salario', emoji: '💵', categoria: 'otro', tipoIngreso: 'adelanto', monto: 20000, aprox: false, frecuencia: 'unico', fecha: '2026-10-20', lugar: 'efectivo', principal: false, extra: true, desde: '2026-10-20', llegadas: { '2026-10-20': { monto: 20000 } }, adelanto: { descuentos: [{ ingreso: 'quincena', fecha: '2026-10-30', monto: 21000 }] } });
+        st.registros.push({ id: 'r9', seq: 9, tipo: 'ingreso', fecha: '2026-10-20', monto: 20000, nombre: 'Adelanto de salario', categoria: 'otro', emoji: '💵', lugar: 'efectivo', ingreso: 'ad', ocurrencia: '2026-10-20' });
+        st.apartados.push({ id: 'ah', nombre: 'Emergencias', emoji: '🐷', monto: 5000, donde: 'aparte', historial: [{ fecha: '2026-10-16', tipo: 'guardar', monto: 5000 }], programado: { monto: 5000, desde: '2026-10-15' }, guardados: { '2026-10-15': { monto: 5000, fecha: '2026-10-16' } } });
+        st.variables = [{ id: 'super', nombre: 'Súper', emoji: '🛒', categoria: 'super', tope: 15000, medio: 'debito', desde: '2026-10-15', creado: '2026-10-15', cierres: { '2026-10-15': { estado: 'listo', fecha: '2026-10-20', anotado: 4000 } }, activo: true }];
+        st.registros.push({ id: 'r10', seq: 10, tipo: 'gasto', fecha: '2026-10-18', monto: 4000, nombre: 'Súper', categoria: 'super', emoji: '🛒', medio: 'debito', anotado: true });
+    })`);
+    const foto = `(() => { const k = P.calc(); const q = MOTOR.ingreso(P.st, 'quincena'); return { libre: k.libre, hz: k.hz.fecha, entra: k.proxima.entra, prog: MOTOR.programadoInfo(P.st)[0].falta, vari: MOTOR.variablesInfo(P.st)[0].falta, q: MOTOR.ocurrenciasIngreso(P.st, q, '2026-10-01', '2026-10-31').map((o) => [o.fecha, o.estado, o.monto]) }; })()`;
+    const a = await ev(foto);
+    await ev(`P.abrirHoja('nuevoIngreso', { id: 'quincena' }); Object.assign(P.ui.hoja, { qModo: 'otros', d1: '14', d2: '29' }); P.acciones.nuevoIngresoOk(); true`);
+    const d = await ev(foto);
+    check('la quincena que ya llegó sigue llegada (el 14) y la siguiente viene con el descuento del adelanto (el 29)', d.q, [['2026-10-14', 'llego', 60000], ['2026-10-29', 'esperado', 39000]]);
+    check('su movimiento apunta al día nuevo', await ev(`P.st.registros.find((r) => r.id === 'r4').ocurrencia`), '2026-10-14');
+    check('tu libre y lo que entra no cambian (el adelanto no se cuenta dos veces)', [d.libre, d.entra], [a.libre, a.entra]);
+    check('«Ya lo guardé» y «Ya terminé» de esta quincena se quedan', [d.prog, d.vari], [0, 0]);
+    // Gasto fijo: «Con lo que tienes ahora» para todo y el monto sube de $50 a $80.
+    await ev(`__armar((st) => { st.pagos.push({ id: 'luz', nombre: 'Luz', emoji: '💡', categoria: 'servicios', monto: 5000, estimado: false, frecuencia: 'mensual', dia: 3, medio: 'debito', avisos: [], desde: '2026-10-01', creado: '2026-10-01', hechos: {}, previos: [], asignaciones: { '2026-11-03': [{ de: 'ahora', monto: 5000 }] } }); })`);
+    await ev(`P.abrirHoja('nuevoPago', { id: 'luz' }); Object.assign(P.ui.hoja, { monto: '80.00', solo: P.ui.hoja.solo || 'no' }); P.acciones.nuevoPagoOk(); true`);
+    check('«Con lo que tienes ahora» sigue siendo todo ($80)', await ev(`MOTOR.asignacion(P.st, MOTOR.pago(P.st, 'luz'), '2026-11-03', 8000)`), [{ de: 'ahora', monto: 8000 }]);
+    // Préstamo pagado en partes ($50 de $100) y la cuota sube a $120: faltan $70.
+    await ev(`__armar((st) => { st.pagos.push({ id: 'pr', nombre: 'Préstamo', emoji: '🏦', categoria: 'cuotas', tipoDeuda: 'prestamo', monto: 10000, estimado: false, frecuencia: 'mensual', dia: 25, medio: 'debito', avisos: [], desde: '2026-10-01', creado: '2026-10-01', deuda: { debe: 95000 }, hechos: { '2026-10-25': { estado: 'parcial', debido: 10000, pagado: 5000, pagos: [{ registro: 'r11', monto: 5000, bajaDeuda: 5000 }] } }, previos: [] }); st.registros.push({ id: 'r11', seq: 11, tipo: 'gasto', fecha: '2026-10-20', monto: 5000, nombre: 'Préstamo', categoria: 'cuotas', emoji: '🏦', medio: 'debito', pago: 'pr', ocurrencia: '2026-10-25' }); })`);
+    await ev(`P.abrirHoja('nuevaDeuda', { id: 'pr' }); Object.assign(P.ui.hoja, { cuota: '120.00' }); P.acciones.nuevaDeudaOk(); true`);
+    check('la cuota pagada en partes: faltan $70 de $120', await ev(`(() => { const o = MOTOR.ocurrenciasPago(P.st, MOTOR.pago(P.st, 'pr'), '2026-10-25', '2026-10-25')[0]; return [o.monto, o.parcial && o.parcial.total]; })()`), [7000, 12000]);
+});
+// ------------------------------------------------------------------ V47 (el adelanto)
+await filaDe('V47', 'v2.9.1: con dos descuentos del adelanto, cada línea del resumen con su fecha (nunca dos iguales); la fila dice el nombre completo y «− adelanto» abajo, en chico', async () => {
+    await ev(`__armar((st) => { (${QUINCENA_14})(st); Object.assign(st.ingresos[0], { monto: 59700 }); st.ingresos.push({ id: 'ad', nombre: 'Adelanto', emoji: '💵', categoria: 'otro', tipoIngreso: 'adelanto', monto: 94200, aprox: false, frecuencia: 'unico', fecha: '2026-10-20', lugar: 'efectivo', principal: false, extra: true, desde: '2026-10-20', llegadas: { '2026-10-20': { monto: 94200 } }, adelanto: { descuentos: [{ ingreso: 'quincena', fecha: '2026-10-29', monto: 32800 }, { ingreso: 'quincena', fecha: '2026-11-14', monto: 32800 }, { ingreso: 'quincena', fecha: '2026-11-29', monto: 32800 }] } }); st.registros.push({ id: 'r9', seq: 9, tipo: 'ingreso', fecha: '2026-10-20', monto: 94200, nombre: 'Adelanto', categoria: 'otro', emoji: '💵', lugar: 'efectivo', ingreso: 'ad', ocurrencia: '2026-10-20' }); }); ${LEER_PLAN}`);
+    const x = await ev(`__plan('mes', 'fecha', '2026-11')`);
+    const lineas = x.res.s.filter((s) => s.includes('− adelanto'));
+    check('Mes de noviembre: una línea por descuento, cada una con su fecha', lineas, ['14 nov · Mi Quincena $597.00 − adelanto $328.00 = $269.00 (incluye $14.00 de comisión)', '29 nov · Mi Quincena $597.00 − adelanto $328.00 = $269.00 (incluye $14.00 de comisión)']);
+    check('nunca dos líneas iguales', new Set(x.res.s).size, x.res.s.length);
+    const p = await ev(`__plan('proxima', 'fecha')`);
+    check('con un solo descuento (Próxima), sin fecha', p.res.s.filter((s) => s.includes('− adelanto')), ['Mi Quincena $597.00 − adelanto $328.00 = $269.00 (incluye $14.00 de comisión)']);
+    await ev(`P.ui.pagosVista = 'mes'; P.ui.pagosMes = '2026-11'; P.ui.pagosModo = 'fecha'; P.irTab('pagos'); true`);
+    const fila = await ev(`(() => { const b = document.querySelector('[data-fk="i-quincena-2026-11-14"]'); const n = b.querySelector('.pl-n'); const s = b.querySelector('.pl-sub'); return { n: n.textContent.trim(), entero: n.scrollWidth <= n.clientWidth + 1 && n.scrollHeight <= n.clientHeight + 1, abajo: s ? s.textContent.trim() : null, chico: s ? parseFloat(getComputedStyle(s).fontSize) < parseFloat(getComputedStyle(n).fontSize) : false, debajo: s ? s.getBoundingClientRect().top >= n.getBoundingClientRect().bottom - 1 : false }; })()`);
+    check('la fila: «Mi Quincena» completo arriba y «− adelanto $328.00» abajo, en chico', fila, { n: 'Mi Quincena', entero: true, abajo: '− adelanto $328.00', chico: true, debajo: true });
+    await foto('V47-mes-noviembre');
 });
 
 const resultado = { version: await ev('window.VERSION_PROTOTIPO').catch(() => null), filas: filas.map((f) => ({ id: f.id, ok: f.ok, nombre: f.nombre, checks: f.checks.length, malas: f.checks.filter((c) => !c.ok) })), resumen: `${filas.filter((f) => f.ok).length} de ${filas.length} filas bien`, fallos, errores: b.errores, fallidas: b.fallidas };
