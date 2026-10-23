@@ -121,7 +121,8 @@ try {
     await clic('[data-fk="nav-pagos"]');
     // v2.8 (C-9): el consejo de Mi plan.
     // Cierre v2.8 (APROBADO por Victor 2026-10-22): el consejo de Mi plan, al día.
-    check('Mi plan: su consejo', await texto('.tip p'), contiene('Aquí ves lo que viene, día por día', '«+ Agregar»'));
+    // v2.9 (Fase E): el consejo de Mi plan dice que cada pestaña muestra solo lo suyo.
+    check('Mi plan: su consejo', await texto('.tip p'), contiene('Cada pestaña muestra solo lo suyo', '«+ Agregar»'));
     await clic('[data-fk="tip-pagos"]');
     await clic('[data-fk="nav-midinero"]');
     check('Mi dinero: su consejo', await hay('[data-fk="tip-midinero"]'), true);
@@ -147,8 +148,9 @@ try {
     await clic('[data-fk="pr-P-AGUINALDO"]');
     await esperar(400);
     // Ajuste 5 (Mi plan más ligero): sin «Mi plan | Calendario»: «Ver por tipo», con sus secciones abiertas.
-    await ev('P.ui.pagosModo = "tipo"; P.ui.planAbiertas = { ingresos: true, fijos: true, deudas: true }; P.render(); true');
-    await clic('[data-fk="mp-matricula"]');
+    // v2.9 (R3): la matrícula de enero se ve en Mi plan → Mes → enero.
+    await ev('P.ui.pagosModo = "fecha"; P.ui.pagosVista = "mes"; P.ui.pagosMes = "2027-01"; P.render(); true');
+    await clic('[data-fk^="p-matricula-"]');
     await clic('[data-fk="pagar-con"]');
     await clic('[data-fk="pc-ver-mas"]');
     await clic('[data-fk="pc-uno:unico:aguinaldo"]');
@@ -162,7 +164,8 @@ try {
     await esperar(400);
     // Ajuste 5 (Mi plan más ligero): sin «Mi plan | Calendario»: «Ver por tipo», con sus secciones abiertas.
     await ev('P.ui.pagosModo = "tipo"; P.ui.planAbiertas = { ingresos: true, fijos: true, deudas: true }; P.render(); true');
-    await clic('[data-fk="mp-i-adelanto"]');
+    // v2.9 (R1): cada fila de «Por tipo» es de una fecha del periodo (mp-i-adelanto-2026-10-23).
+    await clic('[data-fk^="mp-i-adelanto-"]');
     await clic('[data-fk="adelanto-si"]');
     check('propone su quincena del 30 y $200', await ev('[Object.keys(P.ui.hoja.partes), document.getElementById("f-ad-2026-10-30")?.value]'), [['quincena|2026-10-30'], '200.00']);
     await clic('[data-fk="ad-ok"]');
@@ -172,7 +175,7 @@ try {
     await clic('[data-fk="nav-pagos"]');
     // Ajuste 5: la próxima quincena es la pestaña «Próxima» de Mi plan, con su resumen.
     await clic('[data-fk="tab-proxima"]');
-    check('su próxima quincena: con el descuento', await texto('.plan-res'), contiene('Te descuentan $200.00 del adelanto'));
+    check('su próxima quincena: con el descuento', await texto('.plan-res'), contiene('Quincena $600.00 − adelanto $200.00 = $400.00')); // v2.9 (R7): una sola línea clara
     await clic('[data-fk="nav-hoy"]');
     await foto('practicar-adelanto');
     // La tarjeta del primer día está en «Primer día» (C01).

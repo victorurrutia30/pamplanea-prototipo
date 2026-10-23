@@ -201,3 +201,21 @@ Pruebas: `invariantes` (las filas V2 a V34), `palabras-v28`, `actualizar`, `flui
 | O-17 | Entrenamiento con Mi plan nuevo (cierre) | «Aquí ves tu aguinaldo» señala «Más adelante»; el ejemplo de la próxima quincena cabe en 2 líneas | P2 | ✅ | v25 (a–f) |
 | O-18 | Quien vende, en Mi plan → Próxima (cierre) | «Tus ventas cuentan cuando las anotas», «Sale $191.00 aprox.» y «Este mes llevas $316.00 en ventas» | P2 | ✅ | v25 E |
 | O-19 | El «?» del resumen de Mi plan (cierre) | No tapa ninguna línea; 44 px | P3 | ✅ | v24, v25 H, capturas-v28 |
+
+## P. v2.9 · Números claros (auditoría de 4 personas y R1 a R12)
+
+| # | Tema | Qué se comprueba | Prioridad | Estado | Prueba |
+|---|---|---|---|---|---|
+| P-1 | El contador (4 personas, 21 oct–31 dic) | Libre, saldos, ahorros, deudas, Mes y cada pestaña de Mi plan coinciden al centavo con un contador independiente | P1 | ✅ | personas-v29 (0 diferencias) |
+| P-2 | «Comida afuera» (H1) | Un gasto de comida baja el presupuesto «Comida afuera»; el libre no baja dos veces; «bus» no es «Gasolina» | P1 | ✅ | invariantes V35, V4 |
+| P-3 | La pestaña manda (R1–R3) | Cada pestaña solo con lo suyo; total de sección = sus filas; sin secciones vacías ni «Más adelante» | P1 | ✅ | invariantes V36, V25, personas-v29 |
+| P-4 | «¿De dónde sale?» por pestaña (R4) | Hoy: Tienes − Ahorros − Sale = Libre; Próxima y Mes: Entra − Sale = Te quedarían; suma exacta | P1 | ✅ | invariantes V36, personas-v29 |
+| P-5 | «Te quedarían» de hoy = el libre del día de pago (R4) | Si todo sale como en tu plan: libre del día de pago = libre de hoy + «Te quedarían» | P1 | ✅ | invariantes V42 |
+| P-6 | Presupuestos (R5) | Editar, «Saltar esta quincena», «Ya no lo uso» (con confirmación, historial intacto), «Ya terminé» y «Reabrir» hasta el próximo ingreso | P1 | ✅ | invariantes V37 |
+| P-7 | «Por fecha \| Por tipo» arriba (R6) | El interruptor está junto a las pestañas; nada al final | P2 | ✅ | invariantes V38, entrega2-v23 |
+| P-8 | Adelanto (R7) | Una línea «Quincena $600.00 − adelanto $210.00 = $390.00 (incluye $10.00 de comisión)»; nunca dos veces | P1 | ✅ | invariantes V39, v24, personas-v29 |
+| P-9 | Ingresos de una vez (R8) | El que ya llegó o ya pasó no queda en Mi plan; el que esperas, solo en su periodo | P2 | ✅ | invariantes V43, v231 |
+| P-10 | El «?» de Mi plan → Mes (R9) | Es de Mi plan, no de la pantalla Mes | P3 | ✅ | invariantes V40 |
+| P-11 | Pestañas según el ingreso (R10) | Quincena: Esta quincena · Próxima · Mes; semana: Esta semana · Próxima · Mes; mes y sin ingreso fijo: Este mes · Próximo mes (con flechas) | P2 | ✅ | invariantes V41, personas-v29 |
+| P-12 | «aprox.» solo si hay un estimado (R11) | Próxima sin estimados: sin «aprox.»; la frase dice qué incluye «Te quedarían» | P2 | ✅ | personas-v29, palabras-v28 |
+| P-13 | Actualizar a la v2.9 | Desde c640e4e, d702de0 y a0cddba, con datos como los de Pam y Majo: cero pérdidas, copia «antes de la v2.9» que se recupera, cuadrito una vez | P1 | ✅ | actualizar ×3 |

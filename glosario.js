@@ -51,7 +51,7 @@ window.terminoGlosario = (id, variable = false) => {
 };
 window.TIPS = {
     hoy: 'Tu número dice cuánto puedes gastar hasta tu quincena. Tócalo para ver de dónde sale.',
-    pagos: 'Cada pestaña muestra solo lo de su periodo. Con «+ Agregar» sumas algo; toca una fila para verla.',
+    pagos: 'Cada pestaña muestra solo lo suyo. Con «+ Agregar» sumas algo; toca una fila para verla.',
     midinero: 'Cuánto tienes, tus ahorros y lo que debes. Toca una puerta para ver el detalle.',
     cuentas: 'Si tu efectivo no coincide, toca «Cuadrar» y di cuánto tienes. Sin culpa.',
     ahorros: 'Tus ahorros pueden estar dentro de una cuenta o aparte. Dentro, no cuentan en tu libre.',

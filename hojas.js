@@ -1863,6 +1863,7 @@
                 </ol>
                 ${k.faltaPagos > 0 || k.sinCubrir > 0 ? `<div class="nota nota--atencion" role="note">${icon('triangle-alert')}<p><strong>${esc(P.textoCero(k))}.</strong> Tu libre queda en $0.00, nunca en negativo.</p></div>` : ''}
                 ${k.porDia !== null ? `<p class="txt">Son unos ${dinero(k.porDia, { aprox: true })} por día durante ${plural(k.hz.dias, 'día', 'días')}.</p>` : ''}
+                ${k.libre > 0 && hz.ingreso ? `<button type="button" class="link link--start" data-a="hoja" data-hoja="pasarProxima" data-fk="d-pasar">${icon('calendar-days', 'ico-s')}¿Pasas algo de lo que te sobra a la próxima?</button>` : ''}
                 ${elegirHz}`,
                 pie: pie1('cerrarHoja', 'Entendido', 'desglose-ok'),
             };

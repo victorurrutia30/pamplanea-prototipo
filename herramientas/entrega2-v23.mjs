@@ -145,12 +145,19 @@ try {
     await clic('[data-fk="nav-pagos"]');
     // Ajuste 5 «Mi plan más ligero» (APROBADO por Victor 2026-10-22, punto 2): sin las pestañas «Mi plan | Calendario»;
     // abre por fecha y abajo está «Ver por tipo ›», con sus secciones plegadas (punto 9: «Deudas»).
-    check('dos vistas: por fecha y «Ver por tipo»', [await ev('document.querySelectorAll(".pagos-modo").length'), await texto('[data-fk="ver-tipo"]')], [0, 'Ver por tipo']);
+    // v2.9 (R6, DECIDIDO por criterio, autorizado por Victor 2026-10-23): «Por fecha | Por tipo» arriba, junto a las pestañas.
+    check('dos vistas: por fecha y «Por tipo», arriba', [await ev('document.querySelectorAll(".pagos-modo").length'), await texto('[data-fk="ver-tipo"]'), await ev('!!document.querySelector(".plan-modo")')], [0, 'Por tipo', true]);
     await clic('[data-fk="ver-tipo"]');
-    for (const s of ['ingresos', 'fijos', 'variables', 'ahorro', 'deudas']) await clic(`[data-fk="sec-${s}"]`);
+    // v2.9 (R1, R2): cada pestaña solo con lo suyo (y sin secciones vacías): la lista de todos los tipos se ve en el mes.
+    await clic('[data-fk="tab-mes"]');
+    await clic('[data-fk="pm-sig"]');
+    for (const s of ['ingresos', 'fijos', 'variables', 'ahorro', 'deudas']) await clic(`[data-fk="sec-${s}"]`).catch(() => null);
     await foto('mis-pagos');
-    check('lista completa', await texto('#pantalla'), contiene('Ingresos', 'Quincena', 'Gastos fijos', 'Presupuestos', 'Ahorro programado', 'Deudas', 'Préstamo Liss', 'Netflix', 'sale de:'));
-    await clic('[data-fk="mp-p6"]').catch(() => null);
+    const lista = await texto('#pantalla');
+    check('noviembre por tipo: todo lo de ese mes (lo que falta)', ['Ingresos', 'Quincena', 'Gastos fijos', 'Deudas', 'Préstamo Liss', 'Netflix', 'sale de:'].filter((w) => !String(lista).includes(w)), []);
+    check('sin secciones vacías: no tiene presupuestos ni ahorro programado (R2)', ['Presupuestos', 'Ahorro programado'].filter((w) => String(lista).includes(w + ' (')), []);
+    await clic('[data-fk^="mp-p-p6-"]').catch(() => null);
+    await clic('[data-fk="tab-actual"]').catch(() => null);
 
     // V2-47: «+ Pago» → Suscripción; Mes lo suma. v2.8 (APROBADO por Victor, 2026-10-22): «¿Con qué lo pagas?» ya no
     // viene con la tarjeta de crédito (nunca se elige la cuenta por el tipo de gasto): la persona la elige.

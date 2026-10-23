@@ -200,11 +200,11 @@ window.CASOS = [
  */
 window.CASOS_PRACTICA = [
     {
-        id: 'P-AGUINALDO', titulo: 'Pagar con el aguinaldo', persona: 'ana', variante: 'matricula', inicio: 'pagos',
+        id: 'P-AGUINALDO', titulo: 'Pagar con el aguinaldo', persona: 'ana', variante: 'matricula', inicio: 'pagos', inicioMes: '2027-01',
         para: 'Elegir que un pago de enero salga del aguinaldo (V2-52).',
         tarea: 'En enero pagas la matrícula: $100. Quieres pagarla con tu aguinaldo. Díselo a la app.',
         pasos: [
-            { t: 'En Mi plan, toca «Matrícula».', clave: 'pantalla:pago:matricula' },
+            { t: 'En Mi plan → Mes (enero), toca «Matrícula».', clave: 'pantalla:pago:matricula' },
             { t: 'En «Lo pagas con», toca «Cambiar o repartir».', clave: 'hoja:pagarCon' },
             { t: 'Toca «Ver más quincenas», elige «Con tu aguinaldo del 12 dic» y toca «Guardar cambios».', clave: 'guardado:pagarCon:unico' },
             { t: 'Mira la ficha: «Con tu aguinaldo del 12 dic». Tu libre de hoy no cambió.' },
@@ -220,9 +220,9 @@ window.CASOS_PRACTICA = [
             { t: 'En Mi plan, toca «Adelanto de salario».', clave: 'pantalla:ingreso:adelanto' },
             { t: 'Toca «Sí, anotar el descuento».', clave: 'hoja:adelanto' },
             { t: 'Elige «Tu quincena del 30», deja $200 y toca «Guardar descuento».', clave: 'guardado:adelanto' },
-            { t: 'Mira en Mi plan → Próxima: «te descuentan $200 del adelanto».' },
+            { t: 'Mira en Mi plan → Próxima: tu quincena del 30 ya viene con el descuento.' },
         ],
-        esperado: 'Mi plan → Próxima: «Entra $400.00 aprox. …» y «te descuentan $200.00 del adelanto». Al confirmar esa quincena, el monto sugerido ya viene con $200 menos.',
+        esperado: 'Mi plan → Próxima: «Entra $400.00 aprox. …» y «Quincena $600.00 − adelanto $200.00 = $400.00». Al confirmar esa quincena, el monto sugerido ya viene con $200 menos.',
         observar: '¿Entiende que no se cuenta dos veces? ¿Le queda claro de dónde sale el descuento?',
     },
     // v2.4.1: ingresos que varían (Rosa vende pupusas y recibe una remesa sin fecha fija).

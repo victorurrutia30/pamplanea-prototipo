@@ -231,13 +231,14 @@ try {
     await clic('[data-fk="tab-proxima"]');
     check('texto de la próxima', await texto('.plan-res-l'), 'Entra $1,477.00 aprox. · Sale $1,196.00 aprox.');
     check('te quedarían ~$281', await texto('.plan-res-n'), '$281.00 aprox.');
-    check('incluye ~$314 de adelanto', await texto('.plan-res-s'), 'Incluye $566.00 aprox. de tu pareja y $314.00 aprox. de adelanto');
+    // v2.9 (R12): lo que entra se ve fila por fila en la pestaña (no en una nota del resumen).
+    check('incluye ~$314 de adelanto', await ev(`[...document.querySelectorAll('#plan-panel .pl-b')].some((b) => b.textContent.includes('Adelanto de Salario') && b.textContent.includes('$314.00'))`), true);
     await foto('proyeccion-con-adelanto');
-    // «Más adelante» = después de «Próxima»: el adelanto se ve solo en su periodo.
-    // Ajuste 5: «Más adelante» es un bloque de Mi plan (sin «Calendario»).
+    // v2.9 (R1, R3): el adelanto se ve solo en su periodo; sin «Más adelante» (el aguinaldo está en Mes → diciembre).
     await clic('[data-fk="nav-pagos"]');
     await clic('[data-fk="tab-actual"]');
-    check('3) «Esta quincena → Más adelante» sin el adelanto', await ev('[...document.querySelectorAll(".pl-bloque")].filter((b) => b.querySelector(".pl-h").textContent.startsWith("Más adelante")).flatMap((b) => [...b.querySelectorAll(".pl-n")].map((e) => e.textContent))'), ['Aguinaldo']);
+    check('3) «Esta quincena» sin el adelanto ni el aguinaldo', await ev(`[...document.querySelectorAll('#plan-panel .pl-n')].map((e) => e.textContent).filter((t) => /Adelanto|Aguinaldo/.test(t))`), []);
+    check('3) el aguinaldo, en Mes → diciembre', await ev(`(() => { P.ui.pagosVista = 'mes'; P.ui.pagosMes = '2026-12'; P.render(); const t = [...document.querySelectorAll('#plan-panel .pl-n')].map((e) => e.textContent); P.ui.pagosVista = 'actual'; P.ui.pagosMes = null; P.render(); return t.includes('Aguinaldo'); })()`), true);
     await clic('[data-fk="tab-proxima"]');
     const idAd0 = await ev('P.st.ingresos.find((i) => i.nombre === "Adelanto de Salario").id');
     check('3) el adelanto está en la Próxima', await hay(`[data-fk="i-${idAd0}-2026-10-29"]`), true);
@@ -329,7 +330,8 @@ try {
     check('va en el periodo del aguinaldo (entra y sale ahí)', [a1.clave, a1.aguinaldo, a1.matricula], ['2026-11-29', 100000, [10000]]);
     await clic('[data-fk="nav-hoy"]');
     await clic('[data-fk="portada"]');
-    check('desglose: con eso pagas la matrícula', await texto('.hoja .nota--info'), contiene('Aguinaldo', 'con eso pagas la matrícula'));
+    // v2.9 (R3): «¿De dónde sale?» de hoy solo con lo que cuenta hoy: el aguinaldo y la matrícula no (la ficha lo dice).
+    check('desglose de hoy: sin el aguinaldo ni la matrícula', await texto('.hoja'), (t) => typeof t === 'string' && !t.includes('Aguinaldo') && !t.includes('Matrícula'));
     await clic('[data-fk="desglose-ok"]');
     // Sin llegada: el día que vence, aviso ámbar (nada cambia solo).
     await fecha('2027-01-15');

@@ -1,4 +1,4 @@
-# PamPlanea · prototipo v2.8.0
+# PamPlanea · prototipo v2.9.0
 
 Una versión de prueba de **PamPlanea**: saber cuánto te queda libre hasta tu próximo ingreso y que no se te olvide ningún pago.
 
@@ -12,6 +12,20 @@ La primera vez eliges cómo empezar: **«Aprender a usarla»** (recomendado) o *
 - **Instalar la app** (solo si todavía no la instalaste), **Completar tu Primer día** (con tus datos), **Cuéntale a Victor o a Pam cómo vas** y **Tus datos** (guardar una copia, recuperar o borrar), la apariencia y la versión.
 
 Lo de tus datos y lo de los ejemplos se guarda por separado: nada de lo que hagas con los ejemplos toca tus datos.
+
+## Lo nuevo en la v2.9 · Números claros
+
+- **Mi plan, una pestaña a la vez.** Cada pestaña muestra solo lo de su periodo: la lista por fecha, «Por tipo» con sus totales, el resumen y «¿De dónde sale?». Lo que viene después se ve navegando Mes. Ya no hay «Más adelante».
+- **«¿De dónde sale?» de cada pestaña.** El periodo de hoy: Tienes − Ahorros − Sale = Tu libre (el mismo de Hoy). Próxima y Mes: Entra − Sale = Te quedarían. Las líneas suman exacto. «Te quedarían» no suma lo que te sobre hoy.
+- **Tus pestañas siguen a tu ingreso:** por quincena, Esta quincena · Próxima · Mes; por semana, Esta semana · Próxima · Mes; por mes, o sin ingreso fijo, Este mes · Próximo mes (con flechas).
+- **«Por fecha | Por tipo» arriba**, junto a las pestañas.
+- **Presupuestos:** Editar, «Saltar esta quincena», «Ya no lo uso», y «Ya terminé» se puede deshacer con «Reabrir» hasta tu próximo ingreso.
+- **El adelanto, en una línea:** «Quincena $600.00 − adelanto $210.00 = $390.00 (incluye $10.00 de comisión)».
+- **De tu tarjeta,** cada periodo cuenta solo lo que no contaste al comprar («$13.00 de $58.00»).
+- **«Comida afuera»** se lleva tus gastos de comida (antes no se descontaba y tu libre bajaba dos veces).
+- **«aprox.»** solo cuando hay un monto estimado de verdad.
+- **Revisado con cuatro personas** que viven del 21 de octubre al 31 de diciembre (por quincena, por mes, por semana y con ventas): un contador independiente y la app coinciden al centavo (`herramientas/personas-v29.mjs`, `herramientas/AUDITORIA-v2.9.md`).
+- Al actualizar: tus datos completos, una copia «antes de la v2.9» y el cuadrito una vez.
 
 ## Lo nuevo en la v2.8 · Más claro
 
@@ -184,7 +198,7 @@ Los enlaces `…/pamplanea-prototipo/?set=A` y `…/?set=B` siguen llevando dire
 
 - Abre `index.html` con doble clic (Chrome o Edge): funciona sin servidor ni internet, con la guía de los 13 casos y los dos sets.
 - Detalle, decisiones y preguntas abiertas: [`LEEME.md`](LEEME.md) (secciones «Prototipo v2.8», «Prototipo v2.7», «Prototipo v2.6.7», «Prototipo v2.6.6», «Prototipo v2.6.5», «Prototipo v2.6.4», «Prototipo v2.6.3», «Prototipo v2.6.2», «Prototipo v2.6.1», «Prototipo v2.6», «Prototipo v2.5», «Prototipo v2.4.1», «Prototipo v2.4», «Prototipo v2.3.1», «Prototipo v2.3» y «Modos v2.2»). La matriz de QA: [`herramientas/MATRIZ-QA.md`](herramientas/MATRIZ-QA.md).
-- **Pruebas** (`herramientas/`, en el repo desde la v2.6.1; no se publican en la app): Node 22 o más nuevo y **Chrome** (o Edge) instalado en su ruta normal de Windows (`herramientas/cdp.mjs`); sin dependencias ni `npm install`. Por file:// basta `node herramientas/<prueba>.mjs` (por ejemplo `qa-v261.mjs`, `atras.mjs`, `numeros-entrenamiento.mjs`, `v261.mjs`, `v26.mjs`, `v25.mjs`…). Para probarla servida como en Pages: `node herramientas/servidor.mjs 8765` y la prueba con `--base=http://127.0.0.1:8765/pamplanea-prototipo/`. Que los datos sobrevivan a una actualización: `node herramientas/actualizar.mjs --ref=7c0d06e` (desde la v2.5), `--ref=ca97256` (desde la v2.6) o `--ref=7f48ead` (desde la v2.6.3) o `--ref=3974d06` (desde la v2.6.4) o `--ref=c640e4e` (desde la v2.6.7: además prueba DATOS-5 con Ana, Carlos, Rosa y un set sintético) o `--ref=d702de0` (desde la v2.7.0). Las invariantes del dinero: `invariantes.mjs`; los montos y Anotar: `montos.mjs`; el cuadrito de novedades: `novedades.mjs`; capturas de la v2.7: `capturas-v27.mjs`; las palabras que no se dicen (C-2): `palabras-v28.mjs`; capturas de la v2.8: `capturas-v28.mjs`. `generar-recursos.mjs` lee la piel del repo de la app (`C:/laragon/www/pamplanea`, solo lectura). `recorrer.mjs` es el recorrido de la v1: queda como historia (sus casos esperan cosas que acuerdos posteriores cambiaron). Para publicar una versión: `VERSION_PROTOTIPO` en `casos.js`, la de `index.html` y `node herramientas/generar-sw.mjs vX-AAAA-MM-DD`.
+- **Pruebas** (`herramientas/`, en el repo desde la v2.6.1; no se publican en la app): Node 22 o más nuevo y **Chrome** (o Edge) instalado en su ruta normal de Windows (`herramientas/cdp.mjs`); sin dependencias ni `npm install`. Por file:// basta `node herramientas/<prueba>.mjs` (por ejemplo `qa-v261.mjs`, `atras.mjs`, `numeros-entrenamiento.mjs`, `v261.mjs`, `v26.mjs`, `v25.mjs`…). Para probarla servida como en Pages: `node herramientas/servidor.mjs 8765` y la prueba con `--base=http://127.0.0.1:8765/pamplanea-prototipo/`. Que los datos sobrevivan a una actualización: `node herramientas/actualizar.mjs --ref=7c0d06e` (desde la v2.5), `--ref=ca97256` (desde la v2.6) o `--ref=7f48ead` (desde la v2.6.3) o `--ref=3974d06` (desde la v2.6.4) o `--ref=c640e4e` (desde la v2.6.7: además prueba DATOS-5 con Ana, Carlos, Rosa y un set sintético) o `--ref=d702de0` (desde la v2.7.0) o `--ref=a0cddba` (desde la v2.8.0, con datos como los de Pam y Majo). La auditoría de la v2.9 (4 personas día por día con un contador independiente): `personas-v29.mjs` (`--fotos` guarda cada pestaña). Las invariantes del dinero: `invariantes.mjs`; los montos y Anotar: `montos.mjs`; el cuadrito de novedades: `novedades.mjs`; capturas de la v2.7: `capturas-v27.mjs`; las palabras que no se dicen (C-2): `palabras-v28.mjs`; capturas de la v2.8: `capturas-v28.mjs`. `generar-recursos.mjs` lee la piel del repo de la app (`C:/laragon/www/pamplanea`, solo lectura). `recorrer.mjs` es el recorrido de la v1: queda como historia (sus casos esperan cosas que acuerdos posteriores cambiaron). Para publicar una versión: `VERSION_PROTOTIPO` en `casos.js`, la de `index.html` y `node herramientas/generar-sw.mjs vX-AAAA-MM-DD`.
 - Licencias de fuentes, emoji e íconos: [`recursos/licencias`](recursos/licencias).
 
-Prototipo v2.8.0 · 2026-10-23
+Prototipo v2.9.0 · 2026-10-23

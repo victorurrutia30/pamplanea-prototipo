@@ -205,6 +205,11 @@
         clearTimeout(bannerTimer);
         P.guardando = true;
         P.cargar(estadoDeCaso(caso), { tab: tab || caso.inicio || 'hoy' });
+        // v2.9 (R3): lo de otro mes se ve en Mi plan → Mes de ese mes (la matrícula de enero).
+        if (caso.inicioMes && !tab) {
+            Object.assign(P.ui, { pagosVista: 'mes', pagosMes: caso.inicioMes });
+            P.render();
+        }
         if (BANNERS[id]) bannerTimer = setTimeout(() => P.notificar(BANNERS[id]), 900);
         P.emitir('caso:' + id);
     }

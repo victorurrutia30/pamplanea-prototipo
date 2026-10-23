@@ -3,6 +3,8 @@
 // cobros, apodo y la sugerencia de repartir), Ahorros (dentro y aparte), la ficha de un ahorro, las preguntas de una vez (a
 // quien viene de la v2.7; con la de cada ahorro de antes, «no asumir») y el cuadrito. Y (APROBADO por Victor, 2026-10-22)
 // «¿Con qué lo pagas?» y «¿Se cobra solo?» en «+ Gasto fijo» y en «Completar tu Primer día», y «Editar» de la tarjeta BAC.
+// v2.9 «Números claros»: cada pestaña con solo lo suyo, «Por fecha | Por tipo» arriba, el «¿De dónde sale?» de Próxima y la
+// ficha del presupuesto («Saltar esta quincena», «Ya no lo uso»).
 // Cierre (ajustes 5 a 7 y la adenda): Mi plan (Esta quincena, Próxima, Mes, «Ver por tipo» y «+ Agregar»), Mis
 // categorías, el Mes («¿En qué se te fue?», presupuestos y «Tus suscripciones») y Ayuda → «Tus datos» con sus copias.
 // Uso: node herramientas/capturas-v28.mjs [--base=http://…/] [--puerto=9959] [--tema=serena-claro]
@@ -94,12 +96,22 @@ for (const ancho of [390, 1440]) {
         await foto('4-mi-plan', ancho);
         await ev(`P.ui.pagosVista = 'proxima'; P.render(); true`);
         await foto('4b-mi-plan-proxima', ancho);
+        // v2.9 (R4): el «¿De dónde sale?» de Próxima: Entra − Sale = Te quedarían.
+        await ev(`document.querySelector('[data-fk="plan-resumen"]').click(); true`);
+        await esperar(300);
+        await foto('4b2-de-donde-sale-proxima', ancho);
+        await ev(`P.cerrarHoja({ sinFoco: true }); true`);
         await ev(`P.ui.pagosVista = 'mes'; P.render(); true`);
         await foto('4c-mi-plan-mes', ancho);
         await ev(`P.ui.pagosVista = 'actual'; P.ui.pagosModo = 'tipo'; P.render(); true`);
         await foto('4d-mi-plan-por-tipo', ancho);
-        await subir('.plan-ver');
+        await ev(`document.getElementById('vista').scrollTop = 700; true`);
         await foto('4e-mi-plan-por-tipo-abajo', ancho);
+        // v2.9 (R5): la ficha del presupuesto: Editar, «Saltar esta quincena» y «Ya no lo uso».
+        await ev(`P.ui.pagosModo = 'fecha'; P.abrir('variable', 'v1'); true`);
+        await esperar(300);
+        await foto('4h-presupuesto', ancho);
+        await ev(`P.ui.stack = []; P.irTab('pagos'); true`);
         await ev(`P.ui.pagosModo = 'fecha'; P.render(); P.abrirHoja('agregar', {}); true`);
         await esperar(300);
         await foto('4f-agregar', ancho);

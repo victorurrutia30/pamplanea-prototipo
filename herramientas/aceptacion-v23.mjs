@@ -164,14 +164,16 @@ try {
     // v2.8 (C-8): cómo quedas la próxima quincena ya no está en Hoy: está arriba de Mi plan («gastos», D-2).
     // Ajuste 5 (punto 4): la próxima quincena está en Mi plan → Próxima, en su resumen.
     await ev(`P.ui.pagosVista = 'proxima'; P.irTab('pagos'); true`);
-    check('proyección', await texto('.plan-res'), contiene('Del 29 oct al 13 nov', 'Entra $1,163.00 aprox. · Sale $713.00 aprox.', 'Te quedarían', '$450.00 aprox.', 'Incluye $566.00 aprox. de tu pareja'));
+    // v2.9 (R4, R12): el resumen dice qué incluye «Te quedarían»; lo de tu pareja es una fila de la pestaña.
+    check('proyección', await texto('.plan-res'), contiene('Del 29 oct al 13 nov', 'Entra $1,163.00 aprox. · Sale $713.00 aprox.', 'Te quedarían', '$450.00 aprox.', 'Lo que entra menos tu plan'));
     await ev(`P.ui.pagosVista = 'actual'; P.irTab('hoy'); true`);
     check('proyección (números)', k.prox, { clave: '2026-10-29', entra: 116300, pagos: 71300, quedan: 45000, deficit: 0 });
     check('sin llegadas inventadas', await ev('P.st.ingresos.flatMap((i) => Object.keys(i.llegadas))'), []);
     check('inicio = hoy', await ev('P.st.inicio'), '2026-10-17');
     await clic('[data-fk="portada"]');
     await foto('victor-desglose');
-    check('desglose', await texto('.hoja'), contiene('Tienes', '$120.00', 'Cuchubal', '$25.00', 'Libre', '$95.00', 'Próxima quincena (29)'));
+    // v2.9 (R3): «¿De dónde sale?» de hoy solo con lo que cuenta hoy (la próxima quincena está en su pestaña).
+    check('desglose', await texto('.hoja'), (t) => contiene('Tienes', '$120.00', 'Cuchubal', '$25.00', 'Libre', '$95.00', 'Por pagar antes del 29')(t) && !t.includes('Próxima quincena (29)'));
     await clic('[data-fk="desglose-ok"]');
     await ev(`P.irTab('pagos'); true`);
     // Ajuste 5 (punto 3): «Próxima» es una pestaña de Mi plan (ya no hay tarjeta de la proyección).
@@ -182,7 +184,9 @@ try {
     check('Pagos → Próxima: mismos números', await texto('.plan-res'), contiene('Entra $1,163.00 aprox. · Sale $713.00 aprox.', '$450.00 aprox.'));
     await clic('[data-fk="tab-actual"]');
     check('esta quincena sin llegadas del 14', await texto('.pl-lista'), (x) => !String(x).includes('Llegó'));
-    check('«Más adelante» solo el aguinaldo', await ev('(() => { const g = [...document.querySelectorAll(".pl-bloque")].find((x) => x.querySelector(".pl-h")?.textContent.startsWith("Más adelante")); return g ? [...g.querySelectorAll(".pl-n")].map((x) => x.textContent) : []; })()'), ['Aguinaldo']);
+    // v2.9 (R3): sin «Más adelante»: el aguinaldo se ve en Mi plan → Mes de su mes (diciembre).
+    check('sin «Más adelante» en esta quincena', await ev('[...document.querySelectorAll(".pl-bloque .pl-h")].some((h) => h.textContent.startsWith("Más adelante"))'), false);
+    check('el aguinaldo está en Mes → diciembre', await ev(`(() => { const ag = P.st.ingresos.find((i) => i.categoria === 'aguinaldo'); P.ui.pagosVista = 'mes'; P.ui.pagosMes = ag.fecha.slice(0, 7); P.render(); const hay = !!document.querySelector('[data-fk^="i-' + ag.id + '-"]'); P.ui.pagosVista = 'actual'; P.ui.pagosMes = null; P.render(); return hay; })()`), true);
     await foto('victor-pagos-esta');
     // Ajuste 5 (puntos 6 y 11): en la lista por fecha todo ingreso lleva «+», también el estimado («+~$597»), para que no
     // dependa solo del color. Un pago nunca «−~». En la ficha sigue «~$597».

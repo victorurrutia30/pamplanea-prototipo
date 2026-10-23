@@ -41,6 +41,32 @@ Severidad: **P0** = dinero o un número que confunde o mezcla periodos; **P1** =
 - Mes («Entraron · Salieron»): el cuadre con $5.00 sin detalle, la corrección de un gasto, los cobros con tarjeta (Netflix dentro de su pago) y lo que se movió entre cuentas no se cuentan dos veces.
 - «Te quedarían» de Próxima es el del contador (Entra − Sale por fecha), en las cuatro personas.
 
-## Cómo quedó
+## Cómo quedó (v2.9)
 
-*(Se completa al terminar los arreglos: ver abajo.)*
+**Sobre la v2.9:**
+- `personas-v29` da **0 diferencias** en las cuatro personas: ni de dinero ni de periodos (antes, 2,890).
+- La única diferencia de dinero (H1) quedó arreglada, con la fila `invariantes` V35, que falla sobre la v2.8.
+- Ejemplo de H1 en $: el 1 de noviembre, Pam ve **$920.00** de libre; la v2.8 decía **$890.00**, porque sus $30 de pupusas bajaban su libre y no bajaban «Comida afuera».
+
+| # | Cómo quedó | Prueba |
+|---|---|---|
+| H1 | «Comida afuera» (y «Comer afuera», «Comidas») se lleva los gastos de comida. «Gasolina» sigue solo por su nombre: un «bus 1» no es gasolina. Al actualizar, si tu libre cambia por esto, el cuadrito lo dice con antes y después. | `invariantes` V35 y V4, `actualizar` (Pam y Majo) |
+| H2 | «Por tipo» muestra solo lo del periodo; el total de cada sección es la suma de sus filas y no hay secciones vacías. | V36, V25 |
+| H3 | Sin «Más adelante». El aguinaldo y la Quincena 25 se ven en Mes → diciembre. | V36, V43, `aceptacion-v23`, `v231` |
+| H4 | Un «¿De dónde sale?» por pestaña, que suma exacto: Tienes − Ahorros − Sale = Tu libre, o Entra − Sale = Te quedarían. | V36 |
+| H5 | «aprox.» solo con un estimado. | `personas-v29` (R11) |
+| H6 | Mes (en Mi plan) es tu plan del mes, con presupuestos y ahorro programado de cada periodo que empieza ese mes. Dice: «Lo que entra menos tu plan. No suma lo que te sobre hoy.» | `personas-v29` |
+| H7 | Quien cobra por mes: «Este mes · Próximo mes», con flechas. | V41 |
+| H8 | Quien vende: «Este mes · Próximo mes», con flechas. | V41 |
+| H9 | Adelanto: una línea, con su comisión. La quincena trae el descuento y el adelanto no se vuelve a sumar. | V39, `v24` |
+| H10 | Un ingreso de una vez que ya llegó o ya pasó sale de Mi plan (está en Mes). | V43 |
+| H11 | Presupuestos: «Saltar esta quincena», «Reabrir» (hasta tu próximo ingreso), «Ya no lo uso» y las respuestas claras. | V37 |
+| H12 | El «?» de Mi plan → Mes es de Mi plan. | V40 |
+| H13 | «Por fecha \| Por tipo» arriba. | V38 |
+| H14 | La tarjeta: cada periodo cuenta solo lo que no contaste al comprar. «¿De dónde sale?» dice cuánto ya contaste. | `personas-v29` (filas por fecha y monto) |
+
+**Revisión de diseñador** (capturas en `capturas/personas-v29`, a 390×844, vistas como imágenes), cambios hechos:
+- en el periodo de hoy, el monto de un presupuesto es lo que te queda;
+- con flechas, el rango no se repite;
+- «este mes llevas $X en ventas» solo en su mes;
+- el texto del interruptor va centrado.

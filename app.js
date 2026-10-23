@@ -1103,6 +1103,11 @@
                         filaPagoDe(p, o, { cuenta: false, marca: va || (o.estado === 'pagado' ? `✓${sr(' Pagado')}` : o.estado === 'saltado' ? 'saltado' : 'ya contado') });
                     }
                 }
+                // Una tarjeta sin monto todavía («por confirmar») o ya pagada, en gris: se ve, pero no suma aquí.
+                for (const o of M.ocurrenciasTarjeta(st, rango.desde, rango.hasta)) {
+                    if (contadas.has(`t:${o.tarjeta.id}:${o.fecha}`) || o.estado === 'vencido') continue;
+                    fila({ grupo: 'deudas', tipo: 'tarjeta', fecha: o.fecha, fk: `t-${o.tarjeta.id}-${o.fecha}`, abrir: abrirTarjeta(o.tarjeta), emoji: o.tarjeta.emoji, nombre: P.nombreTarjeta(o.tarjeta), monto: o.monto || 0, cuenta: false, hecha: o.estado === 'pagado', marca: o.monto === null ? 'por confirmar' : o.estado === 'pagado' ? `✓${sr(' Pagado')}` : 'ya contado', sub: tarjetaSub(o.tarjeta) });
+                }
                 if (x.saleRes) fila({ grupo: 'ahorro', tipo: 'reserva', fk: 'res-out', abrir: 'data-a="hoja" data-hoja="pasarProxima"', emoji: '📅', nombre: 'Lo que pasas al siguiente', monto: x.saleRes, sub: 'para tu periodo siguiente' });
                 for (const v of x.variables) fila({ grupo: 'presupuestos', tipo: 'presupuesto', fk: `pl-v-${v.id}`, abrir: `data-a="abrir" data-tipo="variable" data-id="${v.id}"`, emoji: v.emoji, nombre: v.nombre, monto: v.tope, marca: P.cadaPlan(), sub: `lo máximo ${P.cadaPlan()}` });
                 for (const a of x.programados) {
