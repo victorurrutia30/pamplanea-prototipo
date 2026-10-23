@@ -8,6 +8,8 @@
 // Recorre, con tus datos (una persona con tarjeta, ahorros dentro y aparte, gastos variables, ahorro programado, un
 // préstamo y un cobro con tarjeta) y con los tres ejemplos (Ana, Carlos y Rosa): las 4 pestañas, Mi plan en sus dos vistas,
 // cada ficha, cada hoja, los paneles de Ayuda, el glosario, los consejos y todos los textos del entrenamiento.
+// Cierre de la v2.8 (APROBADO por Victor 2026-10-22): también lo pendiente de los ajustes 5 a 7 («gasto variable», «~$»,
+// «Para anotar»…), sobre todas las pantallas Y los textos: la práctica, la guía de casos y el cuadrito de novedades.
 // Uso: node herramientas/palabras-v28.mjs [--base=http://…/] [--puerto=9966] [--raiz=<otra copia>]
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -57,7 +59,9 @@ const RECORRER = `(async () => {
             ...(a0 ? [['apartar', { id: a0 }], ['liberar', { id: a0 }], ['meta', { id: a0 }], ['usar', { id: a0 }], ['dondeAhorro', { id: a0 }], ['programar', { id: a0 }], ['moverApartado', { id: a0 }]] : []),
             ...(p0 ? [['pagado', { tipoPago: 'pago', id: p0.id, fecha: MOTOR.porPagar(st, p0).fecha }], ['editarPago', { id: p0.id }], ['pagarCon', { id: p0.id, fecha: MOTOR.porPagar(st, p0).fecha }], ['yaNoAplica', { id: p0.id }]] : []),
             ...(t0 ? [['estadoCuenta', { id: t0.id }], ['nuevaDeuda', { id: t0.id }], ['pagado', { tipoPago: 'tarjeta', id: t0.id, fecha: MOTOR.tarjetaInfo(st, t0).vence }]] : []),
-            ...(v0 ? [['editarVariable', { id: v0.id }]] : []), ...(g0 ? [['editarRegistro', { id: g0.id }]] : [])];
+            ...(v0 ? [['editarVariable', { id: v0.id }]] : []), ...(g0 ? [['editarRegistro', { id: g0.id }]] : []),
+            // Cierre: «+ Agregar», «Mis categorías» (una predefinida, una fija y una nueva).
+            ['agregar', {}], ['categorias', {}], ['categoria', { clave: 'gasto:comida' }], ['categoria', { fija: 0 }], ['categoriaNueva', {}]];
         for (const [tipo, datos] of hojas) {
             cerrar();
             try { P.abrirHoja(tipo, { ...datos }); await espera(20); tomar(quien + ' · hoja ' + tipo, document.getElementById('capa-hoja')); } catch (e) { out.push({ donde: quien + ' · hoja ' + tipo, error: e.message }); }
@@ -85,6 +89,11 @@ const RECORRER = `(async () => {
             P.ui.ob.editando = null; P.acciones.obSuscripcion(); await espera(20); ver(quien + ' · Primer día suscripción');
             P.acciones.obCerrar(); await espera(20);
         } catch (e) { out.push({ donde: quien + ' · Primer día', error: e.message }); }
+        // Cierre: Mes con «Filtros» abierto y cada tarjeta de «Lo que encontramos».
+        for (const i of [0, 1, 2]) {
+            cerrar(); P.ui.mesFiltros = true; P.ui.mesEnc = i; P.ui.mesTodas = true; P.irTab('mes'); await espera(30); ver(quien + ' · Mes ' + i);
+        }
+        P.ui.mesFiltros = false; P.ui.mesEnc = 0; P.ui.mesTodas = false;
         // Anotar con cada atajo y con frases.
         for (const atajo of ['gasto', 'ingreso', 'pagoDeuda', 'apartar', 'mover', 'cuadre']) {
             cerrar(); P.acciones.anotar(); P.acciones.anotarAtajo({ v: atajo }); await espera(20); tomar(quien + ' · Anotar ' + atajo, document.getElementById('capa-hoja'));
@@ -128,6 +137,8 @@ const RECORRER = `(async () => {
     // 3) El glosario, los consejos y el entrenamiento (todo su texto).
     for (const g of window.GLOSARIO) for (const v of [false, true]) { const x = window.terminoGlosario(g.id, v); if (x) out.push({ donde: 'glosario ' + g.id, texto: [x.t, x.para, x.ejemplo].join(' ') }); }
     for (const [k, t] of Object.entries(window.TIPS || {})) out.push({ donde: 'consejo ' + k, texto: String(t) });
+    // Cierre: el cuadrito de novedades (con ahorros, para ver todas sus líneas).
+    if (P.modos.lineasNovedades) out.push({ donde: 'cuadrito v2.8', texto: P.modos.lineasNovedades({ st: { ...DATOS.crearAna(), apartados: [{}] }, novedades: { 'v2.8': {} } }).join(' ') });
     const vistos = new Set();
     const caminar = (x, donde) => {
         if (!x || vistos.has(x)) return;
@@ -138,6 +149,9 @@ const RECORRER = `(async () => {
         for (const [k, v] of Object.entries(x)) if (!['sel', 'clave', 'claves', 'id', 'g', 'persona', 'variante', 'fk'].includes(k)) caminar(v, donde);
     };
     for (const v of Object.values(P.tour.VERSIONES)) for (const cap of v.caps) caminar(cap, 'entrenamiento ' + v.id + ':' + (cap.id || ''));
+    // Cierre: la práctica y los casos de la guía (lo que se lee en «Practicar» y en la prueba guiada).
+    for (const c of [...(window.CASOS || []), ...(window.CASOS_PRACTICA || [])]) caminar(c, 'caso ' + (c.id || ''));
+    for (const x of window.PRACTICA || []) caminar(x, 'practicar ' + (x.id || ''));
     return out;
 })()`;
 
@@ -150,7 +164,11 @@ const PROHIBIDAS = /\b(apart(ar|ado|ados|ada|adas|é|aste|amos|aron)|reserv(ar|a
 // Ajuste 3 (FM-8, APROBADO por Victor 2026-10-22): «pago» como sustantivo solo para deudas: tampoco «Otro pago», «¿Cuál pago?» ni
 // «¿Qué pago?».
 // Ajuste 4 (APROBADO por Victor 2026-10-22): tampoco «¿Qué pasó?» ni «Tasas municipales».
-const YA_NO = /\blo pago yo\b|¿\s*c[oó]mo le dices\s*\?|siempre es el mismo monto|\botro pago\b|¿\s*cu[aá]l pago\s*\?|¿\s*qu[eé] pago\s*\?|¿\s*qu[eé] pas[oó]\s*\?|tasas municipales/i;
+// Cierre de la v2.8 (lo pendiente de los ajustes 5 a 7, APROBADO por Victor 2026-10-22): «gasto(s) variable(s)» (ahora
+// «Presupuestos»), «~» con un monto (ahora «aprox.»), «Mi plan (Calendario)», «Mis pagos», «Para anotar» y «tope».
+const YA_NO = /\blo pago yo\b|¿\s*c[oó]mo le dices\s*\?|siempre es el mismo monto|\botro pago\b|¿\s*cu[aá]l pago\s*\?|¿\s*qu[eé] pago\s*\?|¿\s*qu[eé] pas[oó]\s*\?|tasas municipales|\bgastos? variables?\b|~\s?\$|~\d|signo ~|«~»|Mi plan \(Calendario\)|calendario de Mi plan|\bMis pagos\b|\btopes?\b/i;
+// «Para anotar» (el grupo de «Mis categorías» de antes), con mayúscula: «Este botón + es para anotar» sí se dice.
+const YA_NO_MAYUS = /\bPara anotar\b/;
 const malas = [];
 const errores = [];
 for (const x of textos) {
@@ -161,7 +179,7 @@ for (const x of textos) {
     const re = x.desglose ? /\bapart(ar|ado|ados|ada|adas|é|aste|amos|aron)\b/i : PROHIBIDAS;
     const m = re.exec(x.texto);
     if (m) malas.push(`${x.donde}: «…${x.texto.slice(Math.max(0, m.index - 50), m.index + 50)}…»`);
-    const y = YA_NO.exec(x.texto);
+    const y = YA_NO.exec(x.texto) || YA_NO_MAYUS.exec(x.texto);
     if (y) malas.push(`${x.donde}: «…${x.texto.slice(Math.max(0, y.index - 50), y.index + 50)}…»`);
     // «Pagos» como nombre de la pestaña (en una frase como «en Pagos», «Ver en Pagos», «Toca «Pagos»»).
     const tab = /\b(en|a|de|Toca|Ve a|Abre|Ver en)\s+«?Pagos\b/.exec(x.texto);

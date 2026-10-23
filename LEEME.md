@@ -175,6 +175,14 @@ Versión visible en la app y en la guía: **«Prototipo v2.8.0 · 2026-10-22»**
   - **3. Mis categorías:** «Gastos del día a día» («Las eliges al anotar lo que gastas»), «Presupuestos» («Con un máximo por quincena») y «Gastos fijos» (Suscripciones · Facturas y servicios · Otros).
   - **3b.** «+ Nueva categoría» arriba: «¿En qué grupo?», luego nombre e ícono. En una del día a día, «Ponerle un máximo» abre «+ Presupuesto» con ese nombre e ícono (FM-1 si ya existe).
   - **4. Mes:** la línea «Pagas ~$X al mes en suscripciones» pasa a «Lo que encontramos»: «Tus suscripciones: $10.00 al mes (Netflix)», hasta 3 nombres y «y n más». Tocarla abre Mi plan → Ver por tipo → Gastos fijos.
+- **Cierre de la v2.8: APROBADO por Victor (2026-10-22)**, frase literal: «Aprobado todo, procedamos a las pruebas necesarias y hagamos pruebas de fluidez también y procedamos a hacer push a main».
+  - Quedan aprobadas las decisiones técnicas 22 a 67 y los ajustes 1 a 7. Termina el modo ajuste: se hace todo lo de «Pendiente para el cierre».
+  - Sin supervisión: un detalle técnico sin efecto en el dinero se decide y se anota «REVISAR»; algo de producto sin decidir se anota y no se inventa.
+  - Nuevo: pruebas de fluidez (`herramientas/fluidez.mjs`, CPU 4 veces más lenta). Metas: abrir ≤ 2 s; cada interacción ≤ 200 ms; guardar ≤ 300 ms.
+- **Adenda al cierre: APROBADO por Victor (2026-10-22)**, frases literales: «que se les haga fácil recuperar datos también» y «que mida la fluidez bonita».
+  - **A. Recuperar datos, fácil:** Ayuda → «Tus datos» con las copias en palabras simples (la más nueva arriba), «Recuperar» con confirmación («Tus datos de ahora se guardan primero, por si te arrepientes»), y «Guardar una copia en mi teléfono» a la vista.
+  - **A2.** El cuadrito v2.8 cierra con «Tus datos están completos y a salvo.» y el enlace «¿Algo se ve raro? Recupera tus datos».
+  - **B. Fluidez visual:** sin saltos ni parpadeos al cambiar de pestaña, abrir hojas o cambiar de periodo (CLS ≈ 0); animaciones cortas, y nada se mueve con «reducir movimiento».
 
 ### E1 — el cálculo y los datos
 

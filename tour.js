@@ -131,6 +131,8 @@
     const hasta = (k) => (k.hz.ingreso ? `hasta tu quincena del ${M.partes(k.hz.fecha)[2]}` : k.hz.modo === 'quince' ? 'en los próximos 15 días' : 'hasta fin de mes');
     const antesDe = (k) => (k.hz.ingreso ? `antes del ${M.partes(k.hz.fecha)[2]}` : 'antes de fin de mes');
     const libreHoy = () => corto(P.calc().libre);
+    /** Cierre v2.8 (ajuste 7): lo aproximado se escribe «$600.00 aprox.», con centavos y después del monto. */
+    const aprox = (c) => M.dinero(c, { aprox: true });
     /** El primer pago que vence antes de que termine tu libre (el primero de «Próximos pagos»). */
     function primerPago() {
         const st = P.st;
@@ -142,7 +144,7 @@
     const ej = {
         libre: () => {
             const k = P.calc();
-            return k.porDia !== null ? `Tu libre es ${corto(k.libre)} ${hasta(k)}: son ~${corto(k.porDia)} por día.` : null;
+            return k.porDia !== null ? `Tu libre es ${corto(k.libre)} ${hasta(k)}: son ${aprox(k.porDia)} por día.` : null;
         },
         deDondeSale: () => {
             const k = P.calc();
@@ -162,16 +164,16 @@
         proxima: () => {
             const p = P.calc().proxima;
             if (!p) return null;
-            if (!p.principal) return `El próximo mes pagas ~${corto(p.pagos)}: lo vas juntando con lo que vendes.`;
-            return `En tu quincena del ${M.partes(p.principal.fecha)[2]} recibes ~${corto(p.entra)} y pagas ~${corto(p.pagos)}: te quedarían ~${corto(p.quedan)}.`;
+            if (!p.principal) return `El próximo mes pagas ${aprox(p.pagos)}: lo vas juntando con lo que vendes.`;
+            return `En tu quincena del ${M.partes(p.principal.fecha)[2]} recibes ${aprox(p.entra)} y pagas ${aprox(p.pagos)}: te quedarían ${aprox(p.quedan)}.`;
         },
         aproxQue: () => {
             const p = P.calc().proxima;
-            return p && p.principal ? `Mira el signo ~ en «~${corto(p.entra)}»` : 'Mira el signo ~';
+            return p && p.principal ? `Mira «aprox.» en «${aprox(p.entra)}»` : 'Mira la palabra «aprox.»';
         },
         aprox: () => {
             const p = P.calc().proxima;
-            return p && p.principal ? `Esperas ~${corto(p.entra)}. Si el ${M.partes(p.principal.fecha)[2]} llega otra cantidad, la app usa la que llegó.` : null;
+            return p && p.principal ? `Esperas ${aprox(p.entra)}. Si el ${M.partes(p.principal.fecha)[2]} llega otra cantidad, la app usa la que llegó.` : null;
         },
         pasar: (monto) => () => `Si pasas $${monto}, tu libre de ${libreHoy()} baja $${monto} y tu próxima quincena tiene $${monto} más.`,
         ahorros: () => {
@@ -212,7 +214,7 @@
         },
         aguinaldo: () => {
             const i = P.st.ingresos.find((x) => x.categoria === 'aguinaldo' && x.activo !== false);
-            return i ? `Tu aguinaldo de ~${corto(i.monto)} llega el ${M.fechaLarga(i.fecha)}: ese día suma a tu libre.` : null;
+            return i ? `Tu aguinaldo de ${aprox(i.monto)} llega el ${M.fechaLarga(i.fecha)}: ese día suma a tu libre.` : null;
         },
         matricula: () => {
             const p = M.pago(P.st, 'matricula');
@@ -382,7 +384,7 @@
             },
             { que: 'Aquí cambias o repartes un gasto', g: 'repartir', ejemplo: 'El colegio puede salir una parte de esta quincena y otra de la próxima.', antes: abrirEn('pagos', 'pago', 'colegio'), sel: seccion('Lo pagas con') },
         ],
-        pregunta: { p: 'Ves «~» antes de un monto. ¿Qué quiere decir?', ops: ['Que es exacto', 'Que es más o menos', 'Que ya llegó'], bien: 1, si: '¡Así es! ~ es «más o menos». Cuenta de verdad cuando llega.', casi: 'Casi: ~ quiere decir «más o menos». Cuenta de verdad cuando llega.', repaso: 1 },
+        pregunta: { p: 'Ves «aprox.» junto a un monto. ¿Qué quiere decir?', ops: ['Que es exacto', 'Que es más o menos', 'Que ya llegó'], bien: 1, si: '¡Así es! «aprox.» es «más o menos». Cuenta de verdad cuando llega.', casi: 'Casi: «aprox.» quiere decir «más o menos». Cuenta de verdad cuando llega.', repaso: 1 },
     };
     const pasoAhorros = { que: 'Aquí están tus ahorros', g: 'ahorros', ejemplo: ej.ahorros, antes: abrirEn('midinero', 'ahorros'), sel: seccion('Tus ahorros') };
     const pasoAhorrar = (monto) => ({
@@ -461,7 +463,7 @@
         pasos: [
             { que: 'Aquí ves tu aguinaldo', g: 'aguinaldo', ejemplo: ej.aguinaldo, antes: abrirPagos, sel: () => grupo('Más adelante') },
             { que: 'Aquí ves la matrícula de enero', g: 'pagarConExtra', ejemplo: ej.matricula, antes: abrirEn('pagos', 'pago', 'matricula'), sel: seccion('Lo pagas con') },
-            { que: 'Aquí anotas un adelanto de salario', g: 'adelanto', antes: abrirPagos, sel: '[data-fk="plan-agregar"]' },
+            { que: 'Con «+ Agregar» sumas un adelanto de salario', g: 'adelanto', antes: abrirPagos, sel: '[data-fk="plan-agregar"]' },
         ],
         pregunta: { p: 'Tu aguinaldo llega el 12 de diciembre. ¿Cuándo suma a tu libre?', ops: ['Desde hoy', 'El día que llega', 'En enero'], bien: 1, si: '¡Así es! Suma el día que llega, no antes.', casi: 'Casi: suma el día que llega. Antes no cuenta.', repaso: 0 },
     };

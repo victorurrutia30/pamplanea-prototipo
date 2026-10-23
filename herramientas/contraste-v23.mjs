@@ -47,6 +47,13 @@ for (const tema of ['serena-claro', 'serena-oscuro', 'ancla-claro', 'ancla-oscur
     await b.evaluar('P.abrirHoja("categorias"); true');
     await esperar(150);
     Object.assign(r, await b.evaluar(medir([['mis categorías: grupo', '.hoja .campo-l--sec']])));
+    // Cierre v2.8: «va en [tarjeta]» y «⚠ por confirmar» con un caso que sí los tiene (Ana: la luz venció y Netflix va en su tarjeta).
+    await b.evaluar(`P.cerrarHoja({ sinFoco: true }); P.sinGuardar = true; P.cargarPersona('ana'); P.ayuda && P.ayuda.abierto && P.ayuda.cerrar({ foco: false }); P.cambiar((s) => { s.pagos.push({ id: 'netflix', nombre: 'Netflix', emoji: '🎬', categoria: 'suscripciones', monto: 1000, estimado: false, frecuencia: 'mensual', dia: 24, medio: 'bac', tipoPago: 'suscripcion', avisos: [], desde: '2026-10-01', creado: '2026-10-01', hechos: {}, previos: [] }); }, {}); P.ui.pagosModo = 'fecha'; P.ui.pagosVista = 'actual'; P.irTab('pagos'); true`);
+    await esperar(200);
+    Object.assign(r, await b.evaluar(medir([['va en [tarjeta]', '.monto--va'], ['va en: nombre', '.pl-fila--va .pl-n'], ['⚠ por confirmar', '.plan-conf']])));
+    await b.evaluar('P.irTab("mes"); true');
+    await esperar(150);
+    Object.assign(r, await b.evaluar(medir([['mes: contra el anterior (Ana)', '.mes-res-c']])));
     await b.evaluar('P.cerrarHoja({ sinFoco: true }); true');
     await b.evaluar('P.irTab("midinero"); true');
     await esperar(150);

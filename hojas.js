@@ -4687,7 +4687,7 @@
                 const cat = h.otraCat ? P.crearCategoria(s, { grupo: 'variable', nombre: h.catNombre.trim(), emoji: h.catEmoji || '🏷️' }) : null;
                 const v = P.crearVariable(s, { nombre, emoji: cat ? cat.emoji : h.emoji && h.emoji !== '🧾' ? h.emoji : D.EMOJI_NOMBRE[w] || k.emoji, categoria: cat ? 'otros' : k.id, tope: monto, medio: h.medio });
                 if (cat || h.propia) v.propia = cat ? cat.id : h.propia;
-            }, { aviso: `${nombre}: tope de ${dinero(monto)} ${P.cadaPlan()}`, claves: ['guardado:variable', ...(h.otraCat ? ['guardado:categoria'] : [])] });
+            }, { aviso: `${nombre}: lo máximo es ${dinero(monto)} ${P.cadaPlan()}`, claves: ['guardado:variable', ...(h.otraCat ? ['guardado:categoria'] : [])] });
             return;
         }
         const turnoMonto = M.leerMonto(h.turnoMonto);

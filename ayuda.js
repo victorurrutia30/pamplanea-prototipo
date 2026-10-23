@@ -233,7 +233,7 @@
     }
 
     // Detección automática y registro de toques y pantallas.
-    const NOMBRES = { hoy: 'Hoy', pagos: 'Pagos', midinero: 'Mi dinero', mes: 'Mes', pago: 'Ficha de pago', tarjeta: 'Ficha de tarjeta', apartado: 'Ficha de ahorro', lugar: 'Ficha de lugar', ingreso: 'Ficha de ingreso', reparte: 'Reparte', aldia: 'Pongámonos al día', logro: 'Meta cumplida', espacio: 'Tu espacio', invitar: 'Invitar', anotar: 'Anotar', desglose: 'Detalle del libre', menu: 'Menú', usar: 'Usar ahorro', pagado: 'Pagado', estadoCuenta: 'Estado de cuenta', ingresoLlego: '¿Cuánto te llegó?', nuevaDeuda: 'Tarjeta o préstamo', nuevoPago: 'Nuevo pago', cuentas: 'Cuentas', ahorros: 'Ahorros', deudas: 'Deudas', atencion: 'Necesitan atención', pagarCon: 'Lo pagas con', reservar: 'Reservar', yaLoUse: '¿Ya lo usaste?', editarRegistro: 'Corregir', pagarYa: '¿Cuánto pagas?', apartar: 'Ahorrar', cuadrar: 'Cuadrar', decidirPago: 'Cuánto voy a pagar' };
+    const NOMBRES = { hoy: 'Hoy', pagos: 'Mi plan', porConfirmar: 'Por confirmar', variable: 'Ficha de presupuesto', midinero: 'Mi dinero', mes: 'Mes', pago: 'Ficha de pago', tarjeta: 'Ficha de tarjeta', apartado: 'Ficha de ahorro', lugar: 'Ficha de lugar', ingreso: 'Ficha de ingreso', reparte: 'Reparte', aldia: 'Pongámonos al día', logro: 'Meta cumplida', espacio: 'Tu espacio', invitar: 'Invitar', anotar: 'Anotar', desglose: 'Detalle del libre', menu: 'Menú', usar: 'Usar ahorro', pagado: 'Pagado', estadoCuenta: 'Estado de cuenta', ingresoLlego: '¿Cuánto te llegó?', nuevaDeuda: 'Tarjeta o préstamo', nuevoPago: 'Nuevo pago', cuentas: 'Cuentas', ahorros: 'Ahorros', deudas: 'Deudas', atencion: 'Necesitan atención', pagarCon: 'Lo pagas con', reservar: 'Reservar', yaLoUse: '¿Ya lo usaste?', editarRegistro: 'Corregir', pagarYa: '¿Cuánto pagas?', apartar: 'Ahorrar', cuadrar: 'Cuadrar', decidirPago: 'Cuánto voy a pagar' };
     function nombrePantalla(clave) {
         const [tipo, nombre] = clave.split(':');
         if (tipo === 'onboarding' && /^paso\d/.test(nombre)) return 'Primer día ' + nombre.replace('paso', '');
@@ -593,7 +593,7 @@
         const comprension = `<details class="ay-card ay-victor" id="ay-d11"><summary class="ay-h3">${icon('circle-question-mark', 'ico-s')}Preguntas de comprensión (prueba familiar)</summary><p class="fila-s">Pregúntalas con la app abierta en Hoy. Lo que esperas oír, en pocas palabras:</p><ol class="mini-lista">${[
             ['Si hoy gastas $20, ¿qué cambia?', 'Mi libre baja $20 (y lo que tengo en esa cuenta).'],
             ['Si pagas $50 de una cuota de $100, ¿cuánto falta?', 'Faltan $50: quedan pendientes en mi plan.'],
-            ['Si gastas $20 en el súper, ¿baja tu libre?', 'No: el súper ya estaba en mi plan. Me quedan $20 menos de su tope.'],
+            ['Si gastas $20 en el súper, ¿baja tu libre?', 'No: el súper ya estaba en mi plan. A mi presupuesto del súper le quedan $20 menos.'],
         ].map(([q, r]) => `<li><strong>${esc(q)}</strong> <span class="fila-s">${esc(r)}</span></li>`).join('')}</ol></details>`;
         return `<h3 class="campo-l campo-l--sec ay-v-sec" id="ay-v-t">${icon('users', 'ico-xs')}Herramientas de Victor (enlace ?victor=1)</h3>${actual}${comprension}${notas}${lista}${datosHtml}${paraVictor}`;
     }

@@ -520,20 +520,14 @@
     function lineasNovedades(u) {
         const st = u.st;
         const n = u.novedades && u.novedades['v2.8'];
+        // Cierre de la v2.8 (APROBADO por Victor 2026-10-22): 5 líneas como mucho, nada técnico; el antes y después solo si cambió un número.
         const lineas = ['Pagos ahora se llama Mi plan: ahí ves lo que viene.'];
         if (st.apartados.length) lineas.push('Tus ahorros ya no se mezclan con lo que puedes gastar.');
-        lineas.push('El súper y la gasolina pueden ser gastos variables.');
+        lineas.push('Ponle un máximo a lo que quieras: son tus presupuestos.');
+        lineas.push('Mes te cuenta en qué se te fue el dinero.');
         const correccion = lineaCorreccion(n, st);
-        if (n && n.con27) {
-            const de27 = [];
-            if (st.pagos.some((p) => p.activo !== false)) de27.push('Si pagas parte de una cuota, te mostramos cuánto falta.');
-            if (st.tarjetas.length) de27.push('Tus abonos a la tarjeta ahora bajan lo que debes.');
-            de27.push('Ya puedes anotar montos grandes, como 1,200.');
-            for (const l of de27) if (lineas.length < (correccion ? 3 : 4)) lineas.push(l);
-        }
         if (correccion) lineas.push(correccion);
-        // Con el cierre, 5 líneas como mucho.
-        return lineas.slice(0, 4);
+        return lineas.slice(0, 5);
     }
     const NOV_TITULO = '¡PamPlanea está más clara! ✨';
     const NOV_CIERRE = 'Tus datos están completos y a salvo.';
@@ -555,6 +549,7 @@
             <ul class="nov-lista" id="nov-x">${lineas.map((l) => `<li>${icon('check', 'ico-xs')}<span>${esc(l)}</span></li>`).join('')}</ul>
             <p class="nov-cierre">${esc(NOV_CIERRE)}</p>
             <button type="button" class="btn btn--prim btn--48 btn--full" data-a="novedadesOk" data-fk="nov-ok">¡Entendido!</button>
+            <button type="button" class="link nov-recuperar" data-a="novedadesRecuperar" data-fk="nov-recuperar">¿Algo se ve raro? Recupera tus datos</button>
         </section>`;
         document.getElementById('app').appendChild(capa);
         for (const id of ['vista', 'nav', 'aviso-proto', 'capa-hoja', 'capa-banner', 'capa-toast', 'tarea-bar']) {
@@ -585,6 +580,11 @@
         P.emitir('novedades:cerrado');
     }
     P.acciones.novedadesOk = () => cerrarNovedades();
+    /** Adenda al cierre (APROBADO por Victor 2026-10-22): del cuadrito a «Tus datos», para recuperar una copia. */
+    P.acciones.novedadesRecuperar = () => {
+        cerrarNovedades();
+        if (P.ayuda && P.ayuda.abrir) P.ayuda.abrir('datos');
+    };
     // Con el cuadrito abierto: Escape lo cierra y Tab no sale de él (antes que Ayuda y las hojas).
     window.addEventListener(
         'keydown',
@@ -593,7 +593,10 @@
             e.preventDefault();
             e.stopPropagation();
             if (e.key === 'Escape') return cerrarNovedades();
-            document.querySelector('[data-fk="nov-ok"]').focus({ preventScroll: true });
+            // Tab va y viene entre «¡Entendido!» y «Recupera tus datos».
+            const ok = document.querySelector('[data-fk="nov-ok"]');
+            const rec = document.querySelector('[data-fk="nov-recuperar"]');
+            (document.activeElement === ok && rec ? rec : ok).focus({ preventScroll: true });
         },
         true,
     );
@@ -1251,7 +1254,7 @@
         if (!datos || !datos.st || problemaDatos(datos.st, { estricto: true })) return { error: 'La copia está incompleta o dañada.' };
         // V2-79: una copia guardada después del error trae los datos de ejemplo, no los tuyos.
         if (esDeEjemplo(datos.st)) return { error: 'Esa copia tiene datos de ejemplo, no los tuyos. Busca una copia de antes.' };
-        return { datos, fecha, resumen: `${datos.st.lugares.length} lugares · ${datos.st.pagos.length} pagos · ${datos.st.registros.length} movimientos` };
+        return { datos, fecha, resumen: `${datos.st.lugares.length} cuentas · ${datos.st.pagos.length} en tu plan · ${datos.st.registros.length} movimientos` };
     }
     function restaurar(datos) {
         // V2-79: nunca se escribe un ejemplo como tus datos. v2.7 (DATOS-2): ni algo que no pase la revisión completa.
@@ -1316,22 +1319,29 @@
                 <p class="ay-version">${esc(VERSION)} · Tus datos solo están en este teléfono</p>`;
         }
         const hay = !!u.st;
-        const copia = u.ultimaCopia ? `Tu última copia: ${fechaCorta(diaDe(u.ultimaCopia))}.` : 'Todavía no has guardado una copia.';
+        const copia = u.ultimaCopia ? `Tu última copia: ${fechaCorta(diaDe(u.ultimaCopia))}.` : 'Todavía no guardas una.';
         const r = restaurando;
+        // Adenda al cierre (APROBADO por Victor 2026-10-22): «que se les haga fácil recuperar datos también».
         const guardarHtml = hay
-            ? `<section class="ay-card ay-card--prim" aria-labelledby="dt-c"><h3 class="ay-h3" id="dt-c">${icon('receipt-text', 'ico-s')}Guardar copia de mis datos</h3>
-                <p class="txt">Descarga un archivo con todo lo que llevas. Guárdalo o mándatelo por WhatsApp. ${copia}</p>
-                <div class="ay-acc"><button type="button" class="btn btn--prim btn--48" data-a="modoCopia" data-fk="dt-copia">Guardar copia</button>${puedeCompartirArchivo() ? '<button type="button" class="btn btn--48" data-a="modoCompartirCopia" data-fk="dt-compartir">Compartir copia</button>' : ''}</div></section>`
-            : `<section class="ay-card ay-card--prim" aria-labelledby="dt-c"><h3 class="ay-h3" id="dt-c">${icon('receipt-text', 'ico-s')}Todavía no usas tus datos</h3><p class="txt">Cuando la uses con tus datos, aquí guardas una copia. Si tienes una copia de antes, puedes restaurarla.</p></section>`;
+            ? `<section class="ay-card ay-card--prim" aria-labelledby="dt-c"><h3 class="ay-h3" id="dt-c">${icon('receipt-text', 'ico-s')}Una copia en tu teléfono</h3>
+                <p class="txt">Guárdala de vez en cuando; te sirve si cambias de teléfono. ${copia}</p>
+                <div class="ay-acc"><button type="button" class="btn btn--prim btn--48" data-a="modoCopia" data-fk="dt-copia">Guardar una copia en mi teléfono</button>${puedeCompartirArchivo() ? '<button type="button" class="btn btn--48" data-a="modoCompartirCopia" data-fk="dt-compartir">Compartir copia</button>' : ''}</div></section>`
+            : `<section class="ay-card ay-card--prim" aria-labelledby="dt-c"><h3 class="ay-h3" id="dt-c">${icon('receipt-text', 'ico-s')}Todavía no usas tus datos</h3><p class="txt">Cuando la uses con tus datos, aquí guardas una copia. Si tienes una copia de antes, puedes recuperarla.</p></section>`;
         // V2-69 (#38): «Instalar» ya no está aquí: es su propia fila en «Ayuda» (solo si no está instalada).
         const borrarHtml = hay
             ? `<section class="ay-card" aria-labelledby="dt-b"><h3 class="ay-h3" id="dt-b">${icon('trash-2', 'ico-s')}Borrar todos mis datos</h3>
                 ${borrar === 0 ? `<p class="txt">Borra todo lo de «Usarla con mis datos» en este teléfono. Los ejemplos no se tocan.</p><button type="button" class="link link--peligro" data-a="modoBorrar" data-v="1" data-fk="dt-borrar">${icon('trash-2', 'ico-s')}Borrar todos mis datos</button>` : borrar === 1 ? `<div class="nota nota--atencion" role="alertdialog" aria-labelledby="dt-b1">${icon('triangle-alert')}<div><p id="dt-b1"><strong>¿Borrar todos tus datos?</strong> Lugares, pagos, ahorros y todo lo anotado.</p><div class="ay-acc"><button type="button" class="btn" data-a="modoBorrar" data-v="0" data-fk="dt-b-no">Cancelar</button><button type="button" class="btn btn--peligro" data-a="modoBorrar" data-v="2" data-fk="dt-b-si">Sí, borrar</button></div></div></div>` : `<div class="nota nota--atencion" role="alertdialog" aria-labelledby="dt-b2">${icon('triangle-alert')}<div><p id="dt-b2"><strong>Última confirmación: esto no se puede deshacer.</strong> ${u.ultimaCopia ? 'Tienes una copia guardada.' : 'No has guardado ninguna copia.'}</p><div class="ay-acc"><button type="button" class="btn" data-a="modoBorrar" data-v="0" data-fk="dt-b2-no">Cancelar</button><button type="button" class="btn btn--peligro" data-a="modoBorrarYa" data-fk="dt-b2-si">Borrar para siempre</button></div></div></div>`}</section>`
             : '';
+        const copias = copiasInternas();
+        const confirmar = r && r.datos
+            ? `<div class="nota nota--atencion" role="alertdialog" aria-labelledby="dt-r-c">${icon('triangle-alert')}<div><p id="dt-r-c"><strong>¿Recuperar ${esc(r.etiqueta ? `«${r.etiqueta}»` : `la copia del ${fechaCorta(diaDe(r.fecha) || hoy())}`)}?</strong> ${hay ? 'Tus datos de ahora se guardan primero, por si te arrepientes.' : 'Después verás tus datos.'}</p><p class="fila-s">${esc(r.resumen)}</p><div class="ay-acc"><button type="button" class="btn" data-a="modoRestaurarNo" data-fk="dt-r-no">Cancelar</button><button type="button" class="btn btn--prim" data-a="modoRestaurarSi" data-fk="dt-r-si">Sí, recuperar</button></div></div></div>`
+            : '';
         return `${guardarHtml}
-            <section class="ay-card" aria-labelledby="dt-r"><h3 class="ay-h3" id="dt-r">${icon('rotate-ccw', 'ico-s')}Restaurar una copia</h3>
+            <section class="ay-card" aria-labelledby="dt-r"><h3 class="ay-h3" id="dt-r">${icon('rotate-ccw', 'ico-s')}Recuperar una copia</h3>
                 ${r && r.error ? `<p class="campo-error">${icon('triangle-alert')}<span>${esc(r.error)}</span></p>` : ''}
-                ${r && r.datos ? `<div class="nota nota--atencion" role="alertdialog" aria-labelledby="dt-r-c">${icon('triangle-alert')}<div><p id="dt-r-c"><strong>¿Reemplazar tus datos con esta copia?</strong> Copia del ${esc(fechaCorta(diaDe(r.fecha) || hoy()))}: ${esc(r.resumen)}. ${hay ? 'Lo que tienes ahora se reemplaza.' : 'Después verás tus datos.'}</p><div class="ay-acc"><button type="button" class="btn" data-a="modoRestaurarNo" data-fk="dt-r-no">Cancelar</button><button type="button" class="btn btn--peligro" data-a="modoRestaurarSi" data-fk="dt-r-si">${hay ? 'Sí, reemplazar' : 'Sí, restaurar'}</button></div></div></div>` : `<p class="txt">Elige el archivo «pamplanea-copia-…» (.json o .txt). Antes de reemplazar te pido confirmar.</p><label class="btn btn--48 btn--full" for="dt-archivo" data-fk="dt-elegir">Elegir archivo</label><input id="dt-archivo" class="sr-only" type="file" accept="application/json,.json,text/plain,.txt" data-copia>`}</section>
+                ${confirmar}
+                ${copias.length ? `<p class="fila-s">Las guarda la app en este teléfono. La más nueva, arriba.</p><ul class="lista ay-copias">${copias.map((c, i) => `<li class="fila"><span class="fila-txt"><span class="fila-t">${esc(etiquetaCopia(c))}</span></span><button type="button" class="btn btn--sm" data-a="modoCopiaInterna" data-id="${esc(c.clave)}" data-fk="dt-rec-${i}">Recuperar</button></li>`).join('')}</ul>` : '<p class="txt">Todavía no hay copias en este teléfono.</p>'}
+                <label class="btn btn--48 btn--full" for="dt-archivo" data-fk="dt-elegir">Recuperar desde un archivo</label><input id="dt-archivo" class="sr-only" type="file" accept="application/json,.json,text/plain,.txt" data-copia></section>
             ${borrarHtml}
             <p class="ay-version">${esc(VERSION)} · Tus datos solo están en este teléfono</p>`;
     }
@@ -1365,6 +1375,8 @@
         }
         return `${intro}${cuerpo}<p class="fila-s">Los datos de ejemplo quedaron guardados aparte, por si Victor o Pam los necesitan.</p><p class="ay-version">${esc(VERSION)}</p>`;
     }
+    /** Adenda al cierre: el nombre de una copia en palabras simples («Antes de la actualización · 23 oct»). */
+    const etiquetaCopia = (c) => `${String(c.clave).includes('antes-de-restaurar') ? 'Antes de recuperar' : 'Antes de la actualización'} · ${fechaCorta(c.fecha)}`;
     /** v2.7 (DATOS-2): las copias internas que se pueden recuperar (ya revisadas), la más nueva primero. */
     function copiasInternas() {
         const out = [];
@@ -1520,6 +1532,14 @@
         P.avisar('Copia descargada: ' + nombreCopia());
     };
     acc.modoCompartirCopia = () => compartirCopia();
+    /** Adenda al cierre: «Recuperar» una copia del teléfono: primero se confirma (lo de ahora se guarda antes). */
+    acc.modoCopiaInterna = (d) => {
+        const c = P.almacen.leer(d.id, null);
+        const crudo = c && (d.id === CLAVE_RESPALDO ? c : c.datos);
+        const fecha = (c && (d.id === CLAVE_RESPALDO ? c.actualizado || c.creado : c.fecha)) || null;
+        restaurando = crudo ? { ...validarDatos(crudo, fecha), etiqueta: etiquetaCopia({ clave: d.id, fecha: diaDe(fecha) }) } : { error: 'No pudimos leer esa copia.' };
+        P.ayuda.pintar({ foco: restaurando.error ? '[data-fk="dt-elegir"]' : '[data-fk="dt-r-no"]' });
+    };
     acc.modoRestaurarNo = () => {
         restaurando = null;
         P.ayuda.pintar({ foco: '[data-fk="dt-elegir"]' });
@@ -1528,7 +1548,7 @@
         const datos = restaurando.datos;
         restaurando = null;
         P.ayuda.cerrar({ foco: false });
-        if (restaurar(datos)) P.avisar('Listo: restauramos tu copia');
+        if (restaurar(datos)) P.avisar('Listo: recuperamos tu copia');
         else P.avisar('Esa copia está incompleta o dañada. No cambiamos nada.', { check: false });
     };
     acc.modoBorrar = (d) => {
@@ -1619,6 +1639,8 @@
         entrenamiento,
         guardarEntrenamiento,
         tipsVistos,
+        // Cierre v2.8: las líneas del cuadrito, para que `palabras-v28` las revise.
+        lineasNovedades: (u) => lineasNovedades(u),
         tipVisto,
         vistaPlan,
         guardarVistaPlan,

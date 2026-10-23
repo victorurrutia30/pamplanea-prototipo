@@ -4468,3 +4468,18 @@ html.con-hazlo .mask {
     font-size: 15px;
     font-weight: 600;
 }
+
+/* Cierre v2.8 (adenda): el enlace del cuadrito a «Tus datos» y la lista de copias. */
+.nov-recuperar {
+    justify-self: center;
+    margin: 4px auto 0;
+    font-size: 13px;
+}
+.ay-copias .fila {
+    min-height: 52px;
+    gap: 8px;
+    padding: 4px 0;
+}
+.ay-copias .fila-txt {
+    padding-left: 4px;
+}

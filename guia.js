@@ -10,9 +10,9 @@
     const PERSONAS = { ana: 'Ana', carlos: 'Carlos', rosa: 'Rosa', nueva: 'Persona nueva' };
     /** Exploración libre: quién es cada persona de ejemplo. */
     const LIBRE = {
-        ana: ['Ana, pago quincenal', 'Cobra ~$600 el 15 y el 30 en Banco Agrícola. Tiene $40 en efectivo y $1,455.60 en el banco, tarjeta Crédito BAC (corte 15, pago 5, cupo $1,500), luz vencida sin confirmar y tres ahorros: Emergencias, Laptop (lista para usar) y Vacaciones.'],
-        carlos: ['Carlos, pago semanal', 'Cobra ~$90 cada viernes, en efectivo. Tiene $125 y paga $150 de alquiler el día 1: lo paga con su pago del viernes 30 y la app le sugiere reservar lo que falta (él decide). Aporta $10 al cuchubal cada viernes.'],
-        rosa: ['Rosa, ingresos que varían', 'Vende pupusas en su casa (lo que entra cambia cada día) y su hijo le manda una remesa sin fecha fija (~$150, más o menos el 28). Tiene $110 en efectivo y $95 en Banco Agrícola, dos ahorros (Emergencias y Plancha nueva) y paga alquiler ($120 el 5), luz, agua y la cuota de la cooperativa ($45 el 25). Ve su libre hasta fin de mes.'],
+        ana: ['Ana, pago quincenal', 'Cobra $600.00 aprox. el 15 y el 30 en Banco Agrícola. Tiene $40 en efectivo y $1,455.60 en el banco, tarjeta Crédito BAC (corte 15, pago 5, cupo $1,500), luz vencida sin confirmar y tres ahorros: Emergencias, Laptop (lista para usar) y Vacaciones.'],
+        carlos: ['Carlos, pago semanal', 'Cobra $90.00 aprox. cada viernes, en efectivo. Tiene $125 y paga $150 de alquiler el día 1: lo paga con su pago del viernes 30 y la app le sugiere reservar lo que falta (él decide). Aporta $10 al cuchubal cada viernes.'],
+        rosa: ['Rosa, ingresos que varían', 'Vende pupusas en su casa (lo que entra cambia cada día) y su hijo le manda una remesa sin fecha fija ($150.00 aprox., más o menos el 28). Tiene $110 en efectivo y $95 en Banco Agrícola, dos ahorros (Emergencias y Plancha nueva) y paga alquiler ($120 el 5), luz, agua y la cuota de la cooperativa ($45 el 25). Ve su libre hasta fin de mes.'],
     };
     const CLAVE_GUIA = 'pamplanea-proto-v2:guia';
     const CLAVE_NOTAS = 'pamplanea-proto-v2:notas';
@@ -177,7 +177,7 @@
     }
     function pintarSets() {
         const sets = window.SETS || {};
-        $('#g-sets').innerHTML = Object.entries(sets).map(([id, tareas]) => `<article class="g-obs-c"><p class="g-panel-cod">Set ${id} · ${tareas.length} tareas · ~15 min</p><ol class="g-set">${tareas.map((t) => `<li><strong>${esc(t.titulo)}</strong>${t.caso ? ` <span class="g-obs-t">(${t.caso})</span>` : ''}<br>«${esc(t.tarea)}»</li>`).join('')}</ol></article>`).join('');
+        $('#g-sets').innerHTML = Object.entries(sets).map(([id, tareas]) => `<article class="g-obs-c"><p class="g-panel-cod">Set ${id} · ${tareas.length} tareas · unos 15 min</p><ol class="g-set">${tareas.map((t) => `<li><strong>${esc(t.titulo)}</strong>${t.caso ? ` <span class="g-obs-t">(${t.caso})</span>` : ''}<br>«${esc(t.tarea)}»</li>`).join('')}</ol></article>`).join('');
     }
     function pintarNotas() {
         const d = leerNotas();
