@@ -165,8 +165,8 @@ const PROHIBIDAS = /\b(apart(ar|ado|ados|ada|adas|é|aste|amos|aron)|reserv(ar|a
 // «¿Qué pago?».
 // Ajuste 4 (APROBADO por Victor 2026-10-22): tampoco «¿Qué pasó?» ni «Tasas municipales».
 // Cierre de la v2.8 (lo pendiente de los ajustes 5 a 7, APROBADO por Victor 2026-10-22): «gasto(s) variable(s)» (ahora
-// «Presupuestos»), «~» con un monto (ahora «aprox.»), «Mi plan (Calendario)», «Mis pagos», «Para anotar» y «tope».
-const YA_NO = /\blo pago yo\b|¿\s*c[oó]mo le dices\s*\?|siempre es el mismo monto|\botro pago\b|¿\s*cu[aá]l pago\s*\?|¿\s*qu[eé] pago\s*\?|¿\s*qu[eé] pas[oó]\s*\?|tasas municipales|\bgastos? variables?\b|~\s?\$|~\d|signo ~|«~»|Mi plan \(Calendario\)|calendario de Mi plan|\bMis pagos\b|\btopes?\b/i;
+// «Presupuestos»), «~» con un monto (ahora «aprox.»), «Mi plan (Calendario)», «Mis pagos», «Para anotar» y «tope». Y nunca «aprox..».
+const YA_NO = /\blo pago yo\b|¿\s*c[oó]mo le dices\s*\?|siempre es el mismo monto|\botro pago\b|¿\s*cu[aá]l pago\s*\?|¿\s*qu[eé] pago\s*\?|¿\s*qu[eé] pas[oó]\s*\?|tasas municipales|\bgastos? variables?\b|~\s?\$|~\d|signo ~|«~»|Mi plan \(Calendario\)|calendario de Mi plan|\bMis pagos\b|\btopes?\b|aprox\.\./i;
 // «Para anotar» (el grupo de «Mis categorías» de antes), con mayúscula: «Este botón + es para anotar» sí se dice.
 const YA_NO_MAYUS = /\bPara anotar\b/;
 const malas = [];

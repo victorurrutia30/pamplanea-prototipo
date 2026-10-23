@@ -79,6 +79,8 @@ for (const tema of temas) {
         await fotoLarga('ana-pagos-proxima');
         await clic('[data-fk="tab-mes"]');
         await fotoLarga('ana-pagos-mes');
+        // Ajuste 5 (Mi plan más ligero, APROBADO por Victor 2026-10-22): lo vencido está en «N por confirmar».
+        await clic('[data-fk="plan-por-confirmar"]');
         await clic('[data-fk="p-luz-2026-10-12"]');
         await fotoLarga('ana-ficha-luz');
         await clic('[data-fk="ficha-pagado"]');
@@ -178,6 +180,10 @@ for (const tema of temas) {
         await foto('c11-entendi');
         await clic('[data-fk="op-frecuencia-mensual"]');
         await foto('c11-cada-mes');
+        // v2.8 (APROBADO por Victor, 2026-10-22): «¿Con qué lo pagas?» ya no se elige solo: se elige el medio de antes.
+        await clic('[data-fk="anotar-guardar"]');
+        await clic(`[data-fk="op-medio-${await ev("MOTOR.medioUsual(P.st, 'educacion').id")}"]`);
+        if (await ev('!!document.querySelector(\'[data-fk="op-solo-no"]\')')) await clic('[data-fk="op-solo-no"]');
         await clic('[data-fk="anotar-guardar"]');
         await clic('[data-fk="nav-pagos"]');
         await clic('[data-fk="tab-proxima"]');

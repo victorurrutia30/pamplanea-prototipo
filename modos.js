@@ -544,13 +544,13 @@
         const lineas = lineasNovedades(uso);
         novPrevio = document.activeElement;
         const capa = Object.assign(document.createElement('div'), { id: 'capa-novedades', className: 'capa-novedades' });
-        capa.innerHTML = `<div class="nov-fondo"></div><section class="nov" role="dialog" aria-modal="true" aria-labelledby="nov-t" aria-describedby="nov-x">
+        capa.innerHTML = M.unPunto(`<div class="nov-fondo"></div><section class="nov" role="dialog" aria-modal="true" aria-labelledby="nov-t" aria-describedby="nov-x">
             <h2 class="nov-t" id="nov-t" tabindex="-1">${esc(NOV_TITULO)}</h2>
             <ul class="nov-lista" id="nov-x">${lineas.map((l) => `<li>${icon('check', 'ico-xs')}<span>${esc(l)}</span></li>`).join('')}</ul>
             <p class="nov-cierre">${esc(NOV_CIERRE)}</p>
             <button type="button" class="btn btn--prim btn--48 btn--full" data-a="novedadesOk" data-fk="nov-ok">¡Entendido!</button>
             <button type="button" class="link nov-recuperar" data-a="novedadesRecuperar" data-fk="nov-recuperar">¿Algo se ve raro? Recupera tus datos</button>
-        </section>`;
+        </section>`);
         document.getElementById('app').appendChild(capa);
         for (const id of ['vista', 'nav', 'aviso-proto', 'capa-hoja', 'capa-banner', 'capa-toast', 'tarea-bar']) {
             const el = document.getElementById(id);
@@ -1340,7 +1340,7 @@
             <section class="ay-card" aria-labelledby="dt-r"><h3 class="ay-h3" id="dt-r">${icon('rotate-ccw', 'ico-s')}Recuperar una copia</h3>
                 ${r && r.error ? `<p class="campo-error">${icon('triangle-alert')}<span>${esc(r.error)}</span></p>` : ''}
                 ${confirmar}
-                ${copias.length ? `<p class="fila-s">Las guarda la app en este teléfono. La más nueva, arriba.</p><ul class="lista ay-copias">${copias.map((c, i) => `<li class="fila"><span class="fila-txt"><span class="fila-t">${esc(etiquetaCopia(c))}</span></span><button type="button" class="btn btn--sm" data-a="modoCopiaInterna" data-id="${esc(c.clave)}" data-fk="dt-rec-${i}">Recuperar</button></li>`).join('')}</ul>` : '<p class="txt">Todavía no hay copias en este teléfono.</p>'}
+                ${copias.length ? `<p class="fila-s">Las guarda la app en este teléfono. La más nueva, arriba.</p><ul class="lista ay-copias">${copias.map((c, i) => `<li class="fila"><span class="fila-txt"><span class="fila-t">${esc(etiquetaCopia(c)).replace(/ · (.+)$/, ' · <span class="nw">$1</span>') /* «23 oct» no se parte */}</span></span><button type="button" class="btn btn--sm" data-a="modoCopiaInterna" data-id="${esc(c.clave)}" data-fk="dt-rec-${i}">Recuperar</button></li>`).join('')}</ul>` : '<p class="txt">Todavía no hay copias en este teléfono.</p>'}
                 <label class="btn btn--48 btn--full" for="dt-archivo" data-fk="dt-elegir">Recuperar desde un archivo</label><input id="dt-archivo" class="sr-only" type="file" accept="application/json,.json,text/plain,.txt" data-copia></section>
             ${borrarHtml}
             <p class="ay-version">${esc(VERSION)} · Tus datos solo están en este teléfono</p>`;

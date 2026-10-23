@@ -212,7 +212,8 @@ try {
         await usoQuincena();
         await ev('P.modos.guardarPref ? 0 : 0; (() => { const p = JSON.parse(localStorage.getItem("pamplanea-modo") || "{}"); delete (p.tips || {}).anotar; delete (p.tips || {}).pago; localStorage.setItem("pamplanea-modo", JSON.stringify(p)); })(); true');
         await clic('[data-fk="nav-anotar"]');
-        check('Anotar: su consejo la primera vez', await texto('.hoja .tip p'), 'Escribe como hablas: «pupusas 6» o «vendí 45». Si algo no es, tócalo y lo cambias.');
+        // Cierre v2.8 (APROBADO por Victor 2026-10-22): el consejo habla de Anotar con verbos.
+        check('Anotar: su consejo la primera vez', await texto('.hoja .tip p'), 'Escribe como hablas («pupusas 6») o toca «Gasté», «Me llegó dinero»… y llena lo que falta.');
         await foto('consejo-anotar');
         await clic('[data-fk="tip-anotar"]');
         check('«Entendido» lo quita y el foco sigue en la hoja', [await hay('.hoja .tip'), await ev('document.activeElement.id')], [false, 'hoja-t']);

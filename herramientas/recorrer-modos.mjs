@@ -276,6 +276,8 @@ try {
         check('lugar eliminado', await ev('P.st.lugares.some((l) => l.nombre === "Tigo Money")'), false);
         // Ingreso esperado: crear, editar y eliminar.
         await clic('[data-fk="nav-pagos"]');
+        // Ajuste 5 (APROBADO por Victor 2026-10-22): un solo «+ Agregar» abre los mismos formularios.
+        await clic('[data-fk="plan-agregar"]');
         await clic('[data-fk="nuevo-ingreso"]');
         await escribir('#f-nombre', 'Comisión');
         await escribir('#f-monto', '80');
@@ -305,10 +307,11 @@ try {
         await fecha('2026-11-01');
         await abrirApp();
         await clic('[data-fk="nav-pagos"]');
-        // v2.8 (C-9): el calendario es la otra vista de Mi plan.
-        await clic('[data-fk="modo-calendario"]');
+        // Ajuste 5 (Mi plan más ligero): «Mes» es una pestaña de Mi plan; la fila es solo fecha, nombre y monto
+        // (ya no dice «último día del mes»): se revisa que la luz del 31 cae el 30 de noviembre.
         await clic('[data-fk="tab-mes"]');
-        check('luz último día del mes', await texto('.linea'), contiene('último día del mes'));
+        const luzId = await ev('P.st.pagos.find((p) => /luz/i.test(p.nombre)).id');
+        check('luz último día del mes (30 nov)', await hay(`[data-fk="p-${luzId}-2026-11-30"]`), true);
         await foto('a-pagos-noviembre');
         // Mes: cambio de mes, corregir y eliminar con confirmación.
         await clic('[data-fk="nav-mes"]');

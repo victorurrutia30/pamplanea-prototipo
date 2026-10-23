@@ -207,11 +207,12 @@ if (partes.includes('a')) {
         const portada = await texto('.portada-b');
         notas.A.portada = portada;
         check('Hoy: «Libre $1,000.00»', await texto('.portada-n'), '$1,000.00');
-        check('Hoy dice con qué se paga la tarjeta', portada, contiene('Tarjeta ~$100 del 14 nov: se paga con tu quincena del 30'));
+        // Ajuste 7 (APROBADO por Victor 2026-10-22): «aprox.» después del monto, con centavos (en los checks de abajo).
+        check('Hoy dice con qué se paga la tarjeta', portada, contiene('Tarjeta $100.00 aprox. del 14 nov: se paga con tu quincena del 30'));
         check('Hoy ya no dice «Incluye tarjeta»', portada, noContiene('Incluye tarjeta'));
-        // v2.8 (C-8): «Próxima quincena» está en Mi plan (ya no en Hoy).
-        await ev(`P.irTab('pagos'); true`);
-        check('Mi plan: «Próxima quincena (30)» con la tarjeta', await ev(`document.querySelector('#pantalla').innerText.replace(/\\s+/g, ' ')`), contiene('ingreso ~$600 · gastos ~$100 · te quedarían ~$500'));
+        // v2.8 (C-8): «Próxima quincena» está en Mi plan (ya no en Hoy). Ajuste 5: es su pestaña «Próxima».
+        await ev(`P.ui.pagosVista = 'proxima'; P.irTab('pagos'); true`);
+        check('Mi plan: «Próxima quincena (30)» con la tarjeta', await texto('.plan-res'), contiene('Del 30 oct', 'Entra $600.00 aprox. · Sale $100.00 aprox.', 'Te quedarían', '$500.00 aprox.'));
         await ev(`P.irTab('hoy'); true`);
         const prox = await proximos();
         notas.A.proximos = prox;
@@ -221,12 +222,12 @@ if (partes.includes('a')) {
         const desglose = await texto('.hoja');
         notas.A.desglose = desglose;
         check('«¿De dónde sale?»: por pagar $0.00, libre $1,000.00', desglose, (t) => t.includes('Por pagar antes del 30') && t.includes('$1,000.00'));
-        check('«¿De dónde sale?»: la tarjeta, con la quincena del 30', desglose, contiene('Crédito BAC (~$100, vence el 14 nov): se paga con tu quincena del 30, no con lo que tienes hoy.'));
+        check('«¿De dónde sale?»: la tarjeta, con la quincena del 30', desglose, contiene('Crédito BAC ($100.00 aprox., vence el 14 nov): se paga con tu quincena del 30, no con lo que tienes hoy.'));
         await foto('A-desglose');
         await abrirTarjeta('Crédito BAC');
         const con = await seccionCon('Lo pagas con');
         notas.A.ficha = con;
-        check('ficha: «Lo pagas con: Con tu quincena del 30 ~$100»', con, (t) => !!t && t.includes('Con tu quincena del 30') && t.includes('~$100') && t.includes('lo que pagas normalmente'));
+        check('ficha: «Lo pagas con: Con tu quincena del 30 ~$100»', con, (t) => !!t && t.includes('Con tu quincena del 30') && t.includes('$100.00 aprox.') && t.includes('lo que pagas normalmente'));
         await ev(`(() => { const s = [...document.querySelectorAll('#pantalla h2')].find((x) => x.textContent.trim().startsWith('Lo pagas con')); if (s) s.scrollIntoView({ block: 'center' }); return true; })()`);
         await foto('A-ficha-tarjeta');
     });
@@ -308,7 +309,8 @@ if (partes.includes('c')) {
         const otro = await ev(`(() => { const s = structuredClone(P.st); s.tarjetas = []; s.medios = s.medios.filter((m) => !m.tarjeta); P.crearPago(s, { nombre: 'Otro', monto: 10000, frecuencia: 'unico', fecha: '2026-10-25', medio: 'efectivo' }); return MOTOR.calcular(s).libre; })()`);
         check('igual que un pago de $100 el 25', otro, n.libre);
         await irHoy();
-        check('Hoy: «Incluye tarjeta ~$100, vence el 25»', await texto('.portada-b'), contiene('Incluye tarjeta ~$100, vence el 25'));
+        // Ajuste 7: «aprox.».
+        check('Hoy: «Incluye tarjeta $100.00 aprox., vence el 25»', await texto('.portada-b'), contiene('Incluye tarjeta $100.00 aprox., vence el 25'));
         await foto('C1-sin-ingreso-fijo');
     });
     await seccion('C2 sin ingreso fijo: vence el otro mes', async () => {
@@ -326,7 +328,7 @@ if (partes.includes('c')) {
         notas.C3 = { numeros: n, tarjeta: await infoTarjeta('Crédito BAC') };
         check('vence antes de la quincena: sale de lo que tienes (libre $900.00)', n.libre, 90000);
         await irHoy();
-        check('Hoy dice por qué: «(antes de tu quincena)»', await texto('.portada-b'), contiene('Incluye tarjeta ~$100, vence el 25 (antes de tu quincena)'));
+        check('Hoy dice por qué: «(antes de tu quincena)»', await texto('.portada-b'), contiene('Incluye tarjeta $100.00 aprox., vence el 25 (antes de tu quincena)')); // ajuste 7: «aprox.»
         await clic('[data-fk="portada"]', 400);
         check('«¿De dónde sale?»: lo que pagas normalmente, antes de tu quincena', await texto('.hoja'), contiene('lo que pagas normalmente, vence el 25 oct, antes de tu quincena'));
         await foto('C3-antes-de-la-quincena');
@@ -436,13 +438,13 @@ if (partes.includes('e')) {
             notas['E ' + n].proximos = prox;
             if (separador) check(`Próximos pagos: la tarjeta bajo «${separador}»`, prox, (x) => x.indexOf('— ' + separador) >= 0 && x.indexOf('Crédito Agrícola') > x.indexOf('— ' + separador) && x.indexOf('Préstamo') < x.indexOf('— ' + separador));
             else check('Próximos pagos: la tarjeta y el préstamo bajo «Con tu salario del 29» (cada mes se llama «Salario»)', prox, (x) => x.indexOf('— Con tu salario del 29') >= 0 && x.indexOf('Crédito Agrícola') > x.indexOf('— Con tu salario del 29') && x.indexOf('Préstamo') > x.indexOf('— Con tu salario del 29'));
-            // v2.8 (C-8): «Próxima quincena» está en Mi plan.
-            await ev(`P.irTab('pagos'); true`);
-            const pantalla = await ev(`document.querySelector('#pantalla').innerText.replace(/\\s+/g, ' ')`);
+            // v2.8 (C-8): «Próxima quincena» está en Mi plan. Ajuste 5: su pestaña «Próxima», con su resumen; ajuste 7: «aprox.».
+            await ev(`P.ui.pagosVista = 'proxima'; P.irTab('pagos'); true`);
+            const pantalla = await texto('.plan-res');
             await ev(`P.irTab('hoy'); true`);
-            notas['E ' + n].proximaQuincena = (pantalla.match(/Próxim[ao] [^·]*· ingreso[^.]*/) || [''])[0];
+            notas['E ' + n].proximaQuincena = pantalla;
             if (n === '14 y 29') {
-                check('«Próxima quincena (29)»: ingreso ~$550 · pagos ~$157 · te quedarían ~$393', pantalla, contiene('ingreso ~$550 · gastos ~$157 · te quedarían ~$393'));
+                check('«Próxima quincena (29)»: entra $550.00 aprox. · sale $157.00 aprox. · te quedarían $393.00 aprox.', pantalla, contiene('Entra $550.00 aprox. · Sale $157.00 aprox.', 'Te quedarían', '$393.00 aprox.'));
                 await foto('E-hoy');
                 // Pagos → Próxima: el préstamo con la del 29.
                 await ev(`P.irTab('pagos'); true`);
@@ -450,13 +452,13 @@ if (partes.includes('e')) {
                 notas['E ' + n].pagos = await texto('#pantalla');
                 await foto('E-pagos');
             }
-            if (n === 'cada mes el 29') check('«Próximo …»: el préstamo y la tarjeta con el del 29 (~$307)', pantalla, contiene('gastos ~$307'));
+            if (n === 'cada mes el 29') check('«Próximo …»: el préstamo y la tarjeta con el del 29 ($307.00 aprox.)', pantalla, contiene('Sale $307.00 aprox.'));
             // agregado v2.6.7 #3: lo que debe, igual en la ficha, Deudas y Mi dinero.
-            const frase = 'Debes ~$2,000 · por confirmar con tu estado de cuenta';
+            const frase = 'Debes $2,000.00 aprox. · por confirmar con tu estado de cuenta'; // ajuste 7: «aprox.»
             await abrirTarjeta('Crédito Agrícola');
             const ficha = await texto('#pantalla .ficha-cifra');
             notas['E ' + n].ficha = ficha;
-            check('ficha: «~$2,000 · Por confirmar con tu estado de cuenta»', ficha, (x) => !!x && x.includes('~$2,000') && x.includes('Por confirmar con tu estado de cuenta'));
+            check('ficha: «$2,000.00 aprox. · Por confirmar con tu estado de cuenta»', ficha, (x) => !!x && x.includes('$2,000.00 aprox.') && x.includes('Por confirmar con tu estado de cuenta'));
             if (n === '14 y 29') {
                 await foto('E-ficha');
                 await ev(`(() => { const s = [...document.querySelectorAll('#pantalla h2')].find((x) => x.textContent.trim().startsWith('Lo pagas con')); if (s) s.scrollIntoView({ block: 'center' }); return true; })()`);

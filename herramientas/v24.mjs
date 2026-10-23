@@ -82,7 +82,7 @@ try {
     const glos = await ev('Object.fromEntries(window.GLOSARIO.map((g) => { const x = window.terminoGlosario(g.id, false); return [g.id, x.t + ": " + x.para + "Ejemplo: " + x.ejemplo]; }))');
     await ev('P.cargarPersona("ana"); true');
     await esperar(300);
-    for (const [id, abrirJs] of [['libre', 'P.irTab("hoy")'], ['proxima', 'P.irTab("pagos")'], ['pagasCon', 'P.abrir("pago", "colegio")'], ['ahorros', 'P.irTab("midinero"); P.abrir("ahorros")'], ['deudas', 'P.irTab("midinero"); P.abrir("deudas")'], ['cuadrar', 'P.irTab("midinero"); P.abrir("cuentas"); P.abrirHoja("cuadrar")']]) {
+    for (const [id, abrirJs] of [['libre', 'P.irTab("hoy")'], ['proxima', 'P.ui.pagosVista = "proxima"; P.irTab("pagos")'], ['pagasCon', 'P.abrir("pago", "colegio")'], ['ahorros', 'P.irTab("midinero"); P.abrir("ahorros")'], ['deudas', 'P.irTab("midinero"); P.abrir("deudas")'], ['cuadrar', 'P.irTab("midinero"); P.abrir("cuentas"); P.abrirHoja("cuadrar")']]) {
         await ev(abrirJs + '; true');
         await esperar(250);
         check(`«?» de ${id}: se ve y mide 44 px`, await ev(`(() => { const q = document.querySelector('[data-fk="q-${id}"]'); if (!q) return null; const r = q.getBoundingClientRect(); return [r.width >= 44, r.height >= 44, q.getAttribute('aria-expanded'), document.getElementById('q-${id}').hidden]; })()`), [true, true, 'false', true]);
@@ -120,7 +120,8 @@ try {
     check('una sola vez por pantalla', await hay('.tip'), false);
     await clic('[data-fk="nav-pagos"]');
     // v2.8 (C-9): el consejo de Mi plan.
-    check('Pagos: su consejo', await texto('.tip p'), contiene('Aquí está tu plan: lo que viene y de dónde sale'));
+    // Cierre v2.8 (APROBADO por Victor 2026-10-22): el consejo de Mi plan, al día.
+    check('Mi plan: su consejo', await texto('.tip p'), contiene('Aquí ves lo que viene, día por día', '«+ Agregar»'));
     await clic('[data-fk="tip-pagos"]');
     await clic('[data-fk="nav-midinero"]');
     check('Mi dinero: su consejo', await hay('[data-fk="tip-midinero"]'), true);
@@ -145,7 +146,8 @@ try {
     // Pagar con el aguinaldo.
     await clic('[data-fk="pr-P-AGUINALDO"]');
     await esperar(400);
-    await clic('[data-fk="modo-lista"]');
+    // Ajuste 5 (Mi plan más ligero): sin «Mi plan | Calendario»: «Ver por tipo», con sus secciones abiertas.
+    await ev('P.ui.pagosModo = "tipo"; P.ui.planAbiertas = { ingresos: true, fijos: true, deudas: true }; P.render(); true');
     await clic('[data-fk="mp-matricula"]');
     await clic('[data-fk="pagar-con"]');
     await clic('[data-fk="pc-ver-mas"]');
@@ -158,7 +160,8 @@ try {
     await clic('[data-fk="pr-siguiente"]');
     await clic('[data-fk="pr-P-ADELANTO"]');
     await esperar(400);
-    await clic('[data-fk="modo-lista"]');
+    // Ajuste 5 (Mi plan más ligero): sin «Mi plan | Calendario»: «Ver por tipo», con sus secciones abiertas.
+    await ev('P.ui.pagosModo = "tipo"; P.ui.planAbiertas = { ingresos: true, fijos: true, deudas: true }; P.render(); true');
     await clic('[data-fk="mp-i-adelanto"]');
     await clic('[data-fk="adelanto-si"]');
     check('propone su quincena del 30 y $200', await ev('[Object.keys(P.ui.hoja.partes), document.getElementById("f-ad-2026-10-30")?.value]'), [['quincena|2026-10-30'], '200.00']);
@@ -167,7 +170,9 @@ try {
     check('ejercicio del adelanto: ¡Lo lograste!', await texto('.tarea-bar'), contiene('¡Lo lograste!', 'Adelanto de salario'));
     // v2.8 (C-8): cómo quedas la próxima quincena está en Mi plan, no en Hoy («gastos»: D-2).
     await clic('[data-fk="nav-pagos"]');
-    check('su próxima quincena: con el descuento', await texto('.proy'), contiene('te descuentan $200.00 del adelanto'));
+    // Ajuste 5: la próxima quincena es la pestaña «Próxima» de Mi plan, con su resumen.
+    await clic('[data-fk="tab-proxima"]');
+    check('su próxima quincena: con el descuento', await texto('.plan-res'), contiene('Te descuentan $200.00 del adelanto'));
     await clic('[data-fk="nav-hoy"]');
     await foto('practicar-adelanto');
     // La tarjeta del primer día está en «Primer día» (C01).
@@ -203,8 +208,9 @@ try {
         await esperar(350);
         const r = {};
         // v2.8 (C-8): el «?» de la próxima quincena está en Mi plan (ya no en Hoy).
-        await ev('P.irTab("pagos"); P.acciones.qVer({ v: "proxima" }); true');
-        Object.assign(r, await ev(medir([['«?» de la próxima', '.proy-w .q'], ['texto del «?»', '#q-proxima p']])));
+        // Ajuste 5 (Mi plan más ligero): «Próxima» es una pestaña; su «?» va junto a su resumen.
+        await ev('P.ui.pagosVista = "proxima"; P.irTab("pagos"); P.acciones.qVer({ v: "proxima" }); true');
+        Object.assign(r, await ev(medir([['«?» de la próxima', '.plan-res-w .q'], ['texto del «?»', '#q-proxima p']])));
         await ev('P.irTab("hoy"); true');
         // Sobre el número (un degradado) el «?» usa el mismo color que el número grande.
         check(`${t}: el «?» del número, del color del número`, await ev('getComputedStyle(document.querySelector(".portada .q")).color === getComputedStyle(document.querySelector(".portada-n")).color'), true);

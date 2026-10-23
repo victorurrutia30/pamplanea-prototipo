@@ -320,7 +320,7 @@ try {
     informe.numeros.migracion = { libre: await texto('.portada-n'), porDia: await texto('.portada-s'), proy: await texto('.proy') };
     // Una copia (.json) de esquema 1 también se restaura migrada.
     const copia = await ev(`window.P.modos.validarCopia(JSON.stringify({ app: 'pamplanea-prototipo', tipo: 'copia-uso', esquema: 1, version: 'Prototipo v2.2 · 2026-10-16', fecha: '2026-10-18T00:00:00Z', datos: ${JSON.stringify(v1)} }))`);
-    check('copia v1 se valida y migra', copia && copia.datos && [copia.datos.esquema, Object.keys(copia.datos.st.ingresos[0].llegadas).length, copia.resumen], [2, 0, '2 lugares · 8 pagos · 2 movimientos']);
+    check('copia v1 se valida y migra', copia && copia.datos && [copia.datos.esquema, Object.keys(copia.datos.st.ingresos[0].llegadas).length, copia.resumen], [2, 0, '2 cuentas · 8 en tu plan · 2 movimientos']); // Cierre v2.8 (adenda A): el resumen de una copia, en palabras simples.
 
     // ================================================================ 6. Carlos: reserva sugerida, no automática
     actual = 'carlos';

@@ -189,11 +189,12 @@ if (partes.includes(1)) {
         check('con qué ingreso: lo que tienes (sigue a la fecha nueva, el 13 nov)', [t2.vence, t2.partes], ['2026-11-13', [{ de: 'ahora', monto: 12000 }]]);
         check('Hoy: el libre baja $120 (reservado de lo que tienes)', l0 - (await libre()), 12000);
         const ficha = await texto('#pantalla');
-        check('ficha: nombre, lo que debe, el límite y la fecha nueva', ficha, (x) => x.includes('Visa Oro') && x.includes('~$900') && x.includes('Por confirmar con tu estado de cuenta') && x.includes('de tu límite de crédito de $1,500.00') && x.includes('13 nov'));
+        // Ajuste 7 (APROBADO por Victor 2026-10-22): «aprox.» después del monto, con centavos (en los checks de abajo).
+        check('ficha: nombre, lo que debe, el límite y la fecha nueva', ficha, (x) => x.includes('Visa Oro') && x.includes('$900.00 aprox.') && x.includes('Por confirmar con tu estado de cuenta') && x.includes('de tu límite de crédito de $1,500.00') && x.includes('13 nov'));
         await irA('midinero', 'deudas');
-        check('Deudas: «Debes ~$900 · por confirmar con tu estado de cuenta»', await pantalla(), contiene('Visa Oro Debes ~$900 · por confirmar con tu estado de cuenta'));
+        check('Deudas: «Debes $900.00 aprox. · por confirmar con tu estado de cuenta»', await pantalla(), contiene('Visa Oro Debes $900.00 aprox. · por confirmar con tu estado de cuenta'));
         await irA('midinero');
-        check('Mi dinero: la misma frase', await texto('#pantalla .total'), contiene('Debes ~$900 · por confirmar con tu estado de cuenta'));
+        check('Mi dinero: la misma frase', await texto('#pantalla .total'), contiene('Debes $900.00 aprox. · por confirmar con tu estado de cuenta'));
         await irA('pagos');
         check('Pagos: su pago el 13 nov, ~$120', await ev(`MOTOR.ocurrenciasTarjeta(P.st, '2026-10-01', '2026-12-31').map((o) => o.fecha + ':' + o.monto)`), ['2026-11-13:12000']);
         // «Pagar tarjeta» sale de la cuenta con que dijiste que la pagas (efectivo → Efectivo).
@@ -221,7 +222,8 @@ if (partes.includes(2)) {
         await guardar('deuda-ok');
         check('el alias se guarda y el nombre no cambia solo', await ev(`[P.st.tarjetas[0].nombre, P.st.tarjetas[0].apodo, P.st.medios.find((m) => m.tarjeta === P.st.tarjetas[0].id).nombre]`), ['Crédito Agrícola', 'La de la casa', 'Crédito Agrícola']);
         check('la ficha se llama como su alias', await texto('#pantalla .pg-head'), contiene('La de la casa'));
-        check('ficha: «~$1,800 · Por confirmar con tu estado de cuenta»', await texto('#pantalla .ficha-cifra'), (x) => x.includes('~$1,800') && x.includes('Por confirmar con tu estado de cuenta'));
+        // Ajuste 7: «aprox.».
+        check('ficha: «$1,800.00 aprox. · Por confirmar con tu estado de cuenta»', await texto('#pantalla .ficha-cifra'), (x) => x.includes('$1,800.00 aprox.') && x.includes('Por confirmar con tu estado de cuenta'));
         await foto('T2-ficha');
     });
 }
@@ -286,7 +288,8 @@ if (partes.includes(4)) {
         const p = await ev(`P.st.pagos.find((x) => x.id === ${js(id)})`);
         check('guardado (también el tipo y su emoji)', [p.tipoDeuda, p.emoji, p.nombre, p.monto, p.dia, p.deuda.debe, p.medio], ['casacomercial', '🛍️', 'Almacén La Esquina', 9000, 25, 110000, 'efectivo']);
         await irA('midinero', 'deudas');
-        check('Deudas: «Casa comercial · Cuota $90.00 al mes, el 25» y ~$1,100', await pantalla(), (x) => x.includes('Casa comercial · Cuota $90.00 al mes, el 25') && x.includes('~$1,100'));
+        // Ajuste 7: «aprox.».
+        check('Deudas: «Casa comercial · Cuota $90.00 al mes, el 25» y $1,100.00 aprox.', await pantalla(), (x) => x.includes('Casa comercial · Cuota $90.00 al mes, el 25') && x.includes('$1,100.00 aprox.'));
         await irA('pagos');
         check('Pagos: el 25 oct, $90', await ev(`MOTOR.ocurrenciasPago(P.st, P.st.pagos.find((x) => x.id === ${js(id)}), '2026-10-01', '2026-10-31').map((o) => o.fecha + ':' + o.monto)`), ['2026-10-25:9000']);
         await irA('hoy');
@@ -411,7 +414,9 @@ if (partes.includes(8)) {
         check('guardado', [i.monto, i.lugar], [35000, 'efectivo']);
         // v2.8 (C-8): la próxima quincena está en Mi plan.
         await irA('pagos');
-        check('Mi plan: la próxima quincena incluye lo de Luis (~$350)', await pantalla(), contiene('~$350'));
+        // Ajuste 5 (Mi plan más ligero): la próxima quincena es la pestaña «Próxima»; ajuste 7: «aprox.».
+        await clic('[data-fk="tab-proxima"]');
+        check('Mi plan: la próxima quincena incluye lo de Luis ($350.00 aprox.)', await pantalla(), contiene('$350.00 aprox.'));
     });
 }
 

@@ -299,7 +299,8 @@ if (partes.includes('b')) {
         check('lo que pagas normalmente del 14 nov no se aparta: lo paga la quincena del 30 (V2-87), una sola vez', [n0.libre - n1.libre, await ev(`P.calc().periodos[0].pagos`)], [0, 10000]);
         await ev(`P.irTab('hoy'); true`);
         await esperar(300);
-        check('Hoy: «del 14 nov» (V2-87: con la quincena del 30)', await texto('.portada-b'), (t) => t.includes('Tarjeta ~$100 del 14 nov: se paga con tu quincena del 30') && !t.includes('venció'));
+        // Ajuste 7 (APROBADO por Victor 2026-10-22): «aprox.» después del monto, con centavos.
+        check('Hoy: «del 14 nov» (V2-87: con la quincena del 30)', await texto('.portada-b'), (t) => t.includes('Tarjeta $100.00 aprox. del 14 nov: se paga con tu quincena del 30') && !t.includes('venció'));
     });
     await seccion('B2 corte antes del registro (10), pago el 14', async () => {
         await primerDia('2026-10-19');
@@ -441,12 +442,13 @@ if (partes.includes('e')) {
         notas.E = n;
         // v2.6.7 (V2-87): los ~$100 del 14 nov los paga la quincena del 30: el libre es $1,000.00 (antes $900.00).
         check('libre: $950 + $50 (lo que pagas normalmente, con la quincena del 30)', [n.tienes, n.enTarjetas, n.libre], [100000, 0, 100000]);
-        check('Hoy: «del 14 nov», nunca «venció el 14»', await texto('.portada-b'), (t) => t.includes('Tarjeta ~$100 del 14 nov: se paga con tu quincena del 30') && !/venció/.test(t));
+        // Ajuste 7: «aprox.» (también en los dos de abajo).
+        check('Hoy: «del 14 nov», nunca «venció el 14»', await texto('.portada-b'), (t) => t.includes('Tarjeta $100.00 aprox. del 14 nov: se paga con tu quincena del 30') && !/venció/.test(t));
         await foto('E-hoy');
         check('Pagos: su pago el 14 nov', await ocTarjeta('Crédito BAC'), ['2026-11-14:pendiente:10000']);
         check('Mes: octubre no cuenta ese pago', await ev(`MOTOR.pagosDelMes(P.st, 2026, 10).pagos`), 0);
         await clic('[data-fk="portada"]', 400);
-        check('desglose: «vence el 14 nov»', await texto('.hoja'), (t) => t.includes('Crédito BAC (~$100, vence el 14 nov): se paga con tu quincena del 30') && !t.includes('14 oct'));
+        check('desglose: «vence el 14 nov»', await texto('.hoja'), (t) => t.includes('Crédito BAC ($100.00 aprox., vence el 14 nov): se paga con tu quincena del 30') && !t.includes('14 oct'));
         await ev('P.cerrarHoja(); true');
         await ev(`P.irTab('midinero'); P.abrir('tarjeta', P.st.tarjetas[0].id); true`);
         await esperar(400);
@@ -455,7 +457,7 @@ if (partes.includes('e')) {
         // «No, todavía lo debo»: el del 14 oct sí se cuenta (y la app dice que venció).
         await primerDia('2026-10-19', { tarjeta: { corte: '25', pago: '14', usual: '100', antes: 'no' } });
         check('«No»: vencido el 14 oct', await ocTarjeta('Crédito BAC'), ['2026-10-14:vencido:10000']);
-        check('«No»: Hoy dice que venció', await texto('.portada-b'), (t) => t.includes('Incluye tarjeta ~$100, venció el 14'));
+        check('«No»: Hoy dice que venció', await texto('.portada-b'), (t) => t.includes('Incluye tarjeta $100.00 aprox., venció el 14'));
     });
 }
 

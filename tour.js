@@ -37,7 +37,8 @@
         P.abrirHoja('desglose');
     };
     const abrirPagos = () => {
-        P.ui.pagosModo = 'calendario';
+        // Ajuste 5 (Mi plan más ligero): ya no hay «Calendario»; Mi plan abre por fecha.
+        P.ui.pagosModo = 'fecha';
         P.ui.pagosVista = 'actual';
         cerrarHoja();
         P.irTab('pagos');
@@ -48,7 +49,8 @@
         P.ui.pagosVista = 'proxima';
         P.irTab('pagos');
     };
-    const grupo = (titulo) => [...document.querySelectorAll('.grupo')].find((g) => g.querySelector('.grupo-t')?.textContent === titulo) || null;
+    /** Un bloque de Mi plan por su título («Más adelante», «Presupuestos»…). */
+    const grupo = (titulo) => [...document.querySelectorAll('.pl-bloque')].find((g) => (g.querySelector('.pl-h')?.textContent || '').trim().startsWith(titulo)) || null;
     /** Una tarjeta de la pantalla por su título («Lo pagas con», «Tus ahorros»…). */
     const seccion = (titulo) => () => [...document.querySelectorAll('#pantalla section.card')].find((s) => (s.querySelector('.card-t')?.textContent || '').trim().startsWith(titulo)) || null;
     const enPantalla = (tab) => P.ui.tab === tab && !P.ui.stack.length;
@@ -165,7 +167,8 @@
             const p = P.calc().proxima;
             if (!p) return null;
             if (!p.principal) return `El próximo mes pagas ${aprox(p.pagos)}: lo vas juntando con lo que vendes.`;
-            return `En tu quincena del ${M.partes(p.principal.fecha)[2]} recibes ${aprox(p.entra)} y pagas ${aprox(p.pagos)}: te quedarían ${aprox(p.quedan)}.`;
+            // Cierre v2.8: con «aprox.» la frase es más larga; el paso ya dice que es tu próxima quincena (y el punto de «aprox.» la cierra).
+            return `Recibes ${aprox(p.entra)} y pagas ${aprox(p.pagos)}: te quedarían ${aprox(p.quedan)}`;
         },
         aproxQue: () => {
             const p = P.calc().proxima;
@@ -173,7 +176,7 @@
         },
         aprox: () => {
             const p = P.calc().proxima;
-            return p && p.principal ? `Esperas ${aprox(p.entra)}. Si el ${M.partes(p.principal.fecha)[2]} llega otra cantidad, la app usa la que llegó.` : null;
+            return p && p.principal ? `Esperas ${aprox(p.entra)} Si el ${M.partes(p.principal.fecha)[2]} llega otra cantidad, la app usa la que llegó.` : null;
         },
         pasar: (monto) => () => `Si pasas $${monto}, tu libre de ${libreHoy()} baja $${monto} y tu próxima quincena tiene $${monto} más.`,
         ahorros: () => {
@@ -827,7 +830,7 @@
             if (Math.max(abajo, caja.top) < 200) lado = 'pie';
         }
         const anillo = caja ? `<div class="tour-foco" style="top:${caja.top}px;left:${caja.left}px;width:${caja.width}px;height:${caja.height}px" aria-hidden="true"></div>` : '';
-        capa.innerHTML = `${oscuro(caja, app.width, app.height)}${anillo}<section class="tour-card tour-card--${lado}" role="${rol}" aria-modal="true" aria-labelledby="tour-t" aria-describedby="tour-x" style="${lado === 'abajo' ? `top:${top}px` : lado === 'arriba' ? `bottom:${app.height - top}px` : ''}">${cab}<h2 class="tour-t" id="tour-t" tabindex="-1">${titulo}</h2><div id="tour-x">${cuerpo}</div>${acciones}</section>`;
+        capa.innerHTML = M.unPunto(`${oscuro(caja, app.width, app.height)}${anillo}<section class="tour-card tour-card--${lado}" role="${rol}" aria-modal="true" aria-labelledby="tour-t" aria-describedby="tour-x" style="${lado === 'abajo' ? `top:${top}px` : lado === 'arriba' ? `bottom:${app.height - top}px` : ''}">${cab}<h2 class="tour-t" id="tour-t" tabindex="-1">${titulo}</h2><div id="tour-x">${cuerpo}</div>${acciones}</section>`);
         // Si la tarjeta no cabe completa arriba o abajo, va al pie de la pantalla (nunca cortada).
         const card = capa.querySelector('.tour-card');
         const r = card.getBoundingClientRect();
@@ -887,7 +890,7 @@
             const estado = e.hecho ? `${icon('circle-check', 'ico-xs')}Ya hiciste «Lo esencial»` : e.paso > 0 ? `Ibas en el paso ${Math.min(e.paso, esencial.pasos.length) + 1} de ${esencial.pasos.length}` : '';
             return `<button type="button" class="opcion-g elegir-op tour-version" data-a="tourVersion" data-v="${v.id}" data-fk="tour-version-${v.id}">${P.caja(v.emoji)}<span class="opcion-g-txt"><span class="opcion-g-t">${esc(v.etiqueta)}</span><span class="fila-s">${esc(v.sub)}</span>${estado ? `<span class="fila-s tour-version-e">${estado}</span>` : ''}</span>${icon('chevron-right', 'ico-xs')}</button>`;
         };
-        capa.innerHTML = `<div class="tour-dim tour-dim--todo" aria-hidden="true"></div><section class="tour-card tour-card--centro" role="dialog" aria-modal="true" aria-labelledby="tour-t" aria-describedby="tour-x"><p class="paso">Aprender a usarla</p><h2 class="tour-t" id="tour-t" tabindex="-1">¿Cómo recibes tu dinero?</h2><p class="txt" id="tour-x">${esc(TEXTO_ELEGIR)}</p><div class="opciones-grandes">${op(VERSIONES.fijo)}${op(VERSIONES.variable)}</div><div class="tour-acc">${enlace('Ahora no', 'tourCerrar', 'tour-saltar')}</div></section>`;
+        capa.innerHTML = M.unPunto(`<div class="tour-dim tour-dim--todo" aria-hidden="true"></div><section class="tour-card tour-card--centro" role="dialog" aria-modal="true" aria-labelledby="tour-t" aria-describedby="tour-x"><p class="paso">Aprender a usarla</p><h2 class="tour-t" id="tour-t" tabindex="-1">¿Cómo recibes tu dinero?</h2><p class="txt" id="tour-x">${esc(TEXTO_ELEGIR)}</p><div class="opciones-grandes">${op(VERSIONES.fijo)}${op(VERSIONES.variable)}</div><div class="tour-acc">${enlace('Ahora no', 'tourCerrar', 'tour-saltar')}</div></section>`);
     }
 
     function pintarFase(capa) {
@@ -957,11 +960,11 @@
     function pintarHazlo(capa) {
         const cap = T.cap;
         const n = cap.pasos.length;
-        capa.innerHTML = `<div class="tour-hueco" aria-hidden="true"></div><section class="tour-hz" role="region" aria-labelledby="tour-t">${barra(T.i + 1, n)}
+        capa.innerHTML = M.unPunto(`<div class="tour-hueco" aria-hidden="true"></div><section class="tour-hz" role="region" aria-labelledby="tour-t">${barra(T.i + 1, n)}
             <div class="tour-hz-cab"><p class="tour-hz-n">${indicador(cap, T.i)} · Hazlo tú</p>${salir}</div>
             <p class="tour-hz-t" id="tour-t" tabindex="-1"><span id="tour-instr" aria-live="polite"></span><span class="tour-pista" id="tour-pista" aria-live="polite"></span></p>
             <div class="tour-hz-acc">${btn(`${icon('chevron-left', 'ico-s')}<span class="sr-only">Atrás</span>`, 'tourAtras', { fk: 'tour-atras', extra: 'aria-label="Atrás"' })}${btn(`${icon('sparkles', 'ico-s')}Hazlo por mí`, 'tourPorMi', { prim: true, fk: 'tour-por-mi' })}${btn('Saltar este paso', 'tourSaltarPaso', { fk: 'tour-saltar-paso', cls: 'tour-saltar-paso' })}</div>
-        </section>`;
+        </section>`);
         T.senalSel = null;
         dibujarSenal();
         // Solo al entrar al paso: después la persona está usando la app (no se le quita el foco).
@@ -978,7 +981,7 @@
         const paso = T.cap.pasos[T.i];
         const s = T.hecho ? null : paso.hazlo.senal();
         const instr = capa.querySelector('#tour-instr');
-        if (instr && s && instr.textContent !== s.texto) instr.textContent = s.texto;
+        if (instr && s && instr.textContent !== M.unPunto(s.texto)) instr.textContent = M.unPunto(s.texto);
         const pista = capa.querySelector('#tour-pista');
         if (pista) pista.textContent = T.pista && !T.hecho ? 'Toca donde señala la flecha.' : '';
         const el = s && s.sel ? document.querySelector(s.sel) : null;

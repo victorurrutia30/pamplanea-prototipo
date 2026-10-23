@@ -285,7 +285,8 @@ if (partes.includes('c')) {
         // «Editar el que tengo» / «Es otro distinto» (con un nombre distinto, obligatorio).
         await nuevoPago({ caja: 'servicios', frecuente: 'luz', monto: '35', dia: 12 });
         check('la luz elegida se ve marcada', await ev(`(() => { const b = document.querySelector('[data-fk="op-frecuente-luz"]'); return b && b.getAttribute('aria-pressed'); })()`), 'true');
-        check('lo dice al elegirla', await texto('#dup-t'), 'Ya tienes «Luz» (el 12, ~$35).');
+        // Ajuste 7 (APROBADO por Victor 2026-10-22): «aprox.» después del monto, con centavos.
+        check('lo dice al elegirla', await texto('#dup-t'), 'Ya tienes «Luz» (el 12, $35.00 aprox.).');
         await clic('[data-fk="hoja-ok"]', 400);
         check('sin contestar no se crea', await pagos('Luz'), 1);
         await foto('C1-ya-tienes-luz');
@@ -330,7 +331,7 @@ if (partes.includes('c')) {
         await esperar(300);
         await clic('[data-fk="anotar-guardar"]', 400);
         // Ajuste 3 (APROBADO por Victor, 2026-10-22), FM-1: «Ya tienes «Luz» (el 12, ~$35)» → «Es otro distinto» pide un nombre distinto.
-        check('pregunta antes de crear', await texto('#capa-hoja'), (t) => /Ya tienes «Luz» \(el 12, ~\$35\)\./.test(String(t)));
+        check('pregunta antes de crear', await texto('#capa-hoja'), (t) => /Ya tienes «Luz» \(el 12, \$35\.00 aprox\.\)\./.test(String(t)));
         check('todavía una sola luz', await pagos('Luz'), 1);
         await clic('[data-fk="dup-otro"]', 300);
         check('«Es otro distinto»: ya no pregunta y pide su nombre', [await ev(`!!document.querySelector('.pregunta--dup')`), await texto('label[for="f-nombre"]')], [false, '¿Cómo le llamas a este?']);

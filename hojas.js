@@ -481,11 +481,11 @@
         const nueva = capa.dataset.clave !== clave;
         const scroll = capa.querySelector('.hoja-c') ? capa.querySelector('.hoja-c').scrollTop : 0;
         const vieja = capa.dataset.clave && capa.dataset.clave.split(':')[0] === h.tipo;
-        capa.innerHTML = `<div class="mask${nueva && !vieja ? ' mask--entra' : ''}"><section class="hoja${nueva && !vieja ? ' hoja--entra' : ''}" role="dialog" aria-modal="true" aria-labelledby="hoja-t">
+        capa.innerHTML = M.unPunto(`<div class="mask${nueva && !vieja ? ' mask--entra' : ''}"><section class="hoja${nueva && !vieja ? ' hoja--entra' : ''}" role="dialog" aria-modal="true" aria-labelledby="hoja-t">
             <header class="hoja-h"><h2 id="hoja-t" class="hoja-t" tabindex="-1">${c.titulo}</h2>${c.sinCerrar ? '' : `<button type="button" class="hoja-x" data-a="cerrarHoja" aria-label="Cerrar" data-fk="hoja-x">${icon('x')}</button>`}</header>
             <div class="hoja-c">${c.cuerpo}</div>
             ${c.pie ? `<footer class="hoja-f">${c.nota ? `<p class="hoja-nota">${c.nota}</p>` : ''}<div class="hoja-acc">${c.pie}</div></footer>` : ''}
-        </section></div>`;
+        </section></div>`);
         // Ajuste 4 (punto 5): los grupos de chips con máximo de líneas (antes de volver al scroll de antes).
         ajustarLineas(capa);
         if (!nueva) capa.querySelector('.hoja-c').scrollTop = scroll;
@@ -512,7 +512,7 @@
     P.ajustarLineas = ajustarLineas;
     const region = (id, html) => {
         const el = document.getElementById(id);
-        if (el) el.innerHTML = html;
+        if (el) el.innerHTML = M.unPunto(html);
         if (el) ajustarLineas(el);
     };
 

@@ -616,7 +616,7 @@
         // La comprensión deja ver Hoy arriba: la hoja ocupa solo la mitad de abajo.
         const mitad = A.panel === 'comprension';
         const sinCerrar = ['respuesta', 'comprension'].includes(A.panel);
-        capa.innerHTML = `<section class="ay${mitad ? ' ay--mitad' : ''}" role="dialog" aria-modal="true" aria-labelledby="ay-t"><header class="ay-h"><h2 class="ay-t" id="ay-t" tabindex="-1">${TITULOS[A.panel]}</h2>${sinCerrar ? '' : `<button type="button" class="hoja-x" data-a="ayCerrar" aria-label="Cerrar" data-fk="ay-x">${icon('x')}</button>`}</header><div class="ay-c">${VISTAS[A.panel]()}</div></section>`;
+        capa.innerHTML = M.unPunto(`<section class="ay${mitad ? ' ay--mitad' : ''}" role="dialog" aria-modal="true" aria-labelledby="ay-t"><header class="ay-h"><h2 class="ay-t" id="ay-t" tabindex="-1">${TITULOS[A.panel]}</h2>${sinCerrar ? '' : `<button type="button" class="hoja-x" data-a="ayCerrar" aria-label="Cerrar" data-fk="ay-x">${icon('x')}</button>`}</header><div class="ay-c">${VISTAS[A.panel]()}</div></section>`);
         capa.dataset.panel = A.panel;
         if (!nueva) capa.querySelector('.ay-c').scrollTop = scroll;
         const el = foco ? capa.querySelector(foco) : nueva ? capa.querySelector('#ay-t') : null;

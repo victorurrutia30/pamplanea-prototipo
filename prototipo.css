@@ -4483,3 +4483,21 @@ html.con-hazlo .mask {
 .ay-copias .fila-txt {
     padding-left: 4px;
 }
+
+/* Cierre v2.8: el «?» junto al resumen de Mi plan. */
+.plan-res-w {
+    position: relative;
+}
+.plan-res-w > .q {
+    position: absolute;
+    top: 0;
+    right: 4px;
+    margin: 0;
+}
+/* La fila de las fechas le deja su lugar al «?»: así nunca tapa la línea de abajo. */
+.plan-res-w .plan-res-r {
+    display: flex;
+    min-height: 24px;
+    align-items: center;
+    padding-right: 36px;
+}

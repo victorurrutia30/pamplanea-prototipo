@@ -14,13 +14,13 @@ Sin servidor propio, sin dependencias, sin CDN, sin analítica ni rastreadores. 
 
 **Estado:** brief y acuerdos V2-01…V2-22 APROBADOS por Victor (2026-10-16); **V2-23 a V2-30** y **V2-31 (respuestas v2.1)** APROBADOS por Victor (2026-10-16); **V2-34 a V2-49** APROBADOS por Victor (2026-10-17) — V2-15 y V2-31 #7 quedan REEMPLAZADAS por V2-34. **V2-50 a V2-55** y la corrección adicional (adelanto de salario) APROBADOS por Victor (2026-10-17). **v2.4 «Entrenamiento a prueba de todo»** y sus tres ajustes previos APROBADOS por Victor (2026-10-17). **V2-56 a V2-58** y el **entrenamiento en dos versiones** (v2.4.1) APROBADOS por Victor (2026-10-18). **v2.5 «Entrenamiento sencillo y a fondo»** (estructura, ritmo y claridad) y **V2-59** (respuestas 26–29) APROBADOS por Victor (2026-10-18). **V2-60 a V2-63** (v2.6 «Simplificar para la prueba familiar») APROBADOS por Victor (2026-10-19). **V2-64 a V2-78** (QA profundo, deudas y tarjetas, Primer día, lenguaje, botón atrás, iPhone y entrenamiento; v2.6.1 a v2.6.3) APROBADOS por Victor (2026-10-19). **V2-79 a V2-84** (salir del entrenamiento sin perder tus datos, duplicados, pagos futuros y formularios; v2.6.4 y v2.6.5) APROBADOS por Victor (2026-10-19). **V2-85 y V2-86** (lo de antes de empezar no se cobra solo y la revisión para quienes ya usan la app; v2.6.6) APROBADOS por Victor (2026-10-19). **V2-87 y V2-88** (lo que pagas normalmente de una tarjeta se paga como cualquier otro pago, y editar = los mismos campos que crear; v2.6.7) y su agregado (el caso de la segunda tester y la ficha de la tarjeta) APROBADOS por Victor (2026-10-19). **v2.7 «Tus números bien»**: D-1 a D-12 y C-1 a C-10 (aquí solo D-6, D-7, D-8 y C-6), la protección de datos DATOS-1 a DATOS-5, el cuadrito de novedades y el cambio de roadmap APROBADOS por Victor (2026-10-21). **v2.8 «Más claro»**: D-1 a D-12 y C-1 a C-10 completos, P-1, la opción de la pendiente 4 y «recibí 50 en efectivo» (APROBADOS por Victor, 2026-10-21) y el trabajo de noche sin supervisión (APROBADO por Victor, 2026-10-22). Nada de esto está documentado todavía en el repo de la app: se documentará después de las pruebas con personas. Este prototipo no cambia nada del repo de la app.
 
-Versión visible en la app y en la guía: **«Prototipo v2.8.0 · 2026-10-22»** (en el LEEME: «Prototipo v2.8 · Más claro»).
+Versión visible en la app y en la guía: **«Prototipo v2.8.0 · 2026-10-23»** (en el LEEME: «Prototipo v2.8 · Más claro»).
 
 ---
 
 ## Prototipo v2.8 · Más claro (2026-10-22)
 
-**Base:** `main` en `d702de0` (v2.7.0 publicada + LEEME). Rama `v2-8`; `main` no se toca hasta que Victor escriba «Bloque validado» (un push a `main` les actualiza la app a Pam y Majo). Trabajo de noche sin supervisión: **APROBADO por Victor (2026-10-22)**, frase literal: «para esperar y dejar trabajando todo 2.8». Dos entregas seguidas: E1 (el cálculo y los datos) y E2 (las pantallas).
+**Base:** `main` en `d702de0` (v2.7.0 publicada + LEEME). Rama `v2-8`; `main` no se toca hasta que Victor escriba «Bloque validado» (un push a `main` les actualiza la app a Pam y Majo). Trabajo de noche sin supervisión: **APROBADO por Victor (2026-10-22)**, frase literal: «para esperar y dejar trabajando todo 2.8». Dos entregas seguidas: E1 (el cálculo y los datos) y E2 (las pantallas). **Publicada en `main` el 2026-10-23**, con el cierre que Victor aprobó («procedamos a hacer push a main»): ver «Cierre y publicación».
 
 ### Decisiones que se implementan (registradas antes del código)
 
@@ -454,36 +454,53 @@ Versión visible en la app y en la guía: **«Prototipo v2.8.0 · 2026-10-22»**
   - 2 capturas a 390×844 (Mis categorías y Mi plan con «aprox.»), revisadas como imágenes.
 - **QUÉ DEBO PROBAR, verificado:** el guion repitió hasta el ajuste 6 en `42a46ee` y las 4 nuevas con el código final, el 22 de octubre, sin fallos: $808 → $783 con «Salud».
 
-### Cierre y publicación (2026-10-23) — EN CURSO (wip, sin publicar)
+### Cierre y publicación (2026-10-23)
 
-- **Estado:** se detuvo por poca memoria (Claude Code paró la batería en segundo plano; había entre 3.0 y 4.1 GB libres, casi todo lo usa el Chrome de la persona). **No se fusionó a `main`.**
-- **Hecho y en verde:**
+- **Estado:** todo en verde; `v2-8` pasó a `main` por fast-forward (sin merge commit). Pages muestra «Prototipo v2.8.0 · 2026-10-23».
+- **Lo de antes de seguir** (el 22, se detuvo por poca memoria; wip `5c70ce3`): se siguió el 23 con Chrome cerrado. Cada prueba corrió sola, en primer plano y con 4 GB libres o más.
+- **Hecho:**
   - textos al día y `palabras-v28` con todo lo pendiente: 0 de 900 textos;
-  - adenda A, «Recuperar datos, fácil»: «Tus datos» con las copias en palabras simples, «Recuperar» con confirmación y «Guardar una copia en mi teléfono». En `actualizar` (`d702de0`), recuperar en los dos sentidos no pierde nada;
+  - adenda A, «Recuperar datos, fácil»: en «Tus datos» están las copias en palabras simples, «Recuperar» con confirmación y «Guardar una copia en mi teléfono». En `actualizar` (`d702de0`), recuperar en los dos sentidos no pierde nada;
   - el cuadrito v2.8 del borrador, con «¿Algo se ve raro? Recupera tus datos»;
   - contraste: «va en [tarjeta]» de 6.67 a 9.14:1 y «⚠ por confirmar» de 6.36 a 9.95:1;
-  - versión «Prototipo v2.8.0 · 2026-10-23» y caché nueva (142 archivos, ninguno falta);
-  - README y MATRIZ-QA (sección O).
-- **Fluidez** (`herramientas/fluidez.mjs`; CPU 4 veces más lenta, 390×844, mediana de 5):
+  - versión «Prototipo v2.8.0 · 2026-10-23» y caché nueva: 142 archivos y no falta ninguno;
+  - README, MATRIZ-QA (sección O) y este LEEME.
+- **Fluidez** (`herramientas/fluidez.mjs`; CPU 4 veces más lenta, 390×844, mediana de 5; medida otra vez con el código final):
 
 | | Abrir (≤ 2 s) | Interacción más lenta (≤ 200 ms) | Guardar (≤ 300 ms) | Saltos (CLS) | Animación más larga | Con «reducir movimiento» |
 |---|---|---|---|---|---|---|
-| a) los de Victor en el guion | 163 ms | 84 ms (pestaña Mes) | 29 ms | 0 | 220 ms | nada se mueve |
-| b) un año sintético (1,486 movimientos) | 291 ms | 107 ms (pestaña Mes) | 51 ms | 0 | 220 ms | nada se mueve |
+| a) los de Victor en el guion | 173 ms | 69 ms (pestaña Mi plan) | 28 ms | 0 | 220 ms | nada se mueve |
+| b) un año sintético (1,486 movimientos) | 321 ms | 115 ms (pestaña Mes) | 50 ms | 0 | 220 ms | nada se mueve |
 
   Las dos dentro de las metas: no hace falta A08.
-- **Batería en este cierre: 17 en verde y ninguna en rojo:**
-  - `invariantes` 53 de 53, `palabras-v28`, `novedades`, `montos`, `teclado`, `humo`, `probar-motor`;
-  - `contraste`, `contraste-v21`, `contraste-v23`, `instalar-ua`;
-  - `actualizar --ref=c640e4e` y `--ref=d702de0`, `v263`, `v261`, `qa-v261`, `recuperar-v263`, `probar-pwa`.
-  - Actualizadas citando su punto: `novedades` (el cuadrito del cierre) y `probar-motor` («+$597.00 aprox.»).
-- **Falta (en este orden):**
-  1. el resto de la batería: `humo-v23`, `entrega2-v23`, `viaje-v23`, `aceptacion-v23`, `v24`, `v241`, `v262`, `v231`, `atras`, `recorrer-sets`, `verificar-guia`, `v265`, `formularios-v265`, `numeros-entrenamiento`, `recorrer-modos`, `recorrer-v2`, `v26`, `v264`, `v267-editar`, `v266` (2 partes), `v267` (2 partes) y `v25` (3 partes); y las de capturas y de desarrollo (`recorrer`, `diario-antes`, `hoy2`, `sonda-v25`, `capturas-ux`, `capturas-v263`, `capturas-v27`);
-  2. `capturas-v28` a 390×844 y 1440×900, revisadas como imágenes;
-  3. el LEEME consolidado y la publicación (paso 7).
-- **Cómo seguir:** con 4 GB libres (cerrar pestañas de Chrome ayuda), correr la cola de `bateria2` una prueba a la vez, en primer plano.
-- **Decisión técnica (REVISAR):** «máximo 5 líneas» del cuadrito cuenta la lista (las 4 del borrador y, si cambió un número, la del antes y después); el cierre «Tus datos están completos y a salvo.» va aparte, como en el borrador.
-- **Producto sin decidir (no se inventó):** capítulos nuevos del entrenamiento para Presupuestos, Mis categorías y el Mes nuevo (era el PENDIENTE 1 de la v2.8). Por ahora se explican en el glosario, los «?» y «Aprende».
+- **Batería completa, con el código final:** las 39 pruebas en verde.
+  - `invariantes` 53 de 53, `palabras-v28`, `novedades`, `montos`, `teclado`, `humo`, `probar-motor`, `contraste`, `contraste-v21`, `contraste-v23`, `instalar-ua`;
+  - `actualizar --ref=c640e4e` y `--ref=d702de0` (cero pérdidas, el cuadrito una vez, recuperar en los dos sentidos);
+  - `v263`, `v261`, `qa-v261`, `recuperar-v263`, `probar-pwa`, `humo-v23`, `entrega2-v23`, `viaje-v23`, `aceptacion-v23`, `v24`, `v241`, `v262`, `v231`, `atras`, `recorrer-sets`, `verificar-guia`, `v265`, `formularios-v265`, `numeros-entrenamiento`, `recorrer-modos`, `recorrer-v2`, `v26`, `v264`, `v267-editar`;
+  - las largas, por partes: `v266` (a–d, e–g), `v267` (a–c, d–f) y `v25` (a–f, g–i, j–k).
+- **Capturas y desarrollo:**
+  - `hoy2`, `capturas-v263`, `capturas-v27` y `capturas-ux`: sin errores; `capturas-ux` se puso al día con «+ Agregar» y «Ver por tipo».
+  - `recorrer`, `diario-antes` y `sonda-v25` fallan en los mismos pasos viejos que en la v2.7 (`d702de0`, corrida en una copia): no hay nada nuevo roto.
+- **QUÉ DEBO PROBAR** de Victor (`qdp-ajuste7`, con el código final): 0 fallos; $808 → $783 con «Salud».
+- **`capturas-v28`** a 390×844 y 1440×900, revisadas como imágenes (26 de cada tamaño). Muestran:
+  - el cuadrito y Ayuda → «Tus datos»;
+  - Mi plan: Esta quincena, Próxima y Mes, «Ver por tipo» y «+ Agregar»;
+  - Mis categorías;
+  - el Mes, con «¿En qué se te fue?», presupuestos y «Tus suscripciones»;
+  - Anotar, la tarjeta, Ahorros y los formularios.
+- **Lo que se corrigió en el cierre** (todo sin efecto en el dinero):
+  1. **«aprox..»:** con «aprox.» al final, algunas frases quedaban con dos puntos («te faltarían $70.00 aprox..»). Ahora el punto de «aprox.» cierra la frase, en toda pantalla, y `palabras-v28` no deja «aprox..».
+  2. **Entrenamiento, «Aquí ves tu aguinaldo»:** no encontraba qué señalar (buscaba «Más adelante» del calendario de antes). Ahora señala el bloque «Más adelante» de Mi plan.
+  3. **Entrenamiento, «Esta es tu próxima quincena»:** con «aprox.» el ejemplo ocupaba 3 líneas. Ahora dice «Recibes $600.00 aprox. y pagas $55.00 aprox.: te quedarían $545.00 aprox.».
+  4. **Quien vende (Rosa):** «Este mes llevas $316.00 en ventas» había desaparecido del resumen de Mi plan → Próxima (ajuste 5). Volvió (V2-59 #27).
+  5. **Mi plan:** el «?» del resumen tapaba la orilla de la línea «Tienes · Ahorros · Sale». Ahora va en la fila de las fechas.
+  6. **«Tus datos»:** la fecha de una copia («23 oct») ya no se parte en dos líneas.
+- **Pruebas puestas al día, citando su punto** (ninguna se borró):
+  - `v231`, `v24`, `v241`, `v25`, `v265`, `v266`, `v267`, `v267-editar`, `recorrer-modos`, `recorrer-v2`, `aceptacion-v23`, `novedades` y `probar-motor`;
+  - y las de capturas `recorrer`, `capturas-ux` y `capturas-v28`.
+  - Qué cambió en ellas: «+ Agregar» antes de cada formulario, las pestañas de Mi plan en vez de «Calendario», «aprox.» y lo vencido en «por confirmar».
+- **Decisión (APROBADA por Victor, 2026-10-22, al pegar «sigue con el cierre»):** el cuadrito tiene como máximo 5 líneas: las 4 del borrador y, si cambió un número, la del antes y después. El cierre «Tus datos están completos y a salvo.» va aparte.
+- **Decisión (APROBADA por Victor, 2026-10-22):** sin capítulos nuevos del entrenamiento por ahora: Presupuestos, Mis categorías y el Mes nuevo se explican en el glosario, los «?» y «Aprende».
 
 ### Pendiente para el cierre — hecho en el cierre (2026-10-23)
 
@@ -492,7 +509,7 @@ Lo que quedó para «todo aprobado» en los ajustes 5 a 7, y dónde quedó:
 - **Textos:** el glosario («aprox.», «Presupuestos», Mi plan, «va en» tu tarjeta, Mis categorías y Mes), los consejos de Mi plan, Mes y Anotar, el entrenamiento («aprox.», «+ Agregar»), la ayuda («Mi plan», el presupuesto del súper), la práctica (sin «Calendario», sin «~», «Ya contado…») y la guía. ✓
 - **`palabras-v28`:** ahora también revisa la práctica, los casos y el cuadrito, y no deja «gasto variable», «~$», «tope», «Mis pagos», «Mi plan (Calendario)» ni «Para anotar»: 0 de 900 textos. ✓
 - **Contraste** de «va en [tarjeta]» (6.67 a 9.14:1) y «⚠ por confirmar» (6.36 a 9.95:1) en los 4 temas, con un caso que sí los tiene (`contraste-v23`). ✓
-- **Pruebas:** `actualizar` ×2 ✓; la batería completa y las largas, y `capturas-v28` a 390×844 y 1440×900: **en curso** (ver «Cierre y publicación»).
+- **Pruebas:** `actualizar` ×2, la batería completa y las largas, y `capturas-v28` a 390×844 y 1440×900 (ver «Cierre y publicación»). ✓
 - **Documentos:** README, MATRIZ-QA (sección O), versión y caché. ✓
 
 ### Decisiones técnicas — REVISAR (v2.8)
@@ -578,12 +595,16 @@ Lo que quedó para «todo aprobado» en los ajustes 5 a 7, y dónde quedó:
 65. **«Fijas»** sigue al final, con «La app las usa para tus cuentas»; cada una abre con «La app la usa para tus cuentas».
 66. **«Tus suscripciones»** cuenta las creadas como suscripción, las de esa categoría y las que se llaman como una de la lista (tu Netflix del guion se escribió a mano). Va antes de «Tu avance»; máximo 3 tarjetas.
 67. **Lo guardado no cambió de forma** (solo un grupo nuevo para tus categorías); igual se corrió `actualizar` ×2.
+68. **Cierre, «aprox.» al final de una frase:** el punto doble se quita en un solo lugar (`MOTOR.unPunto`), donde se escribe cada pantalla, hoja, aviso y el entrenamiento, y no texto por texto. En el entrenamiento también se corrigieron los dos textos que lo tenían.
+69. **Cierre, el ejemplo de la próxima quincena** del entrenamiento ya no dice «En tu quincena del 30»: el paso ya dice que es tu próxima quincena, y así cabe en 2 líneas.
+70. **Cierre, el «?» del resumen de Mi plan** va arriba a la derecha, en la fila de las fechas (que le deja su lugar); el resumen queda 8 px más alto.
 
 ### PENDIENTE (lo vi y no lo toqué)
 
-1. **El entrenamiento no tiene un capítulo de gastos variables ni de ahorro programado.** Están en el glosario («?») y en Mi plan; un capítulo nuevo cambia el recorrido que ya validaron. *Para decidir:* ¿se agrega en la v2.9?
+1. ~~**El entrenamiento no tiene un capítulo de gastos variables ni de ahorro programado.**~~ **Decidido en el cierre (APROBADO por Victor, 2026-10-22):** por ahora, sin capítulos nuevos; se explican en el glosario, los «?» y «Aprende».
 2. **«Pago» por dentro:** el código, las claves de las pruebas (`nuevoPago`, `nav-pagos`) y el texto de «tu pago del viernes» (el día que te pagan) siguen diciendo «pago»; no se ven como pestaña ni como nombre de un gasto fijo.
 3. **Ficha de la tarjeta, «Lo pagas con»:** la línea «Vence antes de tu próximo ingreso: sale de lo que ya tienes.» queda sin el margen de la tarjeta. Ya estaba así en la v2.7; no se tocó.
+4. **Las filas de Mi plan (ajuste 5) dicen menos que las del calendario de antes.** Ya no dicen «último día del mes», «mismo día de tu pago» ni «te descuentan $314.00 del adelanto». Sí están la fecha, el orden (primero lo que te cae) y el monto ya sin el descuento. El descuento se ve en la ficha del adelanto y en el resumen de su quincena. *Para decidir:* ¿se quiere de vuelta alguna de esas notas?
 
 ---
 

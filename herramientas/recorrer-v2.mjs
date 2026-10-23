@@ -117,9 +117,11 @@ for (const tema of temas) {
         check('libre antes', await libre(), '$285.60');
         check('incluye tarjeta', await texto('.portada-v'), 'Incluye tarjeta $230.00, vence el 5 de noviembre');
         // v2.8 (C-8): cómo quedas la próxima quincena está en Mi plan, no en Hoy («gastos»: D-2).
+        // Ajuste 5 (Mi plan más ligero, APROBADO por Victor 2026-10-22): es la pestaña «Próxima», con su resumen; ajuste 7: «aprox.».
         await ev(`P.irTab('pagos'); true`);
-        check('próxima quincena (V2-35)', await texto('.proy'), contiene('Próxima quincena (30)'));
-        check('próxima quincena: números', await texto('.proy'), contiene('ingreso ~$600 · gastos ~$70 · te quedarían ~$530'));
+        await clic('[data-fk="tab-proxima"]');
+        check('próxima quincena (V2-35)', await texto('.plan-res-r'), (t) => typeof t === 'string' && t.startsWith('Del 30 oct'));
+        check('próxima quincena: números', await texto('.plan-res'), contiene('Entra $600.00 aprox. · Sale $70.00 aprox.', 'Te quedarían', '$530.00 aprox.'));
         await ev(`P.irTab('hoy'); true`);
         check('sin reserva automática', await ev('document.body.textContent.includes("Ya separa")'), false);
         await clic('[data-fk="nav-anotar"]');
@@ -217,18 +219,19 @@ for (const tema of temas) {
     await caso('C20', async () => {
         await cargar('caso=C20', tema);
         check('libre antes (sin reserva automática)', await libre(), '$125.00');
-        check('por día', await texto('.portada-s'), '~$62 por día');
-        check('sugerencia ámbar', await texto('.aviso-hoy'), contiene('El viernes 30 recibes ~$90', 'te faltarían ~$70', '¿Dejas algo listo de tu pago del viernes 23?'));
+        // Ajuste 7 (APROBADO por Victor 2026-10-22): «aprox.» después del monto; cierre: nunca «aprox..».
+        check('por día', await texto('.portada-s'), '$62.00 aprox. por día');
+        check('sugerencia ámbar', await texto('.aviso-hoy'), contiene('El viernes 30 recibes $90.00 aprox.', 'te faltarían $70.00 aprox.', '¿Dejas algo listo de tu pago del viernes 23?'));
+        check('sugerencia: sin «aprox..»', await texto('.aviso-hoy'), (t) => typeof t === 'string' && !t.includes('aprox..'));
         await fotoLarga('c20-hoy');
         await clic('[data-fk="portada"]');
         await foto('c20-desglose');
         check('desglose', await texto('.desglose'), contiene('Tienes', '$125.00', 'Libre'));
         await clic('[data-fk="desglose-ok"]');
         await clic('[data-fk="nav-pagos"]');
-        // v2.8 (C-9): Mi plan abre en sus secciones; el calendario es la otra vista.
-        await clic('[data-fk="modo-calendario"]');
+        // Ajuste 5: sin «Calendario»; en la lista por fecha, el mismo día va primero lo que te cae y después lo que pagas con eso.
         await clic('[data-fk="tab-proxima"]');
-        check('mismo día', await ev('document.body.textContent.includes("mismo día de tu pago")'), true);
+        check('mismo día (23: el pago de la semana y después el cuchubal)', await ev('[...document.querySelectorAll(".pl-b")].map((b) => b.dataset.fk).filter((f) => f.endsWith("-2026-10-23")).join(",")'), 'i-semana-2026-10-23,p-cuchubal-2026-10-23');
         await fotoLarga('c20-pagos-proxima');
         await clic('[data-fk="nav-hoy"]');
         await clic('[data-fk="at-sug-si"]');
@@ -358,8 +361,8 @@ for (const tema of temas) {
         await foto('c31-tarjeta');
         await clic('[data-fk="deuda-ok"]');
         await clic('[data-fk="nav-pagos"]');
-        // v2.8 (C-9): Mi plan abre en sus secciones; el calendario es la otra vista.
-        await clic('[data-fk="modo-calendario"]');
+        // Ajuste 5: sin «Calendario»; un solo «+ Agregar» abre los mismos formularios.
+        await clic('[data-fk="plan-agregar"]');
         await clic('[data-fk="nuevo-pago"]');
         await foto('c31-nuevo-pago');
         await clic('[data-fk="np-cuota"]');
@@ -370,10 +373,11 @@ for (const tema of temas) {
         await escribir('#f-dia', '28');
         await foto('c31-casa-comercial');
         await clic('[data-fk="deuda-ok"]');
-        check('en esta quincena', await texto('.linea'), contiene('Almacén La Esquina'));
+        // Ajuste 5: la lista de Mi plan (sin «Calendario»).
+        check('en esta quincena', await texto('#plan-panel'), contiene('Almacén La Esquina'));
         await fotoLarga('c31-pagos');
         await clic('[data-fk="tab-proxima"]');
-        check('tarjeta en próxima', await texto('.linea'), contiene('Crédito Cuscatlán'));
+        check('tarjeta en próxima', await texto('#plan-panel'), contiene('Crédito Cuscatlán'));
         await fotoLarga('c31-pagos-proxima');
         await clic('[data-fk="nav-hoy"]');
         check('libre baja 25', await libre(), '$260.60');
@@ -473,6 +477,8 @@ for (const tema of temas) {
     await caso('luz-cuadre', async () => {
         await cargar('persona=ana', tema);
         await clic('[data-fk="nav-pagos"]');
+        // Ajuste 5: lo vencido está en «N por confirmar» (una línea), con sus botones de siempre.
+        await clic('[data-fk="plan-por-confirmar"]');
         await clic('[data-fk="pagado-p-luz-2026-10-12"]');
         await escribir('#f-monto', '33.80');
         await foto('luz-pagado-antes-del-cuadre');

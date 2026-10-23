@@ -420,26 +420,27 @@ try {
         actual = 'E V2-59 #27';
         await fecha('2026-10-18');
         await limpio('persona=rosa');
-        // v2.8 (C-8): cómo quedas la próxima quincena está en Mi plan, no en Hoy («gastos»: D-2).
-        await ev(`P.irTab('pagos'); true`);
-        check('#27 Mi plan: «Tus ventas cuentan cuando las anotas», sin «ingreso ~$0» ni rojo', [await texto('.proy-l'), await texto('.proy-s'), await ev('document.querySelector(".proy-l").classList.contains("proy-l--falta")'), await ev('/entra ~\\$0/.test(document.body.innerText)')], ['pagas ~$191 · tus ventas cuentan cuando las anotas', 'este mes llevas $316.00 en ventas', false, false]);
+        // v2.8 (C-8): cómo quedas la próxima quincena está en Mi plan, no en Hoy. Ajuste 5 (Mi plan más ligero): es la
+        // pestaña «Próxima», con su resumen; ajuste 7 (APROBADO por Victor 2026-10-22): «aprox.» (en los checks de abajo).
+        await ev(`P.ui.pagosVista = 'proxima'; P.irTab('pagos'); true`);
+        check('#27 Mi plan: «Tus ventas cuentan cuando las anotas», sin «Entra $0» ni rojo', [await texto('.plan-res-l'), await texto('.plan-res-e'), await texto('.plan-res-n'), await texto('.plan-res-s'), await ev('document.querySelector(".plan-res").classList.contains("plan-res--falta")'), await ev('/Entra \\$0/.test(document.body.innerText)')], ['Tus ventas cuentan cuando las anotas', 'Sale', '$191.00 aprox.', 'Este mes llevas $316.00 en ventas', false, false]);
         await ev(`P.irTab('hoy'); true`);
-        check('#27 el aviso del próximo mes tampoco dice «te faltarían»', await texto('.aviso-hoy'), (x) => x.includes('Del 1 nov al 30 nov pagas ~$191.') && x.includes('Tus ventas cuentan cuando las anotas.') && !x.includes('faltarían'));
+        check('#27 el aviso del próximo mes tampoco dice «te faltarían»', await texto('.aviso-hoy'), (x) => x.includes('Del 1 nov al 30 nov pagas $191.00 aprox.') && !x.includes('aprox..') && x.includes('Tus ventas cuentan cuando las anotas.') && !x.includes('faltarían'));
         await foto('E-27-hoy');
         await clic('[data-fk="portada"]');
-        check('#27 en «¿De dónde sale?»', await texto('.d-prox'), (x) => x.includes('Pagas ~$191 · tus ventas cuentan cuando las anotas') && x.includes('Este mes llevas $316.00 en ventas'));
+        check('#27 en «¿De dónde sale?»', await texto('.d-prox'), (x) => x.includes('Pagas $191.00 aprox. · tus ventas cuentan cuando las anotas') && x.includes('Este mes llevas $316.00 en ventas'));
         await ev('P.cerrarHoja(); true');
         await clic('[data-fk="at-sug-si"]');
-        check('#27 en «¿Cuánto reservas?»', await texto('.hoja-c .txt'), 'El próximo mes pagas ~$191: el alquiler, la luz, el agua y más. Tus ventas cuentan cuando las anotas.');
+        check('#27 en «¿Cuánto reservas?»', await texto('.hoja-c .txt'), 'El próximo mes pagas $191.00 aprox.: el alquiler, la luz, el agua y más. Tus ventas cuentan cuando las anotas.');
         await ev('P.cerrarHoja(); true');
         await ev(`P.irTab('pagos'); true`);
-        await clic('[data-fk="proyeccion"]');
+        await clic('[data-fk="tab-proxima"]');
         await esperar(250);
-        check('#27 en Pagos → Próxima', await texto('.per-res'), (x) => x.includes('Pagas ~$191 · tus ventas cuentan cuando las anotas') && !x.includes('~$0'));
+        check('#27 en Mi plan → Próxima', await texto('.plan-res'), (x) => x.includes('Tus ventas cuentan cuando las anotas') && x.includes('$191.00 aprox.') && !x.includes('$0.00'));
         // Con ingreso fijo, igual que antes.
         await abrirApp('persona=ana');
-        await ev(`P.irTab('pagos'); true`);
-        check('#27 con quincena, sin cambio (v2.8, D-4: con los $15 de BAC)', await texto('.proy-l'), 'ingreso ~$600 · gastos ~$70 · te quedarían ~$530');
+        await ev(`P.ui.pagosVista = 'proxima'; P.irTab('pagos'); true`);
+        check('#27 con quincena, sin cambio (v2.8, D-4: con los $15 de BAC)', [await texto('.plan-res-l'), await texto('.plan-res-n')], ['Entra $600.00 aprox. · Sale $70.00 aprox.', '$530.00 aprox.']);
 
         actual = 'E V2-59 #28';
         await abrirApp('persona=rosa');
@@ -574,7 +575,7 @@ try {
             await abrirApp('persona=' + persona);
             const variable = persona === 'rosa';
             const glos = await ev(`Object.fromEntries(window.GLOSARIO.map((g) => { const x = window.terminoGlosario(g.id, ${variable}); return [g.id, x.t + ': ' + x.para + ' Ejemplo: ' + x.ejemplo]; }))`);
-            for (const [id, abrirJs] of [['libre', 'P.irTab("hoy")'], ['proxima', 'P.irTab("pagos")' /* v2.8 (C-8): la próxima quincena está en Mi plan */], ['pagasCon', `P.abrir("pago", ${js(persona === 'ana' ? 'colegio' : 'alquiler')})`], ['ahorros', 'P.irTab("midinero"); P.abrir("ahorros")'], ['deudas', 'P.irTab("midinero"); P.abrir("deudas")'], ['cuadrar', 'P.irTab("midinero"); P.abrir("cuentas"); P.abrirHoja("cuadrar")']]) {
+            for (const [id, abrirJs] of [['libre', 'P.irTab("hoy")'], ['proxima', 'P.ui.pagosVista = "proxima"; P.irTab("pagos")' /* v2.8 (C-8) y ajuste 5: la pestaña «Próxima» de Mi plan */], ['pagasCon', `P.abrir("pago", ${js(persona === 'ana' ? 'colegio' : 'alquiler')})`], ['ahorros', 'P.irTab("midinero"); P.abrir("ahorros")'], ['deudas', 'P.irTab("midinero"); P.abrir("deudas")'], ['cuadrar', 'P.irTab("midinero"); P.abrir("cuentas"); P.abrirHoja("cuadrar")']]) {
                 await ev(abrirJs + '; true');
                 await esperar(250);
                 if (!(await hay(`[data-fk="q-${id}"]`))) {
@@ -717,9 +718,10 @@ if (partes.includes('k')) {
             await ev('P.ayuda.cerrar({ foco: false }); P.abrir("aprende"); true');
             await esperar(250);
             Object.assign(r, await ev(medir([['glosario: ejemplo', '.glosario-ej'], ['glosario: texto', '.glosario dd']])));
-            await ev('P.cargarPersona("rosa"); P.irTab("pagos"); true');
+            // Ajuste 5 (Mi plan más ligero): el próximo mes de quien vende es la pestaña «Próxima» de Mi plan.
+            await ev('P.cargarPersona("rosa"); P.ui.pagosVista = "proxima"; P.irTab("pagos"); true');
             await esperar(250);
-            Object.assign(r, await ev(medir([['próximo mes (vende)', '.proy-l'], ['ventas del mes', '.proy-s']])));
+            Object.assign(r, await ev(medir([['próximo mes (vende)', '.plan-res-l'], ['ventas del mes', '.plan-res-s']])));
             informe.contraste[t] = r;
         }
         await b.movimientoReducido(false);

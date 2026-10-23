@@ -89,6 +89,13 @@
         if (neg) return '−' + s;
         return (signo && c > 0 ? '+' : '') + s;
     }
+    /**
+     * Cierre v2.8 (ajuste 7): «aprox.» ya cierra la oración (no se escriben dos puntos seguidos): «$70.00 aprox.» y no
+     * «$70.00 aprox..». Se aplica donde se escribe la pantalla, así ningún texto que termine en un monto aproximado lo repite.
+     */
+    function unPunto(html) {
+        return String(html).replace(/aprox\.((?:<\/[a-z0-9]+>)*)\.(?!\.)/g, 'aprox.$1');
+    }
     function leerMonto(texto, sinTope = false) {
         if (texto === null || texto === undefined) return null;
         let t = String(texto).trim().replace(/[$\s]/g, '');
@@ -1631,7 +1638,7 @@
     window.MOTOR = {
         MONTO_MAX, hoyLocal,
         MESES, MESES_CORTOS, DIAS, DIAS_CORTOS, pad, sumarDias, diasEntre, diaSemana, partes, diasDelMes, fechaDe, mesMas, fechaCorta, fechaLarga, conDia, diaCorto, relativa, haceDias, ultimoDia, proximoDia,
-        dinero, leerMonto, montoExcede, montoCampo, suma, lugar, medio, tarjeta, pago, ingreso, apartado, categoria, principal, sinVS,
+        dinero, unPunto, leerMonto, montoExcede, montoCampo, suma, lugar, medio, tarjeta, pago, ingreso, apartado, categoria, principal, sinVS,
         despues, despuesCuadre, cuadreAnotar, lugarGasto, saldoLugar, anteriorAlCuadre, lugaresDe, tienes, explicadoPorCuadre, sinDetalle, apartadoTotal, ultimaActividad, fechasRegla, ocurrenciasPago, ocurrenciasIngreso, tarjetaInfo, ocurrenciasTarjeta,
         horizonte, calcular, resumenMes, pagosDelMes, medioUsual, normalizar, entender, faltan, puedeCobrarSolo, principalPendiente, nombreEnPlan, capital, porDiaDe, apartadosVencidos, esDiaDeIngreso, coincide,
         inicioDe, cortes, corteAntes, corteDespues, fundado, esFundado, periodoDe, fuentesPara, asignacion, reglaPago, recurrentes, descuentosDe, proyectar, claveVigente, reservasDe,

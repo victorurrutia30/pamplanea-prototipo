@@ -197,3 +197,7 @@ Pruebas: `invariantes` (las filas V2 a V34), `palabras-v28`, `actualizar`, `flui
 | O-13 | Recuperar datos, fácil (adenda) | La copia «Antes de la actualización» devuelve los datos de antes; lo de ahora queda como «Antes de recuperar» | P1 | ✅ | actualizar (d702de0) |
 | O-14 | Fluidez (CPU 4 veces más lenta) | Abrir ≤ 2 s; cada interacción ≤ 200 ms; guardar ≤ 300 ms; sin saltos (CLS 0); con «reducir movimiento» nada se mueve | P2 | ✅ | fluidez |
 | O-15 | Contraste de lo nuevo | ≥ 4.5:1 en los 4 temas («va en», «⚠ por confirmar», Mes, Mis categorías) | P2 | ✅ | contraste-v23 |
+| O-16 | «aprox.» al final de una frase (cierre) | Nunca «aprox..»: el punto de «aprox.» cierra la frase | P3 | ✅ | palabras-v28, recorrer-v2 C20, v25 E |
+| O-17 | Entrenamiento con Mi plan nuevo (cierre) | «Aquí ves tu aguinaldo» señala «Más adelante»; el ejemplo de la próxima quincena cabe en 2 líneas | P2 | ✅ | v25 (a–f) |
+| O-18 | Quien vende, en Mi plan → Próxima (cierre) | «Tus ventas cuentan cuando las anotas», «Sale $191.00 aprox.» y «Este mes llevas $316.00 en ventas» | P2 | ✅ | v25 E |
+| O-19 | El «?» del resumen de Mi plan (cierre) | No tapa ninguna línea; 44 px | P3 | ✅ | v24, v25 H, capturas-v28 |

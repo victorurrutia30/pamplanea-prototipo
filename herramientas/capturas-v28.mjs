@@ -1,9 +1,10 @@
 // CAPTURAS v2.8 «Más claro», a 390×844 (teléfono) y 1440×900 (computadora), con datos propios («Marta», 21 oct):
-// Hoy (el número, lo que viene y Anotar), Mi plan (sus 5 secciones), Anotar con verbos (y «súper 20» de un gasto
-// variable), la ficha de la tarjeta (sus cobros, apodo y la sugerencia de repartir), Ahorros (dentro y aparte), la ficha de
-// un ahorro, las preguntas de una vez (a quien viene de la v2.7; con la de cada ahorro de antes, «no asumir») y el cuadrito.
-// Y (APROBADO por Victor, 2026-10-22) «¿Con qué lo pagas?» y «¿Se cobra solo?» en «+ Gasto fijo» y en «Completar tu Primer
-// día», y «Editar» de la tarjeta BAC con su banco elegido y su alias.
+// Hoy (el número, lo que viene y Anotar), Anotar con verbos (y «súper 20» de un presupuesto), la ficha de la tarjeta (sus
+// cobros, apodo y la sugerencia de repartir), Ahorros (dentro y aparte), la ficha de un ahorro, las preguntas de una vez (a
+// quien viene de la v2.7; con la de cada ahorro de antes, «no asumir») y el cuadrito. Y (APROBADO por Victor, 2026-10-22)
+// «¿Con qué lo pagas?» y «¿Se cobra solo?» en «+ Gasto fijo» y en «Completar tu Primer día», y «Editar» de la tarjeta BAC.
+// Cierre (ajustes 5 a 7 y la adenda): Mi plan (Esta quincena, Próxima, Mes, «Ver por tipo» y «+ Agregar»), Mis
+// categorías, el Mes («¿En qué se te fue?», presupuestos y «Tus suscripciones») y Ayuda → «Tus datos» con sus copias.
 // Uso: node herramientas/capturas-v28.mjs [--base=http://…/] [--puerto=9959] [--tema=serena-claro]
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
@@ -80,15 +81,45 @@ for (const ancho of [390, 1440]) {
         await esperar(300);
         await subir('.p28-sube');
         await foto('2c-ahorro-aparte', ancho);
+        // Adenda A del cierre: Ayuda → «Tus datos», con la copia de antes de la actualización y «Recuperar».
+        await ev(`P.ayuda.abrir('datos'); true`);
+        await esperar(400);
+        await foto('2d-tus-datos', ancho);
+        await ev(`P.ayuda.cerrar({ foco: false }); true`);
         // 2. Hoy: el número, lo que viene y Anotar.
         await armar({ ancho });
         await foto('3-hoy', ancho);
-        // 3. Mi plan: Ingresos · Gastos fijos · Gastos variables · Ahorro programado · Pagos de deudas.
+        // 3. Mi plan (ajuste 5): Esta quincena, Próxima y Mes; «Ver por tipo»; «+ Agregar».
         await ev(`P.irTab('pagos'); true`);
         await foto('4-mi-plan', ancho);
-        await subir('#mp-gastos-variables');
-        await foto('4b-mi-plan-variables', ancho);
-        // 4. Anotar con verbos y «súper 20» (gasto variable).
+        await ev(`P.ui.pagosVista = 'proxima'; P.render(); true`);
+        await foto('4b-mi-plan-proxima', ancho);
+        await ev(`P.ui.pagosVista = 'mes'; P.render(); true`);
+        await foto('4c-mi-plan-mes', ancho);
+        await ev(`P.ui.pagosVista = 'actual'; P.ui.pagosModo = 'tipo'; P.render(); true`);
+        await foto('4d-mi-plan-por-tipo', ancho);
+        await subir('.plan-ver');
+        await foto('4e-mi-plan-por-tipo-abajo', ancho);
+        await ev(`P.ui.pagosModo = 'fecha'; P.render(); P.abrirHoja('agregar', {}); true`);
+        await esperar(300);
+        await foto('4f-agregar', ancho);
+        // Mis categorías (ajustes 6 y 7): por grupo, con «+ Nueva categoría».
+        await ev(`P.abrirHoja('categorias', {}); true`);
+        await esperar(300);
+        await foto('4g-mis-categorias', ancho);
+        await ev(`P.cerrarHoja({ sinFoco: true }); true`);
+        // El Mes (ajustes 6 y 7): resumen, «¿En qué se te fue?», presupuestos y «Tus suscripciones».
+        await ev(`P.irTab('mes'); true`);
+        await esperar(300);
+        await foto('12-mes', ancho);
+        await subir('.mes-enc');
+        for (let i = 0; i < 5 && !(await ev(`!!document.querySelector('[data-fk="mes-enc-suscripciones"]')`)); i++) {
+            await ev(`document.querySelector('[data-fk="mes-enc-sig"]')?.click(); true`);
+            await esperar(200);
+        }
+        await subir('.mes-enc');
+        await foto('12b-mes-suscripciones', ancho);
+        // 4. Anotar con verbos y «súper 20» (un presupuesto).
         await ev(`P.acciones.anotar(); true`);
         await foto('5-anotar', ancho);
         await ev(`(() => { const q = document.getElementById('anotar-q'); q.value = 'súper 20'; q.dispatchEvent(new Event('input', { bubbles: true })); q.blur(); return true; })()`);

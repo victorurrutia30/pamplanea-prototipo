@@ -150,7 +150,7 @@
         // v2.7 (DATOS-2): con lo guardado que no se puede leer, solo «Tus datos están a salvo» (nada más se ve ni se guarda).
         const aSalvo = P.modo === 'uso' && !!(P.modos && P.modos.bloqueado && P.modos.bloqueado());
         const enOnboarding = !aSalvo && P.enPrimerDia();
-        document.getElementById('pantalla').innerHTML = aSalvo ? P.pantallas.aSalvo() : enOnboarding ? P.pantallas.onboarding() : pantallaActual();
+        document.getElementById('pantalla').innerHTML = M.unPunto(aSalvo ? P.pantallas.aSalvo() : enOnboarding ? P.pantallas.onboarding() : pantallaActual());
         const nav = document.getElementById('nav');
         const sinNav = aSalvo || enOnboarding || ['reparte', 'aldia', 'logro', 'primerNumero'].includes(P.ui.stack.at(-1)?.tipo);
         nav.hidden = sinNav;
@@ -207,7 +207,7 @@
         const t = P.ui.toast;
         const html = t ? `<div class="toast">${t.check ? icon('check', 'toast-check') : ''}<span class="toast-t">${esc(t.texto)}</span>${t.cambiar ? `<button type="button" class="toast-b" data-a="editarRegistro" data-id="${esc(t.cambiar)}" data-fk="toast-cambiar">Cambiar</button>` : ''}${t.deshacer ? '<button type="button" class="toast-b" data-a="deshacer" data-fk="toast-deshacer">Deshacer</button>' : ''}</div>` : '';
         if (zona.dataset.id !== String(t ? t.id : '')) {
-            zona.innerHTML = html;
+            zona.innerHTML = M.unPunto(html);
             zona.dataset.id = t ? t.id : '';
         }
     };
@@ -232,9 +232,9 @@
         const id = b ? b.id : '';
         if (zona.dataset.id === id) return;
         zona.dataset.id = id;
-        zona.innerHTML = b
+        zona.innerHTML = M.unPunto(b
             ? `<div class="banner" role="status"><button type="button" class="banner-b" data-a="abrirAviso" data-id="${esc(b.id)}" data-fk="banner"><span class="banner-app" aria-hidden="true">P</span><span class="banner-txt"><span class="banner-m">PamPlanea · ahora</span><span class="banner-ti">${esc(b.titulo)}</span><span class="banner-te">${esc(b.texto)}</span></span></button><button type="button" class="banner-x" data-a="cerrarBanner" aria-label="Cerrar aviso">${icon('x')}</button></div>`
-            : '';
+            : '');
     };
 
     /**
@@ -1077,6 +1077,9 @@
                 linea = 'Tus ventas cuentan cuando las anotas';
                 etiqueta = 'Sale';
                 numero = dinero(x.pagos, ap);
+                // Cierre v2.8: lo vendido este mes, como referencia (V2-59 #27), igual que cuando sí esperas algo.
+                const ventas = ventasPeriodo(x);
+                if (ventas) notas.push(ventas);
             } else if (x) {
                 linea = `Entra ${dinero(x.entra, ap)} · Sale ${dinero(x.pagos, ap)}`;
                 etiqueta = x.quedan >= 0 ? 'Te quedarían' : 'Te faltarían';
@@ -1096,14 +1099,16 @@
                 falta = entra < sale;
             }
         }
-        return `<button type="button" class="plan-res${falta ? ' plan-res--falta' : ''}" data-a="hoja" data-hoja="desglose" data-fk="plan-resumen">
+        // Cierre v2.8 (APROBADO por Victor 2026-10-22): lo nuevo se explica con los «?»: el del número grande de cada pestaña.
+        const q = vista === 'actual' ? 'libre' : vista === 'proxima' ? 'proxima' : 'mes';
+        return `<div class="plan-res-w"><button type="button" class="plan-res${falta ? ' plan-res--falta' : ''}" data-a="hoja" data-hoja="desglose" data-fk="plan-resumen">
             <span class="plan-res-r">${esc(rangoCorto(rango.desde, rango.hasta))}</span>
             <span class="plan-res-l">${esc(linea)}</span>
             <span class="plan-res-e">${falta ? icon('triangle-alert', 'ico-xs') : ''}${esc(etiqueta)}</span>
             <span class="plan-res-n">${numero}</span>
             ${notas.map((n) => `<span class="plan-res-s">${esc(M.capital(n))}</span>`).join('')}
             <span class="plan-res-mas">¿De dónde sale? ${icon('chevron-right', 'ico-xs')}</span>
-        </button>`;
+        </button>${P.qBtn(q)}</div>${P.qTexto(q)}`;
     }
     /** Punto 7: después de la lista, tus gastos variables y tu ahorro programado, una línea cada uno. */
     function bloquePlan(vista, k) {
@@ -1660,7 +1665,7 @@
         const lista = document.getElementById('mes-hist-lista');
         if (!lista || !P.st) return;
         const [y, m] = (P.ui.mesVista || P.st.hoy.slice(0, 7)).split('-').map(Number);
-        lista.innerHTML = historialMes(P.st, M.resumenMes(P.st, y, m));
+        lista.innerHTML = M.unPunto(historialMes(P.st, M.resumenMes(P.st, y, m)));
     };
     S.mes = function () {
         const st = P.st;
