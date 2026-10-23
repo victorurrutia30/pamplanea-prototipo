@@ -43,6 +43,7 @@ Versión visible en la app y en la guía: **«Prototipo v2.9.3 · 2026-10-23»**
 4. **La portada:** los círculos siguen detrás del texto porque el texto blanco conserva AA en los 4 temas también sobre ellos (mínimo 4.84:1, Ancla claro; Serena claro 4.85:1).
 5. **El cuadrito de la v2.9.3** sale a datos guardados por la v2.9.0–v2.9.2; quien viene de antes de la v2.9 ve el de la v2.9 (el suyo), como hasta ahora.
 6. **Entrenamiento:** el paso del teléfono toca la fila y luego «Ya pagué el de octubre»; el del alquiler abre el aviso desde «Para hoy» con «Ver». Los textos de 7 casos de la guía de la computadora dicen lo que se ve con Hoy C.
+7. **Reparte, la tarjeta que pagas con lo que tienes** (se encontró al ensayar la revisión en vivo): si una tarjeta que vence después se paga con lo que ya tienes (como la Tarjeta Liss con la quincena del 30), sale **una sola vez**, en su fila «con lo que tienes · vence el 20 nov». Desde la v2.9.2 salía también arriba con el mismo monto y las filas no sumaban el Total (el Total sí estaba bien). Ningún número cambia: la fila de arriba muestra ahora lo que cuenta el Total para esa tarjeta, y si es cero no sale.
 
 ### Pruebas cambiadas (justificadas)
 
@@ -60,6 +61,7 @@ Versión visible en la app y en la guía: **«Prototipo v2.9.3 · 2026-10-23»**
 - **El recorrido del entrenamiento** («Lo esencial», fecha fija y la de ingresos que varían, Serena claro): los 12 pasos encuentran su pieza en Hoy C y cada «Hazlo tú» termina; capturas vistas como imágenes.
 - **Capturas de Hoy a 390×844** en Serena claro y Ancla oscuro (Ana con presupuestos, Ana, Carlos, Rosa, algo vencido, día de cobro, «Pongámonos al día», el ahorro vencido y el alquiler de Rosa), vistas como imágenes. Se corrigió la fila larga de la sugerencia de Carlos (ahora una línea).
 - **Fluidez (`fluidez`): no se corrió en esta versión** (APROBADO por Victor): queda **pendiente para la siguiente** (Hoy, el carrusel y lista → hoja).
+- **Después del arreglo de Reparte (decisión 7)**, solo lo afectado: `invariantes` **69 de 69**, `palabras-v28` **0 de 903** y el ensayo local de la revisión en vivo (datos guardados por la v2.9.2 → v2.9.3): 0 fallos; las filas de «1. Ya no cuenta en tu libre» suman su Total ($492.38) y la Tarjeta Liss sale una vez. El motor no cambió, así que `personas-v29` no se repitió.
 
 ## Rama v2-9-3 · Rediseño de Hoy: A o B (vista previa, sin publicar · 2026-10-23) — historial; la vista previa, A y B se quitaron al publicar la v2.9.3
 

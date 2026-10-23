@@ -79,3 +79,4 @@ Hoy cambió de forma (portada con una línea, «Para hoy», presupuestos en carr
 - `invariantes`: **69 de 69**.
 - «Lo que viene» muestra cada parte de cada pago en el grupo del dinero que la paga (lo que baja tu libre de hoy y lo que pagas con tu próximo ingreso): cada peso, una vez, igual que Mi plan desde la v2.9.2.
 - Ningún cálculo cambió. En Reparte, la tarjeta explica su monto («$120.00 del 5 nov + $45.00 de compras nuevas») cuando difiere del de Hoy; si sus partes no suman lo que se muestra, se dice como antes.
+- Reparte, «1. Ya no cuenta en tu libre»: la fila de una tarjeta muestra lo mismo que cuenta el Total para ella (`enLibre − reservadoComo`). Lo que pagas de ella con lo que tienes y vence después ya tiene su fila «con lo que tienes»; desde la v2.9.2 salía dos veces y las filas no sumaban el Total (el Total, `k.enTarjetas + k.reservadoPagos + …`, siempre estuvo bien). Ahora las filas suman el Total.
