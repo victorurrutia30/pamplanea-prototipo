@@ -1028,6 +1028,8 @@
     A.buscarVersion = buscarVersion;
     function registrarSW() {
         if (!('serviceWorker' in navigator) || !/^https?:$/.test(location.protocol)) return;
+        // VISTA PREVIA v2.9.3: en raw.githack.com, sin service worker (cada push se ve al recargar). QUITAR ANTES DE PUBLICAR.
+        if (P.vistaPrevia && P.vistaPrevia.sinServiceWorker()) return P.vistaPrevia.quitarServiceWorker();
         let recargando = false;
         // Solo se recarga cuando la persona tocó «Actualizar» (la primera instalación no recarga nada).
         navigator.serviceWorker.addEventListener('controllerchange', () => {

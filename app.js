@@ -760,7 +760,21 @@
         return `<div class="nota ${cls} aviso-hoy" role="note" aria-labelledby="av-hoy-t">${icon(ico)}<div><p class="nota-t" id="av-hoy-t">${esc(titulo)}</p><p>${esc(M.capital(P.lista(items.slice(0, 3).map((x) => x.corto || x.titulo))))}${items.length > 3 ? ' y más' : ''}.</p><div class="nota-acc"><button type="button" class="btn btn--sm btn--prim" data-a="hoja" data-hoja="atencion" data-fk="aviso-ver">Ver</button></div></div></div>`;
     }
 
+    /**
+     * v2.9.3 «Rediseño de Hoy» (APROBADO por Victor, 2026-10-23, para la vista previa): Hoy A o B (hoy.js). Mientras un
+     * recorrido del entrenamiento, un ejercicio o la guía de la computadora señalan piezas del Hoy de siempre, se ve ese.
+     */
+    P.hoyVariante = () => {
+        if ((P.tour && P.tour.activo) || (P.practica && P.practica.activa && P.practica.activa()) || P.enGuia) return 'clasico';
+        const v = P.vistaPrevia ? P.vistaPrevia.variante() : 'A';
+        return v === 'B' && P.hoyB ? 'B' : v === 'A' && P.hoyA ? 'A' : 'clasico';
+    };
     S.hoy = function () {
+        const v = P.hoyVariante();
+        return v === 'A' ? P.hoyA() : v === 'B' ? P.hoyB() : hoyClasico();
+    };
+    /** El Hoy de la v2.9.2 (el que señalan el entrenamiento y la guía). */
+    function hoyClasico() {
         const st = P.st;
         const k = P.calc();
         const hz = k.hz;
@@ -832,7 +846,7 @@
             ${pagosHtml}
             ${anotarHtml}
         </div>`;
-    };
+    }
 
     /**
      * v2.8 (C-3): antes de tu próximo ingreso, por cada gasto variable que no has cerrado: «Ibas a gastar $X y anotaste $Y.
@@ -1487,6 +1501,7 @@
         for (const o of M.ocurrenciasTarjeta(st, '2000-01-01', M.sumarDias(st.hoy, -1))) if (o.estado === 'vencido' && !enRevision.has(`tarjeta:${o.tarjeta.id}:${o.fecha}`)) vencidos.push(o);
         return vencidos;
     }
+    P.vencidosPlan = vencidosPlan;
     /** Punto 2: por fecha (lo principal) o por tipo. Se recuerda la última que elegiste en este teléfono. */
     function modoPlan() {
         const m = P.ui.pagosModo || (P.modos && P.modos.vistaPlan ? P.modos.vistaPlan() : null);

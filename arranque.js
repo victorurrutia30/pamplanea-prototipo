@@ -299,7 +299,9 @@
         const h = new URLSearchParams(location.hash.slice(1));
         const g = P.almacen.leer(CLAVE_APP, null);
         P.aplicarTema(h.get('tema') || (!P.enGuia && g && g.formato === FORMATO && g.tema) || 'serena-claro');
-        if (h.get('caso') || h.get('persona')) {
+        // VISTA PREVIA v2.9.3: #ejemplo=persona-caso carga un ejemplo sin tocar tus datos. QUITAR ANTES DE PUBLICAR.
+        if (h.get('ejemplo') && P.vistaPrevia) P.vistaPrevia.cargar(h.get('ejemplo'));
+        else if (h.get('caso') || h.get('persona')) {
             P.sinGuardar = true;
             if (h.get('caso')) cargarCaso(h.get('caso'));
             else cargarPersona(h.get('persona'));
