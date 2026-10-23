@@ -5,8 +5,8 @@
 | Persona | Cobra | Días vividos | Días clave comparados |
 |---|---|---|---|
 | Pam | por quincena (15 y 30) | 72 | 22 |
-| Majo | por mes (el 30) | 72 | 15 |
-| Toño | por semana (viernes) | 72 | 25 |
+| Majo | por mes (el 30) | 72 | 20 |
+| Toño | por semana (viernes) | 72 | 32 |
 | Rosa | ventas sin fecha fija | 72 | 14 |
 
 **Sobre la v2.8 publicada (`a0cddba`):**

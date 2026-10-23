@@ -338,7 +338,7 @@ await filaDe('I08', 'Pagar Internet ($100, venció el 20) por Anotar, el formula
 await filaDe('I09', 'Una copia dañada o de una versión futura no toca los datos', async () => {
     await ev(`__armar()`);
     const errores = await ev(`(() => { const st = structuredClone(P.st); const copia = (datos, extra = {}) => JSON.stringify({ app: 'pamplanea-prototipo', tipo: 'copia-uso', esquema: 2, version: 'Prototipo v2.6.7 · 2026-10-19', fecha: '2026-10-20T10:00:00Z', datos, ...extra }); const sinEstados = structuredClone(st); sinEstados.tarjetas = [{ id: 'tx', nombre: 'X', estados: [] }]; const monto = structuredClone(st); monto.registros[3].monto = 12.5; const ref = structuredClone(st); ref.ingresos[0].lugar = 'no-existe';
-        return [P.modos.validarCopia('{roto'), P.modos.validarCopia(copia({ esquema: 2, st }, { esquema: 9 })), P.modos.validarCopia(copia({ esquema: 2, st, version: 'Prototipo v2.9.0 · 2026-12-01' })), P.modos.validarCopia(copia({ esquema: 2, st: sinEstados })), P.modos.validarCopia(copia({ esquema: 2, st: monto })), P.modos.validarCopia(copia({ esquema: 2, st: ref })), P.modos.validarCopia(copia({ esquema: 2, st }))].map((r) => r.error || 'ok'); })()`);
+        return [P.modos.validarCopia('{roto'), P.modos.validarCopia(copia({ esquema: 2, st }, { esquema: 9 })), P.modos.validarCopia(copia({ esquema: 2, st, version: 'Prototipo v9.9.0 · 2026-12-01' })), P.modos.validarCopia(copia({ esquema: 2, st: sinEstados })), P.modos.validarCopia(copia({ esquema: 2, st: monto })), P.modos.validarCopia(copia({ esquema: 2, st: ref })), P.modos.validarCopia(copia({ esquema: 2, st }))].map((r) => r.error || 'ok'); })()`);
     check('JSON roto: se rechaza', errores[0], contiene('no se pudo leer'));
     check('esquema futuro: se rechaza', errores[1], contiene('versión más nueva'));
     check('versión futura: se rechaza', errores[2], contiene('versión más nueva'));
@@ -347,7 +347,7 @@ await filaDe('I09', 'Una copia dañada o de una versión futura no toca los dato
     check('una referencia que no existe: se rechaza', errores[5], contiene('dañada'));
     check('la buena: sí', errores[6], 'ok');
     // Lo guardado dañado o de una versión futura: «Tus datos están a salvo» y nada se escribe.
-    for (const [nombre, valor] of [['dañado', '{"esquema":2,"st":{"lugares":['], ['versión futura', JSON.stringify({ esquema: 2, version: 'Prototipo v2.9.0 · 2026-12-01', st: { persona: 'uso', configurado: true } })]]) {
+    for (const [nombre, valor] of [['dañado', '{"esquema":2,"st":{"lugares":['], ['versión futura', JSON.stringify({ esquema: 2, version: 'Prototipo v9.9.0 · 2026-12-01', st: { persona: 'uso', configurado: true } })]]) {
         await ev(`P.sinGuardar = true; localStorage.clear(); localStorage.setItem('pamplanea-modo', JSON.stringify({ modo: 'uso', notaAvisos: true })); localStorage.setItem('pamplanea-uso:v1', ${js(valor)}); true`);
         await abrirApp();
         await esperar(300);
@@ -934,12 +934,13 @@ await filaDe('V10', 'Tus datos de la v2.7 en la v2.8: copia intacta «antes-de-v
     await ev(`P.sinGuardar = true; localStorage.clear(); localStorage.setItem('pamplanea-modo', JSON.stringify({ modo: 'uso', notaAvisos: true })); localStorage.setItem('pamplanea-uso:v1', ${js(guardado)}); true`);
     await abrirApp();
     await esperar(400);
-    const r = await ev(`(() => { const c = JSON.parse(localStorage.getItem('pamplanea-uso:respaldo:antes-de-v2.8.0') || 'null'); const u = JSON.parse(localStorage.getItem('pamplanea-uso:v1')); return { copia: c && JSON.stringify(c.datos), donde: u.st.apartados[0].donde, version: u.version, libre: P.calc().libre, nov: !!document.getElementById('capa-novedades') }; })()`);
+    const r = await ev(`(() => { const c = JSON.parse(localStorage.getItem('pamplanea-uso:respaldo:antes-de-' + window.VERSION_PROTOTIPO.split(' ')[1]) || 'null'); const u = JSON.parse(localStorage.getItem('pamplanea-uso:v1')); return { copia: c && JSON.stringify(c.datos), donde: u.st.apartados[0].donde, version: u.version, libre: P.calc().libre, nov: !!document.getElementById('capa-novedades') }; })()`);
     check('la copia intacta por versión', r.copia, guardado);
     // «No asumir» (2026-10-22): esa cuenta queda como supuesta hasta que la persona conteste (V11).
     check('tus ahorros quedan «dentro de» tu banco (el que tiene más), como supuesto', r.donde, { lugar: 'banco', supuesto: true });
     check('tu libre no cambia', r.libre, libreAntes);
-    check('lo guardó la v2.8', r.version, (v) => typeof v === 'string' && v.startsWith('Prototipo v2.8.0'));
+    // v2.9: la copia y lo guardado son de la versión que abre (desde la v2.9, «antes-de-v2.9.0»).
+    check('lo guardó la versión de ahora (v2.8 o más nueva)', r.version, (v) => typeof v === 'string' && /^Prototipo v2\.(8|9)\.\d/.test(v));
     check('sale el cuadrito de novedades', r.nov, true);
     await ev(`P.sinGuardar = true; localStorage.clear(); true`);
     await abrirApp();

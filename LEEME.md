@@ -1,4 +1,4 @@
-# Producto v2 · prototipo de teléfono — versión 2.8.0
+# Producto v2 · prototipo de teléfono — versión 2.9.0
 
 **Qué es:** un prototipo clicable de la app completa propuesta en Producto v2. Desde la v2.2 tiene **dos modos**: **entrenamiento** (datos inventados de Ana, Carlos y Rosa; entrenamiento en dos versiones —fecha fija o ingresos que varían— con «Lo esencial» y «Aprende más», 18 ejercicios y la prueba A/B para testers) y **uso normal** (la familia cercana de Victor la usa 1–2 semanas con su dinero real, guardado solo en su teléfono). Desde la v2.6, la persona solo ve tres caminos —«Usarla con mis datos», «Aprender a usarla» y «Prueba guiada»— y las herramientas de Victor (casos, sets, moderador) se abren con `?victor=1`. Es una maqueta de flujo y comprensión, no producción.
 
@@ -12,9 +12,133 @@
 
 Sin servidor propio, sin dependencias, sin CDN, sin analítica ni rastreadores. Fuentes, emoji, íconos y los íconos de la app instalable son locales, con sus licencias (`recursos/licencias`).
 
-**Estado:** brief y acuerdos V2-01…V2-22 APROBADOS por Victor (2026-10-16); **V2-23 a V2-30** y **V2-31 (respuestas v2.1)** APROBADOS por Victor (2026-10-16); **V2-34 a V2-49** APROBADOS por Victor (2026-10-17) — V2-15 y V2-31 #7 quedan REEMPLAZADAS por V2-34. **V2-50 a V2-55** y la corrección adicional (adelanto de salario) APROBADOS por Victor (2026-10-17). **v2.4 «Entrenamiento a prueba de todo»** y sus tres ajustes previos APROBADOS por Victor (2026-10-17). **V2-56 a V2-58** y el **entrenamiento en dos versiones** (v2.4.1) APROBADOS por Victor (2026-10-18). **v2.5 «Entrenamiento sencillo y a fondo»** (estructura, ritmo y claridad) y **V2-59** (respuestas 26–29) APROBADOS por Victor (2026-10-18). **V2-60 a V2-63** (v2.6 «Simplificar para la prueba familiar») APROBADOS por Victor (2026-10-19). **V2-64 a V2-78** (QA profundo, deudas y tarjetas, Primer día, lenguaje, botón atrás, iPhone y entrenamiento; v2.6.1 a v2.6.3) APROBADOS por Victor (2026-10-19). **V2-79 a V2-84** (salir del entrenamiento sin perder tus datos, duplicados, pagos futuros y formularios; v2.6.4 y v2.6.5) APROBADOS por Victor (2026-10-19). **V2-85 y V2-86** (lo de antes de empezar no se cobra solo y la revisión para quienes ya usan la app; v2.6.6) APROBADOS por Victor (2026-10-19). **V2-87 y V2-88** (lo que pagas normalmente de una tarjeta se paga como cualquier otro pago, y editar = los mismos campos que crear; v2.6.7) y su agregado (el caso de la segunda tester y la ficha de la tarjeta) APROBADOS por Victor (2026-10-19). **v2.7 «Tus números bien»**: D-1 a D-12 y C-1 a C-10 (aquí solo D-6, D-7, D-8 y C-6), la protección de datos DATOS-1 a DATOS-5, el cuadrito de novedades y el cambio de roadmap APROBADOS por Victor (2026-10-21). **v2.8 «Más claro»**: D-1 a D-12 y C-1 a C-10 completos, P-1, la opción de la pendiente 4 y «recibí 50 en efectivo» (APROBADOS por Victor, 2026-10-21) y el trabajo de noche sin supervisión (APROBADO por Victor, 2026-10-22). Nada de esto está documentado todavía en el repo de la app: se documentará después de las pruebas con personas. Este prototipo no cambia nada del repo de la app.
+**Estado:** brief y acuerdos V2-01…V2-22 APROBADOS por Victor (2026-10-16); **V2-23 a V2-30** y **V2-31 (respuestas v2.1)** APROBADOS por Victor (2026-10-16); **V2-34 a V2-49** APROBADOS por Victor (2026-10-17) — V2-15 y V2-31 #7 quedan REEMPLAZADAS por V2-34. **V2-50 a V2-55** y la corrección adicional (adelanto de salario) APROBADOS por Victor (2026-10-17). **v2.4 «Entrenamiento a prueba de todo»** y sus tres ajustes previos APROBADOS por Victor (2026-10-17). **V2-56 a V2-58** y el **entrenamiento en dos versiones** (v2.4.1) APROBADOS por Victor (2026-10-18). **v2.5 «Entrenamiento sencillo y a fondo»** (estructura, ritmo y claridad) y **V2-59** (respuestas 26–29) APROBADOS por Victor (2026-10-18). **V2-60 a V2-63** (v2.6 «Simplificar para la prueba familiar») APROBADOS por Victor (2026-10-19). **V2-64 a V2-78** (QA profundo, deudas y tarjetas, Primer día, lenguaje, botón atrás, iPhone y entrenamiento; v2.6.1 a v2.6.3) APROBADOS por Victor (2026-10-19). **V2-79 a V2-84** (salir del entrenamiento sin perder tus datos, duplicados, pagos futuros y formularios; v2.6.4 y v2.6.5) APROBADOS por Victor (2026-10-19). **V2-85 y V2-86** (lo de antes de empezar no se cobra solo y la revisión para quienes ya usan la app; v2.6.6) APROBADOS por Victor (2026-10-19). **V2-87 y V2-88** (lo que pagas normalmente de una tarjeta se paga como cualquier otro pago, y editar = los mismos campos que crear; v2.6.7) y su agregado (el caso de la segunda tester y la ficha de la tarjeta) APROBADOS por Victor (2026-10-19). **v2.7 «Tus números bien»**: D-1 a D-12 y C-1 a C-10 (aquí solo D-6, D-7, D-8 y C-6), la protección de datos DATOS-1 a DATOS-5, el cuadrito de novedades y el cambio de roadmap APROBADOS por Victor (2026-10-21). **v2.8 «Más claro»**: D-1 a D-12 y C-1 a C-10 completos, P-1, la opción de la pendiente 4 y «recibí 50 en efectivo» (APROBADOS por Victor, 2026-10-21) y el trabajo de noche sin supervisión (APROBADO por Victor, 2026-10-22). **v2.9 «Números claros»:** AUTORIZADO por Victor (2026-10-23) todo, bajo criterio, y publicarla como actualización (ver abajo). Nada de esto está documentado todavía en el repo de la app: se documentará después de las pruebas con personas. Este prototipo no cambia nada del repo de la app.
 
-Versión visible en la app y en la guía: **«Prototipo v2.8.0 · 2026-10-23»** (en el LEEME: «Prototipo v2.8 · Más claro»).
+Versión visible en la app y en la guía: **«Prototipo v2.9.0 · 2026-10-23»** (en el LEEME: «Prototipo v2.9 · Números claros»).
+
+---
+
+## Prototipo v2.9 · Números claros (2026-10-23)
+
+**Base:** `main` en `a0cddba` (v2.8.0 publicada; Pam y Majo la usan con datos reales). Rama `v2-9`.
+
+**AUTORIZADO por Victor (2026-10-23, 1:20 a. m.)**, frases literales:
+- «te dejo aprobado todo y bajo tu criterio, todo todo, no esperemos en mí en aprobar nada»;
+- «estás full autorizado a todo, pero debe estar fix sin necesidad de que yo apruebe nada»;
+- «Tiene que mandarse como actualización todo eso».
+
+Sin preguntas. Cada decisión dice «DECIDIDO por criterio (autorizado por Victor, 2026-10-23)». Límites que no cambian: cero pérdidas, sin dependencias, no se borran pruebas y solo se publica con todo en verde.
+
+**El objetivo, en palabras de Victor:**
+- «un análisis completo, detallado, de movimiento de dinero … arreglar todo lo que pueda parecer confuso»;
+- «entender cada actual quincena, next one y meses de manera fácil. Mostrar lo aplicable para cada periodo»;
+- «Asegurarnos de no sumar o restar nada que no se deba».
+
+### Auditoría (Fase A, detalle en `herramientas/AUDITORIA-v2.9.md`)
+
+`herramientas/personas-v29.mjs` hace vivir a cuatro personas del 21 de octubre al 31 de diciembre, día por día:
+- **Pam:** cobra por quincena;
+- **Majo:** cobra por mes;
+- **Toño:** cobra por semana;
+- **Rosa:** vende, sin fecha fija.
+
+Hacen todo lo que la app sabe hacer: préstamo con pago parcial, tarjeta sin y con estado de cuenta (Netflix dentro y abonos), casa comercial, 3 presupuestos, ahorros dentro y aparte, adelanto con comisión, aguinaldo, Quincena 25, pareja, remesa, cuchubal, un cuadre, mover dinero y una corrección.
+
+Un **contador** escrito en la prueba (sin `motor.js`) dice cuánto deberían ver. Se compara cada día con Hoy, Mi dinero y Mes, y en los días clave con cada pestaña de Mi plan, por fecha y por tipo, con su «¿De dónde sale?».
+
+- **Sobre la v2.8:** 2,890 diferencias en 74 grupos. Las 406 de dinero vienen de **una sola causa (H1):** un gasto de comida no bajaba el presupuesto «Comida afuera» y tu libre bajaba dos veces. Ejemplo en $: el 1 de noviembre, el libre de Pam era **$890.00**; lo correcto, **$920.00**, porque sus $30 de pupusas ya estaban en «Comida afuera».
+- **Lo demás (H2 a H14) mezclaba periodos o confundía:**
+  - «Ver por tipo» con todo y totales que no cuadraban;
+  - «Más adelante» en cada pestaña;
+  - el mismo «¿De dónde sale?» en todas;
+  - «aprox.» sin estimados;
+  - el adelanto en dos lugares;
+  - presupuestos sin «Reabrir»;
+  - «Este periodo» para quien cobra por mes;
+  - el consejo de otra pantalla;
+  - la tarjeta contada entera en Próxima.
+- **Coincidieron desde el principio:** saldos, ahorros, deudas y Mes, al centavo, los 72 días.
+- **Sobre la v2.9: 0 diferencias** en las cuatro personas.
+
+### Lo que cambió (R1 a R12)
+
+- **R1 a R3, la pestaña manda:**
+  - cada pestaña muestra solo lo de su periodo: la lista por fecha, «Por tipo», el resumen y «¿De dónde sale?»;
+  - el total de cada sección es la suma de sus filas, y una sección vacía no se muestra;
+  - sin «Más adelante»: lo que viene se ve con las flechas de Mes.
+- **R4:** un «¿De dónde sale?» por pestaña, que suma exacto.
+  - Hoy: Tienes − Ahorros − Sale = Tu libre.
+  - Próxima y Mes: Entra − Sale = Te quedarían.
+- **R5, presupuestos:**
+  - Editar, «Saltar esta quincena» y «Ya no lo uso» (con confirmación; el historial se queda);
+  - «Ya terminé» se deshace con «Reabrir» hasta tu próximo ingreso;
+  - las respuestas: «Sí, ya no gasto más en esto» / «Todavía voy a gastar» / «Me falta anotar algo».
+- **R6:** «Por fecha | Por tipo» arriba, junto a las pestañas.
+- **R7:** el adelanto en una línea: «Quincena $600.00 − adelanto $210.00 = $390.00 (incluye $10.00 de comisión)». Nunca se cuenta dos veces.
+- **R8:** un ingreso de una vez sale de Mi plan cuando llega o cuando pasa su fecha.
+- **R9:** el «?» de Mi plan → Mes es de Mi plan.
+- **R10, pestañas por cómo te pagan:**
+  - por quincena: Esta quincena · Próxima · Mes;
+  - por semana: Esta semana · Próxima · Mes;
+  - por mes y sin ingreso fijo: Este mes · Próximo mes, con flechas.
+- **R11:** «aprox.» solo con un estimado. «Sin tus gastos del día a día» pasa a «Lo que entra menos tu plan. No suma lo que te sobre hoy.»
+- **R12:** una idea por bloque; en el periodo de hoy, un presupuesto muestra lo que te queda.
+
+### DECIDIDO por criterio (autorizado por Victor, 2026-10-23)
+
+1. **«Te quedarían» no suma lo que te sobra hoy**, en Hoy, Mi plan y la proyección. Ese dinero ya es tu libre de hoy; sumarlo otra vez haría creer que tienes más. Con todo como en tu plan: libre del día de pago = libre de hoy + «Te quedarían» (`invariantes` V42).
+2. **Cada peso en un solo periodo: el que lo paga.** Próxima muestra lo que paga ese ingreso (lo que dejaste listo con lo de hoy sale en gris). Así nada se cuenta en dos pestañas.
+3. **De tu tarjeta, Próxima y Mes cuentan solo lo que no contaste al comprar** («$13.00 de $58.00»). Las compras ya bajaron tu libre el día que las hiciste (D-4).
+4. **Mes (en Mi plan) es tu plan del mes:** presupuestos y ahorro, una vez por cada periodo que empieza ese mes. Antes faltaban, y no era el mismo número que las otras pestañas.
+5. **Un ingreso de una vez está en Mi plan solo mientras lo esperas.** Al llegar ya es parte de lo que tienes, y lo ves en Mes (la pantalla).
+6. **Quien cobra por mes y quien no tiene ingreso fijo tienen dos pestañas.** «Mes» repetía «Este mes»; las flechas llevan a los meses que siguen.
+7. **«N por confirmar» solo en la pestaña de hoy:** es de ahora.
+8. **H1:** «Comida afuera», «Comer afuera» y «Comidas» se llevan los gastos de comida. «Gasolina» sigue solo por su nombre: un «bus 1» no es gasolina, como decidió la v2.8.
+9. **«Saltar» guarda un cierre «saltado» de ese periodo, y «Reabrir» lo quita.** Solo el de este periodo: después de tu ingreso empieza otro. Lo anotado no se toca.
+10. **«Ya no lo uso» es el «Ya no aplica» de antes, con palabras claras:** se queda el historial.
+11. **En «Esta quincena», el monto de un presupuesto es lo que te queda**, lo que está en «Sale». Es el número que importa hoy.
+12. **La comisión de un adelanto** = lo que te descuentan − lo que te dieron, repartida entre sus descuentos. Se dice en la misma línea.
+13. **El «¿De dónde sale?» de hoy ya no lista «Todavía no cuenta» ni la próxima quincena:** están en su pestaña (R3). Se queda «¿Pasas algo de lo que te sobra a la próxima?», que es de hoy.
+14. **El resumen ya no dice «Incluye $X de tu pareja»:** las filas lo dicen. Quedan la línea del adelanto y qué incluye «Te quedarían».
+15. **«Este mes llevas $X en ventas» solo en su mes.** En el próximo, «Tus ventas cuentan cuando las anotas».
+16. **Quien vende y no espera nada:** su «¿De dónde sale?» suma a «Sale» (ahí «Te quedarían» no aplica).
+17. **En Próxima, una tarjeta sin monto («por confirmar») o ya pagada se ve en gris:** se ve, pero no suma.
+18. **El cuadrito v2.9:**
+    - «¡Tus números, más claros! ✨», de 2 a 4 líneas, el cierre y «¿Algo se ve raro? Recupera tus datos»;
+    - quien viene de antes de la v2.8 ve solo este (los anteriores quedan vistos) y sigue viendo sus preguntas de una vez;
+    - si tu libre cambió por H1, lo dice con antes y después (DATOS-4, con las reglas de la v2.8).
+19. **La práctica «Pagar con el aguinaldo»** abre en Mi plan → Mes → enero (`inicioMes`): con R3 la matrícula de enero ya no está en la quincena de hoy.
+20. **La línea base de la v2.9 es la de la v2.8:** las 39 pruebas acababan de pasar en `a0cddba`, el mismo código, una a la vez, en el cierre de la v2.8. Se confirmó con `invariantes` (53 de 53) y `humo`.
+
+### Pruebas (una a la vez, en primer plano, con 4 GB libres o más; hubo entre 4.1 y 6.8 GB)
+
+- **`personas-v29`:** 4 personas × 72 días (Pam 22, Majo 20, Toño 32 y Rosa 14 días clave), **0 diferencias**. Con `--fotos`, capturas de cada pestaña en `capturas/personas-v29`, revisadas como imágenes.
+- **`invariantes`: 62 de 62.** Nuevas (V35 falla sobre la v2.8):
+  - V35: H1;
+  - V36: R1 a R4 con Ana, Carlos y Rosa;
+  - V37 a V43: R5 a R10 y el día de pago.
+- **La batería completa, con el código final:** las 39 en verde.
+  - Largas por partes: `v25` (a–f, g–i, j–k), `v266` (a–d, e–g) y `v267` (a–c, d–f).
+  - `palabras-v28`: 0 de 902. Ahora tampoco deja «suman cuando llegan», «Sin tus gastos del día a día», «Todavía no cuenta», «Ver por tipo» ni «Se me olvidó anotar».
+- **`actualizar` desde `c640e4e`, `d702de0` y `a0cddba`:** 0 fallos. Con `a0cddba`, también Pam y Majo (adelanto, aguinaldo, pareja, tarjeta, presupuestos y ahorro programado): cero pérdidas, copia «antes de la v2.9» intacta y que se recupera, y el cuadrito una vez, con el antes y después de su libre.
+- **Fluidez** (CPU 4 veces más lenta, 390×844, mediana de 5): dentro de las metas, sin A08.
+
+| | Abrir (≤ 2 s) | Interacción más lenta (≤ 200 ms) | Guardar (≤ 300 ms) | Saltos (CLS) | Con «reducir movimiento» |
+|---|---|---|---|---|---|
+| a) los de Victor en el guion | 179 ms | 66 ms (pestaña Mes) | 27 ms | 0 | nada se mueve |
+| b) un año sintético (1,486 movimientos) | 301 ms | 106 ms (pestaña Mes) | 52 ms | 0 | nada se mueve |
+
+- **`capturas-v28`** a 390×844 y 1440×900 (56), revisadas como imágenes. Nuevas: el «¿De dónde sale?» de Próxima y la ficha del presupuesto.
+- **Pruebas puestas al día, citando su punto** (ninguna se borró):
+  - `invariantes` (V25, V31, V4, I09 y V10);
+  - `entrega2-v23`, `viaje-v23`, `aceptacion-v23`, `v24`, `v231`, `v25`, `v266`, `v267`;
+  - `novedades` (el cuadrito v2.9), `actualizar` (v2.9 y Pam y Majo), `capturas-v28` y `palabras-v28`.
+
+### PENDIENTE (lo vi y no lo toqué)
+
+1. Sigue abierta la pendiente 4 de la v2.8: las filas de Mi plan no dicen «último día del mes» ni «mismo día de tu pago».
+2. **Sin ingreso fijo, con «Los próximos 15 días»:** el libre mira hasta hoy + 15 días y las pestañas van del 1 al 15 y del 16 al fin de mes. No cambia ningún número de las pruebas.
+3. **FM-1** (un nombre repetido) se aplica en el formulario de ingreso. Un adelanto anotado en Anotar llega en ese momento, así que no queda pendiente ni se repite en el plan.
 
 ---
 
