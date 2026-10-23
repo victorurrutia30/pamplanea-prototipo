@@ -454,24 +454,15 @@ Versión visible en la app y en la guía: **«Prototipo v2.8.0 · 2026-10-22»**
   - 2 capturas a 390×844 (Mis categorías y Mi plan con «aprox.»), revisadas como imágenes.
 - **QUÉ DEBO PROBAR, verificado:** el guion repitió hasta el ajuste 6 en `42a46ee` y las 4 nuevas con el código final, el 22 de octubre, sin fallos: $808 → $783 con «Salud».
 
-### Pendiente para el cierre
+### Pendiente para el cierre — hecho en el cierre (2026-10-23)
 
-Para cuando Victor escriba «todo aprobado, lancemos» (modo ajuste: no se hizo ahora).
+Lo que quedó para «todo aprobado» en los ajustes 5 a 7, y dónde quedó:
 
-- **Textos:**
-  - Practicar «Remesa» dice «En Mi plan (Calendario)…» y «Esperado · suma cuando llegue».
-  - La ayuda llama a Mi plan «Pagos».
-  - El tour y el glosario hablan de «tu próxima quincena» como tarjeta; ahora señalan el resumen de Mi plan → Próxima.
-  - El consejo de la primera vez en Mi plan.
-  - «Presupuestos» en el entrenamiento, la ayuda, el glosario («Gastos variables») y el cuadrito («pueden ser gastos variables»); el consejo de Mes.
-- **`palabras-v28`:** agregar «gasto variable» y «gastos variables» (cuando cambien esos textos) y «~$».
-- **Textos con «~»** en el entrenamiento y la ayuda (los que no salen del motor), y «Para anotar».
-- **Contraste:** «⚠ N por confirmar», «va en Mi BAC» y la línea contra el mes anterior no se midieron en los 4 temas (el caso de `contraste-v23` no los tiene).
-- **Pruebas que no se corrieron:**
-  - la batería completa y las largas: `v25`, `v24`, `v231`, `v26`, `v264`, `v266`, `v267`, `v267-editar`, `formularios-v265`, `recorrer-v2`, `recorrer-modos`;
-  - `capturas-v28`, `capturas-ux` y la vista de computadora;
-  - `actualizar` ×2: no hizo falta (no cambió cómo se guardan los datos).
-- **Documentos:** README, MATRIZ-QA, versión y caché.
+- **Textos:** el glosario («aprox.», «Presupuestos», Mi plan, «va en» tu tarjeta, Mis categorías y Mes), los consejos de Mi plan, Mes y Anotar, el entrenamiento («aprox.», «+ Agregar»), la ayuda («Mi plan», el presupuesto del súper), la práctica (sin «Calendario», sin «~», «Ya contado…») y la guía. ✓
+- **`palabras-v28`:** ahora también revisa la práctica, los casos y el cuadrito, y no deja «gasto variable», «~$», «tope», «Mis pagos», «Mi plan (Calendario)» ni «Para anotar»: 0 de 900 textos. ✓
+- **Contraste** de «va en [tarjeta]» (6.67 a 9.14:1) y «⚠ por confirmar» (6.36 a 9.95:1) en los 4 temas, con un caso que sí los tiene (`contraste-v23`). ✓
+- **Pruebas:** la batería completa y las largas, `capturas-v28` a 390×844 y 1440×900 y `actualizar` ×2 (ver «Cierre y publicación»). ✓
+- **Documentos:** README, MATRIZ-QA (sección O), versión y caché. ✓
 
 ### Decisiones técnicas — REVISAR (v2.8)
 

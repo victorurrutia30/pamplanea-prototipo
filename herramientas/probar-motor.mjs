@@ -131,7 +131,8 @@ igual('15 y último día', M.fechasRegla({ frecuencia: 'quincenal', dias: [15, 3
 igual('cada 3 meses', M.fechasRegla({ frecuencia: 'meses', cadaMeses: 3, fecha: '2026-11-30' }, '2026-10-01', '2027-06-30'), ['2026-11-30', '2027-02-28', '2027-05-30']);
 igual('cada año', M.fechasRegla({ frecuencia: 'meses', cadaMeses: 12, fecha: '2026-12-12' }, '2026-10-01', '2028-01-01'), ['2026-12-12', '2027-12-12']);
 igual('fechas a medida', M.fechasRegla({ frecuencia: 'fechas', fechas: ['2026-11-03', '2026-10-25', '2026-10-25'] }, '2026-10-01', '2026-12-01'), ['2026-10-25', '2026-11-03']);
-igual('«~$597», nunca «+~$597»', M.dinero(c('597'), { signo: true, aprox: true }), '~$597');
+// Ajuste 7 y cierre (APROBADO por Victor 2026-10-22): «aprox.» después del monto, con centavos; lo que entra con «+».
+igual('«+$597.00 aprox.»', M.dinero(c('597'), { signo: true, aprox: true }), '+$597.00 aprox.');
 
 const frases = ['súper 25', 'pupusas 6', 'zapatos 45 tarjeta', 'me pagaron 600', 'vendí 45', 'acuérdame colegio 20 el 5', 'luz 35 el 12', 'aparté 50 emergencias', 'ahorré 20 emergencias', 'guardé 30 emergencias', 'tengo 300', 'retiré 100 del cajero', 'medicina 40', 'hola', 'gasté 12 en bus ayer', 'pagué la tarjeta 245'];
 const salida = {};

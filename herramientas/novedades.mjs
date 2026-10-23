@@ -121,7 +121,8 @@ await seccion('C líneas', async () => {
     await abrirApp();
     const sin = await lineas();
     // v2.8: las tres de la v2.8 (tiene ahorros) y, de la v2.7, la de los montos (sin pagos ni tarjeta).
-    check('sin tarjeta ni pagos: Mi plan, ahorros, variables y lo de los montos', sin, ['Pagos ahora se llama Mi plan: ahí ves lo que viene.', 'Tus ahorros ya no se mezclan con lo que puedes gastar.', 'El súper y la gasolina pueden ser gastos variables.', 'Ya puedes anotar montos grandes, como 1,200.']);
+    // Cierre de la v2.8 (APROBADO por Victor 2026-10-22): el cuadrito de su borrador («Ponle un máximo…», «Mes te cuenta…»).
+    check('sin tarjeta ni pagos: Mi plan, ahorros, presupuestos y Mes', sin, ['Pagos ahora se llama Mi plan: ahí ves lo que viene.', 'Tus ahorros ya no se mezclan con lo que puedes gastar.', 'Ponle un máximo a lo que quieras: son tus presupuestos.', 'Mes te cuenta en qué se te fue el dinero.']);
     await foto('C-sin-tarjeta');
     // Con tarjeta y pagos, sin números corregidos (Ana tal cual, con otro nombre).
     await sembrar();
@@ -129,7 +130,7 @@ await seccion('C líneas', async () => {
     const con = await lineas();
     // v2.8 (D-4, U01): con la regla nueva de la tarjeta, los $15 de intereses de BAC van con la quincena del 30: su libre
     // sube $15, y el cuadrito lo dice con antes y después (en vez de lo de la v2.7, que ya no cabe).
-    check('con tarjeta y pagos: las de la v2.8 y su libre antes y después', con, ['Pagos ahora se llama Mi plan: ahí ves lo que viene.', 'Tus ahorros ya no se mezclan con lo que puedes gastar.', 'El súper y la gasolina pueden ser gastos variables.', 'Tu libre era $270.60 y ahora es $285.60.']);
+    check('con tarjeta y pagos: las de la v2.8 y su libre antes y después', con, ['Pagos ahora se llama Mi plan: ahí ves lo que viene.', 'Tus ahorros ya no se mezclan con lo que puedes gastar.', 'Ponle un máximo a lo que quieras: son tus presupuestos.', 'Mes te cuenta en qué se te fue el dinero.', 'Tu libre era $270.60 y ahora es $285.60.']);
     // Con números que estaban mal en la v2.6.7: F01 (un gasto anotado después de cuadrar) y F02 (un abono a «lo que debo hoy»).
     await sembrar(`
         s.tarjetas.push({ id: 't70', nombre: 'Visa', emoji: '💳', tipo: 'tarjeta', corte: 5, pagoDia: 25, cupo: null, interesesAnio: 0, desde: '2026-10-10', pagoUsual: 10000, debeInicial: 200000, estados: [{ corte: '2026-10-05', total: 0, minimo: 0, aPagar: 0, opcion: 'total', vence: '2026-11-25', inicial: true, esperarCorte: true }] });
@@ -151,8 +152,9 @@ await seccion('C líneas', async () => {
 
 // ------------------------------------------------------------------ D) corto, amable y accesible
 await seccion('D accesible', async () => {
+    // Cierre: 5 líneas como mucho en la lista (las 4 del borrador y, si cambió un número, la del antes y después); el cierre va aparte.
     const todas = [...(await lineas()), await ev(`document.querySelector('.nov-cierre').innerText.trim()`)];
-    check('máximo 5 líneas (con el cierre)', todas.length, (x) => x <= 5);
+    check('máximo 5 líneas (más el cierre)', todas.length - 1, (x) => x <= 5);
     check('termina con «Tus datos están completos y a salvo.»', todas.at(-1), 'Tus datos están completos y a salvo.');
     check('20 palabras o menos cada una', todas.filter((l) => l.split(/\s+/).length > 20), []);
     check('sin palabras técnicas', todas.filter((l) => TECNICAS.test(l)), []);
@@ -161,7 +163,10 @@ await seccion('D accesible', async () => {
     check('el foco está adentro y lo de atrás no se toca', [r.foco, r.atras], ['nov-ok', true]);
     check('con «reducir movimiento» nada se mueve', r.anim, 'none');
     await b.enviar('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9 });
-    check('Tab no sale del cuadrito', await ev(`document.activeElement.dataset.fk`), 'nov-ok');
+    // Adenda al cierre: Tab va y viene entre «¡Entendido!» y «¿Algo se ve raro? Recupera tus datos», sin salir del cuadrito.
+    check('Tab no sale del cuadrito (va a «Recupera tus datos»)', await ev(`document.activeElement.dataset.fk`), 'nov-recuperar');
+    await b.enviar('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Tab', code: 'Tab', windowsVirtualKeyCode: 9 });
+    check('y vuelve a «¡Entendido!»', await ev(`document.activeElement.dataset.fk`), 'nov-ok');
     await b.enviar('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 });
     await esperar(200);
     check('Escape lo cierra', await hay(), false);

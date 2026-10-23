@@ -9,20 +9,24 @@ La primera vez eliges cómo empezar: **«Aprender a usarla»** (recomendado) o *
 - **Usarla con mis datos:** tu dinero real, con la fecha real de tu teléfono. Empiezas desde cero: cómo te pagan, cuánto tienes y dónde, tus deudas, tus tarjetas y tus gastos fijos.
 - **Aprender a usarla:** primero te pregunta cómo te entra el dinero —en fecha fija (quincena, mes o semana) o cuando vendes o trabajas— y te enseña, a tu ritmo, con **datos de ejemplo**. **«Lo esencial»** son 6 pasos que bastan para empezar; en algunos lo haces tú y ves el número cambiar. Después, si quieres, **«Aprende más»**: capítulos cortos que haces cuando quieras, y ejercicios para practicar. Nada de lo que hagas ahí toca tus datos.
 - **Prueba guiada:** tareas cortas para ver si la app se entiende (unos 15 minutos, con datos de ejemplo). No es un examen para ti: es para la app.
-- **Instalar la app** (solo si todavía no la instalaste), **Completar tu Primer día** (con tus datos), **Cuéntale a Victor o a Pam cómo vas** y **Tus datos** (copia, restaurar y borrar), la apariencia y la versión.
+- **Instalar la app** (solo si todavía no la instalaste), **Completar tu Primer día** (con tus datos), **Cuéntale a Victor o a Pam cómo vas** y **Tus datos** (guardar una copia, recuperar o borrar), la apariencia y la versión.
 
 Lo de tus datos y lo de los ejemplos se guarda por separado: nada de lo que hagas con los ejemplos toca tus datos.
 
 ## Lo nuevo en la v2.8 · Más claro
 
-- **Abajo: Hoy · Mi plan · (+) · Mi dinero · Mes.** «Pagos» ahora se llama **Mi plan**: lo que viene, en cinco partes (ingresos, gastos fijos, gastos variables, ahorro programado y pagos de deudas), y cada cosa dice de dónde sale. El calendario de quincenas sigue ahí.
-- **Tu libre, más claro:** lo que tienes en tus cuentas, menos tus ahorros, menos lo que falta de tu plan hasta tu próximo ingreso.
-- **Gastos variables.** Al súper o a la gasolina les pones un tope cada quincena. Si gastas en el súper, tu libre no baja otra vez: ya estaba en tu plan. Antes de tu próximo ingreso te pregunta si ya terminaste.
-- **Tus ahorros, aparte de lo que puedes gastar.** Cada uno dice dónde está: dentro de una cuenta o aparte. «Usé de mi ahorro» devuelve ese dinero a tu libre, y puedes guardar algo cada quincena con «Ya lo guardé».
-- **Anotar con verbos:** Gasté · Me llegó dinero · Pagué una deuda · Guardé en un ahorro · Moví dinero · Cuadré. Si anotas un pago de tu plan, te pregunta si es ese («¿Es tu pago de Internet?»). «Me prestaron 200» guarda la deuda y el dinero que llegó, y «recibí 50 en efectivo» llega a tu efectivo.
-- **Tu tarjeta:** su pago (lo que pagas normalmente o su estado de cuenta) se paga con tu quincena de antes de que venza. Lo que se cobra solo en ella (Netflix) va dentro de su pago. Se le puede poner apodo, y su ficha dice qué se cobra en ella. Al agregarla, «¿Qué día vence tu próximo pago?» muestra la fecha completa.
-- **Hoy, simple:** tu número, lo que viene (hasta 3) y Anotar. Una cuota termina sola cuando ya no debes nada.
-- Si ya usabas la app, un cuadrito te cuenta lo nuevo y Hoy te hace dos o tres preguntas, una sola vez. Nada cambia sin tu respuesta.
+- **Abajo: Hoy · Mi plan · (+) · Mi dinero · Mes.** «Pagos» ahora se llama **Mi plan**.
+- **Tu libre, más claro:** lo que tienes en tus cuentas, menos tus ahorros, menos lo que falta de tu plan hasta tu próximo ingreso. **Hoy** es simple: tu número, lo que viene (hasta 3) y Anotar.
+- **Mi plan, más ligero:** lo que viene, día por día, en una línea cada cosa (o **«Ver por tipo ›»**). Arriba, **Esta quincena · Próxima · Mes**, con un resumen («Tienes · Ahorros · Sale» y **Tu libre**, el mismo número de Hoy). Un solo botón, **«+ Agregar»**, para un ingreso, un gasto fijo, un presupuesto, un ahorro programado, una deuda o tus categorías.
+- **Presupuestos:** lo máximo que quieres gastar en algo cada quincena (el súper, la comida afuera). Si gastas en el súper, tu libre no baja otra vez: ya estaba en tu plan.
+- **Tus ahorros, aparte de lo que puedes gastar.** Cada uno dice dónde está: dentro de una cuenta o aparte. Puedes guardar algo cada quincena con «Ya lo guardé».
+- **Anotar con verbos:** Gasté · Me llegó dinero · Pagué una deuda · Guardé en un ahorro · Moví dinero · Cuadré. Si anotas algo de tu plan, te pregunta si es eso.
+- **Tu tarjeta:** su pago se paga con tu quincena de antes de que venza. Lo que se cobra en ella (Netflix) se ve en gris, «$10.00 · va en Mi BAC»: ya va dentro de su pago.
+- **Mis categorías:** las del día a día, tus presupuestos y tus gastos fijos. Puedes crear, renombrar, cambiar el ícono u ocultar (lo anotado no cambia); las que la app usa para tus cuentas llevan 🔒.
+- **Mes, nuevo:** qué pasó y qué aprendes: lo que entró y salió, **«¿En qué se te fue?»**, tus presupuestos, **«Lo que encontramos»** (gastos hormiga, lo que calculaste contra lo que pagaste, tus suscripciones) y el historial con buscador y filtros.
+- **«aprox.»** en vez de «~»: lo aproximado se escribe «$30.00 aprox.».
+- **Tus datos, fáciles de recuperar:** en «Tus datos» ves las copias que guarda la app («Antes de la actualización · 23 oct») y las recuperas con un toque; lo de ahora se guarda primero, por si te arrepientes.
+- Si ya usabas la app, un cuadrito te cuenta lo nuevo una sola vez y Hoy te hace dos o tres preguntas. Nada cambia sin tu respuesta.
 
 ## Lo nuevo en la v2.7 · Tus números bien
 
@@ -147,7 +151,7 @@ Lo de tus datos y lo de los ejemplos se guarda por separado: nada de lo que haga
 
 - **Se guardan solo en tu teléfono.** No hay servidor, cuentas, analítica ni rastreadores. Nadie más los ve, ni Victor ni Pam.
 - **Es una versión de prueba:** si algo no cuadra, avísale a Victor o a Pam.
-- **Guarda una copia de vez en cuando:** «Ayuda» o tu letra → **«Tus datos»** → **«Guardar copia»** (descarga un archivo `pamplanea-copia-AAAA-MM-DD.json`) o **«Compartir copia»** (para mandártela por WhatsApp o correo; va como `pamplanea-copia-AAAA-MM-DD.txt`). Con **«Restaurar una copia»** la vuelves a cargar (te pide confirmar antes de reemplazar). **«Borrar todos mis datos»** pide confirmar dos veces.
+- **Guarda una copia de vez en cuando:** «Ayuda» o tu letra → **«Tus datos»** → **«Guardar una copia en mi teléfono»** (descarga un archivo `pamplanea-copia-AAAA-MM-DD.json`) o **«Compartir copia»** (para mandártela por WhatsApp o correo; va como `pamplanea-copia-AAAA-MM-DD.txt`). Con **«Restaurar una copia»** la vuelves a cargar (te pide confirmar antes de reemplazar). **«Borrar todos mis datos»** pide confirmar dos veces.
 - Cuando hay una versión nueva verás «Hay una versión nueva · Actualizar»: actualizar **no borra** tus datos. Desde la v2.7, antes de cambiar algo guarda una copia de lo que tenías; si un día no puede abrirlos, te muestra **«Tus datos están a salvo»** con cómo recuperarlos (nunca empieza de cero).
 
 ## Instálala en tu pantalla de inicio
@@ -183,4 +187,4 @@ Los enlaces `…/pamplanea-prototipo/?set=A` y `…/?set=B` siguen llevando dire
 - **Pruebas** (`herramientas/`, en el repo desde la v2.6.1; no se publican en la app): Node 22 o más nuevo y **Chrome** (o Edge) instalado en su ruta normal de Windows (`herramientas/cdp.mjs`); sin dependencias ni `npm install`. Por file:// basta `node herramientas/<prueba>.mjs` (por ejemplo `qa-v261.mjs`, `atras.mjs`, `numeros-entrenamiento.mjs`, `v261.mjs`, `v26.mjs`, `v25.mjs`…). Para probarla servida como en Pages: `node herramientas/servidor.mjs 8765` y la prueba con `--base=http://127.0.0.1:8765/pamplanea-prototipo/`. Que los datos sobrevivan a una actualización: `node herramientas/actualizar.mjs --ref=7c0d06e` (desde la v2.5), `--ref=ca97256` (desde la v2.6) o `--ref=7f48ead` (desde la v2.6.3) o `--ref=3974d06` (desde la v2.6.4) o `--ref=c640e4e` (desde la v2.6.7: además prueba DATOS-5 con Ana, Carlos, Rosa y un set sintético) o `--ref=d702de0` (desde la v2.7.0). Las invariantes del dinero: `invariantes.mjs`; los montos y Anotar: `montos.mjs`; el cuadrito de novedades: `novedades.mjs`; capturas de la v2.7: `capturas-v27.mjs`; las palabras que no se dicen (C-2): `palabras-v28.mjs`; capturas de la v2.8: `capturas-v28.mjs`. `generar-recursos.mjs` lee la piel del repo de la app (`C:/laragon/www/pamplanea`, solo lectura). `recorrer.mjs` es el recorrido de la v1: queda como historia (sus casos esperan cosas que acuerdos posteriores cambiaron). Para publicar una versión: `VERSION_PROTOTIPO` en `casos.js`, la de `index.html` y `node herramientas/generar-sw.mjs vX-AAAA-MM-DD`.
 - Licencias de fuentes, emoji e íconos: [`recursos/licencias`](recursos/licencias).
 
-Prototipo v2.8.0 · 2026-10-22
+Prototipo v2.8.0 · 2026-10-23
