@@ -1465,8 +1465,8 @@ await filaDe('V25', 'Ajuste 5: todo lo que mostraba el Mi plan anterior (509aef4
     }
     await ev(`P.ui.pagosVista = 'actual'; P.render(); true`);
     check('«⚠ 1 por confirmar ›» en una línea', await texto('[data-fk="plan-por-confirmar"]'), '1 por confirmar');
-    // v2.9 (R12): lo que te queda y, a la derecha, lo de este periodo (sin repetir «de $150.00»).
-    check('gastos variables y ahorro programado, una línea cada uno', [await texto('[data-fk="pl-v-v1"]'), await texto('[data-fk="pl-a-ap1"]')], ['Súper te quedan $110.00 Gasto: $150.00', 'Emergencias esta quincena Gasto: $50.00']);
+    // v2.9 (revisión de diseñador, R12): el monto es lo que te queda (lo que está en «Sale»).
+    check('gastos variables y ahorro programado, una línea cada uno', [await texto('[data-fk="pl-v-v1"]'), await texto('[data-fk="pl-a-ap1"]')], ['Súper te quedan Gasto: $110.00', 'Emergencias esta quincena Gasto: $50.00']);
     await ev(`P.ui.pagosVista = 'mes'; P.ui.pagosMes = '2026-12'; P.ui.pagosModo = 'fecha'; P.render(); true`);
     check('el aguinaldo de diciembre está en Mes → diciembre', (await fks('#pantalla .pl-b')).some((x) => x.startsWith('i-aguinaldo-')), true);
     await ev(`P.ui.pagosVista = 'actual'; P.ui.pagosMes = null; P.render(); true`);

@@ -1789,7 +1789,7 @@
         const k = P.calc();
         const modelo = P.planPestana(P.rangoPlan(vista), k);
         const r = modelo.rango;
-        const item = (x) => `<li><span>${emo(x.emoji, 16)} ${esc(x.nombre)} <span class="d-sub">${[x.fecha ? M.fechaCorta(x.fecha) : '', x.descuento ? `${dinero(x.bruto)} − adelanto ${dinero(x.descuento)}${x.comision ? ` (incluye ${dinero(x.comision)} de comisión)` : ''}` : '', x.de ? `de ${dinero(x.de)}` : '', x.grupo === 'presupuestos' || x.grupo === 'ahorro' ? x.marca : ''].filter(Boolean).join(' · ')}</span></span><span>${dinero(x.monto, { aprox: x.aprox })}</span></li>`;
+        const item = (x) => `<li><span>${emo(x.emoji, 16)} ${esc(x.nombre)} <span class="d-sub">${[x.fecha ? M.fechaCorta(x.fecha) : '', x.descuento ? `${dinero(x.bruto)} − adelanto ${dinero(x.descuento)}${x.comision ? ` (incluye ${dinero(x.comision)} de comisión)` : ''}` : '', x.de ? `de ${dinero(x.de)}${x.tipo === 'tarjeta' ? `: ${x.sub}` : ''}` : '', x.grupo === 'presupuestos' || x.grupo === 'ahorro' ? x.marca : ''].filter(Boolean).join(' · ')}</span></span><span>${dinero(x.monto, { aprox: x.aprox })}</span></li>`;
         const fila = (signo, titulo, xs, ir, fk) => (xs.length ? `<li class="d-fila"><button type="button" class="d-b" data-a="desgloseIr" data-ir="${ir}" data-fk="d-${fk}"><span class="d-signo" aria-hidden="true">${signo}</span><span class="d-t">${titulo}</span><span class="d-m">${dinero(M.suma(xs, (x) => x.monto), { aprox: xs.some((x) => x.aprox) })}</span>${icon('chevron-right', 'ico-xs')}</button><ul class="d-items">${xs.map(item).join('')}</ul></li>` : '');
         const de = (g) => modelo.filas.filter((x) => x.cuenta && x.grupo === g);
         const vende = P.variable() && !modelo.entra;

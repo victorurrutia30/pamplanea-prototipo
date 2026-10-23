@@ -9,8 +9,10 @@
 // reabierto), ahorro dentro y aparte con ahorro programado y «Usé de mi ahorro», adelanto con su descuento (y comisión),
 // aguinaldo y Quincena 25, ingreso de la pareja, remesa, cuchubal (aportes y turno), un cuadre con dinero sin detalle,
 // mover entre cuentas y la corrección de un gasto.
-// Uso: node herramientas/personas-v29.mjs [--solo=pam,majo,tono,rosa] [--puerto=9961] [--salida=<json>] [--detalle]
-import { writeFile } from 'node:fs/promises';
+// Uso: node herramientas/personas-v29.mjs [--solo=pam,majo,tono,rosa] [--puerto=9961] [--salida=<json>] [--detalle] [--fotos]
+// Con --fotos guarda en capturas/personas-v29 cada pestaña (por fecha y por tipo) y su «¿De dónde sale?», a 390×844, un día
+// por persona (después del estado de cuenta y del adelanto).
+import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { abrir, esperar } from './cdp.mjs';
@@ -662,6 +664,7 @@ async function correr(p, b) {
                 return out;
             })()`)) });
         }
+        if (args.fotos && f === FOTO_DIA[p.id]) await fotos(p, b);
         if (!esDiaClave(p, k, f)) continue;
         comparados++;
         // --- días clave: Mi plan en cada pestaña
@@ -749,6 +752,30 @@ function revisarMes(p, k, f, v, mes) {
     if (v.desglose && /libre/i.test(v.desglose.titulo || '')) hallazgo(p.id, f, 'Mi plan · Mes · ¿De dónde sale?', 'R4: «¿De dónde sale?» explica el libre de hoy, no el mes', v.desglose.titulo, 'Entra − Sale = Te quedarían', 'P0');
     if (/gastos del día a día/.test(v.texto || '')) hallazgo(p.id, f, 'Mi plan · Mes', 'R11: «Sin tus gastos del día a día» no dice qué no incluye', 'Sin tus gastos del día a día', 'una frase más clara', 'P1');
     if (v.tip && /en qué se te fue/i.test(v.tip)) hallazgo(p.id, f, 'Mi plan · Mes', 'R9: el consejo es el de la pantalla Mes', v.tip, 'el de Mi plan', 'P1');
+}
+
+// ------------------------------------------------------------------ fotos (revisión de diseñador)
+const FOTO_DIA = { pam: '2026-11-16', majo: '2026-11-10', tono: '2026-11-04', rosa: '2026-11-16' };
+async function fotos(p, b) {
+    const dir = path.join(raiz, 'capturas', 'personas-v29');
+    await mkdir(dir, { recursive: true });
+    const ev = (x) => b.evaluar(x);
+    const foto = async (n) => { await esperar(200); await b.captura(path.join(dir, `${p.id}-${n}.png`)); };
+    const vistas = (await ev(`P.periodos().mes`)) ? ['actual', 'proxima', 'mes'] : ['actual', 'proxima'];
+    for (const v of vistas) {
+        for (const modo of ['fecha', 'tipo']) {
+            await ev(`P.ui.stack = []; P.ui.hoja = null; P.ui.pagosVista = '${v}'; P.ui.pagosModo = '${modo}'; P.ui.planPaso = 0; P.ui.pagosMes = null; P.ui.planAbiertas = { ingresos: true, fijos: true, variables: true, ahorro: true, deudas: true }; P.irTab('pagos'); document.getElementById('vista').scrollTop = 0; true`);
+            await foto(`${v}-${modo}`);
+            await ev(`document.getElementById('vista').scrollTop = 600; true`);
+            await foto(`${v}-${modo}-abajo`);
+        }
+        await ev(`P.ui.pagosModo = 'fecha'; P.render(); document.getElementById('vista').scrollTop = 0; document.querySelector('[data-fk="plan-resumen"]').click(); true`);
+        await foto(`${v}-de-donde-sale`);
+        await ev(`P.cerrarHoja({ sinFoco: true }); true`);
+    }
+    await ev(`P.ui.stack = []; P.irTab('hoy'); true`);
+    await foto('hoy');
+    await ev(`P.ui.pagosModo = 'fecha'; P.ui.pagosVista = 'actual'; P.ui.planAbiertas = {}; true`);
 }
 
 // ------------------------------------------------------------------ correr

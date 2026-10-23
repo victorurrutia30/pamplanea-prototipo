@@ -1066,12 +1066,13 @@
                 fila({ grupo: 'deudas', tipo: 'tarjeta', fecha: o.fecha, fk: `t-${o.tarjeta.id}-${o.fecha}`, abrir: abrirTarjeta(o.tarjeta), emoji: o.tarjeta.emoji, nombre: P.nombreTarjeta(o.tarjeta), monto: o.monto || 0, cuenta: o.monto !== null && o.estado !== 'arrastrado', aprox: !!o.estimado && !pagado, hecha: pagado || o.estado === 'arrastrado', marca: o.monto === null ? 'por confirmar' : pagado ? `✓${sr(' Pagado')}` : o.estado === 'arrastrado' ? 'pasó al siguiente' : o.parcial ? `faltan ${dinero(o.parcial.falta)}` : '', sub: tarjetaSub(o.tarjeta) });
             }
             for (const x of k.variables) {
-                const marca = x.saltado ? `saltado ${P.estePlan()}` : x.listo ? `te sobró ${dinero(x.sobro)} ✓` : x.pasado ? `te pasaste ${dinero(x.pasado)}` : `te quedan ${dinero(x.falta)}`;
-                fila({ grupo: 'presupuestos', tipo: 'presupuesto', fk: `pl-v-${x.v.id}`, abrir: `data-a="abrir" data-tipo="variable" data-id="${x.v.id}"`, emoji: x.v.emoji, nombre: x.v.nombre, monto: x.saltado ? 0 : x.tope, cuenta: !x.saltado, hecha: x.listo || x.saltado, marca, sub: marca, falta: x.falta });
+                // Revisión de diseñador (R12): aquí el monto es lo que te queda (lo que está en «Sale»), no el máximo.
+                const marca = x.saltado ? `saltado ${P.estePlan()}` : x.listo ? `te sobró ${dinero(x.sobro)} ✓` : x.pasado ? `te pasaste ${dinero(x.pasado)}` : 'te quedan';
+                fila({ grupo: 'presupuestos', tipo: 'presupuesto', fk: `pl-v-${x.v.id}`, abrir: `data-a="abrir" data-tipo="variable" data-id="${x.v.id}"`, emoji: x.v.emoji, nombre: x.v.nombre, monto: x.falta, hecha: !x.falta, marca, sub: `${marca === 'te quedan' ? `te quedan ${dinero(x.falta)}` : marca} de ${dinero(x.tope)}`, falta: x.falta });
             }
             for (const x of k.programado) {
                 const marca = x.guardado ? `ya lo guardaste ✓` : x.falta ? `${P.estePlan()}` : 'ya llegaste a tu meta';
-                fila({ grupo: 'ahorro', tipo: 'programado', fk: `pl-a-${x.a.id}`, abrir: `data-a="abrir" data-tipo="apartado" data-id="${x.a.id}"`, emoji: x.a.emoji, nombre: x.a.nombre, monto: x.monto, hecha: !!x.guardado, marca, falta: x.falta, sub: M.ahorroAparte(x.a) ? 'va a: aparte' : `va a: dentro de ${M.lugar(st, M.lugarAhorro(st, x.a))?.nombre || 'tu cuenta'}` });
+                fila({ grupo: 'ahorro', tipo: 'programado', fk: `pl-a-${x.a.id}`, abrir: `data-a="abrir" data-tipo="apartado" data-id="${x.a.id}"`, emoji: x.a.emoji, nombre: x.a.nombre, monto: x.falta, hecha: !x.falta, marca, falta: x.falta, sub: M.ahorroAparte(x.a) ? 'va a: aparte' : `va a: dentro de ${M.lugar(st, M.lugarAhorro(st, x.a))?.nombre || 'tu cuenta'}` });
             }
         } else {
             const x = rango.tipo === 'futuro' ? k.periodos.find((y) => y.inicio === rango.desde) : null;
@@ -1200,7 +1201,7 @@
      * Ahorros − Sale». En las demás, «Entra − Sale = Te quedarían», con «aprox.» solo si hay un estimado, el adelanto en una
      * línea y qué incluye ese número. Al tocarlo se abre su «¿De dónde sale?».
      */
-    function resumenPlan(modelo, k, vista) {
+    function resumenPlan(modelo, k, vista, { sinFechas = false } = {}) {
         const st = P.st;
         const rango = modelo.rango;
         const notas = [];
@@ -1235,14 +1236,14 @@
             // R7: el adelanto, en una sola línea («Quincena $600.00 − adelanto $210.00 = $390.00»), con su comisión si la hay.
             for (const y of modelo.filas.filter((z) => z.cuenta && z.descuento)) notas.push(`${y.nombre} ${dinero(y.bruto)} − adelanto ${dinero(y.descuento)} = ${dinero(y.monto)}${y.comision ? ` (incluye ${dinero(y.comision)} de comisión)` : ''}`);
             if (x && x.soloFechas) notas.push(`Ojo: ${P.textoFaltaFechas(x).replace(/^El /, 'el ')}`);
-            const ventas = P.variable() ? ventasPeriodo(x || { entra: modelo.entra }) : '';
-            if (ventas) notas.push(ventas);
+            // R1: «este mes llevas $X en ventas» es de este mes: en las otras pestañas solo se dice que tus ventas cuentan al anotarlas.
+            if (P.variable() && modelo.entra) notas.push('tus ventas cuentan cuando las anotas');
             // R4 / R11: qué incluye «Te quedarían», en palabras simples (y lo mismo en Hoy y en «¿De dónde sale?»).
             notas.push(TE_QUEDARIAN);
         }
         const q = rango.tipo === 'actual' ? 'libre' : vista === 'proxima' ? 'proxima' : 'planMes';
         return `<div class="plan-res-w"><button type="button" class="plan-res${falta ? ' plan-res--falta' : ''}" data-a="hoja" data-hoja="desglose" data-vista="${vista}" data-fk="plan-resumen">
-            <span class="plan-res-r">${esc(rangoCorto(rango.desde, rango.hasta))}</span>
+            ${sinFechas ? '' : `<span class="plan-res-r">${esc(rangoCorto(rango.desde, rango.hasta))}</span>`}
             <span class="plan-res-l">${esc(linea)}</span>
             <span class="plan-res-e">${falta ? icon('triangle-alert', 'ico-xs') : ''}${esc(etiqueta)}</span>
             <span class="plan-res-n">${numero}</span>
@@ -1417,7 +1418,7 @@
             ${verComo}
             <div class="plan-panel" id="plan-panel" role="tabpanel" aria-labelledby="pt-tab-${vista}">
                 ${mesNav}
-                ${resumenPlan(modelo, k, vista)}
+                ${resumenPlan(modelo, k, vista, { sinFechas: conFlechas && navTexto === rangoCorto(rango.desde, rango.hasta) })}
                 ${porConfirmar}
                 ${cuerpo}
             </div>
