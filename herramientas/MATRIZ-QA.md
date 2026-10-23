@@ -175,3 +175,25 @@ Plan de pruebas de la revisión total pedida por Victor (V2-64: «me gustaria qu
 | N-C3 | Anotar no adivina | Miles, fechas, la tarjeta nombrada, sin tarjeta, «tengo 0», dos montos (F05–F08, F18, F19) | P1 | 🔧 | montos E |
 | N-C4 | La nota del cuadre en Anotar (P-3) | Antes del cuadre: no cambia, con «Fue después de contar»; mismo día: pregunta; después: baja | P1 | 🔧 | invariantes P3 |
 | N-D1 | El cuadrito de novedades | Una vez, solo con datos de antes, líneas según los datos, accesible; atrás lo cierra | P2 | ✅ | novedades |
+
+## O. v2.8 · Más claro (ajustes 1 a 7 y el cierre)
+
+Pruebas: `invariantes` (las filas V2 a V34), `palabras-v28`, `actualizar`, `fluidez`, `contraste-v23` y las de cada pantalla. Todo lo aprobado por Victor (2026-10-21 y 2026-10-22).
+
+| ID | Caso | Esperado (acuerdo) | Prio. | Estado | Prueba |
+|---|---|---|---|---|---|
+| O-1 | Tu libre (D-3) | Lo que tienes − tus ahorros dentro − lo que falta de tu plan; el mismo número en Hoy, «¿De dónde sale?» y Mi plan | P1 | ✅ | invariantes V2, V24 |
+| O-2 | Ahorros dentro y aparte (C-1, «no asumir») | Dentro se resta; aparte solo se registra; cada ahorro de antes pregunta en qué cuenta está | P1 | ✅ | invariantes V3, V10, V11 |
+| O-3 | Presupuestos (C-3, ajuste 6) | Un gasto del presupuesto no baja otra vez tu libre; «te quedan $X de $Y» | P1 | ✅ | invariantes V4, V21, V29 |
+| O-4 | Tarjeta y cobros con tarjeta (D-4, C-7) | Una regla; lo que se cobra en la tarjeta va dentro de su pago («va en Mi BAC», sin «−») | P1 | ✅ | invariantes V5, V31 |
+| O-5 | Anotar con verbos (C-4, P-1, ajustes 1 a 4) | «¿Es tu …?», «Pagué una deuda», salario sin duplicar, nada asumido en «Gasté» | P1 | ✅ | invariantes V8, V9, V12 a V23 |
+| O-6 | Formularios claros (ajuste 3) | Sin duplicados, grupos primero, categorías propias | P2 | ✅ | invariantes V17 a V21 |
+| O-7 | Mi plan por fecha y por tipo (ajuste 5) | Nada se pierde frente al Mi plan anterior; «+ Agregar» abre los 6 formularios; se recuerda la vista | P2 | ✅ | invariantes V25, V26 |
+| O-8 | Categorías editables (ajustes 6 y 7) | Renombrar u ocultar no cambia montos; las fijas (🔒) no se cambian; «+ Nueva categoría»; «Ponerle un máximo» | P1 | ✅ | invariantes V29, V30, V33, V34 |
+| O-9 | Mes nuevo (ajuste 6) | «Salieron» = lo anotado del mes (cada centavo una vez); las filas de «¿En qué se te fue?» suman «Salieron» | P1 | ✅ | invariantes V27, V28 |
+| O-10 | «aprox.» en vez de «~» (ajuste 7) | Ninguna pantalla con «~$»; siempre con centavos | P2 | ✅ | invariantes V32, palabras-v28 |
+| O-11 | Palabras que ya no se dicen | Ni «apartar», «reservar», «Pagos», «gasto variable», «~$», «tope», «Para anotar»… en pantallas ni textos | P3 | ✅ | palabras-v28 |
+| O-12 | Actualizar desde la v2.6.7 y la v2.7 | Cero pérdidas, una copia intacta por versión, el cuadrito una vez | P1 | ✅ | actualizar ×2 |
+| O-13 | Recuperar datos, fácil (adenda) | La copia «Antes de la actualización» devuelve los datos de antes; lo de ahora queda como «Antes de recuperar» | P1 | ✅ | actualizar (d702de0) |
+| O-14 | Fluidez (CPU 4 veces más lenta) | Abrir ≤ 2 s; cada interacción ≤ 200 ms; guardar ≤ 300 ms; sin saltos (CLS 0); con «reducir movimiento» nada se mueve | P2 | ✅ | fluidez |
+| O-15 | Contraste de lo nuevo | ≥ 4.5:1 en los 4 temas («va en», «⚠ por confirmar», Mes, Mis categorías) | P2 | ✅ | contraste-v23 |

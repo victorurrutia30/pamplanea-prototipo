@@ -454,6 +454,37 @@ Versión visible en la app y en la guía: **«Prototipo v2.8.0 · 2026-10-22»**
   - 2 capturas a 390×844 (Mis categorías y Mi plan con «aprox.»), revisadas como imágenes.
 - **QUÉ DEBO PROBAR, verificado:** el guion repitió hasta el ajuste 6 en `42a46ee` y las 4 nuevas con el código final, el 22 de octubre, sin fallos: $808 → $783 con «Salud».
 
+### Cierre y publicación (2026-10-23) — EN CURSO (wip, sin publicar)
+
+- **Estado:** se detuvo por poca memoria (Claude Code paró la batería en segundo plano; había entre 3.0 y 4.1 GB libres, casi todo lo usa el Chrome de la persona). **No se fusionó a `main`.**
+- **Hecho y en verde:**
+  - textos al día y `palabras-v28` con todo lo pendiente: 0 de 900 textos;
+  - adenda A, «Recuperar datos, fácil»: «Tus datos» con las copias en palabras simples, «Recuperar» con confirmación y «Guardar una copia en mi teléfono». En `actualizar` (`d702de0`), recuperar en los dos sentidos no pierde nada;
+  - el cuadrito v2.8 del borrador, con «¿Algo se ve raro? Recupera tus datos»;
+  - contraste: «va en [tarjeta]» de 6.67 a 9.14:1 y «⚠ por confirmar» de 6.36 a 9.95:1;
+  - versión «Prototipo v2.8.0 · 2026-10-23» y caché nueva (142 archivos, ninguno falta);
+  - README y MATRIZ-QA (sección O).
+- **Fluidez** (`herramientas/fluidez.mjs`; CPU 4 veces más lenta, 390×844, mediana de 5):
+
+| | Abrir (≤ 2 s) | Interacción más lenta (≤ 200 ms) | Guardar (≤ 300 ms) | Saltos (CLS) | Animación más larga | Con «reducir movimiento» |
+|---|---|---|---|---|---|---|
+| a) los de Victor en el guion | 163 ms | 84 ms (pestaña Mes) | 29 ms | 0 | 220 ms | nada se mueve |
+| b) un año sintético (1,486 movimientos) | 291 ms | 107 ms (pestaña Mes) | 51 ms | 0 | 220 ms | nada se mueve |
+
+  Las dos dentro de las metas: no hace falta A08.
+- **Batería en este cierre: 17 en verde y ninguna en rojo:**
+  - `invariantes` 53 de 53, `palabras-v28`, `novedades`, `montos`, `teclado`, `humo`, `probar-motor`;
+  - `contraste`, `contraste-v21`, `contraste-v23`, `instalar-ua`;
+  - `actualizar --ref=c640e4e` y `--ref=d702de0`, `v263`, `v261`, `qa-v261`, `recuperar-v263`, `probar-pwa`.
+  - Actualizadas citando su punto: `novedades` (el cuadrito del cierre) y `probar-motor` («+$597.00 aprox.»).
+- **Falta (en este orden):**
+  1. el resto de la batería: `humo-v23`, `entrega2-v23`, `viaje-v23`, `aceptacion-v23`, `v24`, `v241`, `v262`, `v231`, `atras`, `recorrer-sets`, `verificar-guia`, `v265`, `formularios-v265`, `numeros-entrenamiento`, `recorrer-modos`, `recorrer-v2`, `v26`, `v264`, `v267-editar`, `v266` (2 partes), `v267` (2 partes) y `v25` (3 partes); y las de capturas y de desarrollo (`recorrer`, `diario-antes`, `hoy2`, `sonda-v25`, `capturas-ux`, `capturas-v263`, `capturas-v27`);
+  2. `capturas-v28` a 390×844 y 1440×900, revisadas como imágenes;
+  3. el LEEME consolidado y la publicación (paso 7).
+- **Cómo seguir:** con 4 GB libres (cerrar pestañas de Chrome ayuda), correr la cola de `bateria2` una prueba a la vez, en primer plano.
+- **Decisión técnica (REVISAR):** «máximo 5 líneas» del cuadrito cuenta la lista (las 4 del borrador y, si cambió un número, la del antes y después); el cierre «Tus datos están completos y a salvo.» va aparte, como en el borrador.
+- **Producto sin decidir (no se inventó):** capítulos nuevos del entrenamiento para Presupuestos, Mis categorías y el Mes nuevo (era el PENDIENTE 1 de la v2.8). Por ahora se explican en el glosario, los «?» y «Aprende».
+
 ### Pendiente para el cierre — hecho en el cierre (2026-10-23)
 
 Lo que quedó para «todo aprobado» en los ajustes 5 a 7, y dónde quedó:
@@ -461,7 +492,7 @@ Lo que quedó para «todo aprobado» en los ajustes 5 a 7, y dónde quedó:
 - **Textos:** el glosario («aprox.», «Presupuestos», Mi plan, «va en» tu tarjeta, Mis categorías y Mes), los consejos de Mi plan, Mes y Anotar, el entrenamiento («aprox.», «+ Agregar»), la ayuda («Mi plan», el presupuesto del súper), la práctica (sin «Calendario», sin «~», «Ya contado…») y la guía. ✓
 - **`palabras-v28`:** ahora también revisa la práctica, los casos y el cuadrito, y no deja «gasto variable», «~$», «tope», «Mis pagos», «Mi plan (Calendario)» ni «Para anotar»: 0 de 900 textos. ✓
 - **Contraste** de «va en [tarjeta]» (6.67 a 9.14:1) y «⚠ por confirmar» (6.36 a 9.95:1) en los 4 temas, con un caso que sí los tiene (`contraste-v23`). ✓
-- **Pruebas:** la batería completa y las largas, `capturas-v28` a 390×844 y 1440×900 y `actualizar` ×2 (ver «Cierre y publicación»). ✓
+- **Pruebas:** `actualizar` ×2 ✓; la batería completa y las largas, y `capturas-v28` a 390×844 y 1440×900: **en curso** (ver «Cierre y publicación»).
 - **Documentos:** README, MATRIZ-QA (sección O), versión y caché. ✓
 
 ### Decisiones técnicas — REVISAR (v2.8)
