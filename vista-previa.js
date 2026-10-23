@@ -1,7 +1,7 @@
 // ============================================================================================================================
 // VISTA PREVIA v2.9.3 — SOLO PARA COMPARAR «Hoy A / Hoy B». QUITAR ANTES DE PUBLICAR (este archivo, su <script> en
 // telefono.html y las líneas marcadas «VISTA PREVIA» en arranque.js y ayuda.js).
-// - Un selector «Hoy A / Hoy B» arriba de Hoy (se recuerda en este navegador; no es parte de tus datos).
+// - Un selector «Hoy C / Hoy A / Hoy B» arriba de Hoy (C por defecto; se recuerda en este navegador; no es parte de tus datos).
 // - «Cargar ejemplo»: 4 personas (quincena, mes, semana, ventas) × 7 casos. Recarga la página con #ejemplo=…: así nunca se
 //   cargan tus datos ni se guarda nada (P.sinGuardar, y la persona de ejemplo no es «uso»: el candado tampoco la guardaría).
 // - En raw.githack.com no se registra el service worker (y se quita el de esta ruta): así cada push se ve al recargar.
@@ -10,7 +10,8 @@
 (() => {
     const M = window.MOTOR;
     const P = window.P;
-    const CLAVE = 'pamplanea-vista-previa:hoy';
+    // Clave nueva con Hoy C: así C es la que se ve primero aunque antes hayas elegido A o B.
+    const CLAVE = 'pamplanea-vista-previa:hoy-c';
     const hash = () => new URLSearchParams(location.hash.slice(1));
     const leer = () => {
         try {
@@ -28,10 +29,10 @@
     const V = (P.vistaPrevia = {
         PERSONAS,
         CASOS,
-        /** A o B: lo que pidió la prueba, el enlace (#hoy=B), lo último que eligió esta persona o A. */
+        /** C, A o B: lo que pidió la prueba, el enlace (#hoy=B), lo último que eligió esta persona o C (el de por defecto). */
         variante() {
-            const v = window.__hoyVariante || hash().get('hoy') || leer() || 'A';
-            return v === 'B' ? 'B' : v === 'clasico' ? 'clasico' : 'A';
+            const v = window.__hoyVariante || hash().get('hoy') || leer() || 'C';
+            return ['A', 'B', 'C', 'clasico'].includes(v) ? v : 'C';
         },
         /** #limpio=1: sin esta barra (para las capturas). */
         limpio: () => hash().get('limpio') === '1',
@@ -49,7 +50,7 @@
             const v = V.variante();
             const op = (obj, sel) => Object.entries(obj).map(([id, t]) => `<option value="${id}"${id === sel ? ' selected' : ''}>${P.esc(t)}</option>`).join('');
             return `<div class="vp" role="region" aria-label="Vista previa: solo para comparar">
-                <div class="vp-fila"><p class="vp-t">Vista previa</p><div class="vp-ab" role="group" aria-label="Diseño de Hoy">${['A', 'B'].map((x) => `<button type="button" class="vp-b" aria-pressed="${v === x}" data-a="vpHoy" data-v="${x}" data-fk="vp-${x}">Hoy ${x}</button>`).join('')}</div></div>
+                <div class="vp-fila"><p class="vp-t">Vista previa</p><div class="vp-ab" role="group" aria-label="Diseño de Hoy">${['C', 'A', 'B'].map((x) => `<button type="button" class="vp-b" aria-pressed="${v === x}" data-a="vpHoy" data-v="${x}" data-fk="vp-${x}">Hoy ${x}</button>`).join('')}</div></div>
                 <div class="vp-fila vp-ej"><label class="vp-l"><span class="sr-only">Persona</span><select id="vp-persona" data-vp="persona">${op(PERSONAS, elegido.persona)}</select></label><label class="vp-l"><span class="sr-only">Caso</span><select id="vp-caso" data-vp="caso">${op(CASOS, elegido.caso)}</select></label></div>
                 <div class="vp-fila"><button type="button" class="btn btn--sm" data-a="vpCargar" data-fk="vp-cargar">Cargar ejemplo</button>${V.enEjemplo() ? '<button type="button" class="link" data-a="vpMisDatos" data-fk="vp-mis-datos">Volver a mis datos</button>' : ''}</div>
             </div>`;

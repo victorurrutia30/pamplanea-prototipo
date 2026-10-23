@@ -52,12 +52,11 @@
         const st = P.st;
         const hz = k.hz;
         const ocurrencias = [];
+        // V2-80: de un pago con algo vencido solo se ve lo vencido (arriba, o en «Para hoy»), no el del mes siguiente.
         const conVencido = new Set();
-        if (conUrgentes) {
-            for (const o of P.vencidosPlan()) {
-                ocurrencias.push(o);
-                conVencido.add(claveDe(o));
-            }
+        for (const o of P.vencidosPlan()) {
+            if (conUrgentes) ocurrencias.push(o);
+            conVencido.add(claveDe(o));
         }
         for (const o of P.proximosPagos(99)) {
             if (conVencido.has(claveDe(o))) continue;
@@ -183,10 +182,12 @@
     }
     /** «te quedan $45.00», «te pasaste $15.00», «listo ✓», «saltado». Con palabras: nada depende solo del color. */
     function estadoPresupuesto(x, { corto = false } = {}) {
-        if (x.saltado) return { t: corto ? 'saltado' : `saltado ${P.estePlan()}`, cls: 'hp--quieto' };
-        if (x.pasado) return { t: `te pasaste ${dinero(x.pasado)}`, cls: 'hp--pasado' };
-        if (x.listo) return { t: x.sobro ? `te sobró ${dinero(x.sobro)} ✓` : 'listo ✓', cls: 'hp--quieto' };
-        return { t: `${corto ? 'quedan' : 'te quedan'} ${dinero(x.falta)}`, cls: x.tope && x.anotado / x.tope >= 0.8 ? 'hp--cerca' : '' };
+        // `pre` y `monto` por separado: el monto nunca se parte en dos líneas.
+        const e = (pre, monto, cls) => ({ t: monto ? `${pre} ${monto}` : pre, pre, monto, cls });
+        if (x.saltado) return e(corto ? 'saltado' : `saltado ${P.estePlan()}`, '', 'hp--quieto');
+        if (x.pasado) return e('te pasaste', dinero(x.pasado), 'hp--pasado');
+        if (x.listo) return x.sobro ? e('te sobró', `${dinero(x.sobro)} ✓`, 'hp--quieto') : e('listo ✓', '', 'hp--quieto');
+        return e(corto ? 'quedan' : 'te quedan', dinero(x.falta), x.tope && x.anotado / x.tope >= 0.8 ? 'hp--cerca' : '');
     }
     P.hoyPresupuestos = presupuestos;
 
@@ -225,7 +226,8 @@
     }
     /** «No se están guardando tus datos» y «Guarda una copia»: siempre a la vista, nunca dentro de una lista. */
     const esCritica = (h) => /aviso-guardar|id="cf-t"/.test(h);
-    const tituloDe = (h) => (/<h2[^>]*>([^<]*)</.exec(h) || /<p[^>]*>([^<]*)</.exec(h) || [, 'Un aviso'])[1];
+    /** El título de una tarjeta de aviso: su h2 (o su primer párrafo), sin etiquetas. */
+    const tituloDe = (h) => ((/<h2[^>]*>([\s\S]*?)<\/h2>/.exec(h) || /<p[^>]*>([\s\S]*?)<\/p>/.exec(h) || [, 'Un aviso'])[1]).replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
     function criticas(k) {
         return (P.modos ? P.modos.tarjetasHoy(k) : []).filter(esCritica).join('');
     }
@@ -250,6 +252,98 @@
         },
     };
 
+    // ------------------------------------------------------------------ piezas que comparten A, B y C
+    /**
+     * La portada de color (A y C): Libre, su línea, «¿De dónde sale?» y el «?» de siempre. `conYaLlego`: el botón
+     * «¿Ya llegó?» dentro (solo A; en C es la primera fila de «Para hoy»). La línea «Falta confirmar…» se queda en las dos.
+     */
+    function portadaHtml(k, L, { conYaLlego = true } = {}) {
+        return `<div class="portada app-home-pattern hoyA-portada">
+                <svg class="app-home-pattern-art" viewBox="0 0 320 180" preserveAspectRatio="xMaxYMax meet" aria-hidden="true" focusable="false">${window.ARTE.circles}</svg>
+                ${P.qBtn('libre')}
+                <button type="button" class="portada-b" data-a="hoja" data-hoja="desglose" data-fk="portada" aria-label="${esc(L.etiqueta)} ${esc(dinero(k.libre))}. ${esc(L.linea)}. Ver de dónde sale">
+                    <span class="portada-l">${esc(L.etiqueta)}</span><span class="portada-n">${dinero(k.libre)}</span>
+                    <span class="portada-s${L.falta ? ' portada-s--falta' : ''}">${L.falta ? icon('triangle-alert', 'ico-xs') : ''}${esc(L.linea)}</span>
+                    <span class="portada-mas">¿De dónde sale? ${icon('chevron-right', 'ico-xs')}</span>
+                </button>
+                ${conYaLlego && L.porConfirmar ? `<div class="portada-pie"><button type="button" class="btn btn--prim btn--48 btn--full" data-a="hoja" data-hoja="ingresoLlego" data-id="${L.porConfirmar.ingreso.id}" data-fecha="${L.porConfirmar.fecha}" data-fk="ing-si">${k.hz.esHoy ? '¿Ya llegó?' : `¿Ya llegó tu ${esc(P.nombreIngreso(k.hz))} del ${M.partes(L.porConfirmar.fecha)[2]}?`}</button></div>` : ''}
+            </div>`;
+    }
+    /**
+     * Presupuestos en chips (A y C): 3, los más cerca de su máximo; el resto en «Ver todos». El nombre en máximo 2 líneas
+     * (completo para el lector de pantalla) y lo que queda en su propia línea, sin partir el monto.
+     */
+    function presChipsHtml(k) {
+        const pres = presupuestos(k);
+        if (!pres.length) return '';
+        const todos = !!P.ui.hoyPresTodos;
+        const chip = (x) => {
+            const e = estadoPresupuesto(x, { corto: true });
+            return `<button type="button" class="chip hp-chip ${e.cls}" data-a="abrir" data-tipo="variable" data-id="${x.v.id}" data-fk="hp-${x.v.id}" aria-label="${esc(`${x.v.nombre}: ${e.t}`)}"><span class="hp-l1" aria-hidden="true">${P.emo(x.v.emoji, 18)}<span class="hp-n">${esc(x.v.nombre)}</span></span><span class="hp-e" aria-hidden="true">${e.cls === 'hp--pasado' ? icon('triangle-alert', 'ico-xs') : ''}<span>${esc(e.pre)}${e.monto ? ` <span class="hp-m">${esc(e.monto)}</span>` : ''}</span></span></button>`;
+        };
+        return `<section class="hoyA-pres" aria-labelledby="hp-t"><div class="hoyA-pres-h"><h2 class="hoyA-h" id="hp-t">Presupuestos <span class="hoyA-h-s">${esc(P.estePlan())}</span></h2>${pres.length > 3 ? `<button type="button" class="link" data-a="hoyPresTodos" data-fk="hp-todos" aria-expanded="${todos}">${todos ? 'Ver menos' : `Ver todos (${pres.length})`}</button>` : ''}</div><div class="chips hp-chips">${(todos ? pres : pres.slice(0, 3)).map(chip).join('')}</div></section>`;
+    }
+    /**
+     * «Para hoy» (B y C): lo que te pide algo hoy, una fila cada uno, con su botón. Primero «¿Ya llegó?» (una sola vez), luego
+     * lo vencido y lo que vence hoy («Ya lo pagué») y los avisos: con una sola acción, a la vista; si no, «Responder» (si es
+     * una pregunta) o «Ver». Máximo 3 filas y «Ver las N». Sin nada: «Nada pendiente para hoy ✓».
+     */
+    function paraHoyHtml(k, L) {
+        const st = P.st;
+        const hz = k.hz;
+        const filas = [];
+        if (L.porConfirmar) {
+            const ing = L.porConfirmar.ingreso;
+            filas.push({ emoji: ing.emoji || '💼', t: hz.esHoy ? `¿Ya llegó tu ${P.nombreIngreso(hz)}?` : `¿Ya llegó tu ${P.nombreIngreso(hz)} del ${M.partes(L.porConfirmar.fecha)[2]}?`, s: `${dinero(L.porConfirmar.monto, { aprox: !!L.porConfirmar.aprox })} a ${M.lugar(st, ing.lugar)?.nombre || 'tu cuenta'}`, boton: `<button type="button" class="btn btn--sm btn--prim" data-a="hoja" data-hoja="ingresoLlego" data-id="${ing.id}" data-fecha="${L.porConfirmar.fecha}" data-fk="ing-si">Sí, ya llegó</button>` });
+        }
+        const urgentes = [...P.vencidosPlan(), ...P.proximosPagos(99).filter((o) => o.estado === 'pendiente' && o.fecha === st.hoy)];
+        for (const o of urgentes) {
+            const esT = !!o.tarjeta;
+            const nombre = esT ? P.nombreTarjeta(o.tarjeta) : o.pago.nombre;
+            const fk = `${esT ? 't' : 'p'}-${esT ? o.tarjeta.id : o.pago.id}-${o.fecha}`;
+            const sig = !esT ? M.porPagar(st, o.pago) : null;
+            const espera = !!sig && sig.fecha !== o.fecha;
+            const monto = o.parcial && o.estado !== 'arrastrado' ? o.parcial.falta : o.monto;
+            filas.push({ emoji: esT ? o.tarjeta.emoji : o.pago.emoji, t: nombre, s: `${o.estado === 'vencido' ? `venció el ${M.fechaCorta(o.fecha)}` : 'vence hoy'} · ${monto === null ? 'por confirmar' : dinero(monto, { aprox: !!o.estimado && !o.parcial })}`, venc: o.estado === 'vencido', abrir: `data-a="abrir" data-tipo="${esT ? 'tarjeta' : 'pago'}" data-id="${esT ? o.tarjeta.id : o.pago.id}" data-fk="${fk}"`, boton: `<button type="button" class="btn btn--sm${espera ? ' btn--espera' : ' btn--prim'}" data-a="pagado" data-tipo="${esT ? 'tarjeta' : 'pago'}" data-id="${esT ? o.tarjeta.id : o.pago.id}" data-fecha="${o.fecha}" data-fk="pagado-${fk}" aria-label="${espera ? `Marcar ${esc(nombre)} como pagado: primero el del ${esc(P.diaMes(sig.fecha))}` : `Marcar ${esc(nombre)} como pagado`}">Ya lo pagué</button>` });
+        }
+        for (const x of pendientes(k)) {
+            const unBoton = x.acciones && (x.acciones.match(/<button/g) || []).length === 1 ? x.acciones.replace(/class="btn btn--sm( btn--prim)?"/, 'class="btn btn--sm btn--prim"') : null;
+            const texto = x.id === 'aldia' ? 'Empezar' : x.corto.includes('?') ? 'Responder' : 'Ver';
+            filas.push({ emoji: x.emoji || null, ico: x.nivel === 'info' ? 'bell' : 'triangle-alert', t: x.corto, s: x.sub && x.sub.length <= 64 ? x.sub : '', boton: unBoton || `<button type="button" class="btn btn--sm" data-a="hoja" data-hoja="hoyRevisar" data-id="${esc(x.id)}" data-fk="pr-${esc(x.id)}">${texto}</button>` });
+        }
+        const verTodas = !!P.ui.hoyParaHoyTodas;
+        const filaHoy = (x) => `<li class="hb-f${x.venc ? ' hb-f--venc' : ''}">${x.abrir ? `<button type="button" class="hb-f-b" ${x.abrir}>` : '<div class="hb-f-b hb-f-b--quieta">'}${x.emoji ? caja(x.emoji, 'emo--sm') : `<span class="emo emo--sm emo--ico${x.ico === 'triangle-alert' ? ' emo--aviso' : ''}" aria-hidden="true">${icon(x.ico)}</span>`}<span class="hb-f-txt"><span class="hb-f-t">${esc(x.t)}</span>${x.s ? `<span class="hb-f-s">${x.venc ? icon('clock', 'ico-xs') : ''}${esc(x.s)}</span>` : ''}</span>${x.abrir ? '</button>' : '</div>'}<span class="hb-f-acc">${x.boton}</span></li>`;
+        return `<section class="hb-sec" aria-labelledby="hb-hoy-t">
+                <div class="hb-sec-h"><h2 class="hb-h" id="hb-hoy-t">Para hoy</h2>${filas.length > 3 ? `<button type="button" class="link" data-a="hoyParaHoyTodas" data-fk="hb-hoy-todas" aria-expanded="${verTodas}">${verTodas ? 'Ver menos' : `Ver las ${filas.length}`}</button>` : ''}</div>
+                ${filas.length ? `<ul class="hb-lista">${(verTodas ? filas : filas.slice(0, 3)).map(filaHoy).join('')}</ul>` : `<p class="hb-nada">${icon('check', 'ico-s')}Nada pendiente para hoy</p>`}
+            </section>`;
+    }
+    /** Las preguntas de una vez y la revisión de lo de antes de empezar: siguen como tarjetas (fila V45). */
+    const preguntasHtml = () => (P.modos && P.modos.revisionHoy ? P.modos.revisionHoy() : '') + (P.modos && P.modos.preguntasHoy ? P.modos.preguntasHoy() : '');
+
+    // ================================================================== C «Mezcla» (APROBADO por Victor, 2026-10-23)
+    /**
+     * C, la fusión del auditor: la portada de color de A (sin «¿Ya llegó?» dentro), «Para hoy» de B, los chips de
+     * presupuestos de A, «Lo que viene» en dos grupos (sin lo de hoy: ya está en «Para hoy») y un solo «+ Anotar».
+     */
+    P.hoyC = function () {
+        const st = P.st;
+        const k = P.calc();
+        const L = datosLibre(k);
+        return `<div class="pg pg--hoy hoyA hoyC">
+            ${P.vistaPrevia ? P.vistaPrevia.barra() : ''}
+            ${cabeza(st)}
+            ${criticas(k)}
+            ${portadaHtml(k, L, { conYaLlego: false })}
+            ${P.qTexto('libre')}
+            ${P.tipHtml('hoy')}
+            ${paraHoyHtml(k, L)}
+            ${preguntasHtml()}
+            ${presChipsHtml(k)}
+            ${loQueVieneHtml(k, { urgentes: false, cls: 'hoyA-viene' })}
+        </div>`;
+    };
+
     // ================================================================== A «Hoy claro»
     /**
      * A: el número en su portada de siempre, con UNA línea que lo explica; lo pendiente en una sola línea que abre la lista;
@@ -260,42 +354,21 @@
         const st = P.st;
         const k = P.calc();
         const L = datosLibre(k);
-        const portada = `<div class="portada app-home-pattern hoyA-portada">
-                <svg class="app-home-pattern-art" viewBox="0 0 320 180" preserveAspectRatio="xMaxYMax meet" aria-hidden="true" focusable="false">${window.ARTE.circles}</svg>
-                ${P.qBtn('libre')}
-                <button type="button" class="portada-b" data-a="hoja" data-hoja="desglose" data-fk="portada" aria-label="${esc(L.etiqueta)} ${esc(dinero(k.libre))}. ${esc(L.linea)}. Ver de dónde sale">
-                    <span class="portada-l">${esc(L.etiqueta)}</span><span class="portada-n">${dinero(k.libre)}</span>
-                    <span class="portada-s${L.falta ? ' portada-s--falta' : ''}">${L.falta ? icon('triangle-alert', 'ico-xs') : ''}${esc(L.linea)}</span>
-                    <span class="portada-mas">¿De dónde sale? ${icon('chevron-right', 'ico-xs')}</span>
-                </button>
-                ${L.porConfirmar ? `<div class="portada-pie"><button type="button" class="btn btn--prim btn--48 btn--full" data-a="hoja" data-hoja="ingresoLlego" data-id="${L.porConfirmar.ingreso.id}" data-fecha="${L.porConfirmar.fecha}" data-fk="ing-si">${k.hz.esHoy ? '¿Ya llegó?' : `¿Ya llegó tu ${esc(P.nombreIngreso(k.hz))} del ${M.partes(L.porConfirmar.fecha)[2]}?`}</button></div>` : ''}
-            </div>`;
         // Lo pendiente: una sola línea. ⚠ solo si algo pide atención de verdad; si no, una campana.
         const pend = pendientes(k);
         const urgente = pend.some((x) => x.nivel === 'rojo' || x.nivel === 'ambar');
         // Con una sola cosa, la línea dice cuál es; con más, cuántas.
         const lineaPend = pend.length ? `<button type="button" class="hoyA-pend${urgente ? ' hoyA-pend--urg' : ''}" data-a="hoja" data-hoja="hoyRevisar" data-fk="hoy-revisar" aria-haspopup="dialog">${icon(urgente ? 'triangle-alert' : 'bell', 'ico-s')}<span>${pend.length === 1 ? esc(pend[0].corto) : `${pend.length} cosas por revisar`}</span>${icon('chevron-right', 'ico-xs')}</button>` : '';
-        // Presupuestos: 3 chips, los más cerca de su máximo; el resto, en «Ver todos».
-        const pres = presupuestos(k);
-        const todos = !!P.ui.hoyPresTodos;
-        const chip = (x) => {
-            const e = estadoPresupuesto(x, { corto: true });
-            return `<button type="button" class="chip hp-chip ${e.cls}" data-a="abrir" data-tipo="variable" data-id="${x.v.id}" data-fk="hp-${x.v.id}"><span class="hp-l1">${P.emo(x.v.emoji, 18)}<span class="hp-n">${esc(x.v.nombre)}</span></span><span class="hp-e">${e.cls === 'hp--pasado' ? icon('triangle-alert', 'ico-xs') : ''}${esc(e.t)}</span></button>`;
-        };
-        const presHtml = pres.length
-            ? `<section class="hoyA-pres" aria-labelledby="hp-t"><div class="hoyA-pres-h"><h2 class="hoyA-h" id="hp-t">Presupuestos <span class="hoyA-h-s">${esc(P.estePlan())}</span></h2>${pres.length > 3 ? `<button type="button" class="link" data-a="hoyPresTodos" data-fk="hp-todos" aria-expanded="${todos}">${todos ? 'Ver menos' : `Ver todos (${pres.length})`}</button>` : ''}</div><div class="chips hp-chips">${(todos ? pres : pres.slice(0, 3)).map(chip).join('')}</div></section>`
-            : '';
         return `<div class="pg pg--hoy hoyA">
             ${P.vistaPrevia ? P.vistaPrevia.barra() : ''}
             ${cabeza(st)}
             ${criticas(k)}
-            ${portada}
+            ${portadaHtml(k, L, { conYaLlego: true })}
             ${P.qTexto('libre')}
             ${P.tipHtml('hoy')}
             ${lineaPend}
-            ${P.modos && P.modos.revisionHoy ? P.modos.revisionHoy() : ''}
-            ${P.modos && P.modos.preguntasHoy ? P.modos.preguntasHoy() : ''}
-            ${presHtml}
+            ${preguntasHtml()}
+            ${presChipsHtml(k)}
             ${loQueVieneHtml(k, { urgentes: true, cls: 'hoyA-viene' })}
         </div>`;
     };
@@ -349,34 +422,8 @@
                 ${barra}
                 <button type="button" class="hb-mas" data-a="hoja" data-hoja="desglose" data-fk="portada">¿De dónde sale?${icon('chevron-right', 'ico-xs')}</button>
             </section>`;
-        // 2) Para hoy: lo que te pide algo hoy, una fila cada uno, con su botón.
-        const filas = [];
-        if (L.porConfirmar) {
-            const ing = L.porConfirmar.ingreso;
-            filas.push({ emoji: ing.emoji || '💼', t: hz.esHoy ? `¿Ya llegó tu ${P.nombreIngreso(hz)}?` : `¿Ya llegó tu ${P.nombreIngreso(hz)} del ${M.partes(L.porConfirmar.fecha)[2]}?`, s: `${dinero(L.porConfirmar.monto, { aprox: !!L.porConfirmar.aprox })} a ${M.lugar(st, ing.lugar)?.nombre || 'tu cuenta'}`, boton: `<button type="button" class="btn btn--sm btn--prim" data-a="hoja" data-hoja="ingresoLlego" data-id="${ing.id}" data-fecha="${L.porConfirmar.fecha}" data-fk="ing-si">Sí, ya llegó</button>` });
-        }
-        const urgentes = [...P.vencidosPlan(), ...P.proximosPagos(99).filter((o) => o.estado === 'pendiente' && o.fecha === st.hoy)];
-        for (const o of urgentes) {
-            const esT = !!o.tarjeta;
-            const nombre = esT ? P.nombreTarjeta(o.tarjeta) : o.pago.nombre;
-            const fk = `${esT ? 't' : 'p'}-${esT ? o.tarjeta.id : o.pago.id}-${o.fecha}`;
-            const sig = !esT ? M.porPagar(st, o.pago) : null;
-            const espera = !!sig && sig.fecha !== o.fecha;
-            const monto = o.parcial && o.estado !== 'arrastrado' ? o.parcial.falta : o.monto;
-            filas.push({ emoji: esT ? o.tarjeta.emoji : o.pago.emoji, t: nombre, s: `${o.estado === 'vencido' ? `venció el ${M.fechaCorta(o.fecha)}` : 'vence hoy'} · ${monto === null ? 'por confirmar' : dinero(monto, { aprox: !!o.estimado && !o.parcial })}`, venc: o.estado === 'vencido', abrir: `data-a="abrir" data-tipo="${esT ? 'tarjeta' : 'pago'}" data-id="${esT ? o.tarjeta.id : o.pago.id}" data-fk="${fk}"`, boton: `<button type="button" class="btn btn--sm${espera ? ' btn--espera' : ' btn--prim'}" data-a="pagado" data-tipo="${esT ? 'tarjeta' : 'pago'}" data-id="${esT ? o.tarjeta.id : o.pago.id}" data-fecha="${o.fecha}" data-fk="pagado-${fk}" aria-label="${espera ? `Marcar ${esc(nombre)} como pagado: primero el del ${esc(P.diaMes(sig.fecha))}` : `Marcar ${esc(nombre)} como pagado`}">Ya lo pagué</button>` });
-        }
-        for (const x of pendientes(k)) {
-            // Una sola acción: a la vista. Más de una (o una pregunta): «Responder» abre la tarjeta completa.
-            const unBoton = x.acciones && (x.acciones.match(/<button/g) || []).length === 1 ? x.acciones.replace(/class="btn btn--sm( btn--prim)?"/, 'class="btn btn--sm btn--prim"') : null;
-            filas.push({ emoji: x.emoji || null, ico: x.nivel === 'info' ? 'bell' : 'triangle-alert', t: x.corto, s: x.sub && x.sub.length <= 64 ? x.sub : '', boton: unBoton || `<button type="button" class="btn btn--sm" data-a="hoja" data-hoja="hoyRevisar" data-id="${esc(x.id)}" data-fk="pr-${esc(x.id)}">${x.id === 'aldia' ? 'Empezar' : 'Responder'}</button>`, solo: x.id });
-        }
-        const preguntas = (P.modos && P.modos.preguntasHoy ? P.modos.preguntasHoy() : '') + (P.modos && P.modos.revisionHoy ? P.modos.revisionHoy() : '');
-        const verTodas = !!P.ui.hoyParaHoyTodas;
-        const filaHoy = (x) => `<li class="hb-f${x.venc ? ' hb-f--venc' : ''}">${x.abrir ? `<button type="button" class="hb-f-b" ${x.abrir}>` : '<div class="hb-f-b hb-f-b--quieta">'}${x.emoji ? caja(x.emoji, 'emo--sm') : `<span class="emo emo--sm emo--ico${x.ico === 'triangle-alert' ? ' emo--aviso' : ''}" aria-hidden="true">${icon(x.ico)}</span>`}<span class="hb-f-txt"><span class="hb-f-t">${esc(x.t)}</span>${x.s ? `<span class="hb-f-s">${x.venc ? icon('clock', 'ico-xs') : ''}${esc(x.s)}</span>` : ''}</span>${x.abrir ? '</button>' : '</div>'}<span class="hb-f-acc">${x.boton}</span></li>`;
-        const paraHoy = `<section class="hb-sec" aria-labelledby="hb-hoy-t">
-                <div class="hb-sec-h"><h2 class="hb-h" id="hb-hoy-t">Para hoy</h2>${filas.length > 3 ? `<button type="button" class="link" data-a="hoyParaHoyTodas" data-fk="hb-hoy-todas" aria-expanded="${verTodas}">${verTodas ? 'Ver menos' : `Ver las ${filas.length}`}</button>` : ''}</div>
-                ${filas.length ? `<ul class="hb-lista">${(verTodas ? filas : filas.slice(0, 3)).map(filaHoy).join('')}</ul>` : `<p class="hb-nada">${icon('check', 'ico-s')}Nada pendiente para hoy</p>`}
-            </section>`;
+        // 2) Para hoy (la misma pieza de C).
+        const paraHoy = paraHoyHtml(k, L);
         // 4) Presupuestos con su barra (lo gastado contra lo máximo).
         const pres = presupuestos(k);
         const todos = !!P.ui.hoyPresTodos;
@@ -396,7 +443,7 @@
             ${P.qTexto('libre')}
             ${P.tipHtml('hoy')}
             ${paraHoy}
-            ${preguntas}
+            ${preguntasHtml()}
             ${loQueVieneHtml(k, { urgentes: false, cls: 'hb-viene' })}
             ${presHtml}
         </div>`;

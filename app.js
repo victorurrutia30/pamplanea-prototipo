@@ -766,12 +766,13 @@
      */
     P.hoyVariante = () => {
         if ((P.tour && P.tour.activo) || (P.practica && P.practica.activa && P.practica.activa()) || P.enGuia) return 'clasico';
-        const v = P.vistaPrevia ? P.vistaPrevia.variante() : 'A';
-        return v === 'B' && P.hoyB ? 'B' : v === 'A' && P.hoyA ? 'A' : 'clasico';
+        // Hoy C «Mezcla» (APROBADO por Victor, 2026-10-23) es el de por defecto; A y B quedan en la vista previa para comparar.
+        const v = P.vistaPrevia ? P.vistaPrevia.variante() : 'C';
+        return v === 'C' && P.hoyC ? 'C' : v === 'B' && P.hoyB ? 'B' : v === 'A' && P.hoyA ? 'A' : 'clasico';
     };
     S.hoy = function () {
         const v = P.hoyVariante();
-        return v === 'A' ? P.hoyA() : v === 'B' ? P.hoyB() : hoyClasico();
+        return v === 'C' ? P.hoyC() : v === 'A' ? P.hoyA() : v === 'B' ? P.hoyB() : hoyClasico();
     };
     /** El Hoy de la v2.9.2 (el que señalan el entrenamiento y la guía). */
     function hoyClasico() {

@@ -9,7 +9,7 @@
 // reabierto), ahorro dentro y aparte con ahorro programado y «Usé de mi ahorro», adelanto con su descuento (y comisión),
 // aguinaldo y Quincena 25, ingreso de la pareja, remesa, cuchubal (aportes y turno), un cuadre con dinero sin detalle,
 // mover entre cuentas y la corrección de un gasto.
-// Uso: node herramientas/personas-v29.mjs [--solo=pam,majo,tono,rosa] [--puerto=9961] [--salida=<json>] [--detalle] [--fotos] [--hoy=A|B]
+// Uso: node herramientas/personas-v29.mjs [--solo=pam,majo,tono,rosa] [--puerto=9961] [--salida=<json>] [--detalle] [--fotos] [--hoy=C|A|B]
 // Con --fotos guarda en capturas/personas-v29 cada pestaña (por fecha y por tipo) y su «¿De dónde sale?», a 390×844, un día
 // por persona (después del estado de cuenta y del adelanto).
 import { mkdir, writeFile } from 'node:fs/promises';
@@ -871,7 +871,7 @@ const personas = [persona('pam', 'Pam', 'quincena'), persona('majo', 'Majo', 'me
 try {
     for (const p of personas) {
         await b.ir('about:blank');
-        // v2.9.3: --hoy=A o --hoy=B lee el libre en el Hoy de esa propuesta (vista previa); sin eso, el Hoy que trae la app.
+        // v2.9.3: --hoy=C, --hoy=A o --hoy=B lee el libre en el Hoy de esa propuesta (vista previa); sin eso, el Hoy que trae la app.
         await b.enviar('Page.addScriptToEvaluateOnNewDocument', { source: `window.__fechaPrueba = '${p.inicio}';${args.hoy ? ` window.__hoyVariante = ${JSON.stringify(String(args.hoy))};` : ''}` });
         await b.ir(base);
         await esperar(500);

@@ -4767,21 +4767,34 @@ html.con-hazlo .mask {
     align-items: flex-start;
     gap: 6px;
 }
+/* El nombre: máximo 2 líneas con «…» (el lector de pantalla lee el nombre completo en el aria-label del chip). */
 .hp-n {
+    display: -webkit-box;
     min-width: 0;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
     font-size: 14px;
     font-weight: 600;
     line-height: 18px;
     overflow-wrap: break-word;
     hyphens: auto;
 }
+/* Lo que queda, en su propia línea; el monto nunca se parte. Los chips de una fila, todos de la misma altura. */
 .hp-e {
     display: inline-flex;
     align-items: center;
     gap: 4px;
+    margin-top: auto;
     color: var(--color-text-muted);
     font-variant-numeric: tabular-nums;
-    overflow-wrap: anywhere;
+}
+.hp-m {
+    white-space: nowrap;
+}
+.hp-chips > .hp-chip {
+    align-self: stretch;
+    grid-template-rows: auto 1fr;
 }
 .hp--cerca .hp-e {
     color: var(--color-text);
@@ -5108,4 +5121,16 @@ html.con-hazlo .mask {
 .hb-p:focus-visible,
 .hv-b:focus-visible {
     outline-offset: -2px;
+}
+
+/* C «Mezcla»: la portada y los chips de A con «Para hoy» de B, en el mismo mundo de A (tarjetas con su sombra suave). */
+.hoyC .hb-h {
+    font-size: 16px;
+    font-weight: 600;
+}
+.hoyC .hb-sec-h {
+    min-height: 44px;
+}
+.hoyC .hb-f {
+    box-shadow: var(--app-shadow-card);
 }

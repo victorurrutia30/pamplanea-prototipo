@@ -44,6 +44,9 @@ Sobre los chips de presupuestos de A: «me encanta esto, por lo demás estoy de 
 
 Las preguntas de una vez y «No se están guardando tus datos» siguen como tarjetas (fila V45). En la vista previa, «Hoy C» es la opción por defecto; A y B quedan para comparar (QUITAR ANTES DE PUBLICAR).
 
+- **decisión técnica — REVISAR:** como en A, de un pago con algo vencido (que ya está en «Para hoy») «Lo que viene» no muestra el del mes siguiente (V2-80); la elección A/B/C de la vista previa usa una clave nueva, para que C se vea primero aunque antes se eligiera A o B.
+- **Pruebas (con C por defecto):** `invariantes` 69 de 69; `personas-v29 --hoy=C`: 0 diferencias (4 personas, 72 días); `palabras-v28`: 0 de 903. Capturas de C revisadas con Pam y Rosa en los 7 casos, Serena claro y Ancla oscuro.
+
 ---
 
 ## Prototipo v2.9.2 · Cada peso una vez (2026-10-23)
