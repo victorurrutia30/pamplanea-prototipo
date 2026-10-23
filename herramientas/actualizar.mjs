@@ -65,7 +65,7 @@ const apagar = async () => {
 const informe = { ref, vieja: VIEJA, nueva: NUEVA, cache: CACHE, fallos: [], datos: {} };
 const check = (nombre, real, cond) => {
     const ok = typeof cond === 'function' ? cond(real) : JSON.stringify(real) === JSON.stringify(cond);
-    if (!ok) informe.fallos.push(`${nombre}: «${JSON.stringify(real).slice(0, 400)}»`);
+    if (!ok) informe.fallos.push(`${nombre}: «${String(JSON.stringify(real)).slice(0, 400)}»`);
     informe.datos[nombre] = real;
 };
 const b = await abrir({ puerto: 9731 });
@@ -115,7 +115,7 @@ function perdidas(viejo, nuevo) {
                 out.push(`${k}: falta ${x.id || JSON.stringify(x).slice(0, 60)}`);
                 continue;
             }
-            for (const c of Object.keys(x)) if (JSON.stringify(x[c]) !== JSON.stringify(y[c])) out.push(`${k} ${x.id}.${c}: ${JSON.stringify(x[c]).slice(0, 60)} → ${JSON.stringify(y[c]).slice(0, 60)}`);
+            for (const c of Object.keys(x)) if (JSON.stringify(x[c]) !== JSON.stringify(y[c])) out.push(`${k} ${x.id}.${c}: ${String(JSON.stringify(x[c])).slice(0, 60)} → ${String(JSON.stringify(y[c])).slice(0, 60)}`);
             // DATOS-3: la cuenta de cada gasto; v2.8 (C-1): dónde está cada ahorro (dentro de tu cuenta).
             for (const c of Object.keys(y)) if (!(c in x) && !(k === 'registros' && x.tipo === 'gasto' && c === 'lugar') && !(NUEVA28 && k === 'apartados' && c === 'donde')) out.push(`${k} ${x.id}: campo nuevo ${c}`);
         }
@@ -237,6 +237,8 @@ try {
         // v2.7 (Parte D): el cuadrito de novedades sale una vez; se cierra para seguir. v2.8: el de la v2.8.
         check(NUEVA28 ? 'v2.8: el cuadrito de novedades' : 'v2.7: el cuadrito de novedades', await texto('#nov-t'), NUEVA28 ? '¡PamPlanea está más clara! ✨' : '¡PamPlanea se puso al día! ✨');
         informe.datos.lineasNovedades = await ev(`[...document.querySelectorAll('.nov-lista li')].map((li) => li.innerText.trim())`);
+        // Cierre v2.8: 5 líneas como mucho, «Tus datos están completos y a salvo.» y el enlace para recuperar.
+        if (NUEVA28) check('v2.8: el cuadrito, con su cierre y «¿Algo se ve raro? Recupera tus datos»', [informe.datos.lineasNovedades.length <= 5, await texto('.nov-cierre'), await texto('[data-fk="nov-recuperar"]')], [true, 'Tus datos están completos y a salvo.', '¿Algo se ve raro? Recupera tus datos']);
         await b.captura(path.join(salida, '3a-novedades.png'));
         await clic('[data-fk="nov-ok"]');
     }
@@ -332,6 +334,39 @@ try {
         await ev(`P.sinGuardar = true; localStorage.setItem('pamplanea-uso:v1', ${JSON.stringify(principal)}); true`);
         await b.ir(base + 'telefono.html');
         await esperar(800);
+    }
+    // ------------------------------------------------------------ Cierre v2.8 (adenda A, APROBADO por Victor 2026-10-22):
+    // «que se les haga fácil recuperar datos también». Recuperar la copia «antes de la actualización» devuelve los datos de
+    // la versión vieja, y lo de ahora queda como otra copia («Antes de recuperar»): cero pérdidas en los dos sentidos.
+    if (NUEVA28) {
+        // (Carlos, Rosa y la sintética dejaron su propia copia: se vuelve a poner la de «Prueba», la de esta actualización.)
+        await ev(`localStorage.setItem(${JSON.stringify(CLAVE_COPIA)}, ${JSON.stringify(JSON.stringify(despues[CLAVE_COPIA]))}); true`);
+        const ahora = (await guardado())['pamplanea-uso:v1'];
+        await clic('#btn-ayuda');
+        await clic('[data-fk="au-datos"]');
+        check('«Tus datos»: «Guardar una copia en mi teléfono» y «Antes de la actualización · fecha»', [await texto('[data-fk="dt-copia"]'), await texto('.ay-copias')], (x) => x[0] === 'Guardar una copia en mi teléfono' && /Antes de la actualización · \d+ \S+/.test(x[1] || ''));
+        await b.captura(path.join(salida, '7-tus-datos.png'));
+        await clic(`[data-a="modoCopiaInterna"][data-id="${CLAVE_COPIA}"]`);
+        check('al tocar «Recuperar»: «Tus datos de ahora se guardan primero, por si te arrepientes»', await texto('#dt-r-c'), (t) => typeof t === 'string' && t.includes('Tus datos de ahora se guardan primero, por si te arrepientes'));
+        await clic('[data-fk="dt-r-si"]');
+        await esperar(900);
+        const tras = await guardado();
+        check('recuperar «antes de la actualización»: los datos de la versión vieja, sin perder nada', perdidas(antes['pamplanea-uso:v1'].st, tras['pamplanea-uso:v1'].st), []);
+        const claveAntes = Object.keys(tras).find((k) => k.startsWith('pamplanea-uso:respaldo:antes-de-restaurar-'));
+        check('lo de ahora quedó como copia, tal cual («Antes de recuperar»)', claveAntes && JSON.stringify(tras[claveAntes].datos.st) === JSON.stringify(ahora.st), true);
+        check('la copia de antes de la actualización sigue intacta', JSON.stringify(tras[CLAVE_COPIA]) === JSON.stringify(despues[CLAVE_COPIA]), true);
+        // Y de vuelta: recuperar «Antes de recuperar» devuelve lo de ahora.
+        await ev(`P.ui.hoja && P.cerrarHoja({ sinFoco: true }); document.querySelector('[data-fk="nov-ok"]')?.click(); true`);
+        await clic('#btn-ayuda');
+        await clic('[data-fk="au-datos"]');
+        check('«Antes de recuperar» arriba (la más nueva)', await texto('.ay-copias .fila'), (t) => typeof t === 'string' && t.startsWith('Antes de recuperar'));
+        await clic(`[data-a="modoCopiaInterna"][data-id="${claveAntes}"]`);
+        await clic('[data-fk="dt-r-si"]');
+        await esperar(900);
+        const vuelta = (await guardado())['pamplanea-uso:v1'];
+        check('recuperar «Antes de recuperar»: lo de ahora otra vez, sin perder nada', [perdidas(ahora.st, vuelta.st), JSON.stringify(vuelta.st.registros) === JSON.stringify(ahora.st.registros)], [[], true]);
+        await ev(`document.querySelector('[data-fk="nov-ok"]')?.click(); true`);
+        check('y el mismo libre de antes de recuperar', await texto('.portada-n'), libreNuevo || libreAntes);
     }
     // ------------------------------------------------------------ 3. Sin internet: abre la v2.6 con todo.
     await apagar();

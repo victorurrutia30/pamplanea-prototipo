@@ -1376,7 +1376,7 @@
         return `${intro}${cuerpo}<p class="fila-s">Los datos de ejemplo quedaron guardados aparte, por si Victor o Pam los necesitan.</p><p class="ay-version">${esc(VERSION)}</p>`;
     }
     /** Adenda al cierre: el nombre de una copia en palabras simples («Antes de la actualización · 23 oct»). */
-    const etiquetaCopia = (c) => `${String(c.clave).includes('antes-de-restaurar') ? 'Antes de recuperar' : 'Antes de la actualización'} · ${fechaCorta(c.fecha)}`;
+    const etiquetaCopia = (c) => `${String(c.clave).includes('antes-de-restaurar') ? 'Antes de recuperar' : 'Antes de la actualización'} · ${c.fecha ? M.fechaCorta(c.fecha) : 'sin fecha'}`;
     /** v2.7 (DATOS-2): las copias internas que se pueden recuperar (ya revisadas), la más nueva primero. */
     function copiasInternas() {
         const out = [];
