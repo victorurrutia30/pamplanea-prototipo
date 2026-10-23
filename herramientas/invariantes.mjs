@@ -38,6 +38,9 @@
 // Ajuste 4 (APROBADO por Victor, 2026-10-22): V22 «¿En qué?» sin nombres repetidos · V23 «Gasté» sin texto no trae nada elegido
 // Ajuste 5 «Mi plan más ligero» (APROBADO por Victor, 2026-10-22): V24 «Tu libre» de Mi plan = Hoy · V25 nada se pierde
 //  frente al Mi plan de 509aef4 (y recuerda la vista) · V26 «+ Agregar» abre los 6 formularios
+// Ajuste 6 «Presupuestos, categorías y Mes» (APROBADO por Victor, 2026-10-22): V27 «Salieron» = lo anotado del mes · V28 las
+//  filas de «¿En qué se te fue?» suman «Salieron» · V29 ocultar o renombrar no cambia montos · V30 una fija no se cambia ·
+//  V31 en Mi plan, «Sale» = lo que falta en sus filas (sin «va en»)
 // Uso: node herramientas/invariantes.mjs [--base=http://…/] [--puerto=9961] [--solo=I01,F13] [--raiz=<otra copia>]
 //      (--raiz: las mismas filas sobre otra copia, por ejemplo la v2.6.7 sacada de git, para ver cuáles fallaban antes)
 import { mkdir } from 'node:fs/promises';
@@ -1120,12 +1123,13 @@ await filaDe('V15', 'D-2 corregida: fijo o variable no se decide por el monto; e
     await ev(`__armar()`);
     await ev(`P.abrirHoja('nuevoPago', {}); true`);
     await esperar(200);
-    check('«+ Gasto fijo»: sin «¿Siempre es el mismo monto?»; al final, «Pásalo a gasto variable»', await texto('.hoja'), (x) => typeof x === 'string' && !/mismo monto/i.test(x) && x.includes('¿Lo vas gastando en varias compras? Pásalo a gasto variable') && x.includes('El monto cambia cada mes') && x.includes('Pon un aproximado; cuando llegue, anotas el real.'));
+    // Ajuste 6 (punto 1, APROBADO por Victor 2026-10-22): «Gastos variables» se llaman «Presupuestos».
+    check('«+ Gasto fijo»: sin «¿Siempre es el mismo monto?»; al final, «Pásalo a presupuesto»', await texto('.hoja'), (x) => typeof x === 'string' && !/mismo monto/i.test(x) && x.includes('¿Le pones un máximo? Pásalo a presupuesto') && x.includes('El monto cambia cada mes') && x.includes('Pon un aproximado; cuando llegue, anotas el real.'));
     await clic('[data-fk="np-servicios"]');
     await clic('[data-fk="op-frecuente-luz"]');
     check('la luz: «El monto cambia cada mes» viene marcado', await ev(`document.querySelector('[data-fk="estimado"]').getAttribute('aria-pressed')`), 'true');
     await clic('[data-fk="clase-variable"]');
-    check('el enlace lo pasa a gasto variable, con el enlace de vuelta', [await texto('#hoja-t'), await hay('[data-fk="clase-fijo"]')], ['Gasto variable', true]);
+    check('el enlace lo pasa a presupuesto, con el enlace de vuelta', [await texto('#hoja-t'), await hay('[data-fk="clase-fijo"]')], ['Presupuesto', true]);
     await ev(`P.cerrarHoja({ sinFoco: true }); P.abrirHoja('nuevoPago', { fecha: 'variable' }); true`);
     await esperar(200);
     check('«+ Gasto variable»: «¿Con qué pagas normalmente?» sin nada elegido (decisión 24)', await ev(`document.querySelectorAll('[data-campo="medio"][aria-pressed="true"]').length`), 0);
@@ -1150,7 +1154,7 @@ await filaDe('V15', 'D-2 corregida: fijo o variable no se decide por el monto; e
     await ev(`__armar((st) => __internet(st))`);
     const r = await ev(`__anotar('pagué 30 de internet', { cualPlan: 'nuevo' })`);
     check('«Es nuevo»: falta «¿Cómo es?»', r.errores, (x) => Array.isArray(x) && x.includes('comoEs'));
-    check('con sus respuestas', await ev(`[...document.querySelectorAll('[data-campo="comoEs"]')].map((b) => b.textContent.trim())`), ['Llega con fecha (luz, agua, internet)', 'Lo voy gastando (súper, gasolina)', 'Solo esta vez']);
+    check('con sus respuestas', await ev(`[...document.querySelectorAll('[data-campo="comoEs"]')].map((b) => b.textContent.trim())`), ['Llega con fecha (luz, internet)', 'Le pongo un máximo (súper, comida afuera)', 'Solo esta vez']);
     await ev(`P.acciones.anotarValor({ campo: 'comoEs', v: 'unaVez' }); P.acciones.anotarGuardar(); true`);
     await esperar(300);
     check('«Solo esta vez»: un gasto, sin tocar tu plan', [await ev(`P.st.registros.filter((x) => x.tipo === 'gasto' && x.monto === 3000).length`), await ev('P.st.pagos.length'), await ev('!!P.ui.hoja')], [1, 1, false]);
@@ -1303,7 +1307,8 @@ await filaDe('V20', 'FM-5: «Otra» crea una categoría tuya; archivarla o renom
     await clic('[data-fk="cat-ok"]');
     check('archivada y renombrada', await ev(`P.st.categoriasPropias.map((c) => [c.nombre, !!c.archivada])`), [['Inglés', true]]);
     check('montos, historial y libre iguales (el gasto fijo sigue igual)', await ev(`JSON.stringify({ pagos: P.st.pagos, registros: P.st.registros, libre: P.calc().libre })`), antes);
-    check('«Mis categorías» la muestra archivada', await texto('.hoja'), (t) => typeof t === 'string' && t.includes('Inglés') && t.includes('Archivada'));
+    // Ajuste 6 (punto 2): «Archivar» se llama «Ocultar», como en las predefinidas.
+    check('«Mis categorías» la muestra oculta', await texto('.hoja'), (t) => typeof t === 'string' && t.includes('Inglés Oculta'));
     await ev(`P.cerrarHoja({ sinFoco: true }); P.abrirHoja('nuevoPago', {}); true`);
     await esperar(200);
     await clic('[data-fk="np-otro"]');
@@ -1435,7 +1440,7 @@ await filaDe('V25', 'Ajuste 5: todo lo que mostraba el Mi plan anterior (509aef4
     const faltan = (antes, ahora) => antes.filter((x) => !ahora.includes(x));
     await ev(`__armar(${RICO})`);
     await ev(`P.ui.pagosModo = 'tipo'; P.ui.planAbiertas = {}; P.irTab('pagos'); true`);
-    check('por tipo: 5 secciones plegadas (aria-expanded)', await ev(`[...document.querySelectorAll('.pt-b')].map((b) => [b.querySelector('.pt-t').textContent, b.getAttribute('aria-expanded'), document.getElementById(b.getAttribute('aria-controls')).hidden])`), [['Ingresos', 'false', true], ['Gastos fijos', 'false', true], ['Gastos variables', 'false', true], ['Ahorro programado', 'false', true], ['Deudas', 'false', true]]);
+    check('por tipo: 5 secciones plegadas (aria-expanded)', await ev(`[...document.querySelectorAll('.pt-b')].map((b) => [b.querySelector('.pt-t').textContent, b.getAttribute('aria-expanded'), document.getElementById(b.getAttribute('aria-controls')).hidden])`), [['Ingresos', 'false', true], ['Gastos fijos', 'false', true], ['Presupuestos', 'false', true], ['Ahorro programado', 'false', true], ['Deudas', 'false', true]]);
     check('con cuántos y el total de esta quincena: «Gastos fijos (3) $55.00» (Agua venció: está en «Por confirmar»)', await texto('[data-fk="sec-fijos"]'), (t) => typeof t === 'string' && t.includes('Gastos fijos') && t.includes('(3)') && t.endsWith('$55.00'));
     await clic('[data-fk="sec-fijos"]');
     check('al tocarla se abre (aria-expanded) y el foco se queda', [await ev(`document.querySelector('[data-fk="sec-fijos"]').getAttribute('aria-expanded')`), await ev(`document.getElementById('pt-fijos').hidden`), await ev(`document.activeElement.dataset.fk`)], ['true', false, 'sec-fijos']);
@@ -1470,7 +1475,7 @@ await filaDe('V25', 'Ajuste 5: todo lo que mostraba el Mi plan anterior (509aef4
     await ev(`P.ui.hoja && P.cerrarHoja({ sinFoco: true }); P.ui.pagosModo = 'fecha'; P.ui.pagosVista = 'actual'; P.irTab('pagos'); true`);
     check('tarjeta pagada en parte: su fila dice «faltan $70.00»', await texto('[data-fk^="t-t50-"]'), (t) => typeof t === 'string' && t.includes('faltan $70.00'));
     await ev(`P.ui.pagosModo = 'tipo'; P.render(); true`);
-    check('«Deudas» cuenta la tarjeta entera (~$145: $45 + lo que pagas normalmente, $100), sin «NaN»', await texto('[data-fk="sec-deudas"]'), (t) => typeof t === 'string' && t.endsWith('~$145') && !t.includes('NaN'));
+    check('«Deudas» cuenta la tarjeta entera (~$145: $45 + lo que pagas normalmente, $100), sin «NaN»', await texto('[data-fk="sec-deudas"]'), (t) => typeof t === 'string' && t.endsWith('~$145.00') && !t.includes('NaN'));
     await ev(`P.ui.pagosModo = null; true`);
 });
 
@@ -1481,17 +1486,115 @@ await filaDe('V26', 'Ajuste 5: un solo «+ Agregar» abre cada uno de los 6 form
     check('un solo botón para agregar (sin los «+» de cada sección ni del calendario)', await ev(`[...document.querySelectorAll('#pantalla [data-fk^="nuevo-"], #pantalla [data-fk="mp-categorias"], #pantalla [data-fk="plan-agregar"]')].map((b) => b.dataset.fk)`), ['plan-agregar']);
     const cuales = [['nuevo-ingreso', 'nuevoIngreso'], ['nuevo-pago', 'nuevoPago'], ['nuevo-variable', 'nuevoPago'], ['nuevo-programado', 'programar'], ['nuevo-deuda', 'nuevaDeuda'], ['mp-categorias', 'categorias']];
     await clic('[data-fk="plan-agregar"]');
-    check('«Agregar a tu plan»: Ingreso · Gasto fijo · Gasto variable · Ahorro programado · Deuda o tarjeta · Mis categorías', [await texto('#hoja-t'), await ev(`[...document.querySelectorAll('.hoja [data-a="agregarAbrir"] .fila-t')].map((x) => x.textContent)`)], ['Agregar a tu plan', ['Ingreso', 'Gasto fijo', 'Gasto variable', 'Ahorro programado', 'Deuda o tarjeta', 'Mis categorías']]);
+    check('«Agregar a tu plan»: Ingreso · Gasto fijo · Gasto variable · Ahorro programado · Deuda o tarjeta · Mis categorías', [await texto('#hoja-t'), await ev(`[...document.querySelectorAll('.hoja [data-a="agregarAbrir"] .fila-t')].map((x) => x.textContent)`)], ['Agregar a tu plan', ['Ingreso', 'Gasto fijo', 'Presupuesto', 'Ahorro programado', 'Deuda o tarjeta', 'Mis categorías']]);
     await ev(`P.cerrarHoja({ sinFoco: true }); true`);
     for (const [fk, tipo] of cuales) {
         await clic('[data-fk="plan-agregar"]');
         await clic(`[data-fk="${fk}"]`);
         const h = await ev(`({ tipo: P.ui.hoja && P.ui.hoja.tipo, fecha: P.ui.hoja && P.ui.hoja.fecha, titulo: document.getElementById('hoja-t')?.innerText.trim() })`);
-        check(`«${fk}» abre su formulario`, fk === 'nuevo-variable' ? [h.tipo, h.titulo] : h.tipo, fk === 'nuevo-variable' ? ['nuevoPago', 'Gasto variable'] : tipo);
+        check(`«${fk}» abre su formulario`, fk === 'nuevo-variable' ? [h.tipo, h.titulo] : h.tipo, fk === 'nuevo-variable' ? ['nuevoPago', 'Presupuesto'] : tipo);
         await ev(`P.cerrarHoja(); true`);
         await esperar(80);
         check(`«${fk}»: al cerrar, el foco vuelve a «+ Agregar»`, await ev(`document.activeElement && document.activeElement.dataset.fk`), 'plan-agregar');
     }
+});
+
+// ================================================================== Ajuste 6 «Presupuestos, categorías y Mes» (APROBADO por Victor, 2026-10-22)
+/** El monto visible de un elemento (sin lo del lector de pantalla), en centavos. */
+const centavosDe = (sel, { todos = false } = {}) => ev(`(() => { const leer = (el) => { const t = [...el.childNodes].filter((n) => !(n.classList && n.classList.contains('sr-only'))).map((n) => n.textContent).join(''); const m = /\\$([\\d,]+)\\.(\\d\\d)/.exec(t); return m ? Number(m[1].replace(/,/g, '')) * 100 + Number(m[2]) : null; }; const els = [...document.querySelectorAll(${js(sel)})]; return ${todos} ? els.map(leer) : els.length ? leer(els[0]) : null; })()`);
+const mesDe = () => ev(`(() => { const x = MOTOR.resumenMes(P.st, 2026, 10); return { salio: x.salio, entro: x.entro, sinDetalle: x.sinDetalleSalio, cargos: x.tarjetaSinDetalle }; })()`);
+// ------------------------------------------------------------------ V27 (ajuste 6, punto 3)
+await filaDe('V27', 'Ajuste 6: en Mes, «Salieron» es la suma de lo anotado del mes (cada centavo una vez, también con un cuadre explicado)', async () => {
+    await ev(`__armar((st) => __internet(st))`);
+    await ev(`P.cambiar((s) => P.cuadrar(s, 'efectivo', 8000), { aviso: null }); true`);
+    await ev(`__anotar('ayer pupusas 20 efectivo')`);
+    // Hoy, después del cuadre de hoy (P-3: «Después»).
+    await ev(`__anotar('café 5 efectivo', { enQue: 'comida', ordenCuadre: 'despues' })`);
+    await ev(`P.cambiar((s) => P.marcarPagado(s, 'internet', '2026-10-20', { monto: 10000, medio: 'debito', fecha: '2026-10-20' }), { aviso: null }); true`);
+    const suma = await ev(`MOTOR.suma(P.st.registros.filter((r) => r.fecha >= '2026-10-01' && r.fecha <= '2026-10-31' && (r.tipo === 'gasto' || r.tipo === 'cargoTarjeta')), (r) => r.monto)`);
+    const x = await mesDe();
+    check('lo anotado: $20 + $5 + $100 = $125; el cuadre quedó explicado (sin detalle $0)', [suma, x.salio, x.sinDetalle], [12500, 12500, 0]);
+    await ev(`P.irTab('mes'); true`);
+    check('Mes dice «Salieron $125.00»', await texto('.mes-res-l'), (t) => typeof t === 'string' && t.endsWith('Salieron $125.00'));
+    check('el cuadre se conserva en el historial: «explicado con lo que anotaste»', await texto('#mes-hist-lista'), contiene('explicado con lo que anotaste'));
+    check('«Te sobraron» = Entraron − Salieron', [await texto('.mes-res-e'), await centavosDe('.mes-res-n')], ['Te sobraron', x.entro - x.salio]);
+});
+// ------------------------------------------------------------------ V28 (ajuste 6, punto 3c)
+await filaDe('V28', 'Ajuste 6: las filas de «¿En qué se te fue?» (con su monto escrito) suman lo mismo que «Salieron»', async () => {
+    await ev(`__armar(${EJEMPLO_385})`);
+    for (const [f, enQue] of [['pupusas 3', 'comida'], ['ropa 30', 'ropa'], ['cine 12', 'salidas'], ['farmacia 9', 'salud'], ['regalo 15', 'regalos'], ['bus 1', 'transporte'], ['tornillos 4', 'otros']]) await ev(`__anotar(${js(f + ' efectivo')}, { enQue: ${js(enQue)} })`);
+    await ev(`P.ui.mesTodas = false; P.irTab('mes'); true`);
+    const x = await mesDe();
+    const cerradas = await centavosDe('.mes-cat-m', { todos: true });
+    check('5 más grandes y «Otros (n)»: suman «Salieron»', [cerradas.length <= 6, cerradas.reduce((a, b) => a + b, 0)], [true, x.salio]);
+    check('«Otros (n)» y «Ver todas»', [await texto('[data-fk="mes-otros"] .mes-cat-n'), await texto('[data-fk="mes-ver-todas"]')], (v) => /^Otros \(\d+\)$/.test(v[0] || '') && v[1] === 'Ver todas');
+    await clic('[data-fk="mes-ver-todas"]');
+    const todas = await centavosDe('.mes-cat-m', { todos: true });
+    check('«Ver todas»: todas las filas, y suman «Salieron»', [todas.length > cerradas.length, todas.reduce((a, b) => a + b, 0)], [true, x.salio]);
+    check('cada fila tiene su monto escrito (no solo la barra)', todas.every((c) => Number.isInteger(c) && c > 0), true);
+    await clic('[data-fk="cat-fijos"]').catch(() => null);
+    await ev(`P.ui.mesTodas = false; P.ui.mesCategoria = null; true`);
+});
+// ------------------------------------------------------------------ V29 (ajuste 6, punto 2)
+await filaDe('V29', 'Ajuste 6: ocultar o renombrar una categoría no cambia ningún monto; renombrar cambia el nombre en el historial', async () => {
+    await ev(`__armar(${EJEMPLO_385})`);
+    const foto0 = () => ev(`(() => { const k = P.calc(); const x = MOTOR.resumenMes(P.st, 2026, 10); return { libre: k.libre, falta: k.variables.map((v) => v.falta), salio: x.salio, entro: x.entro, montos: P.st.registros.map((r) => r.monto) }; })()`);
+    const antes = await foto0();
+    await ev(`P.abrirHoja('categorias'); true`);
+    await clic('[data-fk="catb-gasto-super"]');
+    await escribir('#f-catNombre', 'Supermercado');
+    await clic('[data-fk="cat-ok"]');
+    check('renombrar: ningún monto cambia', await foto0(), antes);
+    check('el historial y tu presupuesto dicen «Supermercado»', [await ev(`P.st.registros.filter((r) => r.categoria === 'super').map((r) => r.nombre)`), await ev(`P.st.variables[0].nombre`), await ev(`P.cat('super').nombre`)], [['Supermercado'], 'Supermercado', 'Supermercado']);
+    await ev(`P.cerrarHoja({ sinFoco: true }); true`);
+    await ev(`{ P.acciones.anotar(); const q = document.getElementById('anotar-q'); q.value = 'súper 20'; q.dispatchEvent(new Event('input', { bubbles: true })); P.acciones.anotarValor({ campo: 'medio', v: 'debito' }); P.acciones.anotarGuardar(); } true`);
+    await esperar(150);
+    check('«súper 20» sigue saliendo de tu presupuesto: tu libre no baja', [await libre(), await ev(`P.calc().variables[0].falta`)], [antes.libre, antes.falta[0] - 2000]);
+    const despues = await foto0();
+    await ev(`P.abrirHoja('categorias'); true`);
+    await clic('[data-fk="catb-gasto-salidas"]');
+    await clic('[data-fk="cat-archivar"]');
+    await clic('[data-fk="cat-ok"]');
+    check('ocultar: ningún monto cambia', await foto0(), despues);
+    await ev(`P.cerrarHoja({ sinFoco: true }); P.acciones.anotar(); P.acciones.anotarAtajo({ v: 'gasto' }); true`);
+    await esperar(150);
+    check('oculta: no sale en «¿En qué?»; las demás sí', await ev(`[...document.querySelectorAll('[data-campo="enQue"]')].map((b) => b.dataset.v)`), (v) => !v.includes('salidas') && v.includes('comida'));
+    await ev(`P.cerrarHoja({ sinFoco: true }); P.abrirHoja('categorias'); true`);
+    await clic('[data-fk="catb-gasto-super"]');
+    await clic('[data-fk="cat-original"]');
+    check('«Volver al original»: «Súper» otra vez, y ningún monto cambia', [await ev(`P.cat('super').nombre`), await ev(`P.st.variables[0].nombre`), await foto0()], ['Súper', 'Súper', despues]);
+    await ev(`P.cerrarHoja({ sinFoco: true }); true`);
+});
+// ------------------------------------------------------------------ V30 (ajuste 6, punto 2b)
+await filaDe('V30', 'Ajuste 6: una categoría fija (🔒) no se puede ocultar ni renombrar', async () => {
+    await ev(`__armar()`);
+    await ev(`P.abrirHoja('categorias'); true`);
+    check('las 8 fijas con 🔒', await ev(`[...document.querySelectorAll('[data-fk^="catf-"] .fila-t')].map((x) => x.textContent)`), ['Luz', 'Agua', 'Internet', 'Salario', 'Cuotas y deudas', 'Tarjeta de crédito', 'Cuchubal', 'Otros']);
+    await clic('[data-fk="catf-0"]');
+    check('su hoja: «La app la usa para tus cuentas», sin nombre ni «Ocultarla»', [await texto('.hoja-c'), await ev(`!!document.getElementById('f-catNombre')`), await ev(`!!document.querySelector('[data-fk="cat-archivar"]')`)], (x) => /La app la usa para tus cuentas/.test(x[0] || '') && x[1] === false && x[2] === false);
+    for (const clave of ['gasto:otros', 'gasto:cuotas', 'servicio:luz', 'otro:cuchubal']) {
+        await ev(`P.abrirHoja('categoria', { clave: ${js(clave)} }); true`);
+        check(`«${clave}» abre con su candado`, [await texto('.hoja-c'), await ev(`!!document.getElementById('f-catNombre')`)], (x) => /La app la usa para tus cuentas/.test(x[0] || '') && x[1] === false);
+        await ev(`P.ui.hoja.catNombre = 'Otra cosa'; P.ui.hoja.archivada = true; P.acciones.categoriaOk(); true`);
+        check(`«${clave}»: no cambia`, await ev(`[JSON.stringify(P.st.categoriasBase || {}), P.cat('otros').nombre]`), ['{}', 'Otros']);
+    }
+    await ev(`P.ui.hoja && P.cerrarHoja({ sinFoco: true }); true`);
+});
+// ------------------------------------------------------------------ V31 (ajuste 6, punto 4)
+await filaDe('V31', 'Ajuste 6: en Mi plan, «Sale» = la suma de lo que falta en sus filas (sin las que dicen «va en [tarjeta]»)', async () => {
+    await ev(`__armar((st) => { (${EJEMPLO_385})(st); __internet(st, { id: 'netflix', nombre: 'Netflix', emoji: '🎬', categoria: 'suscripciones', monto: 1000, dia: 24, medio: 'mt50', tipoPago: 'suscripcion', desde: '2026-10-15' }); __internet(st, { id: 'agua', nombre: 'Agua', emoji: '💧', monto: 1200, dia: 16, desde: '2026-10-15' }); })`);
+    await ev(`P.ui.pagosModo = 'fecha'; P.ui.pagosVista = 'actual'; P.irTab('pagos'); true`);
+    const sale = await ev(`(() => { const t = document.querySelector('.plan-res-l').textContent; const m = /Sale \\$([\\d,]+)\\.(\\d\\d)/.exec(t); return Number(m[1].replace(/,/g, '')) * 100 + Number(m[2]); })()`);
+    check('Netflix: «$10.00 · va en Crédito Cuscatlán», en gris y sin «−»', await texto('[data-fk^="p-netflix-"] .pl-m'), (t) => typeof t === 'string' && t.includes('$10.00 · va en Crédito Cuscatlán') && !t.includes('−'));
+    const filas = await ev(`[...document.querySelector('.pl-lista').querySelectorAll('.pl-fila:not(.pl-fila--hecha):not(.pl-fila--va) .pl-m .monto:not(.monto--ingreso)')].length`);
+    const montos = await centavosDe('.pl-lista:first-of-type .pl-fila:not(.pl-fila--hecha):not(.pl-fila--va) .pl-m .monto:not(.monto--ingreso)', { todos: true });
+    const bloque = await ev(`[...document.querySelectorAll('.pl-fila--corta .pl-t')].filter((t) => !t.textContent.includes('✓')).map((t) => { const m = /\\$([\\d,]+)\\.(\\d\\d)/.exec(t.textContent); return m ? Number(m[1].replace(/,/g, '')) * 100 + Number(m[2]) : 0; })`);
+    await ev(`P.abrir('porConfirmar'); true`);
+    const venc = await ev(`[...document.querySelectorAll('#pantalla .fila-m .monto')].map((m) => { const x = /\\$([\\d,]+)\\.(\\d\\d)/.exec(m.textContent); return x ? Number(x[1].replace(/,/g, '')) * 100 + Number(x[2]) : 0; })`);
+    await ev(`P.atras(); true`);
+    const total = [...montos, ...bloque, ...venc].reduce((a, b) => a + b, 0);
+    check(`«Sale» (${sale}) = filas (${montos.join(' + ')}) + presupuestos y ahorro (${bloque.join(' + ')}) + por confirmar (${venc.join(' + ')})`, [filas > 0, total], [true, sale]);
+    check('y es lo mismo que cuenta tu libre', sale, await ev(`P.calc().obligaciones`));
 });
 
 const resultado = { version: await ev('window.VERSION_PROTOTIPO').catch(() => null), filas: filas.map((f) => ({ id: f.id, ok: f.ok, nombre: f.nombre, checks: f.checks.length, malas: f.checks.filter((c) => !c.ok) })), resumen: `${filas.filter((f) => f.ok).length} de ${filas.length} filas bien`, fallos, errores: b.errores, fallidas: b.fallidas };

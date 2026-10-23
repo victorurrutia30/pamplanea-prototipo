@@ -174,7 +174,17 @@
     /** v2.8 (C-1): de dónde sale (o a dónde llega) lo de un ahorro aparte si no se dice: tu efectivo; si no, tu primera cuenta. */
     P.lugarAparte = (st) => (M.lugar(st, 'efectivo') ? 'efectivo' : st.lugares[0]?.id || null);
     /** v2.8 (C-1): un ahorro nuevo con «¿Dónde está?» (dentro de una cuenta o aparte) y, si quieres, cuánto guardas cada quincena. */
+    /**
+     * v2.8 ajuste 6 (punto 4c, APROBADO por Victor 2026-10-22): al crear algo nuevo, la primera letra en mayúscula y el emoji por el
+     * nombre si no tiene uno propio (gasolina → ⛽). Lo ya guardado no cambia.
+     */
+    const nombreNuevo = (n) => M.capital(String(n || '').trim());
+    const EMOJI_GENERICO = new Set(['🧾', '🛒', '🏷️', '🧩']);
+    const emojiNuevo = (emoji, nombre) => ((!emoji || EMOJI_GENERICO.has(emoji)) && D.EMOJI_NOMBRE[claveNombre(nombre)]) || emoji;
+    P.nombreNuevo = nombreNuevo;
+    P.emojiNuevo = emojiNuevo;
     P.crearAhorro = function (st, { nombre, emoji = '🐷', portada = 'general-alcancia', monto = 0, meta = null, metaFecha = null, donde = null, programado = null }) {
+        nombre = nombreNuevo(nombre);
         const id = 'a' + st.seq++;
         const a = { id, nombre, emoji, portada, monto: 0, meta, metaFecha, historial: [], donde: donde === 'aparte' ? 'aparte' : { lugar: donde && M.lugar(st, donde) ? donde : M.cuentaAhorros(st) } };
         if (programado > 0) a.programado = { monto: programado, desde: M.periodoPlan(st).inicio };
@@ -197,6 +207,10 @@
     };
     /** v2.8 (C-3): un gasto variable (súper, gasolina): un tope por quincena que se renueva. Cuenta desde el inicio de esta quincena. */
     P.crearVariable = function (st, { nombre, emoji = '🛒', categoria = 'otros', tope, medio = null, deFijo = null }) {
+        if (!deFijo) {
+            nombre = nombreNuevo(nombre);
+            emoji = emojiNuevo(emoji, nombre);
+        }
         const v = { id: 'v' + st.seq++, nombre, emoji, categoria, tope, medio, desde: M.periodoPlan(st).inicio, creado: st.hoy, cierres: {}, activo: true, ...(deFijo ? { deFijo } : {}) };
         st.variables = [...(st.variables || []), v];
         return v;
@@ -271,6 +285,7 @@
         return primera && primera < st.hoy ? primera : st.hoy;
     };
     P.crearPago = function (st, d) {
+        d = { ...d, nombre: nombreNuevo(d.nombre), emoji: emojiNuevo(d.emoji, d.nombre) };
         const id = 'p' + st.seq++;
         const p = { id, nombre: d.nombre, emoji: d.emoji || '🧾', categoria: d.categoria || 'otros', monto: d.monto, estimado: !!d.estimado, ...P.reglaDe(d), medio: d.medio, avisos: [{ tipo: 'antes', dias: 1, on: true }, { tipo: 'vence', on: true }], desde: desdeDe(st, d), creado: st.hoy, hechos: {}, previos: [], nuevo: true };
         if (p.frecuencia === 'unico' && !p.fecha) p.fecha = M.proximoDia(st.hoy, d.dia || 1);
@@ -558,7 +573,7 @@
         const n = (t) => M.normalizar(t || '');
         const vars = M.variablesInfo(st).map((x) => ({ v: 'var:' + x.v.id, t: x.v.nombre, e: x.v.emoji, s: x.pasado ? `te pasaste ${dinero(x.pasado)}` : `te quedan ${dinero(x.falta)}` }));
         const vistos = new Set(vars.map((o) => n(o.t)));
-        const cats = [...D.CATEGORIAS.filter((k) => !['servicios', 'cuotas'].includes(k.id)).map((k) => ({ v: k.id, t: k.nombre, e: k.emoji })), ...P.categoriasDe(st, 'variable').map((c) => ({ v: 'p:' + c.id, t: c.nombre, e: c.emoji }))].filter((o) => !vistos.has(n(o.t)) && vistos.add(n(o.t)));
+        const cats = [...D.CATEGORIAS.map((k) => P.cat(k.id, st)).filter((k) => !['servicios', 'cuotas'].includes(k.id) && (!k.oculta || k.id === valor)).map((k) => ({ v: k.id, t: k.nombre, e: k.emoji })), ...P.categoriasDe(st, 'variable').map((c) => ({ v: 'p:' + c.id, t: c.nombre, e: c.emoji }))].filter((o) => !vistos.has(n(o.t)) && vistos.add(n(o.t)));
         const desde = M.sumarDias(st.hoy, -60);
         const cuenta = {};
         for (const r of st.registros) if (r.tipo === 'gasto' && !r.pago && r.fecha >= desde && r.fecha <= st.hoy) cuenta[r.propia ? 'p:' + r.propia : r.categoria] = (cuenta[r.propia ? 'p:' + r.propia : r.categoria] || 0) + 1;
@@ -762,7 +777,8 @@
     // v2.8 (Victor, 2026-10-22): «¿Con qué lo pagas?» y, solo con un banco o una tarjeta, «¿Se cobra solo?».
     const SOLO = [{ v: 'si', t: 'Sí, se cobra solo' }, { v: 'no', t: 'No, yo lo pago' }];
     // v2.8 (D-2 corregida, APROBADO por Victor 2026-10-22): donde no se eligió antes si es fijo o variable («Es nuevo» en Anotar).
-    const COMO_ES = [{ v: 'fecha', t: 'Llega con fecha (luz, agua, internet)' }, { v: 'gastando', t: 'Lo voy gastando (súper, gasolina)' }, { v: 'unaVez', t: 'Solo esta vez' }];
+    // Ajuste 6 (punto 1, APROBADO por Victor 2026-10-22).
+    const COMO_ES = [{ v: 'fecha', t: 'Llega con fecha (luz, internet)' }, { v: 'gastando', t: 'Le pongo un máximo (súper, comida afuera)' }, { v: 'unaVez', t: 'Solo esta vez' }];
     function fechasCortas(st, extra = null) {
         const lista = [{ v: st.hoy, t: 'Hoy' }, { v: M.sumarDias(st.hoy, -1), t: 'Ayer' }, { v: M.sumarDias(st.hoy, -2), t: 'Antier' }];
         if (extra && !lista.some((x) => x.v === extra)) lista.push({ v: extra, t: 'El ' + M.fechaCorta(extra) });
@@ -824,6 +840,12 @@
         }
         if (P.ui.stack.at(-1) && P.ui.stack.at(-1).tipo === 'reparte' && !h && campo === 'repCuadre') {
             P.reparteCampo(el);
+            return;
+        }
+        // v2.8 ajuste 6 (punto 3): el buscador del historial de Mes filtra mientras escribes (sin perder el foco).
+        if (!h && campo === 'mesBuscar') {
+            P.ui.mesBuscar = el.value;
+            P.mesHistorial();
             return;
         }
         if (!h) return;
@@ -928,7 +950,7 @@
         };
         if (d.tipo === 'gasto') {
             out.push(montoChip());
-            out.push(chip('nombre', d.nombre ? `${emo(d.emoji || '🧩', 16)} ${esc(d.nombre)}${d.categoria && d.categoria !== 'otros' && M.categoria(d.categoria).nombre !== d.nombre ? ` <span class="chip-s">${esc(M.categoria(d.categoria).nombre)}</span>` : ''}` : '¿En qué?', { falta: !d.nombre || !!d.enQueFalta, abierto: h.editando === 'nombre', etiqueta: 'En qué' }));
+            out.push(chip('nombre', d.nombre ? `${emo(d.emoji || '🧩', 16)} ${esc(d.nombre)}${d.categoria && d.categoria !== 'otros' && P.cat(d.categoria).nombre !== d.nombre ? ` <span class="chip-s">${esc(P.cat(d.categoria).nombre)}</span>` : ''}` : '¿En qué?', { falta: !d.nombre || !!d.enQueFalta, abierto: h.editando === 'nombre', etiqueta: 'En qué' }));
             out.push(medioChip());
             out.push(fechaChip());
         } else if (d.tipo === 'pagado') {
@@ -1009,7 +1031,7 @@
             }
             if (d.tipo === 'prestamo') return campoTexto(h, { campo: 'nombre', label: '¿Cómo se llama esta deuda?', valor: d.nombre || '', placeholder: 'Ej. Préstamo de mi mamá', errorTexto: 'Ponle un nombre' });
             // FM-8: «pago» como sustantivo, solo para deudas («¿Cuál pago?» → «¿Cuál?», «¿Qué pago?» → «¿Qué es?»).
-            const cats = d.tipo === 'pago' ? opciones(h, { campo: 'frecuente', label: '¿Cuál?', accion: 'anotarValor', valor: d.frecuente || '', lista: D.PAGOS_FRECUENTES.filter((f) => !f.deuda).map((f) => ({ v: f.id, t: f.etiqueta || f.nombre, e: f.emoji })) }) : '';
+            const cats = d.tipo === 'pago' ? opciones(h, { campo: 'frecuente', label: '¿Cuál?', accion: 'anotarValor', valor: d.frecuente || '', lista: catFrecuentes().filter((f) => !f.deuda && (!f.oculta || f.id === d.frecuente)).map((f) => ({ v: f.id, t: f.etiqueta || f.nombre, e: f.emoji })) }) : '';
             const alias = d.tipo === 'pago' && d.pedirAlias;
             return campoTexto(h, { campo: 'nombre', label: alias ? '¿Cómo le llamas a este?' : d.tipo === 'pago' ? '¿Qué es?' : d.soloDeudas ? '¿Qué deuda pagaste?' : '¿En qué?', valor: d.nombre || '', placeholder: d.tipo === 'pago' ? 'Ej. Colegio' : 'Ej. Pupusas', errorTexto: alias ? 'Ponle un nombre distinto' : 'Escribe en qué fue' }) + cats;
         }
@@ -1215,13 +1237,13 @@
         if (!v) {
             if (!d.variableNo) return '';
             const antes = M.variableDe(st, { ...prueba, variable: undefined });
-            return antes ? `<p class="fila-s">No cuenta en tu gasto variable ${esc(antes.nombre)}. <button type="button" class="link link--inline" data-a="anotarValor" data-campo="variableNo" data-v="no" data-fk="var-si">Sí es de ${esc(antes.nombre)}</button></p>` : '';
+            return antes ? `<p class="fila-s">No cuenta en tu presupuesto ${esc(antes.nombre)}. <button type="button" class="link link--inline" data-a="anotarValor" data-campo="variableNo" data-v="no" data-fk="var-si">Sí es de ${esc(antes.nombre)}</button></p>` : '';
         }
         const x = M.variablesInfo(st).find((y) => y.v.id === v.id);
         if (!x) return '';
         const monto = d.monto || 0;
         const queda = x.tope - x.anotado - monto;
-        const texto = queda >= 0 ? `Es de tu gasto variable ${esc(v.nombre)}: te quedan ${dinero(queda)} de ${dinero(x.tope)}. Tu libre no baja: ya estaba en tu plan.` : `Es de tu gasto variable ${esc(v.nombre)}: con esto te pasas ${dinero(-queda)} de ${dinero(x.tope)}.`;
+        const texto = queda >= 0 ? `Es de tu presupuesto ${esc(v.nombre)}: te quedan ${dinero(queda)} de ${dinero(x.tope)}. Tu libre no baja: ya estaba en tu plan.` : `Es de tu presupuesto ${esc(v.nombre)}: con esto te pasas ${dinero(-queda)} de ${dinero(x.tope)}.`;
         return `<div class="nota nota--info" role="note" id="nota-variable">${icon('info')}<p>${texto} <button type="button" class="link link--inline" data-a="anotarValor" data-campo="variableNo" data-v="si" data-fk="var-no">No es de ${esc(v.nombre)}</button></p></div>`;
     }
     function cuerpoAnotar(st, h) {
@@ -1348,11 +1370,11 @@
                     if (k && !h.manual.categoria) h.d.categoria = k.id;
                     // Punto 6 (ajuste 4): lo escrito que se entiende (una categoría o un gasto variable) cuenta como elegido.
                     if (k || M.variableDe(st, { tipo: 'gasto', nombre: el.value, categoria: h.d.categoria, fecha: h.d.fecha })) h.d.enQueFalta = false;
-                    h.d.emoji = D.EMOJI_NOMBRE[w] || M.categoria(h.d.categoria).emoji;
+                    h.d.emoji = D.EMOJI_NOMBRE[w] || P.cat(h.d.categoria).emoji;
                 }
                 // V2-83: si escribe otro nombre, el frecuente elegido deja de verse marcado; V2-82: se vuelve a revisar si ya lo tiene.
                 if (h.d.tipo === 'pago') {
-                    const f = D.PAGOS_FRECUENTES.find((y) => y.id === h.d.frecuente);
+                    const f = catFrecuentes().find((y) => y.id === h.d.frecuente);
                     if (f && M.normalizar(f.nombre) !== M.normalizar(el.value)) h.d.frecuente = null;
                     region('anotar-preg', preguntasAnotar(st, h));
                 }
@@ -1435,8 +1457,8 @@
             h.manual = {};
         } else if (d.campo === 'categoria') {
             x.categoria = v;
-            x.emoji = D.EMOJI_NOMBRE[claveNombre(x.nombre)] || M.categoria(v).emoji;
-            if (!x.nombre) x.nombre = M.categoria(v).nombre;
+            x.emoji = D.EMOJI_NOMBRE[claveNombre(x.nombre)] || P.cat(v).emoji;
+            if (!x.nombre) x.nombre = P.cat(v).nombre;
             if (!x.medioExplicito && !h.manual.medio) x.medio = M.medioUsual(st, v).id;
         } else if (d.campo === 'esPrincipal') {
             // FM-3: «Es mi quincena del 30 → Ya llegó»: la marca con el monto real (sin crear otro ingreso).
@@ -1470,8 +1492,8 @@
             } else if (v === 'otra') Object.assign(x, { otraCat: true, categoria: 'otros', emoji: '🧾', ...nombreDe(x.catNombre || null) });
             else {
                 x.categoria = v;
-                Object.assign(x, nombreDe(M.categoria(v).nombre));
-                x.emoji = D.EMOJI_NOMBRE[claveNombre(x.nombre)] || M.categoria(v).emoji;
+                Object.assign(x, nombreDe(P.cat(v).nombre));
+                x.emoji = D.EMOJI_NOMBRE[claveNombre(x.nombre)] || P.cat(v).emoji;
                 if (!x.medioExplicito && !h.manual.medio) x.medio = M.medioUsual(st, v).id;
             }
         } else if (d.campo === 'categoriaIngreso') {
@@ -1488,14 +1510,14 @@
             x.ingresoRef = null;
             x.refGuardada = null;
             x.categoria = v;
-            const k = M.categoria(v);
+            const k = P.cat(v);
             x.emoji = k.emoji;
             x.nombre = k.nombre;
             // V2-81: de tipo Salario cerca de tu quincena: ¿es esa? (o ya estaba recibida).
             M.aplicarEsperado(st, x);
             if (!x.ingresoRef) Object.assign(x, { emoji: k.emoji, nombre: k.nombre });
         } else if (d.campo === 'frecuente') {
-            const f = D.PAGOS_FRECUENTES.find((y) => y.id === v);
+            const f = catFrecuentes().find((y) => y.id === v);
             x.nombre = f.nombre;
             x.emoji = f.emoji;
             x.categoria = f.categoria;
@@ -1803,7 +1825,7 @@
                     ${k.apartado ? fila('−', k.aparte ? 'Ahorros dentro de tus cuentas' : 'Ahorros', dinero(k.apartado), 'apartados', esc(st.apartados.filter((a) => !M.ahorroAparte(a)).map((a) => a.nombre).join(', '))) : ''}
                     ${fila('−', `Por pagar ${antes}`, dinero(k.porPagar + k.enTarjetas - k.reservadoTarjetas), 'pagos', items.length ? 'Con lo que ya tienes' : 'Nada vence antes', items.length ? `<ul class="d-items">${items.join('')}</ul>` : '')}
                     ${reservado ? fila('−', 'Reservado para pagos', dinero(reservado), 'pagos', 'Lo que decidiste pagar con lo que tienes, aunque venza después', `<ul class="d-items">${reservados.join('')}</ul>`, 'reservado') : ''}
-                    ${k.faltaVariables ? fila('−', 'Gastos variables', dinero(k.faltaVariables), 'pagos', `Lo que te queda de tu tope ${P.estePlan(st)}`, `<ul class="d-items">${k.variables.filter((x) => x.falta > 0).map((x) => `<li><span>${emo(x.v.emoji, 16)} ${esc(x.v.nombre)} <span class="d-sub">te quedan ${dinero(x.falta)} de ${dinero(x.tope)}</span></span><span>${dinero(x.falta)}</span></li>`).join('')}</ul>`, 'variables') : ''}
+                    ${k.faltaVariables ? fila('−', 'Presupuestos', dinero(k.faltaVariables), 'pagos', `Lo que te queda de tus presupuestos ${P.estePlan(st)}`, `<ul class="d-items">${k.variables.filter((x) => x.falta > 0).map((x) => `<li><span>${emo(x.v.emoji, 16)} ${esc(x.v.nombre)} <span class="d-sub">te quedan ${dinero(x.falta)} de ${dinero(x.tope)}</span></span><span>${dinero(x.falta)}</span></li>`).join('')}</ul>`, 'variables') : ''}
                     ${k.faltaProgramado ? fila('−', 'Ahorro programado', dinero(k.faltaProgramado), 'apartados', `Lo que vas a guardar ${P.estePlan(st)}`, `<ul class="d-items">${k.programado.filter((x) => x.falta > 0).map((x) => `<li><span>${emo(x.a.emoji, 16)} ${esc(x.a.nombre)}</span><span>${dinero(x.falta)}</span></li>`).join('')}</ul>`, 'programado') : ''}
                     <li class="d-total"><span class="d-signo" aria-hidden="true">=</span><span class="d-t">Libre</span><span class="d-m">${dinero(k.libre)}</span></li>
                 </ol>
@@ -3058,7 +3080,7 @@
                 titulo: lista.length ? '¿Cuál de estos gastos fue?' : `¿Cómo usaste ${esc(a.nombre)}?`,
                 cuerpo: `<p class="txt">Tu ahorro ${esc(a.nombre)} tiene ${dinero(a.monto)}. ${lista.length ? 'Si ya lo anotaste, elígelo: lo cerramos sin anotar otro gasto.' : 'No encontramos un gasto parecido.'}</p>
                     <div class="opciones-grandes" role="radiogroup" aria-label="El gasto">
-                        ${lista.map((r) => op(r.id, `${emo(r.emoji || M.categoria(r.categoria).emoji, 16)} ${esc(r.nombre)}`, `${esc(M.capital(M.relativa(r.fecha, st.hoy)))} · ${esc(M.medio(st, r.medio)?.nombre || '')}`, dinero(r.monto))).join('')}
+                        ${lista.map((r) => op(r.id, `${emo(r.emoji || P.cat(r.categoria).emoji, 16)} ${esc(r.nombre)}`, `${esc(M.capital(M.relativa(r.fecha, st.hoy)))} · ${esc(M.medio(st, r.medio)?.nombre || '')}`, dinero(r.monto))).join('')}
                         ${op('nuevo', 'No lo anoté', `Anotarlo ahora: ${dinero(a.monto)} de ${esc(a.nombre)}`, '')}
                         ${op('nolouse', 'No lo usé', `Lo cerramos y los ${dinero(a.monto)} vuelven a tu libre`, '')}
                     </div>
@@ -3720,6 +3742,8 @@
                     const categoria = tipo && tipo.id !== 'otro' ? tipo.categoria : /remesa/.test(n) ? 'remesa' : /aguinaldo|quincena 25/.test(n) ? 'aguinaldo' : /cuchubal/.test(n) ? 'cuchubal' : 'otro';
                     id = 'i' + s.seq++;
                     x = { id, emoji, categoria, aprox: true, desde: s.hoy, creado: s.hoy, llegadas: {}, ...datos, ...(tipo ? { tipoIngreso: tipo.id } : {}) };
+                    // Ajuste 6 (punto 4c): la primera letra en mayúscula.
+                    x.nombre = nombreNuevo(x.nombre);
                     s.ingresos.push(x);
                     // V2-85: «No, todavía no»: se espera desde esa fecha. «Sí» (o sin respuesta): ya está en lo que tienes.
                     if (espera && pasada < s.hoy) {
@@ -4095,22 +4119,77 @@
     };
     // ================================================================== v2.8 AJUSTE 3 «Formularios claros» (APROBADO por Victor, 2026-10-22)
     /** FM-5: los grupos donde se crean categorías propias, con la categoría de base de lo que se guarda. */
-    const GRUPOS_CAT = { suscripcion: { t: 'Suscripciones', categoria: 'suscripciones' }, servicio: { t: 'Facturas y servicios', categoria: 'servicios' }, otro: { t: 'Otros gastos fijos', categoria: 'otros' }, variable: { t: 'Gastos variables', categoria: 'otros' } };
+    const GRUPOS_CAT = { suscripcion: { t: 'Suscripciones', categoria: 'suscripciones' }, servicio: { t: 'Facturas y servicios', categoria: 'servicios' }, otro: { t: 'Otros gastos fijos', categoria: 'otros' }, variable: { t: 'Presupuestos', categoria: 'otros' } };
     P.GRUPOS_CAT = GRUPOS_CAT;
     /** FM-5: los íconos que se pueden elegir (los mismos dibujos de emoji de la app). */
     const ICONOS_CAT = ['🧾', '💡', '💧', '🔥', '📱', '🌐', '📺', '📡', '🗑️', '🏠', '🔑', '🛡️', '🎓', '📚', '💪', '🎬', '🎵', '🎮', '🐾', '🍼', '🧸', '🚗', '⛽', '🛒', '🍽️', '🧺', '💊', '🩺', '🎁', '🤝', '✂️', '🧩'];
     /** FM-6: lo frecuente de un gasto variable. */
-    const VARIABLES_FRECUENTES = [{ id: 'super', nombre: 'Súper', emoji: '🛒', categoria: 'super' }, { id: 'gasolina', nombre: 'Gasolina', emoji: '⛽', categoria: 'transporte' }, { id: 'comida', nombre: 'Comida', emoji: '🍽️', categoria: 'comida' }, { id: 'mercado', nombre: 'Mercado', emoji: '🧺', categoria: 'mercado' }, { id: 'transporte', nombre: 'Transporte', emoji: '🚌', categoria: 'transporte' }];
+    const VARIABLES_FRECUENTES = [{ id: 'super', nombre: 'Súper', emoji: '🛒', categoria: 'super' }, { id: 'gasolina', nombre: 'Gasolina', emoji: '⛽', categoria: 'transporte' }, { id: 'comida', nombre: 'Comida', emoji: '🍽️', categoria: 'comida' }, { id: 'mercado', nombre: 'Mercado', emoji: '🧺', categoria: 'mercado' }, { id: 'transporte', nombre: 'Transporte', emoji: '🚌', categoria: 'transporte' }, { id: 'comidaAfuera', nombre: 'Comida afuera', emoji: '🍔', categoria: 'comida' }];
+    // ================================================================== v2.8 AJUSTE 6, punto 2: categorías predefinidas editables
+    // (APROBADO por Victor, 2026-10-22). Lo que la persona cambia vive en `st.categoriasBase[clave]`: { nombre, emoji, oculta }.
+    // Renombrar cambia el nombre que se ve en todo el historial (los montos no); ocultar solo la quita de donde se crea.
+    /** Fijas (🔒): la app las usa para tus cuentas. */
+    const CAT_FIJAS = [
+        { t: 'Luz', e: '💡' }, { t: 'Agua', e: '💧' }, { t: 'Internet', e: '🌐' }, { t: 'Salario', e: '💼' },
+        { t: 'Cuotas y deudas', e: '🛍️' }, { t: 'Tarjeta de crédito', e: '💳' }, { t: 'Cuchubal', e: '🤝' }, { t: 'Otros', e: '🧩' },
+    ];
+    // «Suscripciones» (para anotar) también es de la app: Mes suma ahí lo que pagas en suscripciones.
+    const FIJA = new Set(['gasto:servicios', 'gasto:cuotas', 'gasto:otros', 'gasto:suscripciones', 'servicio:luz', 'servicio:agua', 'servicio:internet', 'otro:cuchubal']);
+    P.categoriaFija = (clave) => FIJA.has(clave);
+    function conBase(st, clave, x) {
+        const o = st && st.categoriasBase && !FIJA.has(clave) ? st.categoriasBase[clave] : null;
+        return o ? { ...x, nombre: o.nombre || x.nombre, emoji: o.emoji || x.emoji, ...(o.nombre ? { etiqueta: undefined } : {}), oculta: !!o.oculta } : x;
+    }
+    /** La clave de un presupuesto sugerido: si se llama como una categoría para anotar (Súper, Comida…), es esa misma. */
+    const claveVar = (id) => (window.DATOS.CATEGORIAS.some((c) => c.id === id) ? 'gasto:' : 'variable:') + id;
+    function catFrecuentes(st = P.st) {
+        return window.DATOS.PAGOS_FRECUENTES.map((f) => conBase(st, `${f.grupo || 'deuda'}:${f.id}`, f));
+    }
+    function catSuscripciones(st = P.st) {
+        return window.DATOS.SUSCRIPCIONES.map((x) => conBase(st, 'suscripcion:' + x.id, x));
+    }
+    function catVariables(st = P.st) {
+        return VARIABLES_FRECUENTES.map((x) => conBase(st, claveVar(x.id), x));
+    }
+    /** Una categoría para anotar por su id, con su nombre y su ícono de ahora (`M.categoria`, con lo que la persona cambió). */
+    P.cat = (id, st = P.st) => {
+        const k = M.categoria(id);
+        return conBase(st, 'gasto:' + k.id, k);
+    };
+    /** Los grupos de «Mis categorías» que se pueden cambiar, cada uno con su clave estable. */
+    function catalogoBase(st = P.st) {
+        const item = (clave, x) => ({ clave, ...conBase(st, clave, x), original: x });
+        const gasto = window.DATOS.CATEGORIAS.filter((c) => !FIJA.has('gasto:' + c.id)).map((c) => item('gasto:' + c.id, c));
+        return [
+            { grupo: 'gasto', t: 'Para anotar', items: gasto },
+            { grupo: 'variable', t: 'Presupuestos', items: VARIABLES_FRECUENTES.filter((x) => claveVar(x.id).startsWith('variable:')).map((x) => item('variable:' + x.id, x)) },
+            { grupo: 'suscripcion', t: 'Suscripciones', items: window.DATOS.SUSCRIPCIONES.filter((x) => x.id !== 'otra').map((x) => item('suscripcion:' + x.id, x)) },
+            { grupo: 'servicio', t: 'Facturas y servicios', items: window.DATOS.PAGOS_FRECUENTES.filter((f) => f.grupo === 'servicio' && !FIJA.has('servicio:' + f.id)).map((f) => item('servicio:' + f.id, f)) },
+            { grupo: 'otro', t: 'Otros gastos fijos', items: window.DATOS.PAGOS_FRECUENTES.filter((f) => f.grupo === 'otro' && !FIJA.has('otro:' + f.id)).map((f) => item('otro:' + f.id, f)) },
+        ];
+    }
+    P.catalogoBase = catalogoBase;
+    const baseDe = (st, clave) => catalogoBase(st).flatMap((g) => g.items).find((x) => x.clave === clave) || null;
+    /** Todos los nombres de categorías que se ven (para no repetir uno al renombrar). */
+    const nombresCategorias = (st) => [...catalogoBase(st).flatMap((g) => g.items.map((x) => x.etiqueta || x.nombre)), ...(st.categoriasPropias || []).map((c) => c.nombre), ...CAT_FIJAS.map((x) => x.t)];
+    /** Renombrar: lo anotado y tu plan con ese nombre (y de esa categoría, si es para anotar) se ven con el nombre nuevo. */
+    function renombrarEnDatos(s, clave, antes, nuevo) {
+        const [grupo, id] = clave.split(':');
+        const toca = (x) => x && x.nombre && M.normalizar(x.nombre) === M.normalizar(antes) && (grupo !== 'gasto' || x.categoria === id);
+        for (const r of s.registros) if (toca(r)) r.nombre = nuevo;
+        for (const p of s.pagos) if (toca(p)) p.nombre = nuevo;
+        for (const v of s.variables || []) if (toca(v)) v.nombre = nuevo;
+    }
     /** FM-5: tus categorías de un grupo (las archivadas no salen al crear). */
     P.categoriasDe = (st, grupo, { archivadas = false } = {}) => (st.categoriasPropias || []).filter((c) => c.grupo === grupo && (archivadas || !c.archivada));
     P.crearCategoria = function (st, { grupo, nombre, emoji }) {
-        const c = { id: 'c' + st.seq++, grupo, nombre, emoji, creado: st.hoy };
+        const c = { id: 'c' + st.seq++, grupo, nombre: nombreNuevo(nombre), emoji, creado: st.hoy };
         st.categoriasPropias = [...(st.categoriasPropias || []), c];
         return c;
     };
     /** FM-5: los nombres que ya salen en «¿Cuál?» de un grupo (para no repetir una categoría). */
     function nombresDelGrupo(st, grupo) {
-        const fijos = grupo === 'suscripcion' ? D.SUSCRIPCIONES.filter((x) => x.id !== 'otra').map((x) => x.nombre) : grupo === 'variable' ? VARIABLES_FRECUENTES.map((x) => x.nombre) : D.PAGOS_FRECUENTES.filter((f) => !f.deuda && f.grupo === grupo).flatMap((f) => [f.nombre, f.etiqueta].filter(Boolean));
+        const fijos = grupo === 'suscripcion' ? catSuscripciones().filter((x) => x.id !== 'otra').map((x) => x.nombre) : grupo === 'variable' ? catVariables(st).map((x) => x.nombre) : catFrecuentes().filter((f) => !f.deuda && f.grupo === grupo).flatMap((f) => [f.nombre, f.etiqueta].filter(Boolean));
         return [...fijos, ...P.categoriasDe(st, grupo).map((c) => c.nombre)];
     }
     /** FM-5: «Otra»: la categoría nueva necesita un nombre que no esté ya en «¿Cuál?». */
@@ -4216,7 +4295,7 @@
                 cuerpo: `<ul class="lista card">
                     ${op('nuevo-ingreso', '💵', 'Ingreso', 'Una remesa, un bono, lo que te llega', 'data-hoja="nuevoIngreso"')}
                     ${op('nuevo-pago', '🧾', 'Gasto fijo', 'La luz, el alquiler, el colegio', 'data-hoja="nuevoPago"')}
-                    ${op('nuevo-variable', '🛒', 'Gasto variable', 'El súper o la gasolina, con un tope', 'data-hoja="nuevoPago" data-id="" data-fecha="variable"')}
+                    ${op('nuevo-variable', '🛒', 'Presupuesto', 'Lo máximo para el súper o la comida afuera', 'data-hoja="nuevoPago" data-id="" data-fecha="variable"')}
                     ${op('nuevo-programado', '🐷', 'Ahorro programado', `Lo que guardas ${P.cadaVez()}`, 'data-hoja="programar"')}
                     ${op('nuevo-deuda', '💳', 'Deuda o tarjeta', 'Un préstamo, una cuota o tu tarjeta', 'data-hoja="nuevaDeuda"')}
                     ${op('mp-categorias', '🏷️', 'Mis categorías', 'Cámbiales el nombre o archívalas', 'data-hoja="categorias"')}
@@ -4228,37 +4307,61 @@
         P.acciones.hoja(d);
         if (P.ui.hoja) P.ui.hoja.disparador = 'plan-agregar';
     };
+    /**
+     * v2.8 ajuste 6 (punto 2, APROBADO por Victor 2026-10-22): «Mis categorías»: las predefinidas que se pueden cambiar
+     * (renombrar, ícono, ocultar, «Volver al original»), las tuyas, y las fijas con 🔒. Una línea por fila.
+     */
     H.categorias = {
         html() {
             const st = P.st;
-            const todas = st.categoriasPropias || [];
-            const grupos = Object.entries(GRUPOS_CAT).map(([g, x]) => {
-                const cs = todas.filter((c) => c.grupo === g);
-                if (!cs.length) return '';
-                return `<p class="campo-l campo-l--sec">${esc(x.t)}</p><ul class="lista card">${cs.map((c) => `<li class="fila"><button type="button" class="fila-main" data-a="hoja" data-hoja="categoria" data-id="${c.id}" data-fk="cat-${c.id}">${caja(c.emoji)}<span class="fila-txt"><span class="fila-t">${esc(c.nombre)}</span><span class="fila-s">${c.archivada ? 'Archivada: no sale al crear' : usosCategoria(st, c.id) ? 'En uso' : 'Sin usar todavía'}</span></span>${icon('chevron-right', 'ico-s')}</button></li>`).join('')}</ul>`;
-            }).join('');
+            const fila = (attrs, fk, emoji, nombre, marca = '') => `<li class="fila fila--cat"><button type="button" class="fila-main" ${attrs} data-fk="${fk}">${caja(emoji, 'emo--sm')}<span class="fila-txt"><span class="fila-t">${esc(nombre)}</span></span>${marca}${icon('chevron-right', 'ico-xs')}</button></li>`;
+            const oculta = '<span class="cat-marca">Oculta</span>';
+            const grupos = catalogoBase(st).map((g) => {
+                const filas = [
+                    ...g.items.map((x) => fila(`data-a="catAbrir" data-v="${x.clave}"`, 'catb-' + x.clave.replace(':', '-'), x.emoji, x.etiqueta || x.nombre, x.oculta ? oculta : '')),
+                    ...(g.grupo === 'gasto' ? [] : P.categoriasDe(st, g.grupo, { archivadas: true })).map((c) => fila(`data-a="hoja" data-hoja="categoria" data-id="${c.id}"`, 'cat-' + c.id, c.emoji, c.nombre, c.archivada ? oculta : '')),
+                ];
+                return `<h3 class="campo-l campo-l--sec">${esc(g.t)}</h3><ul class="lista card">${filas.join('')}</ul>`;
+            });
+            const fijas = CAT_FIJAS.map((x, k) => fila(`data-a="catAbrir" data-v="fija:${k}"`, 'catf-' + k, x.e, x.t, `<span class="cat-marca" aria-label="Fija">${emo('🔒', 16)}</span>`));
             return {
                 titulo: 'Mis categorías',
-                cuerpo: grupos || '<p class="txt">Todavía no tienes categorías tuyas. Se crean con «Otra» al agregar un gasto fijo o variable, o al anotar un gasto.</p>',
+                cuerpo: `<p class="txt">Cámbiales el nombre o el ícono, u ocúltalas. Lo anotado no cambia.</p>${grupos.join('')}<h3 class="campo-l campo-l--sec">Fijas</h3><ul class="lista card">${fijas.join('')}</ul>`,
                 pie: pie1('cerrarHoja', 'Listo', 'cat-listo'),
             };
         },
     };
+    P.acciones.catAbrir = (d) => P.abrirHoja('categoria', String(d.v).startsWith('fija:') ? { fija: Number(String(d.v).slice(5)) } : { clave: d.v });
     H.categoria = {
         iniciar(h) {
-            const c = (P.st.categoriasPropias || []).find((x) => x.id === h.id);
-            Object.assign(h, { catNombre: c.nombre, catEmoji: c.emoji, archivada: !!c.archivada });
+            if (h.fija !== undefined) return;
+            // Una fija (o algo que no se puede cambiar) abre con su candado.
+            if (h.clave && !baseDe(P.st, h.clave)) {
+                const [g, id] = h.clave.split(':');
+                const x = g === 'gasto' ? M.categoria(id) : window.DATOS.PAGOS_FRECUENTES.find((f) => f.id === id) || {};
+                Object.assign(h, { fija: -1, fijaX: { t: x.nombre || h.clave, e: x.emoji || '🔒' } });
+                return;
+            }
+            const c = h.clave ? baseDe(P.st, h.clave) : (P.st.categoriasPropias || []).find((x) => x.id === h.id);
+            Object.assign(h, { catNombre: h.clave ? c.etiqueta || c.nombre : c.nombre, catEmoji: c.emoji, archivada: h.clave ? !!c.oculta : !!c.archivada });
         },
-        foco: () => '#f-catNombre',
+        foco: (h) => (h.fija !== undefined ? '#hoja-t' : '#f-catNombre'),
         html(h) {
-            const c = (P.st.categoriasPropias || []).find((x) => x.id === h.id);
+            const volver = `<button type="button" class="btn btn--48" data-a="hoja" data-hoja="categorias" data-fk="cat-volver">Volver</button>`;
+            if (h.fija !== undefined) {
+                const x = h.fija >= 0 ? CAT_FIJAS[h.fija] : h.fijaX;
+                return { titulo: `${emo(x.e, 24)} ${esc(x.t)}`, cuerpo: `<p class="txt">${emo('🔒', 16)} La app la usa para tus cuentas.</p>`, pie: volver };
+            }
+            const c = h.clave ? baseDe(P.st, h.clave) : (P.st.categoriasPropias || []).find((x) => x.id === h.id);
+            const cambiada = h.clave && (P.st.categoriasBase || {})[h.clave];
             return {
-                titulo: `Editar ${esc(c.nombre)}`,
-                cuerpo: `${campoTexto(h, { campo: 'catNombre', label: '¿Cómo se llama?', valor: h.catNombre, errorTexto: h.catDup ? `Ya tienes «${h.catDup}» en ${GRUPOS_CAT[c.grupo].t}` : 'Ponle un nombre' })}
+                titulo: `Editar ${esc(h.clave ? c.etiqueta || c.nombre : c.nombre)}`,
+                cuerpo: `${campoTexto(h, { campo: 'catNombre', label: '¿Cómo se llama?', valor: h.catNombre, errorTexto: h.catDup ? `Ya tienes «${esc(h.catDup)}»` : 'Ponle un nombre' })}
                     ${elegirIcono({ valor: h.catEmoji })}
-                    <div class="chips"><button type="button" class="chip" aria-pressed="${!!h.archivada}" data-a="valor" data-campo="archivada" data-v="${!h.archivada}" data-fk="cat-archivar">${h.archivada ? icon('check', 'ico-xs') : ''}Archivarla</button></div>
-                    <p class="fila-s">Archivada no sale al crear. Lo que ya anotaste con ella no cambia.</p>`,
-                pie: `<button type="button" class="btn btn--48" data-a="hoja" data-hoja="categorias" data-fk="cat-volver">Volver</button><button type="button" class="btn btn--48 btn--prim" data-a="categoriaOk" data-fk="cat-ok">Guardar cambios</button>`,
+                    <div class="chips"><button type="button" class="chip" aria-pressed="${!!h.archivada}" data-a="valor" data-campo="archivada" data-v="${!h.archivada}" data-fk="cat-archivar">${h.archivada ? icon('check', 'ico-xs') : ''}Ocultarla</button></div>
+                    <p class="fila-s">Oculta no sale al crear. Lo que ya anotaste no cambia.</p>
+                    ${cambiada ? `<p><button type="button" class="link link--start" data-a="categoriaOriginal" data-fk="cat-original">${icon('rotate-ccw', 'ico-s')}Volver al original («${esc(c.original.etiqueta || c.original.nombre)}»)</button></p>` : ''}`,
+                pie: `${volver}<button type="button" class="btn btn--48 btn--prim" data-a="categoriaOk" data-fk="cat-ok">Guardar cambios</button>`,
             };
         },
         alValor(h, campo, v) {
@@ -4272,19 +4375,58 @@
     P.acciones.categoriaOk = () => {
         const h = P.ui.hoja;
         const st = P.st;
-        const c = (st.categoriasPropias || []).find((x) => x.id === h.id);
+        // Una fija no se cambia (ni por aquí).
+        if (h.fija !== undefined || (h.clave && FIJA.has(h.clave))) return;
+        const c = h.clave ? baseDe(st, h.clave) : (st.categoriasPropias || []).find((x) => x.id === h.id);
+        if (!c) return;
+        const antes = h.clave ? c.etiqueta || c.nombre : c.nombre;
         const n = M.normalizar(h.catNombre || '');
-        h.catDup = n && n !== M.normalizar(c.nombre) ? nombresDelGrupo(st, c.grupo).find((x) => M.normalizar(x) === n) || null : null;
+        h.catDup = n && n !== M.normalizar(antes) ? nombresCategorias(st).find((x) => M.normalizar(x) === n) || null : null;
         if (!validar(h, !n || h.catDup ? ['catNombre'] : [])) return;
+        const nuevo = nombreNuevo(h.catNombre);
+        const oculta = h.archivada && !(h.clave ? c.oculta : c.archivada);
         P.ui.hoja = null;
         P.cambiar(
             (s) => {
-                const x = s.categoriasPropias.find((y) => y.id === h.id);
-                Object.assign(x, { nombre: h.catNombre.trim(), emoji: h.catEmoji || x.emoji });
-                if (h.archivada) x.archivada = true;
-                else delete x.archivada;
+                if (h.clave) {
+                    const orig = c.original;
+                    const o = { ...((s.categoriasBase || {})[h.clave] || {}) };
+                    if (M.normalizar(nuevo) !== M.normalizar(orig.etiqueta || orig.nombre)) o.nombre = nuevo;
+                    else delete o.nombre;
+                    if (h.catEmoji && h.catEmoji !== orig.emoji) o.emoji = h.catEmoji;
+                    else delete o.emoji;
+                    if (h.archivada) o.oculta = true;
+                    else delete o.oculta;
+                    s.categoriasBase = { ...(s.categoriasBase || {}) };
+                    if (Object.keys(o).length) s.categoriasBase[h.clave] = o;
+                    else delete s.categoriasBase[h.clave];
+                    if (M.normalizar(nuevo) !== M.normalizar(antes)) renombrarEnDatos(s, h.clave, c.nombre, o.nombre || orig.nombre);
+                } else {
+                    const x = s.categoriasPropias.find((y) => y.id === h.id);
+                    Object.assign(x, { nombre: nuevo, emoji: h.catEmoji || x.emoji });
+                    if (h.archivada) x.archivada = true;
+                    else delete x.archivada;
+                }
             },
-            { aviso: h.archivada && !c.archivada ? `Archivaste ${h.catNombre.trim()}` : `${h.catNombre.trim()}: cambios guardados`, claves: ['guardado:categoria:editar', ...(h.archivada && !c.archivada ? ['guardado:categoria:archivar'] : [])] },
+            { aviso: oculta ? `Ocultaste ${nuevo}` : `${nuevo}: cambios guardados`, claves: ['guardado:categoria:editar', ...(oculta ? ['guardado:categoria:archivar'] : [])] },
+        );
+        P.abrirHoja('categorias');
+    };
+    /** «Volver al original»: el nombre, el ícono y que se vea al crear, como venían. */
+    P.acciones.categoriaOriginal = () => {
+        const h = P.ui.hoja;
+        const st = P.st;
+        if (!h.clave || FIJA.has(h.clave)) return;
+        const c = baseDe(st, h.clave);
+        const orig = c.original;
+        P.ui.hoja = null;
+        P.cambiar(
+            (s) => {
+                s.categoriasBase = { ...(s.categoriasBase || {}) };
+                delete s.categoriasBase[h.clave];
+                if (M.normalizar(c.nombre) !== M.normalizar(orig.nombre)) renombrarEnDatos(s, h.clave, c.nombre, orig.nombre);
+            },
+            { aviso: `${orig.etiqueta || orig.nombre}: como al principio`, claves: ['guardado:categoria:original'] },
         );
         P.abrirHoja('categorias');
     };
@@ -4311,7 +4453,7 @@
             const credito = st.medios.find((m) => m.tarjeta && !m.oculto);
             // v2.8 (D-2 corregida, APROBADO por Victor 2026-10-22): fijo o variable no se decide por el monto. «+ Gasto fijo» y «+ Gasto
             // variable» ya deciden; al final de cada formulario, un enlace para cambiar (al editar, «Pasar a gasto …»).
-            const cambiarClase = (a) => `<p class="fila-s np-clase">${h.editar ? '' : a === 'variable' ? '¿Lo vas gastando en varias compras? ' : '¿Llega un cobro con fecha? '}<button type="button" class="link link--inline" data-a="valor" data-campo="clase" data-v="${a}" data-fk="clase-${a}">${h.editar ? (a === 'variable' ? 'Pasar a gasto variable' : 'Pasar a gasto fijo') : a === 'variable' ? 'Pásalo a gasto variable' : 'Pásalo a gasto fijo'}</button></p>`;
+            const cambiarClase = (a) => `<p class="fila-s np-clase">${h.editar ? '' : a === 'variable' ? '¿Le pones un máximo? ' : '¿Llega un cobro con fecha? '}<button type="button" class="link link--inline" data-a="valor" data-campo="clase" data-v="${a}" data-fk="clase-${a}">${h.editar ? (a === 'variable' ? 'Pasar a presupuesto' : 'Pasar a gasto fijo') : a === 'variable' ? 'Pásalo a presupuesto' : 'Pásalo a gasto fijo'}</button></p>`;
             // FM-1: lo que ya está en tu plan con ese nombre (o, al guardar, uno muy parecido).
             // («Pasar a gasto fijo» no cuenta como duplicado el gasto variable que se está pasando.)
             const dupBox = h.editar ? '' : `<div id="dup-box">${avisoYaTienes(h, yaEnPlan(st, nombreForm(h), h.deVariable || null) || (h.parecido && M.pago(st, h.parecido) ? dupDePago(M.pago(st, h.parecido)) : null))}</div>`;
@@ -4319,17 +4461,19 @@
             const otra = { v: 'otra', t: 'Otra', e: '🧾' };
             if (h.clase === 'variable') {
                 // FM-6: «¿Cuál?» con lo frecuente, tus categorías y «Otra» (FM-5).
-                const lista = [...VARIABLES_FRECUENTES.map((x) => ({ v: x.id, t: x.nombre, e: x.emoji })), ...P.categoriasDe(st, 'variable').map((c) => ({ v: 'p:' + c.id, t: c.nombre, e: c.emoji })), otra];
+                const lista = [...catVariables(st).filter((x) => !x.oculta || x.id === h.frecuenteVar).map((x) => ({ v: x.id, t: x.nombre, e: x.emoji })), ...P.categoriasDe(st, 'variable').map((c) => ({ v: 'p:' + c.id, t: c.nombre, e: c.emoji })), otra];
                 return {
-                    titulo: h.editar ? `Pasar ${esc(h.nombre)} a gasto variable` : 'Gasto variable',
-                    cuerpo: `${h.editar ? '' : opciones(h, { campo: 'frecuenteVar', label: '¿Cuál?', lista, valor: h.frecuenteVar || '' })}
+                    titulo: h.editar ? `Pasar ${esc(h.nombre)} a presupuesto` : 'Presupuesto',
+                    // Ajuste 6 (punto 1): la ayuda corta al crear.
+                    cuerpo: `<p class="txt np-intro">Lo máximo que quieres gastar en algo ${esc(P.cadaVez(st))}.</p>
+                        ${h.editar ? '' : opciones(h, { campo: 'frecuenteVar', label: '¿Cuál?', lista, valor: h.frecuenteVar || '' })}
                         ${h.otraCat && !h.editar ? nuevaCategoriaHtml(h, 'variable') : ''}
                         ${campoTexto(h, { campo: 'nombre', label: '¿En qué gastas?', valor: h.nombre, placeholder: 'Ej. Súper', errorTexto: 'Ponle un nombre' })}${nombreDup}
                         ${dupBox}
-                        ${campoMonto(h, { label: `¿Cuánto es lo máximo ${esc(P.cadaPlan(st))}?`, valor: h.monto, ayuda: 'Cada gasto de esto lo va consumiendo. Se renueva con tu próximo ingreso.' })}
+                        ${campoMonto(h, { label: `¿Cuánto es lo máximo ${esc(P.cadaPlan(st))}?`, valor: h.monto, ayuda: 'Cada gasto lo va consumiendo. Se renueva con tu próximo ingreso.' })}
                         ${opciones(h, { campo: 'medio', label: '¿Con qué pagas normalmente?', lista: medios(st), valor: h.medio || '', errorTexto: 'Elige con qué lo pagas' })}
                         ${cambiarClase('fijo')}`,
-                    pie: pie2('nuevoPagoOk', h.editar ? 'Pasarlo a gasto variable' : 'Guardar gasto variable'),
+                    pie: pie2('nuevoPagoOk', h.editar ? 'Pasarlo a presupuesto' : 'Guardar presupuesto'),
                 };
             }
             // FM-4: primero el grupo; «¿Cuál?» sale solo después, con lo de ese grupo, tus categorías y «Otra» (FM-5).
@@ -4338,8 +4482,8 @@
             const cual = !grupo || h.editar || h.deVariable
                 ? ''
                 : suscripcion
-                  ? opciones(h, { campo: 'servicio', label: '¿Cuál?', lista: [...D.SUSCRIPCIONES.filter((x) => x.id !== 'otra').map((x) => ({ v: x.id, t: x.nombre, e: x.emoji })), ...propias, otra], valor: h.servicio || '' })
-                  : opciones(h, { campo: 'frecuente', label: '¿Cuál?', lista: [...D.PAGOS_FRECUENTES.filter((f) => !f.deuda && f.grupo === grupo).map((f) => ({ v: f.id, t: f.etiqueta || f.nombre, e: f.emoji })), ...propias, otra], valor: h.frecuente || '' });
+                  ? opciones(h, { campo: 'servicio', label: '¿Cuál?', lista: [...catSuscripciones().filter((x) => x.id !== 'otra' && (!x.oculta || x.id === h.servicio)).map((x) => ({ v: x.id, t: x.nombre, e: x.emoji })), ...propias, otra], valor: h.servicio || '' })
+                  : opciones(h, { campo: 'frecuente', label: '¿Cuál?', lista: [...catFrecuentes().filter((f) => !f.deuda && f.grupo === grupo && (!f.oculta || f.id === h.frecuente)).map((f) => ({ v: f.id, t: f.etiqueta || f.nombre, e: f.emoji })), ...propias, otra], valor: h.frecuente || '' });
             const grande = (fk, a, campo, v, e, t, s, activo) => `<button type="button" class="opcion-g" aria-pressed="${!!activo}" data-a="${a}" data-campo="${campo}" data-v="${v}" data-fk="${fk}">${caja(e)}<span class="opcion-g-txt"><span class="opcion-g-t">${t}</span><span class="fila-s">${s}</span></span>${activo ? icon('circle-check', 'ico-ok') : ''}</button>`;
             return {
                 titulo: h.editar ? `Editar ${esc(h.nombre)}` : h.deVariable ? 'Pasar a gasto fijo' : 'Gasto fijo',
@@ -4392,12 +4536,12 @@
             }
             if (campo === 'frecuente' || campo === 'servicio' || campo === 'frecuenteVar') Object.assign(h, { otraCat: false, propia: null });
             if (campo === 'frecuenteVar') {
-                const f = VARIABLES_FRECUENTES.find((x) => x.id === v);
+                const f = catVariables().find((x) => x.id === v);
                 if (f) Object.assign(h, { frecuenteVar: v, nombre: f.nombre, emoji: f.emoji, categoria: f.categoria });
                 return;
             }
             if (campo === 'frecuente') {
-                const f = D.PAGOS_FRECUENTES.find((y) => y.id === v);
+                const f = catFrecuentes().find((y) => y.id === v);
                 if (f && !f.deuda) h.caja = f.grupo;
                 // V2-24: la cuota de un préstamo abre el MISMO formulario que Mi dinero.
                 if (f.deuda) {
@@ -4420,7 +4564,7 @@
                 if (v) Object.assign(h, { frecuencia: 'mensual', categoria: 'suscripciones', emoji: '📺', estimado: false });
                 else Object.assign(h, { categoria: 'otros', emoji: '🧾' });
             } else if (campo === 'servicio') {
-                const x = D.SUSCRIPCIONES.find((y) => y.id === v);
+                const x = catSuscripciones().find((y) => y.id === v);
                 Object.assign(h, { servicio: v, nombre: x.nombre, emoji: x.emoji });
             } else if (campo === 'estimado') h.estimado = v === 'true';
             else if (campo === 'medio') h.medio = v;
@@ -4436,7 +4580,7 @@
                 revisarDup(h);
             }
             if (campo === 'nombre' && h.frecuente) {
-                const f = D.PAGOS_FRECUENTES.find((y) => y.id === h.frecuente);
+                const f = catFrecuentes().find((y) => y.id === h.frecuente);
                 if (f && M.normalizar(f.nombre) !== M.normalizar(el.value)) {
                     h.frecuente = null;
                     const b = document.querySelector(`[data-fk="op-frecuente-${f.id}"]`);
@@ -4470,7 +4614,7 @@
             P.cambiar((s) => {
                 const v = P.fijoAVariable(s, h.id, { tope: monto });
                 if (v) Object.assign(v, { nombre: nombreBase, medio: h.medio });
-            }, { aviso: `${nombreBase} ahora es gasto variable`, claves: ['guardado:variable', 'guardado:aVariable'] });
+            }, { aviso: `${nombreBase} ahora es presupuesto`, claves: ['guardado:variable', 'guardado:aVariable'] });
             if (P.ui.stack.at(-1)?.tipo === 'pago') P.atras();
             return;
         }
@@ -4481,9 +4625,9 @@
                 if (sd.faltan[0] === 'duplicado' || sd.faltan[0] === 'alias') verPreguntaDup();
                 return;
             }
-            const nombre = sd.nombre;
+            const nombre = nombreNuevo(sd.nombre);
             const w = claveNombre(nombre);
-            const k = h.categoria && h.categoria !== 'otros' ? M.categoria(h.categoria) : D.CATEGORIAS.find((x) => x.palabras.includes(w)) || D.CATEGORIAS.find((x) => M.normalizar(x.nombre) === M.normalizar(nombre)) || M.categoria('otros');
+            const k = h.categoria && h.categoria !== 'otros' ? P.cat(h.categoria) : D.CATEGORIAS.find((x) => x.palabras.includes(w)) || D.CATEGORIAS.find((x) => M.normalizar(x.nombre) === M.normalizar(nombre)) || P.cat('otros');
             P.ui.hoja = null;
             P.cambiar((s) => {
                 const cat = h.otraCat ? P.crearCategoria(s, { grupo: 'variable', nombre: h.catNombre.trim(), emoji: h.catEmoji || '🏷️' }) : null;
@@ -4504,7 +4648,7 @@
             if (faltan[0] === 'nombreDup') document.getElementById('f-nombre')?.focus();
             return;
         }
-        const nombre = sd.nombre;
+        const nombre = h.editar ? sd.nombre : nombreNuevo(sd.nombre);
         const regla = reglaForm(h);
         // Una factura con nombre propio dentro de «Facturas y servicios» es de esa categoría.
         if (h.caja === 'servicio' && (!h.categoria || h.categoria === 'otros')) h.categoria = 'servicios';
@@ -5512,9 +5656,9 @@
             const nSus = d.pagos.filter((p) => p.suscripcion).length;
             let editor = '';
             if (ed && ed.suscripcion) {
-                editor = `<div class="card ob-card ob-editor"><p class="fila-t">${emo('📺', 18)} Suscripción</p>${opcionesOb('p-servicio', '¿Cuál?', D.SUSCRIPCIONES.map((s) => ({ v: s.id, t: s.nombre, e: s.emoji })), ed.servicio)}${ed.servicio === 'otra' ? `<div class="campo-g"><label class="campo-l" for="ob-p-nombre">¿Cómo se llama?</label><div class="campo"><input id="ob-p-nombre" data-campo="p-nombre" type="text" autocomplete="off" value="${esc(ed.nombre)}" placeholder="Ej. Crunchyroll"></div></div>` : ''}${monto('p-monto', '¿Cuánto pagas?', ed.monto)}${opcionesOb('p-anual', '¿Cada cuánto?', [{ v: 'no', t: 'Cada mes' }, { v: 'si', t: 'Cada año' }], ed.anual ? 'si' : 'no')}${obDias('p-dia', ed.dia, '¿Qué día se cobra?')}${preguntaOb(st, ed)}${cobro(ed)}${err('pago', 'Elige cuál, escribe cuánto y elige el día')}<div class="acciones-2"><button type="button" class="btn" data-a="obPagoCancelar" data-fk="ob-p-cancelar">Cancelar</button><button type="button" class="btn btn--prim" data-a="obPagoAgregar" data-fk="ob-p-agregar">Agregar</button></div></div>`;
+                editor = `<div class="card ob-card ob-editor"><p class="fila-t">${emo('📺', 18)} Suscripción</p>${opcionesOb('p-servicio', '¿Cuál?', catSuscripciones().map((s) => ({ v: s.id, t: s.nombre, e: s.emoji })), ed.servicio)}${ed.servicio === 'otra' ? `<div class="campo-g"><label class="campo-l" for="ob-p-nombre">¿Cómo se llama?</label><div class="campo"><input id="ob-p-nombre" data-campo="p-nombre" type="text" autocomplete="off" value="${esc(ed.nombre)}" placeholder="Ej. Crunchyroll"></div></div>` : ''}${monto('p-monto', '¿Cuánto pagas?', ed.monto)}${opcionesOb('p-anual', '¿Cada cuánto?', [{ v: 'no', t: 'Cada mes' }, { v: 'si', t: 'Cada año' }], ed.anual ? 'si' : 'no')}${obDias('p-dia', ed.dia, '¿Qué día se cobra?')}${preguntaOb(st, ed)}${cobro(ed)}${err('pago', 'Elige cuál, escribe cuánto y elige el día')}<div class="acciones-2"><button type="button" class="btn" data-a="obPagoCancelar" data-fk="ob-p-cancelar">Cancelar</button><button type="button" class="btn btn--prim" data-a="obPagoAgregar" data-fk="ob-p-agregar">Agregar</button></div></div>`;
             } else if (ed) {
-                const f = D.PAGOS_FRECUENTES.find((x) => x.id === ed.id);
+                const f = catFrecuentes().find((x) => x.id === ed.id);
                 const cuchubal = f.id === 'cuchubal';
                 const cuando = cuchubal && ed.frecuencia === 'quincenal' ? `<div class="ob-2">${obDiaCorto('p-d1', 'Primer día', ed.d1 || '')}${obDiaCorto('p-d2', 'Segundo día', ed.d2 || '')}</div>` : (cuchubal ? ed.frecuencia === 'semanal' : f.semanal) ? opcionesOb('p-dsem', '¿Qué día?', [1, 2, 3, 4, 5, 6].map((n) => ({ v: n, t: M.capital(M.DIAS[n]) })), ed.diaSemana) : obDias('p-dia', ed.dia, '¿Qué día lo pagas?');
                 // V2-75: el turno del cuchubal es un ingreso esperado (opcional).
@@ -5527,8 +5671,8 @@
                 return x ? (x.solo && soloDe(p) === 'si' ? ' · se cobra solo en ' : ' · con ') + x.t : ' · falta con qué lo pagas';
             };
             // v2.8 ajuste 3 (FM-4): los mismos grupos que «+ Gasto fijo».
-            const servicios = D.PAGOS_FRECUENTES.filter((x) => !x.deuda && x.grupo === 'servicio');
-            const casa = D.PAGOS_FRECUENTES.filter((x) => !x.deuda && x.grupo === 'otro');
+            const servicios = catFrecuentes().filter((x) => !x.deuda && x.grupo === 'servicio');
+            const casa = catFrecuentes().filter((x) => !x.deuda && x.grupo === 'otro');
             return `<div class="pg pg--flujo ob">${cab(5, 'Tus gastos fijos', 'Toca los que tengas. Te aviso antes de que venzan.')}
                 <p class="campo-l campo-l--sec">Facturas y servicios</p>
                 <div class="chips ob-pagos">${servicios.map(pagoChip).join('')}</div>
@@ -5696,7 +5840,7 @@
         }
         else if (d.campo === 'p-turno') ob.editando.turno = v;
         else if (d.campo === 'p-servicio') {
-            const s = D.SUSCRIPCIONES.find((y) => y.id === v);
+            const s = catSuscripciones().find((y) => y.id === v);
             Object.assign(ob.editando, { servicio: v, nombre: v === 'otra' ? '' : s.nombre, emoji: s.emoji });
         } else if (d.campo === 'p-anual') ob.editando.anual = v === 'si';
         else if (d.campo === 'p-frec') {
@@ -5852,7 +5996,7 @@
     };
     /** V2-82: un gasto fijo que ya tienes en Pagos: se dice dónde está, sin agregarlo otra vez. */
     P.acciones.obPagoTienes = (d) => {
-        const f = D.PAGOS_FRECUENTES.find((x) => x.id === d.v);
+        const f = catFrecuentes().find((x) => x.id === d.v);
         P.avisar(`Ya tienes «${f ? f.nombre : 'ese pago'}» en Mi plan`, { check: false });
     };
     P.acciones.obPago = (d) => {
@@ -5869,7 +6013,7 @@
         ob.datos.pagos = ob.datos.pagos.filter((x) => x.clave !== p.clave);
         const base = { monto: M.montoCampo(p.monto), dia: p.dia, paga: pagaDe(p), solo: soloDe(p), antesDebe: p.antesDebe || null };
         ob.editando = p.suscripcion
-            ? { suscripcion: true, servicio: (D.SUSCRIPCIONES.find((s) => s.nombre === p.nombre) || { id: 'otra' }).id, nombre: p.nombre, emoji: p.emoji, anual: !!p.anual, ...base }
+            ? { suscripcion: true, servicio: (catSuscripciones().find((s) => s.nombre === p.nombre) || { id: 'otra' }).id, nombre: p.nombre, emoji: p.emoji, anual: !!p.anual, ...base }
             : { id: p.id, diaSemana: p.diaSemana, frecuencia: p.frecuencia, d1: p.dias ? String(p.dias[0]) : '', d2: p.dias ? String(p.dias[1]) : '', turno: p.turno || null, recibes: p.recibes ? M.montoCampo(p.recibes) : '', ...base };
     }
     P.acciones.obSuscripcion = () => {
@@ -5902,7 +6046,7 @@
             ob.datos.pagos.push({ clave, id: clave, suscripcion: true, nombre: ed.nombre.trim(), emoji: ed.emoji, categoria: 'suscripciones', monto, frecuencia: 'mensual', anual: ed.anual, dia: ed.dia, ...paga, antesDebe: ed.antesDebe || null });
             P.emitir('onboarding:suscripcion');
         } else {
-            const f = D.PAGOS_FRECUENTES.find((x) => x.id === ed.id);
+            const f = catFrecuentes().find((x) => x.id === ed.id);
             const frecuencia = f.id === 'cuchubal' ? ed.frecuencia || 'semanal' : f.semanal ? 'semanal' : 'mensual';
             const dias = frecuencia === 'quincenal' ? [Number(ed.d1), Number(ed.d2)].sort((a, b) => a - b) : null;
             const okDia = frecuencia === 'semanal' || (frecuencia === 'quincenal' ? dias.every((n) => n >= 1 && n <= 31) && dias[0] !== dias[1] : !!ed.dia);

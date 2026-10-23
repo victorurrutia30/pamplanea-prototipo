@@ -312,11 +312,12 @@ try {
         check('el mismo día: primero lo que te cae', orden, (x) => x.length > 0 && x.some(([, t]) => t === 'i') && x.every(([d, t], i) => !(t === 'i' && i > 0 && x[i - 1][0] === d && x[i - 1][1] === 'p')));
         // Lo visible del monto (sin la etiqueta para el lector de pantalla, «Pago:» o «Ingreso:»).
         const visible = `(m) => (m ? [...m.childNodes].filter((n) => !(n.classList && n.classList.contains('sr-only'))).map((n) => n.textContent).join('').trim() : null)`;
-        const pagos = await ev(`[...document.querySelectorAll('.pl-lista .pl-m .monto--pago')].map(${visible})`);
-        check('cada pago resta («−», o «~» si es aproximado), nunca «−~»', pagos, (x) => x.length > 0 && x.every((m) => /^(−|~|faltan)/.test(m)) && !x.some((m) => m.includes('−~')));
+        // Ajuste 6 (punto 4, APROBADO por Victor 2026-10-22): lo que sale va sin «−» (la lista entera es lo que sale).
+        const pagos = await ev(`[...document.querySelectorAll('.pl-lista .pl-m .monto:not(.monto--ingreso)')].map(${visible})`);
+        check('lo que sale, sin «−»: «$12.00», «~$35.00» o «faltan $X»', pagos, (x) => x.length > 0 && x.every((m) => /^(\$|~\$|faltan \$)/.test(m)) && !x.some((m) => m.includes('−')));
         const ingresos = await ev(`[...document.querySelectorAll('.pl-lista .pl-m .monto--ingreso')].map(${visible})`);
         check('todo ingreso suma («+», también el estimado: «+~»)', ingresos, (x) => x.length > 0 && x.every((m) => /^\+~?\$/.test(m)));
-        check('el lector de pantalla oye «Pago:» o «Ingreso…:» en cada monto', await ev(`[...document.querySelectorAll('.pl-lista .pl-m .monto')].map((m) => m.querySelector('.sr-only')?.textContent || '')`), (x) => x.length > 0 && x.every((t) => /^(Pago|Ingreso|Pagaste)/.test(t)));
+        check('el lector de pantalla oye «Gasto:», «Ingreso:» o «No suma aparte:» en cada monto', await ev(`[...document.querySelectorAll('.pl-lista .pl-m .monto')].map((m) => m.querySelector('.sr-only')?.textContent || '')`), (x) => x.length > 0 && x.every((t) => /^(Gasto|Ingreso|No suma aparte|Pagaste)/.test(t)));
         await foto('D-pagos-calendario');
         // Contraste de las marcas en los 4 temas (nunca solo color, y cuando hay color, ≥ 4.5:1).
         const minimo = await ev(`(async () => {

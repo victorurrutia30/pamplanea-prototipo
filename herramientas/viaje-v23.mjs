@@ -184,9 +184,10 @@ try {
     await coherente('cuadre con diferencia');
     await clic('[data-fk="nav-mes"]');
     await clic('[data-fk="mes-ant"]');
-    const mes = await texto('.resumen');
+    // Ajuste 6 (punto 3, APROBADO por Victor 2026-10-22): el resumen de Mes dice «Entraron $X · Salieron $Y».
+    const mes = await texto('.mes-res');
     informe.dias['Mes octubre'] = mes;
-    check('Mes de octubre: entró lo que llegó', mes, (x) => x.includes('+$1,163.00'));
+    check('Mes de octubre: entró lo que llegó', mes, (x) => x.includes('Entraron $1,163.00'));
     await foto('mes-octubre');
 } catch (e) {
     informe.fallos.push(actual + ': ' + e.message);

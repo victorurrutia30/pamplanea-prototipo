@@ -77,13 +77,14 @@
     }
 
     // ------------------------------------------------------------------ dinero (centavos)
-    function dinero(c, { signo = false, aprox = false } = {}) {
+    /** `centavos`: el aproximado también con centavos («~$30.00»; v2.8 ajuste 6, punto 4: Mi plan y Mes). */
+    function dinero(c, { signo = false, aprox = false, centavos = false } = {}) {
         if (c === null || c === undefined) return '—';
         const neg = c < 0;
         const abs = Math.abs(c);
         const entero = Math.floor(abs / 100).toLocaleString('en-US');
         const cent = abs % 100;
-        let s = '$' + entero + (aprox && cent === 0 ? '' : '.' + pad(cent));
+        let s = '$' + entero + (aprox && cent === 0 && !centavos ? '' : '.' + pad(cent));
         if (aprox) s = '~' + s;
         if (neg) return '−' + s;
         // Un estimado se escribe «~$597», nunca «+~$597».
@@ -706,7 +707,9 @@
         const nombre = normalizar(r.nombre || '');
         const porNombre = activas.find((v) => nombre && coincide(nombre, v.nombre));
         if (porNombre) return porNombre;
-        return activas.find((v) => v.categoria && v.categoria !== 'otros' && v.categoria === r.categoria && normalizar(v.nombre) === normalizar(categoria(v.categoria).nombre)) || null;
+        // v2.8 ajuste 6 (punto 2): con el nombre de ahora de la categoría (si la persona la renombró, el dinero no cambia).
+        const nombreCat = (id) => ((st.categoriasBase && st.categoriasBase['gasto:' + id]) || {}).nombre || categoria(id).nombre;
+        return activas.find((v) => v.categoria && v.categoria !== 'otros' && v.categoria === r.categoria && normalizar(v.nombre) === normalizar(nombreCat(v.categoria))) || null;
     }
     /**
      * v2.8 (C-3): cada gasto variable en esta quincena: su tope, lo anotado (cada gasto de ese tipo lo consume una vez), lo

@@ -37,6 +37,17 @@ for (const tema of ['serena-claro', 'serena-oscuro', 'ancla-claro', 'ancla-oscur
     await b.evaluar('P.ui.pagosModo = "tipo"; P.ui.planAbiertas = { ingresos: true }; P.render(); true');
     await esperar(150);
     Object.assign(r, await b.evaluar(medir([['lista: detalle', 'section[aria-labelledby=mp-ingresos] .fila-s'], ['lista: principal', '.pronto'], ['por tipo: total', '.pt-total']])));
+    // Ajuste 6: Mes nuevo, lo que va en una tarjeta («va en») y «Mis categorías».
+    await b.evaluar('P.ui.pagosModo = "fecha"; P.irTab("pagos"); true');
+    await esperar(150);
+    Object.assign(r, await b.evaluar(medir([['va en una tarjeta', '.monto--va']])));
+    await b.evaluar('P.irTab("mes"); true');
+    await esperar(150);
+    Object.assign(r, await b.evaluar(medir([['mes: hasta hoy', '.mes-hasta'], ['mes: contra el anterior', '.mes-res-c'], ['mes: monto', '.mes-cat-m'], ['mes: nota del historial', '.pl-e'], ['mes: buscar', '#mes-buscar']])));
+    await b.evaluar('P.abrirHoja("categorias"); true');
+    await esperar(150);
+    Object.assign(r, await b.evaluar(medir([['mis categorías: grupo', '.hoja .campo-l--sec']])));
+    await b.evaluar('P.cerrarHoja({ sinFoco: true }); true');
     await b.evaluar('P.irTab("midinero"); true');
     await esperar(150);
     Object.assign(r, await b.evaluar(medir([['puerta título', '.puerta-t'], ['puerta cifra', '.puerta-n'], ['puerta detalle', '.puerta .fila-s']])));

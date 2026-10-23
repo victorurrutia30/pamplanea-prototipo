@@ -163,7 +163,7 @@ try {
     // v2.8 (C-8): cómo quedas la próxima quincena ya no está en Hoy: está arriba de Mi plan («gastos», D-2).
     // Ajuste 5 (punto 4): la próxima quincena está en Mi plan → Próxima, en su resumen.
     await ev(`P.ui.pagosVista = 'proxima'; P.irTab('pagos'); true`);
-    check('proyección', await texto('.plan-res'), contiene('Del 29 oct al 13 nov', 'Entra ~$1,163 · Sale ~$713', 'Te quedarían', '~$450', 'Incluye ~$566 de tu pareja'));
+    check('proyección', await texto('.plan-res'), contiene('Del 29 oct al 13 nov', 'Entra ~$1,163.00 · Sale ~$713.00', 'Te quedarían', '~$450.00', 'Incluye ~$566.00 de tu pareja'));
     await ev(`P.ui.pagosVista = 'actual'; P.irTab('hoy'); true`);
     check('proyección (números)', k.prox, { clave: '2026-10-29', entra: 116300, pagos: 71300, quedan: 45000, deficit: 0 });
     check('sin llegadas inventadas', await ev('P.st.ingresos.flatMap((i) => Object.keys(i.llegadas))'), []);
@@ -177,7 +177,8 @@ try {
     await clic('[data-fk="tab-proxima"]');
     await foto('victor-pagos-proxima');
     check('Mi plan → Próxima', await ev('[P.ui.tab, P.ui.pagosVista]'), ['pagos', 'proxima']);
-    check('Pagos → Próxima: mismos números', await texto('.plan-res'), contiene('Entra ~$1,163 · Sale ~$713', '~$450'));
+    // Ajuste 6 (punto 4): en Mi plan, lo aproximado con centavos («~$450.00»).
+    check('Pagos → Próxima: mismos números', await texto('.plan-res'), contiene('Entra ~$1,163.00 · Sale ~$713.00', '~$450.00'));
     await clic('[data-fk="tab-actual"]');
     check('esta quincena sin llegadas del 14', await texto('.pl-lista'), (x) => !String(x).includes('Llegó'));
     check('«Más adelante» solo el aguinaldo', await ev('(() => { const g = [...document.querySelectorAll(".pl-bloque")].find((x) => x.querySelector(".pl-h")?.textContent.startsWith("Más adelante")); return g ? [...g.querySelectorAll(".pl-n")].map((x) => x.textContent) : []; })()'), ['Aguinaldo']);
@@ -212,7 +213,7 @@ try {
     check('faltante exacto', await texto('.portada-s'), 'Te faltan $5.00 para cubrir lo que viene');
     // Ajuste 5 (punto 4): Mi plan → Próxima.
     await ev(`P.ui.pagosVista = 'proxima'; P.irTab('pagos'); true`);
-    check('próxima quincena: sale ~$613 (Mi plan → Próxima)', await texto('.plan-res'), contiene('Sale ~$613', '~$550'));
+    check('próxima quincena: sale ~$613 (Mi plan → Próxima)', await texto('.plan-res'), contiene('Sale ~$613.00', '~$550.00'));
     await ev(`P.ui.pagosVista = 'actual'; true`);
     await ev(`P.irTab('hoy'); true`);
     await foto('repartir-hoy');

@@ -920,7 +920,7 @@
             }
             if (q.tipo === 'variable') {
                 const p = q.pago;
-                return `<li class="p28-caso"><div class="p28-caso-t">${P.caja(p.emoji || '🛒')}<span class="fila-txt"><span class="fila-t">¿«${esc(p.nombre)}» lo vas gastando en varias compras?</span><span class="fila-s">Como gasto variable, su tope sería ${M.dinero(q.tope)} ${esc(P.cadaPlan())}.</span></span></div><div class="acciones-2" role="group" aria-label="${esc(p.nombre)}"><button type="button" class="btn" data-a="pregunta28" data-id="${esc(q.clave)}" data-v="no" data-fk="p28-no-${p.id}">No, queda fijo</button><button type="button" class="btn btn--prim" data-a="pregunta28" data-id="${esc(q.clave)}" data-v="si" data-fk="p28-si-${p.id}">Pasarlo a gasto variable</button></div></li>`;
+                return `<li class="p28-caso"><div class="p28-caso-t">${P.caja(p.emoji || '🛒')}<span class="fila-txt"><span class="fila-t">¿«${esc(p.nombre)}» lo vas gastando en varias compras?</span><span class="fila-s">Como presupuesto, lo máximo sería ${M.dinero(q.tope)} ${esc(P.cadaPlan())}.</span></span></div><div class="acciones-2" role="group" aria-label="${esc(p.nombre)}"><button type="button" class="btn" data-a="pregunta28" data-id="${esc(q.clave)}" data-v="no" data-fk="p28-no-${p.id}">No, queda fijo</button><button type="button" class="btn btn--prim" data-a="pregunta28" data-id="${esc(q.clave)}" data-v="si" data-fk="p28-si-${p.id}">Pasarlo a presupuesto</button></div></li>`;
             }
             const t = q.tarjeta;
             const ch = (f, fk) => `<button type="button" class="btn${f === q.actual ? ' btn--prim' : ''}" data-a="pregunta28" data-id="${esc(q.clave)}" data-v="${f}" data-fk="${fk}">${esc(M.capital(M.fechaLarga(f)))}</button>`;
@@ -950,7 +950,7 @@
             }
             if (q.tipo === 'variable' && d.v === 'si') {
                 const v = P.fijoAVariable(s, q.pago.id, { tope: q.tope });
-                aviso = v ? `${v.nombre} ahora es gasto variable` : aviso;
+                aviso = v ? `${v.nombre} ahora es presupuesto` : aviso;
             } else if (q.tipo === 'variable') aviso = `${q.pago.nombre} queda fijo`;
             if (q.tipo === 'vence') {
                 // v2.8 (D-5): la fecha que dijo manda (y cuántos meses hay de su corte a su pago).

@@ -4228,3 +4228,199 @@ html.con-hazlo .mask {
     text-overflow: ellipsis;
     white-space: nowrap;
 }
+
+/* v2.8 (ajuste 6): un solo formato de montos en Mi plan y Mes, y «Mis categorías». */
+.monto--sale {
+    color: var(--color-text);
+}
+.monto--va {
+    color: var(--color-text-muted);
+    font-size: 13px;
+    font-weight: 500;
+}
+.pl-fila--va .pl-n {
+    color: var(--color-text-muted);
+}
+.cat-marca {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    color: var(--color-text-muted);
+    font-size: 12px;
+    font-weight: 600;
+}
+.fila--cat .fila-main {
+    min-height: 48px;
+    padding-block: 4px;
+}
+.np-intro {
+    color: var(--color-text-muted);
+}
+
+/* v2.8 (ajuste 6, punto 3): Mes, «¿qué pasó y qué aprendo?». */
+.mes-hasta {
+    display: block;
+    color: var(--color-text-muted);
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 16px;
+    text-align: center;
+}
+.mes-nav-t {
+    text-align: center;
+}
+.mes-res {
+    display: grid;
+    gap: 2px;
+    padding: 14px 16px;
+}
+.mes-res-l {
+    font-size: 14px;
+    font-variant-numeric: tabular-nums;
+    line-height: 20px;
+}
+.mes-res-e {
+    margin-top: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 20px;
+}
+.mes-res-n {
+    font-size: 32px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    line-height: 38px;
+}
+.mes-res-c {
+    color: var(--color-text-muted);
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 500;
+    line-height: 18px;
+}
+.mes-sec .card-h {
+    padding-inline: 16px;
+}
+.mes-cats {
+    display: block;
+    padding: 0 0 6px;
+}
+.mes-cat {
+    display: flex;
+    width: 100%;
+    min-height: 52px;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 16px;
+    text-align: left;
+}
+.mes-cat:hover {
+    background: var(--p-hover);
+}
+.mes-cat:focus-visible {
+    outline-offset: -2px;
+}
+.mes-cat[aria-pressed='true'] .mes-cat-n {
+    color: var(--color-primary);
+    font-weight: 700;
+}
+.mes-cat-t {
+    display: grid;
+    min-width: 0;
+    flex: 1;
+    gap: 4px;
+}
+.mes-cat-n {
+    overflow: hidden;
+    font-size: 15px;
+    font-weight: 500;
+    line-height: 20px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.mes-barra {
+    display: block;
+    height: 6px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--color-text) 8%, transparent);
+}
+.mes-barra > span {
+    display: block;
+    height: 100%;
+    border-radius: 999px;
+    background: var(--color-primary);
+}
+.mes-cat-m {
+    flex-shrink: 0;
+    font-size: 15px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+}
+.mes-pie {
+    padding: 0 16px 10px;
+}
+.mes-cumple {
+    color: var(--color-text-muted);
+    font-size: 13px;
+    font-weight: 600;
+}
+.mes-enc-nav {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+.mes-enc-c {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 0 16px 14px;
+}
+.mes-buscar {
+    display: flex;
+    min-height: 44px;
+    align-items: center;
+    gap: 8px;
+    padding: 0 12px;
+    border: 1px solid var(--color-control-border);
+    border-radius: var(--radius-xl);
+    background: var(--color-surface-2);
+}
+.mes-buscar input {
+    min-width: 0;
+    min-height: 42px;
+    flex: 1;
+    border: 0;
+    background: none;
+    font-size: 16px;
+    outline: none;
+}
+.mes-buscar:focus-within {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+}
+.mes-filtros {
+    display: grid;
+    gap: 6px;
+}
+.pl-b--quieta {
+    cursor: default;
+}
+/* La columna de la página nunca pasa del ancho de la pantalla; la nota de una fila se recorta antes que el monto. */
+.pg {
+    grid-template-columns: minmax(0, 1fr);
+}
+.pl-e {
+    min-width: 0;
+    max-width: 48%;
+    flex-shrink: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.historial,
+.plan-panel,
+.pl-bloque {
+    grid-template-columns: minmax(0, 1fr);
+}

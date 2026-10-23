@@ -149,7 +149,7 @@ try {
     await clic('[data-fk="ver-tipo"]');
     for (const s of ['ingresos', 'fijos', 'variables', 'ahorro', 'deudas']) await clic(`[data-fk="sec-${s}"]`);
     await foto('mis-pagos');
-    check('lista completa', await texto('#pantalla'), contiene('Ingresos', 'Quincena', 'Gastos fijos', 'Gastos variables', 'Ahorro programado', 'Deudas', 'Préstamo Liss', 'Netflix', 'sale de:'));
+    check('lista completa', await texto('#pantalla'), contiene('Ingresos', 'Quincena', 'Gastos fijos', 'Presupuestos', 'Ahorro programado', 'Deudas', 'Préstamo Liss', 'Netflix', 'sale de:'));
     await clic('[data-fk="mp-p6"]').catch(() => null);
 
     // V2-47: «+ Pago» → Suscripción; Mes lo suma. v2.8 (APROBADO por Victor, 2026-10-22): «¿Con qué lo pagas?» ya no

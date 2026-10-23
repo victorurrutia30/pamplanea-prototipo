@@ -237,6 +237,27 @@
             : '';
     };
 
+    /**
+     * v2.8 ajuste 6 (punto 4, APROBADO por Victor 2026-10-22): un solo formato en Mi plan y Mes. Lo que sale, sin «−» (la lista
+     * entera es lo que sale); lo que entra, con «+»; lo aproximado, «~$30.00». Lo que no suma aparte (un cobro que va en una
+     * tarjeta, un descuento del salario) se ve «$10.00 · va en Mi BAC», en gris (C-7).
+     */
+    function montoPlan(c, tipo, { aprox = false, va = null, gris = false } = {}) {
+        if (c === null || c === undefined) return '<span class="monto monto--pend">Por confirmar</span>';
+        const t = dinero(c, { aprox, centavos: true });
+        if (tipo === 'ingreso') return `<span class="monto monto--ingreso">${sr('Ingreso: ')}+${t}</span>`;
+        if (va || gris) return `<span class="monto monto--va">${sr('No suma aparte: ')}${t}${va ? ` · ${esc(va)}` : ''}</span>`;
+        return `<span class="monto monto--sale">${sr('Gasto: ')}${t}</span>`;
+    }
+    P.montoPlan = montoPlan;
+    /** Lo que no suma aparte en «Sale»: «va en Mi BAC» o «se descuenta de tu salario» (o null). */
+    P.vaEn = (st, p) => {
+        if (!p) return null;
+        const t = M.tarjetaDePago(st, p);
+        if (t) return `va en ${P.nombreTarjeta(t)}`;
+        return p.descuento ? 'se descuenta de tu salario' : null;
+    };
+
     // ------------------------------------------------------------------ piezas compartidas
     const encabezado = (titulo, sub, { atras = null, derecha = '' } = {}) => `
         <header class="pg-head${atras ? ' pg-head--ficha' : ''}">
@@ -346,7 +367,18 @@
     }
     P.filaPago = filaPago;
 
-    function filaRegistro(r, { conFecha = true } = {}) {
+    /** El nombre que se ve de lo anotado (para buscarlo en el historial de Mes). */
+    function tituloRegistro(st, r) {
+        if (r.tipo === 'mover') return r.nombre || 'Mover dinero';
+        if (r.tipo === 'cuadre') return `Cuadraste ${M.lugar(st, r.lugar)?.nombre || ''}`;
+        if (r.tipo === 'cargoTarjeta') return `${M.tarjeta(st, r.tarjeta)?.nombre}: sin detalle`;
+        return r.nombre || '';
+    }
+    /**
+     * Una fila de lo anotado. `linea` (Mes, v2.8 ajuste 6): una sola línea con el día a la izquierda (solo en la primera de ese
+     * día); lo que sale sin «−», lo que entra con «+»; las notas del cuadre se conservan.
+     */
+    function filaRegistro(r, { conFecha = true, linea = false, primera = true } = {}) {
         const st = P.st;
         let emoji = '🧩';
         let titulo = r.nombre || '';
@@ -354,13 +386,13 @@
         let monto = '';
         const fecha = conFecha ? M.relativa(r.fecha, st.hoy) : '';
         if (r.tipo === 'gasto') {
-            const k = M.categoria(r.categoria);
+            const k = P.cat(r.categoria);
             emoji = r.emoji || D.EMOJI_NOMBRE[M.normalizar(r.nombre || '').split(' ')[0]] || (r.pago && M.pago(st, r.pago)?.emoji) || k.emoji;
             const m = M.medio(st, r.medio);
             sub = [fecha, m ? m.nombre : '', r.pago ? 'de Mi plan' : ''].filter(Boolean).join(' · ');
             monto = montoHtml(r.monto, 'gasto');
         } else if (r.tipo === 'ingreso') {
-            emoji = r.emoji || M.categoria(r.categoria).emoji;
+            emoji = r.emoji || P.cat(r.categoria).emoji;
             sub = [fecha, M.lugar(st, r.lugar)?.nombre].filter(Boolean).join(' · ');
             monto = montoHtml(r.monto, 'ingreso');
         } else if (r.tipo === 'mover') {
@@ -389,6 +421,20 @@
         }
         // v2.8 (C-1): lo de un ahorro aparte se corrige desde ese ahorro, no aquí.
         const editable = ['gasto', 'ingreso', 'mover', 'pagoTarjeta'].includes(r.tipo) && !r.ahorro;
+        if (linea) {
+            const montoL = r.tipo === 'gasto' || r.tipo === 'cargoTarjeta' ? montoPlan(r.monto, 'gasto') : r.tipo === 'ingreso' ? montoPlan(r.monto, 'ingreso') : monto;
+            // Una línea que diga mucho con poco: un movimiento es «Banco → Efectivo»; un cuadre, la cuenta y su nota («cuadró
+            // exacto», «explicado con lo que anotaste»); un cargo, la tarjeta y su motivo.
+            let nota = '';
+            if (r.tipo === 'mover' || r.tipo === 'pagoTarjeta') titulo = sub;
+            else if (r.tipo === 'cuadre' || r.tipo === 'cargoTarjeta') {
+                titulo = r.tipo === 'cuadre' ? M.lugar(st, r.lugar)?.nombre || titulo : M.tarjeta(st, r.tarjeta)?.nombre || titulo;
+                nota = sub;
+            }
+            const dia = primera ? `<span class="pl-dia" aria-hidden="true"><span class="pl-dia-n">${M.partes(r.fecha)[2]}</span><span class="pl-dia-m">${r.fecha === st.hoy ? 'hoy' : M.MESES_CORTOS[M.partes(r.fecha)[1] - 1]}</span></span>` : '<span class="pl-dia" aria-hidden="true"></span>';
+            const dentro = `${sr(`${M.fechaCorta(r.fecha)}: `)}${caja(emoji, 'emo--sm')}<span class="pl-n">${esc(titulo)}</span>${nota ? `<span class="pl-e">${esc(nota)}</span>` : ''}<span class="pl-m">${montoL}</span>`;
+            return `<li class="pl-fila${primera ? ' pl-fila--dia' : ''}">${dia}${editable ? `<button type="button" class="pl-b" data-a="editarRegistro" data-id="${r.id}" data-fk="reg-${r.id}" aria-label="${esc(titulo)}${nota ? ', ' + esc(nota) : ''}. Corregir">${dentro}</button>` : `<div class="pl-b pl-b--quieta">${dentro}</div>`}</li>`;
+        }
         const inner = `${caja(emoji)}<span class="fila-txt"><span class="fila-t">${esc(titulo)}</span><span class="fila-s">${esc(sub)}</span></span><span class="fila-m">${monto}</span>`;
         return `<li class="fila">${editable ? `<button type="button" class="fila-main" data-a="editarRegistro" data-id="${r.id}" data-fk="reg-${r.id}" aria-label="${esc(titulo)}, ${esc(sub)}. Corregir">${inner}</button>` : `<div class="fila-main fila-main--quieta">${inner}</div>`}</li>`;
     }
@@ -534,8 +580,9 @@
     /** Antes de la v2.4: un faltante solo por fechas dice el día y la causa: «El 16 te faltarían ~$51 hasta que llegue lo de tu pareja (el 29)». */
     P.textoFaltaFechas = (x) => `El ${M.partes(x.cuando)[2]} te faltarían ${dinero(x.deficit, { aprox: true })} hasta que llegue ${x.cubre ? queLlega(x.cubre) : 'lo demás'}`;
     /** «incluye ~$566 de tu pareja y ~$314 de adelanto · te descuentan $314 del adelanto». */
-    function incluyePeriodo(x) {
-        const partes = x.otros.map((o) => `${dinero(o.monto, { aprox: true })} ${P.deQuien(o.ingreso)}`);
+    /** `centavos`: con centavos también lo aproximado (Mi plan, v2.8 ajuste 6, punto 4). */
+    function incluyePeriodo(x, { centavos = false } = {}) {
+        const partes = x.otros.map((o) => `${dinero(o.monto, { aprox: true, centavos })} ${P.deQuien(o.ingreso)}`);
         for (const r of x.adelantos || []) partes.push(`${dinero(r.monto)} ${P.deQuien(r.adelanto.ingreso)}, que ya llegó`);
         if (x.entraGuardado) partes.push(`${dinero(x.entraGuardado)} que pasaste de antes`);
         // Adelanto de salario: lo que te descuentan de lo que te cae en este periodo.
@@ -945,6 +992,7 @@
         let abrir, clave, emoji, nombre, monto;
         let marca = '';
         let hecha = false;
+        let va = null;
         if (x.tipo === 'ingreso') {
             const ing = x.ing;
             abrir = `data-a="abrir" data-tipo="ingreso" data-id="${ing.id}"`;
@@ -954,7 +1002,7 @@
             hecha = o.estado === 'llego' || o.estado === 'noLlego';
             marca = o.estado === 'llego' ? `✓${sr(' Llegó')}` : o.estado === 'noLlego' ? 'no llegó' : o.estado === 'porConfirmar' ? 'por confirmar' : o.estado === 'hoy' ? '¿ya llegó?' : '';
             // Todo ingreso lleva «+», también el estimado («+~$150.00»): así no depende solo del color.
-            monto = `<span class="monto monto--ingreso">${sr(o.estado === 'llego' ? 'Ingreso: ' : 'Ingreso esperado: ')}+${dinero(o.monto, { aprox: o.estado !== 'llego' && !!o.aprox })}</span>`;
+            monto = montoPlan(o.monto, 'ingreso', { aprox: o.estado !== 'llego' && !!o.aprox });
         } else {
             const esTarjeta = x.tipo === 'tarjeta';
             abrir = esTarjeta ? `data-a="abrir" data-tipo="tarjeta" data-id="${o.tarjeta.id}"` : `data-a="abrir" data-tipo="pago" data-id="${o.pago.id}"`;
@@ -963,9 +1011,10 @@
             nombre = esTarjeta ? P.nombreTarjeta(o.tarjeta) : o.pago.nombre;
             hecha = o.estado === 'pagado' || o.estado === 'saltado';
             marca = o.estado === 'pagado' ? `✓${sr(' Pagado')}` : o.estado === 'saltado' ? 'saltado' : o.estado === 'arrastrado' ? 'sin pagar completo' : '';
-            monto = o.parcial && o.estado !== 'arrastrado' ? `<span class="monto monto--pago">${sr('Pagaste una parte: ')}faltan ${dinero(o.parcial.falta)}</span>` : montoHtml(o.monto, 'pago', { aprox: o.estimado });
+            va = esTarjeta ? null : P.vaEn(st, o.pago);
+            monto = o.parcial && o.estado !== 'arrastrado' ? `<span class="monto monto--sale">${sr('Pagaste una parte: ')}faltan ${dinero(o.parcial.falta)}</span>` : montoPlan(o.monto, 'gasto', { aprox: o.estimado, va });
         }
-        const cls = `pl-fila${primera ? ' pl-fila--dia' : ''}${f === st.hoy ? ' pl-fila--hoy' : ''}${hecha ? ' pl-fila--hecha' : ''}`;
+        const cls = `pl-fila${primera ? ' pl-fila--dia' : ''}${f === st.hoy ? ' pl-fila--hoy' : ''}${hecha ? ' pl-fila--hecha' : ''}${va ? ' pl-fila--va' : ''}`;
         return `<li class="${cls}">${primera ? diaPlan(f) : '<span class="pl-dia" aria-hidden="true"></span>'}<button type="button" class="pl-b" ${abrir} data-fk="${fk || clave}">${sr(`${f === st.hoy ? 'Hoy, ' : ''}${M.fechaCorta(f)}: `)}${caja(emoji, 'emo--sm')}<span class="pl-n">${esc(nombre)}</span>${marca ? `<span class="pl-e">${marca}</span>` : ''}<span class="pl-m">${monto}</span></button></li>`;
     }
     /** Punto 6: la lista por fecha. Hoy se marca aunque ese día no haya nada. Punto 10: sin nada, un mensaje amable. */
@@ -994,7 +1043,7 @@
      */
     function resumenPlan(vista, rango, k) {
         const st = P.st;
-        const ap = { aprox: true };
+        const ap = { aprox: true, centavos: true };
         const notas = [];
         let linea;
         let etiqueta;
@@ -1015,7 +1064,7 @@
             // V2-55: el mes completo, con las mismas ocurrencias que se ven abajo (y las vencidas de ese mes).
             const [y, m] = M.partes(rango.desde);
             const r = M.pagosDelMes(st, y, m);
-            const apm = { aprox: r.aprox };
+            const apm = { aprox: r.aprox, centavos: true };
             linea = `Entra ${dinero(r.entra, apm)} · Sale ${dinero(r.pagos, apm)}${r.tarjetasSinMonto ? ' + tus tarjetas' : ''}`;
             etiqueta = r.queda >= 0 ? 'Te quedarían' : 'Te faltarían';
             numero = dinero(Math.abs(r.queda), apm);
@@ -1033,7 +1082,7 @@
                 etiqueta = x.quedan >= 0 ? 'Te quedarían' : 'Te faltarían';
                 numero = dinero(Math.abs(x.quedan), ap);
                 falta = P.faltaPeriodo(x);
-                const inc = incluyePeriodo(x);
+                const inc = incluyePeriodo(x, { centavos: true });
                 if (inc) notas.push(inc);
                 if (x.soloFechas) notas.push(`Ojo: ${P.textoFaltaFechas(x).replace(/^El /, 'el ')}`);
             } else {
@@ -1062,7 +1111,7 @@
         const actual = vista === 'actual';
         const fila = (fk, a, emoji, nombre, texto) => `<li class="pl-fila pl-fila--corta"><button type="button" class="pl-b" ${a} data-fk="${fk}">${caja(emoji, 'emo--sm')}<span class="pl-n">${esc(nombre)}</span><span class="pl-t">${texto}</span></button></li>`;
         const variables = k.variables.map((x) => {
-            const texto = !actual ? `tope ${dinero(x.tope)} ${P.cadaPlan()}` : x.listo ? `te sobró ${dinero(x.sobro)} ✓` : x.pasado ? `te pasaste ${dinero(x.pasado)}` : `te quedan ${dinero(x.falta)} de ${dinero(x.tope)}`;
+            const texto = !actual ? `${dinero(x.tope)} ${P.cadaPlan()}` : x.listo ? `te sobró ${dinero(x.sobro)} ✓` : x.pasado ? `te pasaste ${dinero(x.pasado)}` : `te quedan ${dinero(x.falta)} de ${dinero(x.tope)}`;
             return fila(`pl-v-${x.v.id}`, `data-a="abrir" data-tipo="variable" data-id="${x.v.id}"`, x.v.emoji, x.v.nombre, esc(texto));
         });
         const ahorros = M.programados(st).map((a) => {
@@ -1070,7 +1119,7 @@
             const texto = !x ? esc(`${dinero(a.programado.monto)} ${P.cadaPlan()}`) : x.guardado ? `${esc(`${dinero(x.monto)} ${P.estePlan()}`)} ✓${sr(' Ya lo guardaste')}` : x.falta ? esc(`${dinero(x.monto)} ${P.estePlan()}`) : 'ya llegaste a tu meta';
             return fila(`pl-a-${a.id}`, `data-a="abrir" data-tipo="apartado" data-id="${a.id}"`, a.emoji, a.nombre, texto);
         });
-        return `${variables.length ? `<div class="pl-bloque"><h2 class="pl-h">Gastos variables</h2><ul class="pl-lista card">${variables.join('')}</ul></div>` : ''}${ahorros.length ? `<div class="pl-bloque"><h2 class="pl-h">Ahorro programado</h2><ul class="pl-lista card">${ahorros.join('')}</ul></div>` : ''}`;
+        return `${variables.length ? `<div class="pl-bloque"><h2 class="pl-h">Presupuestos</h2><ul class="pl-lista card">${variables.join('')}</ul></div>` : ''}${ahorros.length ? `<div class="pl-bloque"><h2 class="pl-h">Ahorro programado</h2><ul class="pl-lista card">${ahorros.join('')}</ul></div>` : ''}`;
     }
     /** Cuánto es al mes, más o menos, algo que se repite (para comparar y sumar). */
     function alMes(x, monto = x.monto) {
@@ -1133,18 +1182,18 @@
             const prox = M.ocurrenciasPago(st, p, M.sumarDias(st.hoy, -62), M.sumarDias(st.hoy, 400)).find((o) => o.estado === 'pendiente' || o.estado === 'vencido');
             const proxTxt = prox ? `${prox.estado === 'vencido' ? 'venció' : 'próximo'}: ${M.fechaCorta(prox.fecha)}${prox.parcial ? ` · faltan ${dinero(prox.parcial.falta)}` : ''}` : p.terminada ? `terminaste de pagarla el ${M.fechaCorta(p.terminada.fecha)}` : p.sinCuota ? 'sin cuota fija' : 'sin fechas por delante';
             const debe = p.deuda && Number.isInteger(p.deuda.debe) ? `debes ${dinero(p.deuda.debe, { aprox: true })}` : '';
-            return fila(`mp-${p.id}`, `data-a="abrir" data-tipo="pago" data-id="${p.id}"`, p.emoji, esc(p.nombre), [saleDe(st, p), proxTxt, debe].filter(Boolean).join(' · '), p.sinCuota ? '' : montoHtml(p.monto, 'pago', { aprox: p.estimado }));
+            return fila(`mp-${p.id}`, `data-a="abrir" data-tipo="pago" data-id="${p.id}"`, p.emoji, esc(p.nombre), [P.vaEn(st, p) || saleDe(st, p), proxTxt, debe].filter(Boolean).join(' · '), p.sinCuota ? '' : montoPlan(p.monto, 'gasto', { aprox: p.estimado, gris: !!P.vaEn(st, p) }));
         };
         const ingresos = st.ingresos.filter((i) => i.activo !== false).map((i) => {
             const prox = M.ocurrenciasIngreso(st, i, i.desde, M.sumarDias(st.hoy, 400)).find((o) => o.estado !== 'llego' && o.estado !== 'noLlego');
-            return fila(`mp-i-${i.id}`, `data-a="abrir" data-tipo="ingreso" data-id="${i.id}"`, i.emoji, `${esc(i.nombre)}${i.principal ? ' <span class="pronto">Principal</span>' : ''}`, `llega a: ${M.lugar(st, i.lugar)?.nombre || '—'}${prox ? ` · próximo: ${M.fechaCorta(prox.fecha)}` : ''}`, montoHtml(i.monto, 'esperado', { aprox: i.aprox }));
+            return fila(`mp-i-${i.id}`, `data-a="abrir" data-tipo="ingreso" data-id="${i.id}"`, i.emoji, `${esc(i.nombre)}${i.principal ? ' <span class="pronto">Principal</span>' : ''}`, `llega a: ${M.lugar(st, i.lugar)?.nombre || '—'}${prox ? ` · próximo: ${M.fechaCorta(prox.fecha)}` : ''}`, montoPlan(i.monto, 'ingreso', { aprox: i.aprox }));
         });
         const fijos = activos.filter((p) => !p.tipoDeuda && !p.descuento).map(filaP);
         const variables = k.variables.map((x) => {
             const m = M.medio(st, x.v.medio);
             const l = m && m.lugar ? M.lugar(st, m.lugar) : null;
             const estado = x.listo ? `te sobró ${dinero(x.sobro)}` : x.pasado ? `te pasaste ${dinero(x.pasado)}` : `te quedan ${dinero(x.falta)}`;
-            return fila(`mp-v-${x.v.id}`, `data-a="abrir" data-tipo="variable" data-id="${x.v.id}"`, x.v.emoji, esc(x.v.nombre), `${estado} · sale de: ${l ? l.nombre : m ? m.nombre : '—'}`, montoHtml(x.tope, null));
+            return fila(`mp-v-${x.v.id}`, `data-a="abrir" data-tipo="variable" data-id="${x.v.id}"`, x.v.emoji, esc(x.v.nombre), `${estado} · sale de: ${l ? l.nombre : m ? m.nombre : '—'}`, montoPlan(x.tope, 'gasto'));
         });
         const programado = M.programados(st).map((a) => {
             const x = k.programado.find((y) => y.a.id === a.id);
@@ -1155,25 +1204,26 @@
         const tarjetas = st.tarjetas.map((t) => {
             const info = M.tarjetaInfo(st, t);
             const l = M.lugar(st, M.pagoTarjetaPropuesto(st, t).lugar);
-            const cuanto = info.porPagarEstado ? montoHtml(info.porPagarEstado, 'pago') : info.estimado ? montoHtml(info.estimado, null, { aprox: true }) : '<span class="monto monto--pend">Por confirmar</span>';
+            const cuanto = info.porPagarEstado ? montoPlan(info.porPagarEstado, 'gasto') : info.estimado ? montoPlan(info.estimado, 'gasto', { aprox: true }) : '<span class="monto monto--pend">Por confirmar</span>';
             return fila(`mp-t-${t.id}`, `data-a="abrir" data-tipo="tarjeta" data-id="${t.id}"`, t.emoji, esc(P.nombreTarjeta(t)), `se paga desde: ${l ? l.nombre : '—'} · vence: ${M.fechaCorta(info.vence)}`, cuanto);
         });
         // El total de cada tipo en el periodo de la pestaña (en «Mes», los topes y el ahorro de cada quincena del mes).
         const veces = vista === 'mes' ? { quincena: 2, quince: 2, semana: 52 / 12, catorcena: 26 / 12 }[M.periodoPlan(st).cada] || 1 : 1;
-        const deTipo = (...tipos) => xs.filter((x) => tipos.includes(x.tipo) && x.o.estado !== 'saltado' && x.o.estado !== 'noLlego');
+        // Ajuste 6 (punto 4): lo que va en una tarjeta o se descuenta del salario no suma aparte (C-7).
+        const deTipo = (...tipos) => xs.filter((x) => tipos.includes(x.tipo) && x.o.estado !== 'saltado' && x.o.estado !== 'noLlego' && !(x.o.pago && P.vaEn(st, x.o.pago)));
         const total = (lista) => ({ c: M.suma(lista, (x) => enteroDe(x.o)), aprox: lista.some((x) => (x.tipo === 'ingreso' ? x.o.estado !== 'llego' && x.o.aprox : x.o.estimado)) });
         const porVeces = (c) => ({ c: Math.round(c * veces), aprox: !Number.isInteger(veces) });
         const abiertas = P.ui.planAbiertas || {};
         const seccion = (clave, titulo, id, filas, t, vacio) => {
             const abierta = !!abiertas[clave];
             return `<section class="card pt-sec" aria-labelledby="${id}">
-                <h2 class="pt-h" id="${id}"><button type="button" class="pt-b" aria-expanded="${abierta}" aria-controls="pt-${clave}" data-a="planSeccion" data-v="${clave}" data-fk="sec-${clave}">${icon(abierta ? 'chevron-down' : 'chevron-right', 'ico-s')}<span class="pt-t">${titulo}</span><span class="contador">(${filas.length})</span><span class="pt-total">${sr(`Total ${rango.t}: `)}${dinero(t.c, { aprox: t.aprox })}</span></button></h2>
+                <h2 class="pt-h" id="${id}"><button type="button" class="pt-b" aria-expanded="${abierta}" aria-controls="pt-${clave}" data-a="planSeccion" data-v="${clave}" data-fk="sec-${clave}">${icon(abierta ? 'chevron-down' : 'chevron-right', 'ico-s')}<span class="pt-t">${titulo}</span><span class="contador">(${filas.length})</span><span class="pt-total">${sr(`Total ${rango.t}: `)}${dinero(t.c, { aprox: t.aprox, centavos: true })}</span></button></h2>
                 <div class="pt-c" id="pt-${clave}"${abierta ? '' : ' hidden'}>${filas.length ? `<ul class="lista">${filas.join('')}</ul>` : `<p class="vacio">${vacio}</p>`}</div>
             </section>`;
         };
         return `${seccion('ingresos', 'Ingresos', 'mp-ingresos', ingresos, total(deTipo('ingreso')), 'Todavía no tienes ingresos esperados.')}
             ${seccion('fijos', 'Gastos fijos', 'mp-gastos-fijos', fijos, total(deTipo('fijo')), 'Agrega la luz, el alquiler o el colegio con «Agregar».')}
-            ${seccion('variables', 'Gastos variables', 'mp-gastos-variables', variables, porVeces(M.suma(k.variables, (x) => x.tope)), `El súper o la gasolina: les pones un tope ${esc(P.cadaPlan())}.`)}
+            ${seccion('variables', 'Presupuestos', 'mp-gastos-variables', variables, porVeces(M.suma(k.variables, (x) => x.tope)), `Lo máximo que quieres gastar en algo ${esc(P.cadaVez())}.`)}
             ${seccion('ahorro', 'Ahorro programado', 'mp-ahorro-programado', programado, porVeces(M.suma(M.programados(st), (a) => a.programado.monto)), `Lo que guardas ${esc(P.cadaVez())} en un ahorro.`)}
             ${seccion('deudas', 'Deudas', 'mp-pagos-de-deudas', [...deudas, ...tarjetas], total(deTipo('deuda', 'tarjeta')), 'Tus cuotas, préstamos y tarjetas.')}`;
     }
@@ -1499,40 +1549,83 @@
     P.recorte = recorte;
 
     // ---- Mes
-    S.mes = function () {
-        const st = P.st;
-        const base = P.ui.mesVista || st.hoy.slice(0, 7);
-        const [y, m] = base.split('-').map(Number);
-        const r = M.resumenMes(st, y, m);
-        const [py, pm] = M.mesMas(y, m, -1);
-        const prev = M.resumenMes(st, py, pm);
-        const esActual = base === st.hoy.slice(0, 7);
-        // V2-47: cuánto se va en suscripciones, al mes.
-        const suscripciones = st.pagos.filter((p) => p.activo !== false && p.tipoPago === 'suscripcion');
-        let comparacion = '';
-        if (prev.salio > 0) {
-            if (esActual) comparacion = `En ${M.MESES[pm - 1]} saliste ${dinero(prev.salio)} en todo el mes. Este mes llevas ${dinero(r.salio)}.`;
-            else {
-                const dif = r.salio - prev.salio;
-                comparacion = dif === 0 ? `Igual que en ${M.MESES[pm - 1]}.` : `${dinero(Math.abs(dif))} ${dif < 0 ? 'menos' : 'más'} que en ${M.MESES[pm - 1]}.`;
-            }
-        }
+    // ---- Mes (v2.8 ajuste 6, punto 3, APROBADO por Victor 2026-10-22): «¿qué pasó y qué aprendo?», la única pantalla que mira
+    // hacia atrás. Una columna: resumen, «¿En qué se te fue?», «Tus presupuestos», «Lo que encontramos» e «Historial».
+    /** Lo que salió entre dos fechas, contado igual que el mes (`M.resumenMes`): cada centavo una vez, con los cuadres explicados. */
+    function salioEntre(st, desde, hasta) {
+        const regs = st.registros.filter((r) => r.fecha >= desde && r.fecha <= hasta);
+        return M.suma(regs.filter((r) => r.tipo === 'gasto' || r.tipo === 'cargoTarjeta'), (r) => r.monto) + M.suma(regs.filter((r) => r.tipo === 'cuadre'), (r) => Math.max(0, -M.sinDetalle(st, r)));
+    }
+    P.salioEntre = salioEntre;
+    /** «¿En qué se te fue?»: cada fila (gastos fijos, cada categoría, sin detalle, tarjeta sin detalle). Suman lo que salió. */
+    function filasEnQue(r) {
         const filas = [];
-        const maximo = Math.max(r.totalFijos, ...r.porCategoria.map((x) => x.total), r.tarjetaSinDetalle, r.sinDetalleSalio, 1);
-        const filaCat = (id, emoji, nombre, total, nota, filtro) =>
-            `<li class="fila fila--cat"><button type="button" class="fila-main" data-a="mesCategoria" data-id="${filtro}" data-fk="cat-${filtro}" aria-pressed="${P.ui.mesCategoria === filtro}">${caja(emoji)}<span class="fila-txt"><span class="fila-t">${esc(nombre)}</span>${nota ? `<span class="fila-s">${esc(nota)}</span>` : ''}<span class="cat-barra" aria-hidden="true"><span style="width:${Math.max(4, Math.round((total * 100) / maximo))}%"></span></span></span><span class="fila-m">${montoHtml(total)}</span></button></li>`;
-        if (r.totalFijos) filas.push(filaCat('fijos', '🧾', 'Gastos fijos', r.totalFijos, `${plural(r.fijos.length, 'gasto', 'gastos')} de Mi plan`, 'fijos'));
+        if (r.totalFijos) filas.push({ filtro: 'fijos', emoji: '🧾', nombre: 'Gastos fijos', total: r.totalFijos });
         for (const c of r.porCategoria) {
-            const k = M.categoria(c.id);
-            filas.push(filaCat(c.id, k.emoji, k.nombre, c.total, plural(c.n, 'anotado', 'anotados'), c.id));
+            const k = P.cat(c.id);
+            filas.push({ filtro: c.id, emoji: k.emoji, nombre: k.nombre, total: c.total, otros: c.id === 'otros' });
         }
-        if (r.tarjetaSinDetalle) filas.push(filaCat('tsd', '💳', 'Tarjeta sin detalle', r.tarjetaSinDetalle, 'Intereses o cargos del estado de cuenta', 'tarjeta'));
-        if (r.sinDetalleSalio) filas.push(filaCat('sd', '⚖️', 'Sin detalle', r.sinDetalleSalio, 'Lo que explicaron tus cuadres', 'cuadre'));
-        const enque = tarjetaSeccion('¿En qué gastaste?', filas.length ? `<ul class="lista">${filas.join('')}</ul>` : '<p class="vacio">Nada anotado este mes.</p>', { id: 'mes-enque' });
-
-        // Historial con filtros.
+        if (r.tarjetaSinDetalle) filas.push({ filtro: 'tarjeta', emoji: '💳', nombre: 'Tarjeta sin detalle', total: r.tarjetaSinDetalle });
+        if (r.sinDetalleSalio) filas.push({ filtro: 'cuadre', emoji: '⚖️', nombre: 'Sin detalle', total: r.sinDetalleSalio });
+        return filas.sort((a, b) => b.total - a.total);
+    }
+    P.filasEnQue = filasEnQue;
+    /** «Tus presupuestos» del mes: el máximo del mes es la suma de sus quincenas (los días de pago del mes desde que existe). */
+    function presupuestosMes(st, y, m) {
+        const ini = `${y}-${M.pad(m)}-01`;
+        const fin = M.fechaDe(y, m, 31);
+        const cada = M.periodoPlan(st).cada;
+        return (st.variables || [])
+            .filter((v) => (!v.desde || v.desde <= fin) && (v.activo !== false || (v.hasta && v.hasta >= ini)))
+            .map((v) => {
+                const desde = v.desde && v.desde > ini ? v.desde : ini;
+                const veces = M.principal(st) ? M.cortes(st, desde, fin).length || 1 : cada === 'quince' ? (desde <= M.fechaDe(y, m, 15) ? 2 : 1) : 1;
+                const gastado = M.suma(st.registros.filter((r) => r.fecha >= desde && r.fecha <= fin && M.variableDe(st, r)?.id === v.id), (r) => r.monto);
+                return { v, tope: v.tope * veces, gastado };
+            });
+    }
+    P.presupuestosMes = presupuestosMes;
+    /** «Lo que encontramos»: hasta 3, una a la vez. Gastos hormiga, planeado contra real y avance. */
+    function encontramos(st, r) {
+        const out = [];
+        // Gastos hormiga: de $5 o menos, con el mismo nombre (o categoría), 5 o más veces en el mes.
+        const chicos = r.anotados.filter((x) => x.monto <= 500);
+        const grupos = {};
+        for (const x of chicos) {
+            const g = (grupos['n:' + M.normalizar(x.nombre || '')] = grupos['n:' + M.normalizar(x.nombre || '')] || { nombre: x.nombre, n: 0, total: 0 });
+            g.n++;
+            g.total += x.monto;
+        }
+        let hormiga = Object.values(grupos).filter((g) => g.nombre && g.n >= 5).sort((a, b) => b.total - a.total)[0];
+        if (!hormiga) {
+            const porCat = {};
+            for (const x of chicos) {
+                const g = (porCat[x.categoria] = porCat[x.categoria] || { nombre: P.cat(x.categoria).nombre, n: 0, total: 0 });
+                g.n++;
+                g.total += x.monto;
+            }
+            hormiga = Object.values(porCat).filter((g) => g.n >= 5).sort((a, b) => b.total - a.total)[0];
+        }
+        if (hormiga) out.push({ id: 'hormiga', emoji: '🐜', t: 'Gastos hormiga', l: `${hormiga.nombre}: ${hormiga.n} veces, ${dinero(hormiga.total)}` });
+        // Planeado contra real: un gasto fijo con «~» que pagaste distinto ($1 o más).
+        const dif = r.fijos
+            .map((x) => ({ x, p: M.pago(st, x.pago) }))
+            .filter(({ x, p }) => p && p.estimado && Math.abs(x.monto - p.monto) >= 100)
+            .sort((a, b) => Math.abs(b.x.monto - b.p.monto) - Math.abs(a.x.monto - a.p.monto))[0];
+        if (dif) out.push({ id: 'plan', emoji: dif.p.emoji, t: 'Planeado contra real', l: `${dif.p.nombre}: calculaste ${dinero(dif.p.monto, { aprox: true, centavos: true })}, pagaste ${dinero(dif.x.monto)}` });
+        // Avance: cuánto bajaron tus deudas y cuánto guardaste.
+        const deudas = M.suma(r.regs.filter((x) => x.tipo === 'pagoTarjeta' || (x.tipo === 'gasto' && x.pago && M.pago(st, x.pago)?.tipoDeuda)), (x) => x.monto);
+        const guardaste = M.suma(st.apartados.flatMap((a) => a.historial || []).filter((h) => h.tipo === 'apartar' && h.fecha >= r.ini && h.fecha <= r.fin), (h) => h.monto);
+        if (deudas || guardaste) out.push({ id: 'avance', emoji: '📈', t: 'Tu avance', l: [deudas ? `Tus deudas bajaron ${dinero(deudas)}` : '', guardaste ? `guardaste ${dinero(guardaste)}` : ''].filter(Boolean).join(' · ').replace(/^g/, 'G') });
+        return out.slice(0, 3);
+    }
+    P.encontramos = encontramos;
+    /** El historial del mes con el buscador y los filtros (tipo, categoría, cuenta), agrupado por día, una línea por fila. */
+    function historialMes(st, r) {
         const filtro = P.ui.mesFiltro;
         const cat = P.ui.mesCategoria;
+        const cuenta = P.ui.mesCuenta || null;
+        const q = M.normalizar(P.ui.mesBuscar || '');
         let regs = r.regs.filter((x) => x.tipo !== 'cuadre' || filtro === 'todo' || filtro === 'movimientos');
         if (filtro === 'gastos') regs = regs.filter((x) => x.tipo === 'gasto' || x.tipo === 'cargoTarjeta');
         if (filtro === 'ingresos') regs = regs.filter((x) => x.tipo === 'ingreso');
@@ -1541,31 +1634,118 @@
         else if (cat === 'tarjeta') regs = regs.filter((x) => x.tipo === 'cargoTarjeta');
         else if (cat === 'cuadre') regs = regs.filter((x) => x.tipo === 'cuadre');
         else if (cat) regs = regs.filter((x) => x.tipo === 'gasto' && !x.pago && x.categoria === cat);
+        if (cuenta) regs = regs.filter((x) => x.lugar === cuenta || x.de === cuenta || x.a === cuenta || M.medio(st, x.medio)?.lugar === cuenta);
+        if (q) regs = regs.filter((x) => M.normalizar(tituloRegistro(st, x)).includes(q));
         regs = regs.sort((a, b) => (a.fecha === b.fecha ? b.seq - a.seq : a.fecha < b.fecha ? 1 : -1));
-        const grupos = [];
-        for (const x of regs) {
-            let g = grupos.at(-1);
-            if (!g || g.fecha !== x.fecha) grupos.push((g = { fecha: x.fecha, filas: [] }));
-            g.filas.push(filaRegistro(x, { conFecha: false }));
+        if (!regs.length) return `<p class="vacio plan-vacio">${q || cat || cuenta || filtro !== 'todo' ? 'Nada con esa búsqueda.' : 'Nada anotado este mes.'}</p>`;
+        let ultimo = null;
+        const filas = regs.map((x) => {
+            const fila = filaRegistro(x, { conFecha: false, linea: true, primera: x.fecha !== ultimo });
+            ultimo = x.fecha;
+            return fila;
+        });
+        return `<ul class="pl-lista card">${filas.join('')}</ul>`;
+    }
+    P.mesHistorial = () => {
+        const lista = document.getElementById('mes-hist-lista');
+        if (!lista || !P.st) return;
+        const [y, m] = (P.ui.mesVista || P.st.hoy.slice(0, 7)).split('-').map(Number);
+        lista.innerHTML = historialMes(P.st, M.resumenMes(P.st, y, m));
+    };
+    S.mes = function () {
+        const st = P.st;
+        const base = P.ui.mesVista || st.hoy.slice(0, 7);
+        const [y, m] = base.split('-').map(Number);
+        const r = M.resumenMes(st, y, m);
+        const [py, pm] = M.mesMas(y, m, -1);
+        const prev = M.resumenMes(st, py, pm);
+        const esActual = base === st.hoy.slice(0, 7);
+        const mesNombre = M.MESES[m - 1];
+        const nav = `<div class="mes-nav"><button type="button" class="icon-btn" data-a="mesNav" data-d="-1" aria-label="Mes anterior" data-fk="mes-ant">${icon('chevron-left')}</button><p class="mes-nav-t" aria-live="polite">${esc(M.capital(mesNombre))} ${y}${esActual ? '<span class="mes-hasta">hasta hoy</span>' : ''}</p><button type="button" class="icon-btn" data-a="mesNav" data-d="1" aria-label="Mes siguiente" data-fk="mes-sig" ${esActual ? 'disabled' : ''}>${icon('chevron-right')}</button></div>`;
+        const cabeza = `${encabezado('Mes', '')}${P.tipHtml('mes')}${nav}`;
+        // V2-47: cuánto se va en suscripciones, al mes (se conserva).
+        const suscripciones = st.pagos.filter((p) => p.activo !== false && p.tipoPago === 'suscripcion');
+        const linkSusc = suscripciones.length ? `<p><button type="button" class="link link--start" data-a="irMisPagos" data-fk="mes-suscripciones">${icon('receipt-text', 'ico-s')}Pagas ${esc(dinero(M.suma(suscripciones, (p) => alMes(p)), { aprox: true, centavos: true }))} al mes en suscripciones</button></p>` : '';
+        // Con pocos datos: una frase amable, nunca un gráfico vacío.
+        if (!r.regs.length) {
+            const primero = st.inicio && st.inicio.slice(0, 7) === base;
+            return `<div class="pg">${cabeza}<p class="vacio plan-vacio">${primero || base > (st.inicio || '').slice(0, 7) ? 'Cuando completes tu primer mes, aquí verás en qué se te fue.' : `No hay nada anotado en ${esc(mesNombre)}.`}</p>${linkSusc}</div>`;
         }
-        const chips = [['todo', 'Todo'], ['gastos', 'Gastos'], ['ingresos', 'Ingresos'], ['movimientos', 'Movimientos']]
-            .map(([v, t]) => `<button type="button" class="chip" aria-pressed="${filtro === v}" data-a="mesFiltro" data-v="${v}" data-fk="mf-${v}">${filtro === v ? icon('check', 'ico-xs') : ''}${t}</button>`)
-            .join('');
-        const catChip = cat ? `<button type="button" class="chip chip--quitar" aria-pressed="true" data-a="mesCategoria" data-id="${cat}" data-fk="mf-cat">${esc(cat === 'fijos' ? 'Gastos fijos' : cat === 'tarjeta' ? 'Tarjeta sin detalle' : cat === 'cuadre' ? 'Sin detalle' : M.categoria(cat).nombre)} ${icon('x', 'ico-xs')}${sr('Quitar filtro')}</button>` : '';
-        const historial = `<section class="historial" aria-labelledby="mes-hist"><div class="hist-cab"><h2 class="card-t" id="mes-hist">Historial</h2><p class="fila-s">Toca uno para corregirlo</p></div>
-            <div class="chips chips--scroll" role="group" aria-label="Filtrar historial">${chips}${catChip}</div>
-            ${grupos.length ? grupos.map((g) => `<div class="grupo"><h3 class="grupo-t">${esc(M.capital(M.diaCorto(g.fecha)))}</h3><ul class="lista card">${g.filas.join('')}</ul></div>`).join('') : '<p class="vacio">Nada con este filtro.</p>'}</section>`;
-        return `<div class="pg">
-            ${encabezado('Mes', 'Lo que entró y lo que gastaste')}
-            ${P.tipHtml('mes')}
-            <div class="mes-nav"><button type="button" class="icon-btn" data-a="mesNav" data-d="-1" aria-label="Mes anterior" data-fk="mes-ant">${icon('chevron-left')}</button><p class="mes-nav-t" aria-live="polite">${esc(M.capital(M.MESES[m - 1]))} ${y}</p><button type="button" class="icon-btn" data-a="mesNav" data-d="1" aria-label="Mes siguiente" data-fk="mes-sig" ${esActual ? 'disabled' : ''}>${icon('chevron-right')}</button></div>
-            <section class="card resumen" aria-label="Resumen del mes">
-                <div class="resumen-dos"><div><p class="fila-s">Entró</p><p class="resumen-n">${montoHtml(r.entro, 'ingreso')}</p></div><div><p class="fila-s">Salió</p><p class="resumen-n resumen-n--salio">${dinero(-r.salio)}</p></div></div>
-                ${comparacion ? `<p class="txt">${esc(comparacion)}</p>` : ''}
+        // b) Resumen: lo que entró y salió, «Te sobraron» (o «Te faltaron», sin culpa) y una línea contra el mes anterior.
+        const queda = r.entro - r.salio;
+        let contra = '';
+        if (prev.regs.length) {
+            const dia = M.partes(st.hoy)[2];
+            const antes = esActual ? salioEntre(st, prev.ini, M.fechaDe(py, pm, dia)) : prev.salio;
+            const dif = r.salio - antes;
+            const cuando = esActual ? `a esta altura de ${M.MESES[pm - 1]}` : `en ${M.MESES[pm - 1]}`;
+            contra = dif === 0 ? `Igual que ${cuando}` : `${dif > 0 ? '↑' : '↓'} ${dinero(Math.abs(dif))} ${dif > 0 ? 'más' : 'menos'} que ${cuando}`;
+        }
+        const resumen = `<section class="card mes-res" aria-label="Resumen del mes">
+                <p class="mes-res-l">Entraron ${dinero(r.entro)} · Salieron ${dinero(r.salio)}</p>
+                <p class="mes-res-e">${queda >= 0 ? 'Te sobraron' : 'Te faltaron'}</p>
+                <p class="mes-res-n">${dinero(Math.abs(queda))}</p>
+                ${contra ? `<p class="mes-res-c">${esc(contra)}</p>` : ''}
                 ${r.totalPrestamos ? `<p class="fila-s" data-fk="mes-prestamos">Te prestaron ${dinero(r.totalPrestamos)}: es una deuda, no cuenta como ingreso.</p>` : ''}
-                ${suscripciones.length ? `<button type="button" class="link link--start" data-a="irMisPagos" data-fk="mes-suscripciones">${icon('receipt-text', 'ico-s')}Pagas ${esc(dinero(M.suma(suscripciones, (p) => alMes(p)), { aprox: true }))} al mes en suscripciones</button>` : ''}
-            </section>
+                ${linkSusc}
+            </section>`;
+        // c) «¿En qué se te fue?»: las 5 más grandes con su barra y su monto; el resto en «Otros (n)».
+        const todas = filasEnQue(r);
+        const verTodas = !!P.ui.mesTodas;
+        const grandes = todas.filter((x) => !x.otros).slice(0, 5);
+        const resto = todas.filter((x) => !grandes.includes(x));
+        const filaCat = (x) => `<li><button type="button" class="mes-cat" data-a="mesCategoria" data-id="${x.filtro}" data-fk="cat-${x.filtro}" aria-pressed="${P.ui.mesCategoria === x.filtro}">${caja(x.emoji, 'emo--sm')}<span class="mes-cat-t"><span class="mes-cat-n">${esc(x.nombre)}</span><span class="mes-barra" aria-hidden="true"><span style="width:${Math.max(2, Math.round((x.total / Math.max(r.salio, 1)) * 100))}%"></span></span></span><span class="mes-cat-m">${dinero(x.total)}</span></button></li>`;
+        const otros = resto.length && !verTodas ? `<li><button type="button" class="mes-cat" data-a="mesTodas" data-fk="mes-otros" aria-expanded="false">${caja('🧩', 'emo--sm')}<span class="mes-cat-t"><span class="mes-cat-n">Otros (${resto.length})</span><span class="mes-barra" aria-hidden="true"><span style="width:${Math.max(2, Math.round((M.suma(resto, (x) => x.total) / Math.max(r.salio, 1)) * 100))}%"></span></span></span><span class="mes-cat-m">${dinero(M.suma(resto, (x) => x.total))}</span></button></li>` : '';
+        const enque = todas.length
+            ? `<section class="card mes-sec" aria-labelledby="mes-enque"><div class="card-h"><h2 class="card-t" id="mes-enque">¿En qué se te fue?</h2>${resto.length ? `<button type="button" class="link" data-a="mesTodas" data-fk="mes-ver-todas" aria-expanded="${verTodas}">${verTodas ? 'Ver menos' : 'Ver todas'}</button>` : ''}</div>
+                <ul class="mes-cats">${(verTodas ? todas : grandes).map(filaCat).join('')}${otros}</ul>
+            </section>`
+            : '';
+        // d) «Tus presupuestos»: cuántos cumpliste y una línea por presupuesto. Sin regaños.
+        const pres = presupuestosMes(st, y, m);
+        const cumplidos = pres.filter((x) => x.gastado <= x.tope).length;
+        const presupuestos = pres.length
+            ? `<section class="card mes-sec" aria-labelledby="mes-pres"><div class="card-h"><h2 class="card-t" id="mes-pres">Tus presupuestos</h2><p class="mes-cumple">${esActual ? `Vas bien en ${cumplidos} de ${pres.length}` : `Cumpliste ${cumplidos} de ${pres.length}`}${cumplidos === pres.length ? ' ✓' : ''}</p></div>
+                <ul class="pl-lista">${pres.map((x) => `<li class="pl-fila pl-fila--corta"><button type="button" class="pl-b" data-a="abrir" data-tipo="variable" data-id="${x.v.id}" data-fk="mes-pres-${x.v.id}">${caja(x.v.emoji, 'emo--sm')}<span class="pl-n">${esc(x.v.nombre)}</span><span class="pl-t">${dinero(x.gastado)} de ${dinero(x.tope)}${x.gastado <= x.tope ? ` ✓${sr(' dentro de lo máximo')}` : ` · +${dinero(x.gastado - x.tope)}`}</span></button></li>`).join('')}</ul>
+            </section>`
+            : '';
+        // e) «Lo que encontramos»: una a la vez, con ‹ ›.
+        const hallazgos = encontramos(st, r);
+        const i = Math.min(P.ui.mesEnc || 0, Math.max(0, hallazgos.length - 1));
+        const h = hallazgos[i];
+        const lo = hallazgos.length
+            ? `<section class="card mes-sec mes-enc" aria-labelledby="mes-enc-t"><div class="card-h"><h2 class="card-t" id="mes-enc-t">Lo que encontramos</h2>${hallazgos.length > 1 ? `<div class="mes-enc-nav"><button type="button" class="icon-btn" data-a="mesEnc" data-d="-1" aria-label="Anterior" data-fk="mes-enc-ant" ${i === 0 ? 'disabled' : ''}>${icon('chevron-left')}</button><span class="fila-s">${i + 1} de ${hallazgos.length}</span><button type="button" class="icon-btn" data-a="mesEnc" data-d="1" aria-label="Siguiente" data-fk="mes-enc-sig" ${i === hallazgos.length - 1 ? 'disabled' : ''}>${icon('chevron-right')}</button></div>` : ''}</div>
+                <div class="mes-enc-c" aria-live="polite" data-fk="mes-enc-${h.id}">${caja(h.emoji, 'emo--sm')}<div><p class="fila-t">${esc(h.t)}</p><p class="txt">${esc(h.l)}</p></div></div>
+            </section>`
+            : '';
+        // f) «Historial»: 🔎 por nombre y «Filtros» (tipo, categoría, cuenta). Se corrige tocando la fila.
+        const filtro = P.ui.mesFiltro;
+        const cat = P.ui.mesCategoria;
+        const cuenta = P.ui.mesCuenta || null;
+        const activos = (filtro !== 'todo' ? 1 : 0) + (cat ? 1 : 0) + (cuenta ? 1 : 0);
+        const chip = (a, v, t, sel, fk) => `<button type="button" class="chip" aria-pressed="${sel}" data-a="${a}" data-v="${v}" data-id="${v}" data-fk="${fk}">${sel ? icon('check', 'ico-xs') : ''}${esc(t)}</button>`;
+        const nombreCat = (c) => (c === 'fijos' ? 'Gastos fijos' : c === 'tarjeta' ? 'Tarjeta sin detalle' : c === 'cuadre' ? 'Sin detalle' : P.cat(c).nombre);
+        const panel = P.ui.mesFiltros
+            ? `<div class="mes-filtros" id="mes-filtros">
+                <p class="campo-l">Tipo</p><div class="chips" role="group" aria-label="Tipo">${[['todo', 'Todo'], ['gastos', 'Gastos'], ['ingresos', 'Ingresos'], ['movimientos', 'Movimientos']].map(([v, t]) => chip('mesFiltro', v, t, filtro === v, 'mf-' + v)).join('')}</div>
+                ${todas.length ? `<p class="campo-l">Categoría</p><div class="chips" role="group" aria-label="Categoría">${todas.map((x) => chip('mesCategoria', x.filtro, x.nombre, cat === x.filtro, 'mfc-' + x.filtro)).join('')}</div>` : ''}
+                <p class="campo-l">Cuenta</p><div class="chips" role="group" aria-label="Cuenta">${st.lugares.map((l) => chip('mesCuenta', l.id, l.nombre, cuenta === l.id, 'mfl-' + l.id)).join('')}</div>
+            </div>`
+            : '';
+        const quitar = (a, t, fk) => `<button type="button" class="chip chip--quitar" aria-pressed="true" data-a="${a}" data-fk="${fk}">${esc(t)} ${icon('x', 'ico-xs')}${sr('Quitar filtro')}</button>`;
+        const activosHtml = [filtro !== 'todo' ? quitar('mesFiltroQuitar', { gastos: 'Gastos', ingresos: 'Ingresos', movimientos: 'Movimientos' }[filtro] || filtro, 'mf-tipo') : '', cat ? quitar('mesCategoriaQuitar', nombreCat(cat), 'mf-cat') : '', cuenta ? quitar('mesCuentaQuitar', M.lugar(st, cuenta)?.nombre || '', 'mf-cuenta') : ''].filter(Boolean).join('');
+        const historial = `<section class="historial" aria-labelledby="mes-hist"><div class="hist-cab"><h2 class="card-t" id="mes-hist" tabindex="-1">Historial</h2><button type="button" class="link" data-a="mesFiltros" data-fk="mes-filtros" aria-expanded="${!!P.ui.mesFiltros}" aria-controls="mes-filtros">${icon('list-checks', 'ico-s')}Filtros${activos ? ` (${activos})` : ''}</button></div>
+                <label class="mes-buscar"><span class="sr-only">Buscar por nombre</span><span aria-hidden="true">🔎</span><input type="search" id="mes-buscar" data-campo="mesBuscar" placeholder="Buscar por nombre" value="${esc(P.ui.mesBuscar || '')}" autocomplete="off"></label>
+                ${panel}
+                ${activosHtml ? `<div class="chips">${activosHtml}</div>` : ''}
+                <div id="mes-hist-lista">${historialMes(st, r)}</div>
+            </section>`;
+        return `<div class="pg">
+            ${cabeza}
+            ${resumen}
             ${enque}
+            ${presupuestos}
+            ${lo}
             ${historial}
         </div>`;
     };
@@ -1676,9 +1856,9 @@
         const estado = x.listo ? `<p class="estado estado--ok">Ya terminaste ${P.estePlan()} ✓</p><p class="fila-s">Te sobraron ${dinero(x.sobro)}: volvieron a tu libre.</p>` : x.pasado ? `<p class="txt"><strong>Te pasaste ${dinero(x.pasado)}.</strong> Pasa; la próxima quincena empieza de nuevo.</p>` : `<p class="txt">Te quedan <strong>${dinero(x.falta)}</strong>. Ya están contados en tu plan: gastarlos no baja tu libre.</p>`;
         const cierre = !x.listo && x.falta > 0 ? `<div class="pregunta" role="group" aria-labelledby="var-q"><p class="campo-l" id="var-q">Ibas a gastar ${dinero(x.tope)} y anotaste ${dinero(x.anotado)}. ¿Ya terminaste?</p><div class="chips"><button type="button" class="chip" data-a="variableCierre" data-id="${v.id}" data-v="listo" data-fk="var-listo">Sí, ya terminé</button><button type="button" class="chip" data-a="variableCierre" data-id="${v.id}" data-v="falta" data-fk="var-falta">Me falta</button><button type="button" class="chip" data-a="variableCierre" data-id="${v.id}" data-v="anotar" data-fk="var-anotar">Se me olvidó anotar</button></div></div>` : '';
         return `<div class="pg">
-            ${encabezado(`${emo(v.emoji, 28)} ${esc(v.nombre)}`, `Gasto variable · ${esc(P.cadaPlan())} · sale de: ${esc(l ? l.nombre : m ? m.nombre : '—')}`, { atras: P.atrasDe('Mi plan') })}
-            <section class="card ficha-cifra" aria-label="Tu tope">
-                <p class="fila-s">Tope ${esc(P.cadaPlan())}</p>
+            ${encabezado(`${emo(v.emoji, 28)} ${esc(v.nombre)}`, `Presupuesto · ${esc(P.cadaPlan())} · sale de: ${esc(l ? l.nombre : m ? m.nombre : '—')}`, { atras: P.atrasDe('Mi plan') })}
+            <section class="card ficha-cifra" aria-label="Lo máximo">
+                <p class="fila-s">Lo máximo ${esc(P.cadaPlan())}</p>
                 <p class="cifra">${dinero(x.tope)}</p>
                 <p class="fila-s">Del ${esc(M.fechaLarga(per.inicio))} al ${esc(M.fechaLarga(per.fin))} llevas ${dinero(x.anotado)}.</p>
                 ${barra(Math.min(x.anotado, x.tope), x.tope, 'Lo que llevas de ' + v.nombre)}
@@ -1942,6 +2122,36 @@
             else if (x.tipo === 'tab') P.irTab(x.tab);
         },
         /** v2.8 (ajuste 5, punto 2): «Ver por tipo ›» / «Ver por fecha ›»; se recuerda en este teléfono. */
+        /** v2.8 ajuste 6 (punto 3): «Ver todas» / «Otros (n)» en «¿En qué se te fue?». */
+        mesTodas: () => {
+            P.ui.mesTodas = !P.ui.mesTodas;
+            render({ foco: '[data-fk="mes-ver-todas"]' });
+        },
+        /** «Lo que encontramos»: una a la vez, con ‹ ›. */
+        mesEnc: (d) => {
+            P.ui.mesEnc = Math.max(0, (P.ui.mesEnc || 0) + Number(d.d));
+            render({ foco: `[data-fk="mes-enc-${Number(d.d) < 0 ? 'ant' : 'sig'}"]` });
+        },
+        mesFiltros: () => {
+            P.ui.mesFiltros = !P.ui.mesFiltros;
+            render({ foco: '[data-fk="mes-filtros"]' });
+        },
+        mesCuenta: (d) => {
+            P.ui.mesCuenta = P.ui.mesCuenta === d.v ? null : d.v;
+            render({ foco: `[data-fk="mfl-${d.v}"]` });
+        },
+        mesFiltroQuitar: () => {
+            P.ui.mesFiltro = 'todo';
+            render({ foco: '[data-fk="mes-filtros"]' });
+        },
+        mesCategoriaQuitar: () => {
+            P.ui.mesCategoria = null;
+            render({ foco: '[data-fk="mes-filtros"]' });
+        },
+        mesCuentaQuitar: () => {
+            P.ui.mesCuenta = null;
+            render({ foco: '[data-fk="mes-filtros"]' });
+        },
         pagosModo: (d) => {
             const v = d.v === 'tipo' || d.v === 'lista' ? 'tipo' : 'fecha';
             P.ui.pagosModo = v;
@@ -1998,11 +2208,13 @@
             const [y, m] = M.mesMas(...base.split('-').map(Number), Number(d.d));
             P.ui.mesVista = `${y}-${M.pad(m)}`;
             P.ui.mesCategoria = null;
+            P.ui.mesEnc = 0;
+            P.ui.mesTodas = false;
             render();
         },
         mesFiltro: (d) => {
             P.ui.mesFiltro = d.v;
-            render();
+            render({ foco: `[data-fk="mf-${d.v}"]` });
         },
         mesCategoria: (d) => {
             P.ui.mesCategoria = P.ui.mesCategoria === d.id ? null : d.id;
