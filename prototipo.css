@@ -4549,8 +4549,8 @@ html.con-hazlo .mask {
     margin-top: 4px;
 }
 
-/* ================================================================== v2.9.3 · Rediseño de Hoy (vista previa: A y B) */
-/* Compartido: «Lo que viene» en dos grupos, una línea por fila (el día, el nombre y el monto, como Mi plan). */
+/* ================================================================== v2.9.3 «Hoy claro» (APROBADO por Victor, 2026-10-23) */
+/* «Lo que viene» en dos grupos, una línea por fila (el día, el nombre y el monto, como Mi plan). */
 .hv-lista {
     display: block;
 }
@@ -4619,10 +4619,6 @@ html.con-hazlo .mask {
 .hv-acc[hidden] {
     display: none;
 }
-.hv-f--urg .hv-acc {
-    justify-content: flex-end;
-    padding-right: 12px;
-}
 .hv-acc:empty {
     display: none;
 }
@@ -4652,23 +4648,16 @@ html.con-hazlo .mask {
     background: color-mix(in srgb, var(--tone-ambar-fill) 14%, var(--color-surface-2));
     color: var(--tone-ambar);
 }
-@media (hover: hover) and (pointer: fine) {
-    .hv-mas:hover,
-    .hoyA-pend:hover {
-        background: var(--p-hover);
-    }
-}
-
-/* A «Hoy claro»: la portada de siempre con una sola línea; lo pendiente en una línea; presupuestos en chips. */
-.hoyA .portada-b {
+/* La portada de siempre, con una sola línea que explica el número. */
+.hoyC .portada-b {
     min-height: 0;
     padding: 16px 20px 14px;
 }
-.hoyA .portada-l {
+.hoyC .portada-l {
     margin-top: 0;
     padding-right: 36px;
 }
-.hoyA .portada-s {
+.hoyC .portada-s {
     display: flex;
     align-items: center;
     gap: 6px;
@@ -4677,48 +4666,15 @@ html.con-hazlo .mask {
     font-weight: 500;
     line-height: 22px;
 }
-.hoyA .portada-mas {
+.hoyC .portada-mas {
     margin-top: 8px;
 }
-.hoyA-pend {
-    display: flex;
-    width: 100%;
-    min-height: 48px;
-    align-items: center;
-    gap: 10px;
-    padding: 12px 14px;
-    border: 1px solid var(--color-border);
-    border-radius: 14px;
-    background: var(--color-surface-2);
-    color: var(--color-text);
-    font-size: 15px;
-    font-weight: 600;
-    line-height: 20px;
-    text-align: left;
-}
-.hoyA-pend > span {
-    display: -webkit-box;
-    flex: 1;
-    overflow: hidden;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-}
-.hoyA-pend > .ico-s {
-    color: var(--color-primary);
-}
-.hoyA-pend--urg {
-    border-color: color-mix(in srgb, var(--tone-ambar-fill) 50%, transparent);
-    background: color-mix(in srgb, var(--tone-ambar-fill) 10%, var(--color-surface-2));
-    color: var(--tone-ambar);
-}
-.hoyA-pend--urg > .ico-s {
-    color: var(--tone-ambar);
-}
-.hoyA-pres {
+/* «Para hoy»: cada cosa con su botón; sin nada, una sola línea discreta (nunca en verde). */
+.ph-sec {
     display: grid;
-    gap: 6px;
+    gap: 8px;
 }
-.hoyA-pres-h {
+.ph-cab {
     display: flex;
     min-height: 44px;
     align-items: center;
@@ -4726,22 +4682,105 @@ html.con-hazlo .mask {
     gap: 8px;
     padding: 0 4px;
 }
-.hoyA-h {
+.ph-h {
     font-size: 16px;
     font-weight: 600;
     line-height: 24px;
 }
-.hoyA-h-s,
-.hb-h-s {
+.ph-lista {
+    display: grid;
+    gap: 8px;
+}
+.ph-f {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 10px;
+    padding: 8px 12px 8px 8px;
+    border: 1px solid var(--color-border);
+    border-radius: 16px;
+    background: var(--color-surface-2);
+    box-shadow: var(--app-shadow-card);
+}
+.ph-f--venc {
+    border-color: color-mix(in srgb, var(--tone-ambar-fill) 55%, transparent);
+}
+.ph-f-b {
+    display: flex;
+    min-width: 0;
+    min-height: 44px;
+    flex: 1 1 170px;
+    align-items: center;
+    gap: 10px;
+    padding: 0 4px;
+    border-radius: 12px;
+    text-align: left;
+}
+.ph-f-txt {
+    display: grid;
+    min-width: 0;
+}
+.ph-f-t {
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 20px;
+    overflow-wrap: anywhere;
+}
+.ph-f-s {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: var(--color-text-muted);
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+    line-height: 18px;
+}
+.ph-f--venc .ph-f-s {
+    color: var(--tone-ambar);
+    font-weight: 600;
+}
+.ph-f-acc {
+    flex: 0 0 auto;
+    margin-left: auto;
+}
+.hoy-nada {
+    display: flex;
+    min-height: 44px;
+    align-items: center;
+    gap: 8px;
+    padding: 0 4px;
+    color: var(--color-text-muted);
+    font-size: 15px;
+    line-height: 20px;
+}
+.hoy-nada .ico-s {
+    color: var(--color-text-muted);
+}
+/* Presupuestos: un carrusel que no se mueve solo (ronda 2, APROBADO por Victor, 2026-10-23). */
+.hp-sec {
+    display: grid;
+    gap: 6px;
+}
+.hp-cab {
+    display: flex;
+    min-height: 44px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 0 4px;
+}
+.hp-h {
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 24px;
+}
+.hp-h-s {
     color: var(--color-text-muted);
     font-size: 14px;
     font-weight: 500;
 }
-/*
- * v2.9.3 ronda 2 (APROBADO por Victor, 2026-10-23): un carrusel que no se mueve solo. Una fila que se desliza con el dedo
- * (sin trabar el scroll vertical), de borde a borde, con el siguiente chip asomado (~⅓); se detiene en cada chip. Si todos
- * caben (pantallas anchas), una fila sin carrusel. Sin animación: con «reducir movimiento» tampoco se mueve nada.
- */
+/* Una fila que se desliza con el dedo (sin trabar el scroll vertical), de borde a borde, con el siguiente chip asomado
+   (~⅓); se detiene en cada chip. Si todos caben, una fila sin carrusel. Con «reducir movimiento» nada se anima. */
 .hp-chips {
     display: grid;
     grid-auto-columns: minmax(150px, 1fr);
@@ -4765,19 +4804,6 @@ html.con-hazlo .mask {
 }
 .hp-todos {
     font-size: 13px;
-}
-.hoy-nada {
-    display: flex;
-    min-height: 44px;
-    align-items: center;
-    gap: 8px;
-    padding: 0 4px;
-    color: var(--color-text-muted);
-    font-size: 15px;
-    line-height: 20px;
-}
-.hoy-nada .ico-s {
-    color: var(--color-text-muted);
 }
 .hp-chip {
     display: grid;
@@ -4803,7 +4829,7 @@ html.con-hazlo .mask {
     align-items: flex-start;
     gap: 6px;
 }
-/* El nombre: máximo 2 líneas con «…» (el lector de pantalla lee el nombre completo en el aria-label del chip). */
+/* El nombre: máximo 2 líneas con «…» (el lector de pantalla lo lee completo en el aria-label del chip). */
 .hp-n {
     display: -webkit-box;
     min-width: 0;
@@ -4841,8 +4867,7 @@ html.con-hazlo .mask {
     border-color: color-mix(in srgb, var(--tone-ambar-fill) 60%, transparent);
     background: color-mix(in srgb, var(--tone-ambar-fill) 9%, var(--color-surface-2));
 }
-.hp--pasado .hp-e,
-.hp--pasado .hb-p-e {
+.hp--pasado .hp-e {
     color: var(--tone-ambar);
     font-weight: 600;
 }
@@ -4850,324 +4875,13 @@ html.con-hazlo .mask {
 .hp--quieto .hp-e {
     color: var(--color-text-muted);
 }
-
-/* B «Sin límites»: plano, el color solo en el dato y en la acción. El número, de dónde sale, lo de hoy, lo que viene. */
-.hoyB {
-    gap: 20px;
-}
-.hoyB .card {
-    box-shadow: none;
-}
-.hb-hero {
-    display: grid;
-    gap: 2px;
-    padding: 16px 18px 8px;
-    border: 1px solid var(--color-border);
-    border-radius: 20px;
-    background: var(--color-surface-2);
-}
-.hb-hero-h {
-    display: flex;
-    min-height: 28px;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-}
-.hb-hero-h > .q {
-    margin: -10px -12px -10px 0;
-}
-.hoyB .hb-l {
-    margin-top: 0;
-    color: var(--color-text);
-    font-size: 15px;
-    font-weight: 600;
-    line-height: 22px;
-}
-.hoyB .hb-n {
-    font-size: 44px;
-    font-weight: 700;
-    letter-spacing: -0.02em;
-    line-height: 50px;
-}
-.hb-s {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    color: var(--color-text-muted);
-    font-size: 14px;
-    font-variant-numeric: tabular-nums;
-    line-height: 20px;
-}
-.hb-s--falta {
-    color: var(--tone-ambar);
-    font-weight: 600;
-}
-.hb-barra {
-    display: flex;
-    height: 12px;
-    gap: 2px;
-    margin-top: 14px;
-    overflow: hidden;
-    border-radius: 6px;
-}
-.hb-seg {
-    min-width: 6px;
-    border-radius: 2px;
-}
-.hb-seg--libre {
-    background: var(--color-primary);
-}
-.hb-seg--sale {
-    background: color-mix(in srgb, var(--color-text) 62%, var(--color-surface-2));
-}
-.hb-seg--ahorro {
-    background: color-mix(in srgb, var(--color-text) 22%, var(--color-surface-2));
-}
-.hb-seg--falta {
-    background: repeating-linear-gradient(135deg, var(--tone-ambar-fill) 0 3px, transparent 3px 7px);
-    box-shadow: inset 0 0 0 1.5px var(--tone-ambar-fill);
-}
-.hb-ley {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 4px 12px;
-    margin-top: 8px;
-    color: var(--color-text-muted);
-    font-size: 13px;
-    line-height: 18px;
-}
-.hb-ley--2 {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-.hb-ley li {
-    display: grid;
-    min-width: 0;
-}
-.hb-ley-t {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-}
-.hb-ley .monto {
-    color: var(--color-text);
-    font-size: 15px;
-    font-variant-numeric: tabular-nums;
-    font-weight: 600;
-    line-height: 20px;
-    overflow-wrap: anywhere;
-}
-.hb-pt {
-    width: 10px;
-    height: 10px;
-    flex-shrink: 0;
-    border-radius: 3px;
-}
-.hb-ley-falta,
-.hb-ley-falta .monto {
-    color: var(--tone-ambar);
-}
-.hb-de {
-    margin-top: 14px;
-    color: var(--color-text-muted);
-    font-size: 13px;
-    font-variant-numeric: tabular-nums;
-    line-height: 18px;
-}
-.hb-de + .hb-barra {
-    margin-top: 6px;
-}
-.hb-mas {
-    display: inline-flex;
-    min-height: 44px;
-    align-items: center;
-    justify-self: start;
-    gap: 2px;
-    margin-left: -8px;
-    padding: 0 8px;
-    border-radius: 10px;
-    color: var(--color-primary);
-    font-size: 14px;
-    font-weight: 600;
-    line-height: 20px;
-}
-.hb-sec {
-    display: grid;
-    gap: 8px;
-}
-.hb-sec-h {
-    display: flex;
-    min-height: 32px;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    padding: 0 4px;
-}
-.hb-h {
-    font-size: 17px;
-    font-weight: 700;
-    line-height: 24px;
-}
-.hb-lista {
-    display: grid;
-    gap: 8px;
-}
-.hb-f {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 6px 10px;
-    padding: 8px 12px 8px 8px;
-    border: 1px solid var(--color-border);
-    border-radius: 16px;
-    background: var(--color-surface-2);
-}
-.hb-f--venc {
-    border-color: color-mix(in srgb, var(--tone-ambar-fill) 55%, transparent);
-}
-.hb-f-b {
-    display: flex;
-    min-width: 0;
-    min-height: 44px;
-    flex: 1 1 170px;
-    align-items: center;
-    gap: 10px;
-    padding: 0 4px;
-    border-radius: 12px;
-    text-align: left;
-}
-.hb-f-txt {
-    display: grid;
-    min-width: 0;
-}
-.hb-f-t {
-    font-size: 15px;
-    font-weight: 600;
-    line-height: 20px;
-    overflow-wrap: anywhere;
-}
-.hb-f-s {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    color: var(--color-text-muted);
-    font-size: 13px;
-    font-variant-numeric: tabular-nums;
-    line-height: 18px;
-}
-.hb-f--venc .hb-f-s {
-    color: var(--tone-ambar);
-    font-weight: 600;
-}
-.hb-f-acc {
-    flex: 0 0 auto;
-    margin-left: auto;
-}
-.hb-nada {
-    display: flex;
-    min-height: 48px;
-    align-items: center;
-    gap: 8px;
-    padding: 0 14px;
-    border-radius: 16px;
-    background: color-mix(in srgb, var(--color-success) 9%, var(--color-surface-2));
-    font-size: 15px;
-    font-weight: 500;
-}
-.hb-nada .ico-s {
-    color: var(--color-success);
-}
-.hb-pres {
-    display: grid;
-    overflow: hidden;
-    border: 1px solid var(--color-border);
-    border-radius: 16px;
-    background: var(--color-surface-2);
-}
-.hb-pres > li + li {
-    border-top: 1px solid var(--color-border);
-}
-.hb-p {
-    display: flex;
-    width: 100%;
-    min-height: 60px;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 14px 10px 10px;
-    text-align: left;
-}
-.hb-p-txt {
-    display: grid;
-    min-width: 0;
-    flex: 1;
-    gap: 6px;
-}
-.hb-p-l {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 8px;
-}
-.hb-p-n {
-    min-width: 0;
-    font-size: 15px;
-    font-weight: 600;
-    line-height: 20px;
-    overflow-wrap: anywhere;
-}
-.hb-p-e {
-    display: inline-flex;
-    flex-shrink: 0;
-    align-items: center;
-    gap: 4px;
-    color: var(--color-text-muted);
-    font-size: 13px;
-    font-variant-numeric: tabular-nums;
-    line-height: 18px;
-}
-.hb-p-barra {
-    display: block;
-    height: 6px;
-    overflow: hidden;
-    border-radius: 3px;
-    background: color-mix(in srgb, var(--color-text) 10%, var(--color-surface-2));
-}
-.hb-p-barra > span {
-    display: block;
-    height: 100%;
-    border-radius: 3px;
-    background: color-mix(in srgb, var(--color-text) 62%, var(--color-surface-2));
-}
-.hp--cerca .hb-p-e {
-    color: var(--color-text);
-    font-weight: 600;
-}
-.hp--pasado .hb-p-barra > span {
-    background: var(--tone-ambar-fill);
-}
-.hp--quieto .hb-p-barra > span {
-    background: color-mix(in srgb, var(--color-text) 30%, var(--color-surface-2));
-}
 @media (hover: hover) and (pointer: fine) {
-    .hb-f-b:hover,
-    .hb-p:hover,
-    .hb-mas:hover {
+    .hv-mas:hover,
+    .ph-f-b:hover {
         background: var(--p-hover);
     }
 }
-.hb-f-b:focus-visible,
-.hb-p:focus-visible,
+.ph-f-b:focus-visible,
 .hv-b:focus-visible {
     outline-offset: -2px;
-}
-
-/* C «Mezcla»: la portada y los chips de A con «Para hoy» de B, en el mismo mundo de A (tarjetas con su sombra suave). */
-.hoyC .hb-h {
-    font-size: 16px;
-    font-weight: 600;
-}
-.hoyC .hb-sec-h {
-    min-height: 44px;
-}
-.hoyC .hb-f {
-    box-shadow: var(--app-shadow-card);
 }

@@ -19,7 +19,7 @@ window.CASOS = [
             { t: 'Tus gastos fijos: toca «Luz», pon 35 y el día 12. Si se cobra sola en tu cuenta o tarjeta, elígela.', clave: 'onboarding:pago:luz' },
             { t: '«Ver mi número» y luego «Ir a Hoy».', clave: 'onboarding:hoy' },
         ],
-        esperado: 'Aparece «Tu primer número» con su frase («Es lo que puedes gastar hasta tu quincena del 30 sin tocar tus pagos, tus deudas ni tus tarjetas»), ya sin la luz ni la cuota. En Hoy se ve el mismo número y la luz en Próximos pagos.',
+        esperado: 'Aparece «Tu primer número» con su frase («Es lo que puedes gastar hasta tu quincena del 30 sin tocar tus pagos, tus deudas ni tus tarjetas»), ya sin la luz ni la cuota. En Hoy se ve el mismo número y la luz en «Lo que viene».',
         observar: '¿Entiende qué le preguntamos y para qué? ¿Se siente largo? ¿Entiende que «cuánto tienes» es el punto de partida y no tiene que ser exacto?',
     },
     {
@@ -56,13 +56,13 @@ window.CASOS = [
         para: 'Quien no anota sus compras con tarjeta dice cuánto le salió y cuánto va a pagar.',
         tarea: 'Te llegó el estado de cuenta de tu tarjeta: pago de contado $245 y pago mínimo $25. Anótalo y decide cuánto vas a pagar.',
         pasos: [
-            { t: 'En Hoy, toca «Ver» en el aviso («2 avisos para hoy») y lee «¿Ya te llegó tu estado de cuenta?» (o toca la notificación).', clave: ['hoja:atencion', 'aviso:abierto:estado'] },
+            { t: 'En Hoy, en «Para hoy», lee «¿Ya te llegó tu estado de cuenta?» (o toca la notificación).' },
             { t: 'Toca «Anotar estado de cuenta».', clave: 'hoja:estadoCuenta' },
             { t: 'Escribe pago de contado 245 y mínimo 25. Mira «¿Dónde lo encuentro?».', clave: 'estado:paso3' },
             { t: 'Elige cuánto vas a pagar (Todo, Mínimo u Otro) y lee el consejo. Guarda.', clave: 'guardado:estado' },
             { t: 'Mira el libre en Hoy y la tarjeta en Mi dinero → Deudas.', clave: 'pantalla:deudas' },
         ],
-        esperado: 'Hoy muestra un solo aviso agrupado («2 avisos para hoy · Ver», V2-42): el estado de cuenta y la luz vencida. Con «Todo» o «Mínimo», el libre sigue en $560.60 y dice «Tarjeta $245.00 del 5 nov: se paga con tu quincena del 30» (D-4). Con «Mínimo», los $220.00 se ven como deuda y la ficha explica, sin culpa, que los intereses llegarán en el próximo estado de cuenta.',
+        esperado: '«Para hoy» trae la luz vencida (con «Ya lo pagué») y «¿Ya te llegó tu estado de cuenta?» (con «Anotar estado de cuenta»). Con «Todo» o «Mínimo», el libre sigue en $560.60 y «Lo que viene» muestra Crédito BAC del 5 nov con lo que paga cada dinero: lo que baja tu libre de hoy y lo que pagas con tu quincena del 30 (D-4). Con «Mínimo», los $220.00 se ven como deuda y la ficha explica, sin culpa, que los intereses llegarán en el próximo estado de cuenta.',
         observar: '¿Sabe dónde encontrar los dos montos? ¿El consejo se siente como ayuda y no como regaño? ¿Entiende por qué bajó su libre si vence después de su quincena?',
     },
     {
@@ -70,13 +70,13 @@ window.CASOS = [
         para: 'El día de pago: confirmar, ver lo ya contado y repartir.',
         tarea: 'Hoy es día de pago y te llegaron $600 al banco. Confírmalo y decide si quieres guardar algo.',
         pasos: [
-            { t: 'Hoy es 30 de octubre: el número dice «Libre por ahora». Toca «¿Ya llegó?» (o la notificación).', clave: 'hoja:ingresoLlego' },
+            { t: 'Hoy es 30 de octubre: el número dice «Libre por ahora». En «Para hoy», toca «Sí, ya llegó» (o la notificación).', clave: 'hoja:ingresoLlego' },
             { t: 'Revisa el monto ($600.00 en Banco Agrícola) y toca Siguiente.', clave: 'ingreso:llego:quincena' },
-            { t: 'En «Reparte tu quincena» mira «Apartado para tus pagos».', clave: 'pantalla:reparte:quincena' },
+            { t: 'En «Reparte tu quincena» mira «Ya no cuenta en tu libre».', clave: 'pantalla:reparte:quincena' },
             { t: 'Acepta o no la sugerencia de guardar.', clave: 'reparte:apartar' },
             { t: 'Mira «3. ¿Cómo quedas la próxima?» y «4. ¿Cuadramos?» (opcional); toca Listo y mira Hoy.', clave: 'reparte:fin' },
         ],
-        esperado: 'Antes: «Libre por ahora» $285.60 con «¿Ya llegó?» y una sola tarjeta (aunque lleva 10 días sin anotar, V2-31 #10). Después: $815.60 «Hasta tu quincena del 15»; «Apartado para tus pagos» trae el colegio y la luz de noviembre (se pagan con esta quincena) y la tarjeta. Sugiere $60.00 a Emergencias (10 %), nunca más que tu libre; con eso, $755.60. «3. ¿Cómo quedas la próxima?» muestra la quincena del 15 y ofrece pasar algo a la próxima; luego «4. ¿Cuadramos?».',
+        esperado: 'Antes: «Libre por ahora» $285.60 y, primero en «Para hoy», «¿Ya llegó tu quincena?» (sin «Pongámonos al día», aunque lleva 10 días sin anotar, V2-31 #10). Después: $815.60 «Hasta tu quincena del 15»; «Ya no cuenta en tu libre» trae el colegio y la luz de noviembre (se pagan con esta quincena) y la tarjeta. Sugiere $60.00 a Emergencias (10 %), nunca más que tu libre; con eso, $755.60. «3. ¿Cómo quedas la próxima?» muestra la quincena del 15 y ofrece pasar algo a la próxima; luego «4. ¿Cuadramos?».',
         observar: '¿Entiende que los pagos ya estaban restados? ¿Siente la sugerencia como opcional? ¿Le gustaría hacer esto cada quincena?',
     },
     {
@@ -85,7 +85,7 @@ window.CASOS = [
         tarea: 'Eres Carlos: te pagan cada viernes y el alquiler de $150 se paga el 1. Averigua cuánto puedes gastar hasta el viernes y qué te sugiere la app para el alquiler. Decide si dejas algo listo y de qué dinero.',
         pasos: [
             { t: 'Mira Hoy: «Hasta el viernes · en 2 días», libre $125.00 y «Próximo pago (viernes 23)».' },
-            { t: 'Lee la sugerencia (ámbar): el viernes 30 recibes $90.00 aprox. y ese periodo pagas $160.00 aprox.; te faltarían $70.00 aprox.' },
+            { t: 'En «Para hoy», abre la sugerencia: el viernes 30 recibes $90.00 aprox. y ese periodo pagas $160.00 aprox.; te faltarían $70.00 aprox.' },
             { t: 'Toca «Sí, $70.00», elige de cuál dinero (lo que tienes ahora o tu pago del viernes 23) y toca «Dejar listo».', clave: 'guardado:reservar' },
             { t: 'Abre el alquiler (en Mi plan o en «Lo que viene») y mira «Lo pagas con».', clave: 'pantalla:pago:alquiler' },
             { t: 'Toca «Simular: llega el viernes 23» y confirma el pago de la semana.', clave: 'ingreso:llego:semana' },
@@ -113,13 +113,13 @@ window.CASOS = [
         para: 'Retomar sin culpa: confirmar lo pendiente y cuadrar.',
         tarea: 'Volviste a la app después de dos semanas sin usarla. Ponla al día.',
         pasos: [
-            { t: 'Hoy es 6 de noviembre y no has anotado desde el 20 de octubre: «Libre por ahora» y la tarjeta «Pongámonos al día».' },
+            { t: 'Hoy es 6 de noviembre y no has anotado desde el 20 de octubre: «Libre por ahora» y, primero en «Para hoy», «Pongámonos al día».' },
             { t: 'Toca «Empezar».', clave: 'pantalla:aldia' },
             { t: 'Ingresos: di si te llegó la quincena del 30.', clave: 'aldia:paso2' },
             { t: 'Mi plan: marca Pagado, Aún no o Saltar (o «Marcar todos»).', clave: 'aldia:paso3' },
             { t: 'Cuadra Efectivo y Banco con lo que tienes de verdad. Toca Listo.', clave: 'aldia:fin' },
         ],
-        esperado: 'Al entrar: «Tu quincena del 30 · falta confirmarla», «Libre por ahora» $285.60 (lo que se paga con la quincena del 30 no se descuenta hasta confirmarla) y «¿Ya llegó tu quincena del 30?»; en el paso de ingresos: «Sí, ya llegó», «Todavía no» o «No me va a llegar». Al terminar: «¡Listo, estás al día!» con el número nuevo; lo que no cuadró queda «sin detalle», sin pedir explicaciones.',
+        esperado: 'Al entrar: «Falta confirmar tu quincena del 30», «Libre por ahora» $285.60 (lo que se paga con la quincena del 30 no se descuenta hasta confirmarla) y «¿Ya llegó tu quincena del 30?»; en el paso de ingresos: «Sí, ya llegó», «Todavía no» o «No me va a llegar». Al terminar: «¡Listo, estás al día!» con el número nuevo; lo que no cuadró queda «sin detalle», sin pedir explicaciones.',
         observar: '¿Se siente regañado en algún momento? ¿Entiende «sin detalle»? ¿Cuánto tarda?',
     },
     {
@@ -127,10 +127,10 @@ window.CASOS = [
         para: 'Ana gastó lo de su ahorro Regalo, lo anota sin vincularlo y la app la ayuda a arreglarlo.',
         tarea: 'Ya compraste el regalo de tu mamá: $20 en efectivo. Apúntalo escribiendo «regalo mamá 20» y, si te pregunta algo, di que no. Después revisa si quedó algo raro y arréglalo.',
         pasos: [
-            { t: 'Mira Hoy: el aviso agrupado («2 avisos para hoy») trae «Tu ahorro Regalo era para el 10. ¿Ya lo usaste?». Déjalo por ahora.' },
+            { t: 'Mira Hoy: «Para hoy» trae «Tu ahorro Regalo era para el 10. ¿Ya lo usaste?». Déjalo por ahora.' },
             { t: 'Toca (+) Anotar y escribe «regalo mamá 20».', clave: 'entendio:gasto:regalo' },
             { t: 'Cuando pregunte «¿Lo tomas de tu ahorro Regalo?», toca «No» (así se olvida) y guarda.', clave: 'guardado:gasto:regalo' },
-            { t: 'Arréglalo: en Hoy, «Ver» → «Sí, ya lo gasté» y elige ese gasto; o en Mes, toca el gasto y «Tomarlo de un ahorro».', clave: ['guardado:yaLoUse', 'guardado:correccion:apartado'] },
+            { t: 'Arréglalo: en Hoy, en «Para hoy», «Responder» → «Sí, ya lo gasté» y elige ese gasto; o en Mes, toca el gasto y «Tomarlo de un ahorro».', clave: ['guardado:yaLoUse', 'guardado:correccion:apartado'] },
             { t: 'Mira el libre en Hoy y Mi dinero → Ahorros → Logros.', clave: 'pantalla:ahorros' },
         ],
         esperado: 'Al empezar el libre es $250.60. Al anotar sin vincular baja a $230.60 (el regalo contaba dos veces). Al cerrar el ahorro con ese gasto vuelve a $250.60, sin crear otro gasto, y «Regalo» pasa a Logros. Si eliges «No lo usé», el dinero vuelve a tu libre y queda en «Cerrados», no en Logros.',
@@ -259,9 +259,9 @@ window.CASOS_PRACTICA = [
         pasos: [
             { t: 'En Hoy, toca «¿De dónde sale?».', clave: 'hoja:desglose' },
             { t: 'En «¿Hasta cuándo ves tu libre?», toca «Los próximos 15 días».', clave: 'guardado:horizonte' },
-            { t: 'Toca «Entendido» y mira tu número: ahora dice «Próximos 15 días».' },
+            { t: 'Toca «Entendido» y mira tu número: debajo dice «Hasta el 5 nov».' },
         ],
-        esperado: 'Arriba del número: «Próximos 15 días · hasta el 5 nov». Debajo: «Los 15 días siguientes (hasta el 19 nov)».',
+        esperado: 'Debajo del número: «Hasta el 5 nov · … aprox. al día». En Mi plan, el siguiente periodo: «Próximos 15 días».',
         observar: '¿Encuentra dónde se cambia? ¿Entiende qué cambió?',
     },
     {
@@ -269,11 +269,11 @@ window.CASOS_PRACTICA = [
         para: 'Con entradas que varían, la app sugiere guardar para lo que viene; la persona decide cuánto.',
         tarea: 'Tus ventas varían y el alquiler de $120 vence el 5. Guarda $40 de lo que tienes para el alquiler.',
         pasos: [
-            { t: 'En Hoy, en el aviso del próximo mes, toca «Sí, $191.00».', clave: 'hoja:reservar' },
+            { t: 'En Hoy, en «Para hoy», toca «Ver» en el aviso del próximo mes y luego «Sí, $191.00».', clave: 'hoja:reservar' },
             { t: 'En «¿Cuánto?» escribe 40 y toca «Dejar listo».', clave: 'guardado:reservar' },
-            { t: 'Mira el alquiler en «Lo que viene»: «Ya contado de lo que tienes ahora $40.00».' },
+            { t: 'Mira el alquiler en «Lo que viene»: $40.00 de $120.00 en «Baja tu libre de hoy» y el resto con lo que tengas cuando venza.' },
         ],
-        esperado: 'Libre $80.00 → $40.00 («ya contado $40.00 para lo que viene»). El alquiler dice «Ya contado de lo que tienes ahora $40.00».',
+        esperado: 'Libre $80.00 → $40.00. El alquiler sale en los dos grupos de «Lo que viene»: $40.00 de $120.00 en «Baja tu libre de hoy» y $80.00 de $120.00 «Con lo que tengas cuando venza».',
         observar: '¿Entiende que es una sugerencia y que decide cuánto?',
     },
     {

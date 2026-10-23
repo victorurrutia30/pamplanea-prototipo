@@ -5376,7 +5376,8 @@
         const contado = [
             ...k.items.map((o) => linea(o, o.estado === 'vencido' ? 'venció el ' + M.partes(o.fecha)[2] : M.fechaCorta(o.fecha))),
             ...k.tarjetas.filter((t) => t.enLibre).map((t) => `<li><span>${emo(t.t.emoji, 16)} ${esc(P.nombreTarjeta(t.t))} <span class="d-sub">${esc(partesTarjeta(t))}</span></span><span>${dinero(t.enLibre)}</span></li>`),
-            ...k.reservados.map((o) => linea(o, `reservado · vence el ${M.fechaCorta(o.fecha)}`)),
+            // v2.9.3 (C-2): sin «reservado»: lo que pagas con lo que tienes ahora y vence después.
+            ...k.reservados.map((o) => linea(o, `con lo que tienes · vence el ${M.fechaCorta(o.fecha)}`)),
             ...k.reservasProxima.map((r) => filaReserva(r)),
         ];
         const totalContado = k.porPagar + k.enTarjetas + k.reservadoPagos + k.reservadoProxima;
@@ -5407,7 +5408,7 @@
             <header class="pg-head"><p class="paso">${emo(ing.emoji, 18)} Llegó ${esc(quePalabra)}</p><h1 class="h1" tabindex="-1">Reparte ${esc(quePalabra)}</h1><p class="sub">Te cayeron <strong>${dinero(top.monto)}</strong> en ${esc(M.lugar(st, ing.lugar).nombre)}.${(top.otros || []).length ? ` Y también ${esc(P.lista(top.otros.map((o) => `${dinero(o.monto)} de ${o.nombre}`)))}.` : ''}</p></header>
             ${adelanto ? `<div class="nota nota--info" role="note">${icon('calendar-days')}<p><strong>Llegó antes de ${esc(P.etiquetaFuente(adelanto.para))}:</strong> la guardamos para esa quincena, así que no suma a tu libre de hoy. <button type="button" class="link link--inline" data-a="usarAdelanto" data-id="${ing.id}" data-fecha="${top.fecha}" data-fk="rep-usar-adelanto">Usarla desde ya</button></p></div>` : ''}
             ${otrosHtml}
-            ${P.tarjetaSeccion('1. Apartado para tus pagos', `<p class="txt txt--card rep-nota"><strong>Todavía no está pagado: lo marcas cuando pagues.</strong></p><p class="txt txt--card">Esto vence antes de ${esc(proximo)} o ya lo dejaste listo, y ya no cuenta en tu libre:</p><ul class="d-items d-items--card">${contado.join('') || '<li><span>Nada por pagar en estas fechas.</span><span></span></li>'}${contado.length ? `<li class="d-total-li"><span>Total contado</span><span>${dinero(totalContado)}</span></li>` : ''}</ul>`, { id: 'rep-contado' })}
+            ${P.tarjetaSeccion('1. Ya no cuenta en tu libre', `<p class="txt txt--card rep-nota"><strong>Todavía no está pagado: lo marcas cuando pagues.</strong></p><p class="txt txt--card">Esto vence antes de ${esc(proximo)} o ya lo dejaste listo, y ya no cuenta en tu libre:</p><ul class="d-items d-items--card">${contado.join('') || '<li><span>Nada por pagar en estas fechas.</span><span></span></li>'}${contado.length ? `<li class="d-total-li"><span>Total</span><span>${dinero(totalContado)}</span></li>` : ''}</ul>`, { id: 'rep-contado' })}
             ${top.sugerencias.length ? P.tarjetaSeccion('2. ¿Quieres ahorrar algo?', `<p class="txt txt--card">Te sugerimos; tú decides. Nada se ahorra solo.</p><ul class="sugs">${sug}</ul>`, { id: 'rep-sug' }) : P.tarjetaSeccion('2. ¿Quieres ahorrar algo?', `<p class="txt txt--card">Cuando tengas un ahorro, aquí te sugeriremos cuánto ponerle. Nada se ahorra solo.</p>`, { id: 'rep-sug' })}
             ${prox}
             ${cuadreReparte(st, top, prox ? 4 : 3)}

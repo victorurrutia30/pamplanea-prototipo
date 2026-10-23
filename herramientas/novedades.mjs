@@ -11,6 +11,9 @@
 //     adentro y de vuelta al cerrar, Escape, nada se mueve con «reducir movimiento»)
 //  F) v2.9.1 (DECIDIDO por criterio, autorizado por Victor 2026-10-23): solo sale a quien le cambió algo (una tarjeta cuya
 //     fecha no cuadra con su estado de cuenta): pregunta cuál es, sin cambiar nada sin respuesta, y dice el antes y después
+//  H) v2.9.3 «Hoy claro» (APROBADO por Victor, 2026-10-23): una sola vez a quien ya usaba la v2.9 (de la v2.9.0 a la v2.9.2),
+//     5 líneas amables sobre el Hoy nuevo; nada cambia en lo guardado. Desde la v2.9.3, quien viene de la v2.9.x ve además
+//     este cuadrito: en F y G, «no sale» y «no vuelve» se revisan por el título (el de la fecha o el del mes, no el de Hoy).
 // Uso: node herramientas/novedades.mjs [--base=http://…/] [--puerto=9963] [--raiz=<otra copia>]
 import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
@@ -54,6 +57,9 @@ async function abrirApp() {
     await esperar(700);
 }
 const hay = () => ev(`!!document.getElementById('nov-t')`);
+/** El título del cuadrito abierto (o null). */
+const titulo = () => ev(`document.getElementById('nov-t')?.innerText.trim() || null`);
+const HOY293 = 'Hoy, más claro ✨';
 const lineas = () => ev(`[...document.querySelectorAll('.nov-lista li')].map((li) => li.innerText.trim())`);
 /** Lo guardado tal como lo deja la v2.6.7: esquema 2, sin `version`; `mod` cambia el estado (Ana con otro nombre). */
 async function sembrar(mod = '') {
@@ -217,7 +223,7 @@ const guardadoSt = () => ev(`JSON.stringify(JSON.parse(localStorage.getItem('pam
 await seccion('F v2.9.1', async () => {
     await sembrar290(false);
     await abrirApp();
-    check('de la v2.9.0 sin nada que le cambie: no sale', [await ev(`P.modo`), await hay()], ['uso', false]);
+    check('de la v2.9.0 sin nada que le cambie: no sale el de la fecha (sí el de Hoy, v2.9.3)', [await ev(`P.modo`), await titulo()], ['uso', HOY293]);
     await sembrar290(true);
     const antes = await guardadoSt();
     await abrirApp();
@@ -233,13 +239,13 @@ await seccion('F v2.9.1', async () => {
     check('guardado: vence el 14 nov', await ev(`JSON.parse(localStorage.getItem('pamplanea-uso:v1')).st.tarjetas.find((t) => t.id === 't1').estados.at(-1).vence`), '2026-11-14');
     await ev(`document.querySelector('[data-fk="nov-ok"]').click(); true`);
     await esperar(300);
-    check('se cierra, queda visto y no vuelve', [await hay(), await ev(`!!JSON.parse(localStorage.getItem('pamplanea-uso:v1')).novedades['v2.9.1'].visto`), (await abrirApp(), await hay())], [false, true, false]);
+    check('se cierra, queda visto y no vuelve (la siguiente vez, el de Hoy)', [await hay(), await ev(`!!JSON.parse(localStorage.getItem('pamplanea-uso:v1')).novedades['v2.9.1'].visto`), (await abrirApp(), await titulo())], [false, true, HOY293]);
     // «Ahora no»: nada cambia; la pregunta sigue en Hoy y en la ficha.
     await sembrar290(true);
     await abrirApp();
     await ev(`document.querySelector('[data-fk="nov-ok"]').click(); true`);
     await esperar(300);
-    check('«Ahora no»: nada cambia y Hoy sigue preguntando', [await guardadoSt() === antes, await ev(`document.getElementById('pantalla').textContent.includes('¿Cuál es?')`), (await abrirApp(), await hay())], [true, true, false]);
+    check('«Ahora no»: nada cambia y Hoy sigue preguntando', [await guardadoSt() === antes, await ev(`document.getElementById('pantalla').textContent.includes('¿Cuál es?')`), (await abrirApp(), await titulo())], [true, true, HOY293]);
     // Quien viene de antes de la v2.9 ve primero el de la v2.9; el de la v2.9.1, la siguiente vez que abre.
     await sembrar(`s.tarjetas.push({ id: 't1', nombre: 'Crédito Liss', emoji: '💳', tipo: 'tarjeta', corte: 21, pagoDia: 14, cupo: null, interesesAnio: 0, desde: '2026-10-01', estados: [{ corte: '2026-10-21', total: 30000, minimo: 5000, aPagar: 30000, opcion: 'total', vence: '2026-11-15', anotado: 0, seq: 900 }] }); s.medios.push({ id: 'mt1', nombre: 'Crédito Liss', emoji: '💳', tarjeta: 't1' });`);
     await abrirApp();
@@ -274,7 +280,7 @@ async function sembrar291(liss, version = 'Prototipo v2.9.1 · 2026-10-23') {
 await seccion('G v2.9.2', async () => {
     await sembrar291(false);
     await abrirApp();
-    check('de la v2.9.1 sin nada que le cambie: no sale', [await ev(`P.modo`), await hay()], ['uso', false]);
+    check('de la v2.9.1 sin nada que le cambie: no sale el del mes (sí el de Hoy, v2.9.3)', [await ev(`P.modo`), await titulo()], ['uso', HOY293]);
     await sembrar291(true);
     const antes = await guardadoSt();
     await abrirApp();
@@ -289,9 +295,48 @@ await seccion('G v2.9.2', async () => {
     await foto('G-v292');
     await ev(`document.querySelector('[data-fk="nov-ok"]').click(); true`);
     await esperar(300);
-    check('se cierra, queda visto y no vuelve', [await hay(), await ev(`!!JSON.parse(localStorage.getItem('pamplanea-uso:v1')).novedades['v2.9.2'].visto`), (await abrirApp(), await hay())], [false, true, false]);
+    check('se cierra, queda visto y no vuelve (la siguiente vez, el de Hoy)', [await hay(), await ev(`!!JSON.parse(localStorage.getItem('pamplanea-uso:v1')).novedades['v2.9.2'].visto`), (await abrirApp(), await titulo())], [false, true, HOY293]);
     // Guardado ya por esta versión: no sale.
     await sembrar291(true, await ev('window.VERSION_PROTOTIPO'));
+    await abrirApp();
+    check('con datos de esta versión: no sale', await hay(), false);
+});
+
+// ------------------------------------------------------------------ H) v2.9.3 «Hoy claro»: una vez, a quien ya usaba la v2.9
+await seccion('H v2.9.3', async () => {
+    // Lo guardado por la v2.9.2, con sus cuadritos ya vistos (como Pam y Majo).
+    await sembrar291(false, 'Prototipo v2.9.2 · 2026-10-23');
+    const antes = await ev(`localStorage.getItem('pamplanea-uso:v1')`);
+    await abrirApp();
+    check('de la v2.9.2: sale el de Hoy', await titulo(), HOY293);
+    const ls = await lineas();
+    check('5 líneas: tu libre, «Para hoy», tus presupuestos, «Lo que viene» y de qué mes es', ls, [
+        'Tu libre sigue arriba, como siempre.',
+        '«Para hoy» te dice lo que toca hacer; si no hay nada, te lo dice en una línea.',
+        'Tus presupuestos van en una fila que deslizas con el dedo.',
+        '«Lo que viene» separa lo que baja tu libre de hoy de lo que pagas con tu próxima quincena.',
+        'Al pagar, te dice de qué mes es, para no pagarlo dos veces.',
+    ]);
+    const todas = [...ls, await ev(`document.querySelector('.nov-cierre').innerText.trim()`)];
+    check('corto, sin palabras técnicas ni «apartar»; cierre «Tus datos están completos y a salvo.»', [todas.filter((l) => l.split(/\s+/).length > 20), todas.filter((l) => TECNICAS.test(l) || /apart|reserv/i.test(l)), todas.at(-1)], [[], [], 'Tus datos están completos y a salvo.']);
+    check('detrás ya se ve el Hoy nuevo', await ev(`!!document.querySelector('.pg--hoy.hoyC .portada')`), true);
+    // Cero pérdidas (como en `actualizar`): lo de antes sigue igual; lo único nuevo es lo que la app agrega al abrir datos
+    // guardados antes (la cuenta de cada gasto, DATOS-3; dónde está cada ahorro, C-1; las listas vacías que faltaban).
+    check('cero pérdidas en lo guardado', await ev(`((a, b) => { const sin = (s) => ({ ...s, hoy: null, registros: s.registros.map(({ lugar, ...r }) => r), apartados: (s.apartados || []).map(({ donde, ...x }) => x), cerrados: s.cerrados || [], reservas: s.reservas || [] }); const x = sin(a.st); const y = sin(b.st); const dif = Object.keys({ ...x, ...y }).filter((k) => JSON.stringify(x[k]) !== JSON.stringify(y[k])); const nuevos = b.st.registros.filter((r, i) => r.lugar !== undefined && (a.st.registros[i] || {}).lugar === undefined && r.tipo !== 'gasto'); return [...dif, ...nuevos.map((r) => 'lugar en ' + r.tipo)]; })(${antes}, JSON.parse(localStorage.getItem('pamplanea-uso:v1')))`), []);
+    await foto('H-v293');
+    check('foco en «¡Entendido!»', await ev(`document.activeElement.dataset.fk`), 'nov-ok');
+    await ev(`document.querySelector('[data-fk="nov-ok"]').click(); true`);
+    await esperar(300);
+    check('se cierra, queda visto y no vuelve', [await hay(), await ev(`!!JSON.parse(localStorage.getItem('pamplanea-uso:v1')).novedades['v2.9.3'].visto`), (await abrirApp(), await hay())], [false, true, false]);
+    // Quien no cobra por quincena nunca lee «quincena».
+    check('sin ingreso fijo: sin «quincena»', await ev(`P.modos.lineas293({ ...P.st, ingresos: [] }).filter((l) => /quincena/i.test(l))`), []);
+    check('por mes: «con tu próximo salario»', await ev(`P.modos.lineas293({ ...P.st, ingresos: [{ id: 'x', nombre: 'Salario', principal: true, frecuencia: 'mensual', dia: 30, monto: 100000, lugar: 'agricola', desde: '2026-10-01', llegadas: {} }] })[3]`), '«Lo que viene» separa lo que baja tu libre de hoy de lo que pagas con tu próximo salario.');
+    // De antes de la v2.9: el de la v2.9 (el suyo), no este.
+    await sembrar();
+    await abrirApp();
+    check('de la v2.6.7: el de la v2.9, no este', await titulo(), '¡Tus números, más claros! ✨');
+    // Guardado ya por esta versión: no sale.
+    await sembrar291(false, await ev('window.VERSION_PROTOTIPO'));
     await abrirApp();
     check('con datos de esta versión: no sale', await hay(), false);
 });

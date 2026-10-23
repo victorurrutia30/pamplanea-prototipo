@@ -23,6 +23,9 @@
 // v2.9.2 (reporte de Victor, 2026-10-23): la copia es `antes-de-v2.9.2`. «Cambiada P» (una tarjeta y la luz que paga con su
 // próximo día de pago, de otro periodo) ve el cuadrito de la v2.9.2 con su mes antes y después; cero pérdidas y el mismo libre.
 // Desde la v2.9.1, «Victor P» ya no ve el cuadrito de la fecha (ya lo tuvo): la pregunta sigue en Hoy.
+// v2.9.3 «Hoy claro» (APROBADO por Victor, 2026-10-23): de la v2.9.x a la v2.9.3, a todos los que ya la usaban les sale una
+// vez el cuadrito «Hoy, más claro ✨» (5 líneas) y detrás se ve el Hoy nuevo; cero pérdidas y el mismo libre. Por eso,
+// desde la v2.9.3, «sin nada que le cambie, no sale el cuadrito» pasa a ser «sale el de Hoy».
 // Uso: node herramientas/actualizar.mjs --ref=7c0d06e   (v2.5)   ·   --ref=ca97256   (v2.6)   [--puerto=8767]
 import { execSync, spawn } from 'node:child_process';
 import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
@@ -121,6 +124,13 @@ const desde292 = (v) => {
 };
 const NUEVA292 = desde292(NUEVA);
 const VIEJA291 = desde291(VIEJA);
+/** v2.9.3: de la v2.9.x a la v2.9.3 (o posterior), el cuadrito de Hoy sale una vez a quien ya usaba la v2.9. */
+const desde293 = (v) => {
+    const [a, b2, c] = numV(v);
+    return a > 2 || (a === 2 && (b2 > 9 || (b2 === 9 && c >= 3)));
+};
+const HOY293 = desde293(NUEVA) && desde29(VIEJA) && !desde293(VIEJA);
+const TITULO293 = 'Hoy, más claro ✨';
 /** v2.8: la clave del cuadrito de la versión nueva. v2.9.1: de la v2.9 a la v2.9.1, solo sale a quien le cambió algo. */
 const NOV = PARCHE ? 'v2.9.1' : NUEVA29 ? 'v2.9' : NUEVA28 ? 'v2.8' : 'v2.7';
 /** v2.8: ¿esta línea del cuadrito dice que un número cambió? (v2.7: «Corregimos…»; v2.8: con antes y después). */
@@ -330,7 +340,15 @@ try {
     }
     await esperar(800);
     check('la versión nueva y solo su caché', [await ev('window.VERSION_PROTOTIPO'), await ev('caches.keys()')], (x) => x[0] === NUEVA && x[1].includes(CACHE) && x[1].length === 1);
-    if (PARCHE) {
+    if (HOY293) {
+        // v2.9.3: a quien ya usaba la v2.9 le sale una vez el cuadrito de Hoy, con 5 líneas; detrás, el Hoy nuevo.
+        check('v2.9.3: el cuadrito de Hoy', await texto('#nov-t'), TITULO293);
+        informe.datos.lineasNovedades = await ev(`[...document.querySelectorAll('.nov-lista li')].map((li) => li.innerText.trim())`);
+        check('v2.9.3: 5 líneas y su cierre', [informe.datos.lineasNovedades.length, await texto('.nov-cierre')], [5, 'Tus datos están completos y a salvo.']);
+        check('v2.9.3: detrás se ve el Hoy nuevo', await ev(`!!document.querySelector('.pg--hoy.hoyC .portada')`), true);
+        await b.captura(path.join(salida, '3a-novedades.png'));
+        await clic('[data-fk="nov-ok"]');
+    } else if (PARCHE) {
         // v2.9.1: de la v2.9 a la v2.9.1, a «Prueba» no le cambió nada: no sale ningún cuadrito.
         check(`${NOV}: sin nada que le cambie, no sale el cuadrito`, await texto('#nov-t'), null);
     } else if (NUEVA27) {
@@ -409,7 +427,9 @@ try {
             const r = await ev(`({ modo: P.modo, nombre: P.st && P.st.nombre, bloqueo: P.modos.bloqueado(), nov: !!document.getElementById('nov-t'), titulo: document.getElementById('nov-t')?.innerText.trim() || null, lineas: [...document.querySelectorAll('.nov-lista li')].map((li) => li.innerText.trim()) })`);
             // v2.9.1: de la v2.9 a la v2.9.1, el cuadrito solo sale a quien le cambió algo (la fecha de su tarjeta).
             // v2.9.2: «Cambiada P» ve el de la v2.9.2; «Victor P», el de la fecha solo si viene de antes de la v2.9.1.
-            const conCuadrito = !PARCHE || (nombre === 'Victor P' && !VIEJA291) || (nombre === 'Cambiada P' && !desde292(VIEJA));
+            const conCuadrito = HOY293 || !PARCHE || (nombre === 'Victor P' && !VIEJA291) || (nombre === 'Cambiada P' && !desde292(VIEJA));
+            // v2.9.3: si no le tocaba antes uno de la fecha o del mes, el que ve es el de Hoy.
+            if (HOY293 && !((nombre === 'Victor P' && !VIEJA291) || (nombre === 'Cambiada P' && !desde292(VIEJA)))) check(`${nombre}: el cuadrito de Hoy`, r.titulo, TITULO293);
             check(`${nombre}: abre con sus datos${conCuadrito ? ' y el cuadrito' : ' (sin cuadrito: no le cambió nada)'}`, [r.modo, r.nombre, r.bloqueo, r.nov], ['uso', nombre, false, conCuadrito]);
             if (nombre === 'Sintética') await b.captura(path.join(salida, '7-sintetica-novedades.png'));
             const viejo = JSON.parse(crudos[nombre]);
@@ -425,7 +445,7 @@ try {
                     await b.captura(path.join(salida, '8-victor-fecha.png'));
                 }
             }
-            if (nombre === 'Cambiada P' && PARCHE) {
+            if (nombre === 'Cambiada P' && PARCHE && !desde292(VIEJA)) {
                 check('Cambiada P: el cuadrito de la v2.9.2, con su mes antes y después', [r.titulo, r.lineas.some((l) => /^Tu mes de \S+: te (quedarían|faltarían) \$[\d,.]+; antes decía \$[\d,.]+ porque .+ se contaban? dos veces\.$/.test(l))], ['Tu mes, bien contado ✨', true]);
                 await b.captura(path.join(salida, '9-cambiada-v292.png'));
             }

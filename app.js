@@ -747,109 +747,8 @@
         return { titulo: `${M.capital(cual)} recibes ${caen} y ${quePagas}: te faltarían ${dinero(x.deficit, { aprox: true })}.`, texto: `¿Dejas algo listo ${fuente}?` };
     }
     P.textoSugerencia = textoSugerencia;
-    /** El aviso de Hoy: uno solo (V2-42). */
-    function avisoHoy(items) {
-        if (!items.length) return '';
-        const peor = items.some((x) => x.nivel === 'rojo') ? 'rojo' : items.some((x) => x.nivel === 'ambar') ? 'ambar' : 'info';
-        const cls = peor === 'rojo' ? 'nota--atencion' : peor === 'ambar' ? 'nota--ambar' : 'nota--info';
-        const ico = peor === 'info' ? 'bell' : 'triangle-alert';
-        if (items.length === 1) {
-            const x = items[0];
-            return `<div class="nota ${cls} aviso-hoy" role="note" aria-labelledby="av-hoy-t">${icon(ico)}<div><p class="nota-t" id="av-hoy-t">${esc(x.titulo)}</p>${x.texto ? `<p>${esc(x.texto)}</p>` : ''}<div class="nota-acc">${x.acciones}</div></div></div>`;
-        }
-        const todosPagos = items.every((x) => x.pago);
-        const titulo = todosPagos ? `${items.length} pagos necesitan atención` : `${items.length} avisos para hoy`;
-        return `<div class="nota ${cls} aviso-hoy" role="note" aria-labelledby="av-hoy-t">${icon(ico)}<div><p class="nota-t" id="av-hoy-t">${esc(titulo)}</p><p>${esc(M.capital(P.lista(items.slice(0, 3).map((x) => x.corto || x.titulo))))}${items.length > 3 ? ' y más' : ''}.</p><div class="nota-acc"><button type="button" class="btn btn--sm btn--prim" data-a="hoja" data-hoja="atencion" data-fk="aviso-ver">Ver</button></div></div></div>`;
-    }
-
-    /**
-     * v2.9.3 «Rediseño de Hoy» (APROBADO por Victor, 2026-10-23, para la vista previa): Hoy A o B (hoy.js). Mientras un
-     * recorrido del entrenamiento, un ejercicio o la guía de la computadora señalan piezas del Hoy de siempre, se ve ese.
-     */
-    P.hoyVariante = () => {
-        if ((P.tour && P.tour.activo) || (P.practica && P.practica.activa && P.practica.activa()) || P.enGuia) return 'clasico';
-        // Hoy C «Mezcla» (APROBADO por Victor, 2026-10-23) es el de por defecto; A y B quedan en la vista previa para comparar.
-        const v = P.vistaPrevia ? P.vistaPrevia.variante() : 'C';
-        return v === 'C' && P.hoyC ? 'C' : v === 'B' && P.hoyB ? 'B' : v === 'A' && P.hoyA ? 'A' : 'clasico';
-    };
-    S.hoy = function () {
-        const v = P.hoyVariante();
-        return v === 'C' ? P.hoyC() : v === 'A' ? P.hoyA() : v === 'B' ? P.hoyB() : hoyClasico();
-    };
-    /** El Hoy de la v2.9.2 (el que señalan el entrenamiento y la guía). */
-    function hoyClasico() {
-        const st = P.st;
-        const k = P.calc();
-        const hz = k.hz;
-        const inicial = (st.nombre || 'T').charAt(0).toUpperCase();
-        const fechaHoy = M.capital(M.conDia(st.hoy));
-        // V2-29 #3: un día de pago sin confirmar no se supone llegado: «Libre por ahora» + «¿Ya te cayó?».
-        const porConfirmar = hz.esHoy ? hz.ocurrencia : (hz.atrasadas || []).at(-1) || null;
-        // V2-87: lo de la tarjeta que baja tu libre de hoy; lo que pagas normalmente con un ingreso que todavía no llega va aparte.
-        const ultimaTarjeta = k.tarjetas.find((x) => x.porPagarAhora + x.estimadoAhora > 0);
-        const tarjetaConIngreso = ultimaTarjeta ? null : k.tarjetas.find((x) => x.conIngreso > 0);
-        const lineas = [];
-        if (porConfirmar) lineas.push(`<span class="portada-s">${hz.esHoy ? 'Confírmala para ver el número nuevo' : `Falta confirmar tu ${esc(nombreIngreso(hz))} del ${M.partes(porConfirmar.fecha)[2]}`}</span>`);
-        else if (k.porDia !== null) lineas.push(`<span class="portada-s">${dinero(k.porDia, { aprox: true })} por día</span>`);
-        else if (k.libre <= 0) lineas.push(`<span class="portada-s">${P.textoCero(k)}</span>`);
-        if (porConfirmar && k.libre <= 0 && (k.faltaPagos || k.sinCubrir)) lineas.push(`<span class="portada-v">${P.textoCero(k)}</span>`);
-        // V2-29 #1: el pago de la tarjeta que vence después del ingreso ya baja el libre; se dice.
-        // v2.6.6 (V2-85): la fecha del pago que se cuenta (`vence`), no la del ciclo de antes de agregar la tarjeta.
-        // Si vence en otro mes, con el mes («vence el 14 nov»): «el 14» solo se confundía con el 14 que ya pasó.
-        // v2.6.7 (V2-87): si lo que pagas normalmente sale de lo que tienes es porque vence antes de tu próximo ingreso: se dice.
-        if (ultimaTarjeta) lineas.push(`<span class="portada-v">Incluye tarjeta ${dinero(ultimaTarjeta.porPagarAhora + ultimaTarjeta.estimadoAhora, { aprox: ultimaTarjeta.estimadoAhora > 0 })}, ${ultimaTarjeta.vence < st.hoy ? 'venció' : 'vence'} el ${ultimaTarjeta.dosPagos || ultimaTarjeta.vence.slice(0, 7) === st.hoy.slice(0, 7) ? P.diaPago(ultimaTarjeta, ultimaTarjeta.vence) : M.fechaCorta(ultimaTarjeta.vence)}${ultimaTarjeta.estimadoAhora > 0 && ultimaTarjeta.vence >= st.hoy && hz.ingreso && !hz.esHoy && !hz.atrasada ? ` (antes de tu ${esc(nombreIngreso(hz))})` : ''}</span>`);
-        else if (tarjetaConIngreso) lineas.push(`<span class="portada-v">Tarjeta ${dinero(tarjetaConIngreso.conIngreso, { aprox: !!tarjetaConIngreso.ult.inicial })} del ${esc(M.fechaCorta(tarjetaConIngreso.vence))}: se paga con ${esc(P.fuentesTarjeta(tarjetaConIngreso))}</span>`);
-        // v2.8 (C-2, C-8): lo que ya tienes contado para lo que viene se explica en «¿De dónde sale?», no aquí.
-        if (k.inactivo >= 10) lineas.push(`<span class="portada-v">Con lo último que anotaste, ${esc(M.haceDias(M.ultimaActividad(st), st.hoy))}</span>`);
-        const portada = `<div class="portada app-home-pattern">
-                <svg class="app-home-pattern-art" viewBox="0 0 320 180" preserveAspectRatio="xMaxYMax meet" aria-hidden="true" focusable="false">${ART.circles}</svg>
-                ${P.qBtn('libre')}
-                <button type="button" class="portada-b" data-a="hoja" data-hoja="desglose" data-fk="portada" aria-label="${porConfirmar ? 'Libre por ahora' : 'Libre'} ${esc(dinero(k.libre))}. ${esc(textoHorizonte(hz))}. Ver de dónde sale">
-                    <span class="portada-h">${esc(textoHorizonte(hz))}</span><span class="portada-l">${porConfirmar ? 'Libre por ahora' : 'Libre'}</span><span class="portada-n">${dinero(k.libre)}</span>${lineas.join('')}
-                    <span class="portada-mas">¿De dónde sale? ${icon('chevron-right', 'ico-xs')}</span>
-                </button>
-                ${porConfirmar ? `<div class="portada-pie"><button type="button" class="btn btn--prim btn--48 btn--full" data-a="hoja" data-hoja="ingresoLlego" data-id="${porConfirmar.ingreso.id}" data-fecha="${porConfirmar.fecha}" data-fk="ing-si">${hz.esHoy ? '¿Ya llegó?' : `¿Ya llegó tu ${esc(nombreIngreso(hz))} del ${M.partes(porConfirmar.fecha)[2]}?`}</button></div>` : ''}
-            </div>`;
-
-        const tarjetasAviso = [];
-        // Pongámonos al día: su propia tarjeta (es un recorrido, no un aviso).
-        if (k.alDia) {
-            const pend = pendientesAlDia();
-            tarjetasAviso.push(`<section class="card card--aviso" aria-labelledby="av-dia"><div class="aviso-cab">${caja('👋')}<div><h2 class="card-t" id="av-dia">Pongámonos al día</h2><p class="txt">¡Qué bueno verte! En un minuto dejamos todo como está hoy:</p></div></div>
-                <ul class="mini-lista">${pend.ingresos ? `<li>${plural(pend.ingresos, 'ingreso', 'ingresos')} por confirmar</li>` : ''}${pend.pagos ? `<li>${plural(pend.pagos, 'pago', 'pagos')} por confirmar</li>` : ''}<li>${plural(st.lugares.length, 'lugar', 'lugares')} por cuadrar</li></ul>
-                <button type="button" class="btn btn--prim btn--48 btn--full" data-a="abrir" data-tipo="aldia" data-fk="aldia">Empezar</button></section>`);
-        }
-        if (P.modos) tarjetasAviso.push(...P.modos.tarjetasHoy(k));
-        // v2.4: retomar el recorrido donde se quedó (entrenamiento).
-        if (P.tour && P.tour.tarjetaHoy) tarjetasAviso.push(P.tour.tarjetaHoy());
-
-        // v2.8 (C-8): Hoy muestra el número, lo que viene (máximo 3) y Anotar. Los vencidos están en el aviso (V2-55).
-        // Cómo quedas la próxima quincena va en Mi plan; lo anotado, en Mes.
-        const proximos = proximosPagos(3);
-        const pagosHtml = tarjetaSeccion(
-            'Lo que viene',
-            proximos.length ? `<ul class="lista">${filasProximos(proximos, hz, k)}</ul>` : `<p class="vacio">Nada por delante en tu plan. ${enlaceAccion('Agregar un gasto fijo', 'hoja', 'data-hoja="nuevoPago" data-fk="vacio-pago"')}</p>`,
-            { id: 'h-pagos', accion: enlaceAccion('Ver mi plan', 'irTab', 'data-tab="pagos" data-fk="ver-pagos"') },
-        );
-        const anotarHtml = `<div class="hoy-anotar"><button type="button" class="btn btn--prim btn--48 btn--full" data-a="anotar" data-fk="hoy-anotar">${icon('plus', 'ico-s')}Anotar</button></div>`;
-
-        return `<div class="pg pg--hoy">
-            <header class="hoy-head">
-                <button type="button" class="avatar" data-a="hoja" data-hoja="menu" data-fk="avatar" aria-label="Menú de ${esc(st.nombre || 'tu cuenta')}: ajustes, tu espacio y aprende">${esc(inicial)}</button>
-                <div class="hoy-saludo"><h1 class="h1" tabindex="-1">${st.nombre && P.modo === 'uso' ? 'Hola, ' + esc(st.nombre) : 'Hola'}</h1><p class="sub">${esc(fechaHoy)}</p></div>
-            </header>
-            ${portada}
-            ${P.qTexto('libre')}
-            ${P.tipHtml('hoy')}
-            ${P.modos && P.modos.revisionHoy ? P.modos.revisionHoy() : ''}
-            ${P.modos && P.modos.preguntasHoy ? P.modos.preguntasHoy() : ''}
-            ${cierreVariables(k)}
-            ${avisoHoy(atencion(k))}
-            ${tarjetasAviso.join('')}
-            ${pagosHtml}
-            ${anotarHtml}
-        </div>`;
-    }
+    /** v2.9.3 «Hoy claro» (APROBADO por Victor, 2026-10-23): Hoy vive en hoy.js. */
+    S.hoy = () => P.hoyC();
 
     /**
      * v2.8 (C-3): antes de tu próximo ingreso, por cada gasto variable que no has cerrado: «Ibas a gastar $X y anotaste $Y.
@@ -866,40 +765,6 @@
             .join('');
     }
     P.cierreVariables = cierreVariables;
-    /**
-     * Las filas de Próximos pagos; lo que vence desde el próximo ingreso va tras un separador. v2.4.1: la tarjeta
-     * va antes (se paga con lo que ya tienes, V2-07; V2-87: salvo lo que pagas normalmente, que va con su ingreso) y, sin
-     * ingreso fijo, lo de después de tu fin de mes (o de tus 15 días) va tras «Con lo que tengas cuando venza».
-     */
-    function filasProximos(lista, hz) {
-        const st = P.st;
-        const fila = (o) => filaPago(o, null);
-        if (hz.esHoy || hz.atrasada) return lista.map(fila).join('');
-        // v2.6.7 (V2-87): cada pago va bajo el ingreso con que se paga (el de la parte más grande, si lo repartiste); la
-        // tarjeta también: lo que pagas normalmente va con su quincena. Lo que sale de lo que ya tienes va primero.
-        const fuenteDe = (o) => {
-            if (o.estado === 'vencido' || o.fecha < hz.fecha) return 'ahora';
-            const partes = o.tarjeta ? (o.info && o.info.comoPago > 0 && o.fecha === o.info.vence ? o.info.partes : []) : M.asignacion(st, o.pago, o.fecha, o.monto, hz);
-            const grande = partes.slice().sort((a, b) => b.monto - a.monto)[0];
-            return grande && !M.esFundado(st, grande.de) ? grande.de : 'ahora';
-        };
-        const grupos = [];
-        for (const o of lista) {
-            const f = fuenteDe(o);
-            const g = grupos.find((x) => x.f === f) || (grupos.push({ f, filas: [] }), grupos.at(-1));
-            g.filas.push(o);
-        }
-        // Primero lo de ahora; después cada ingreso en el orden en que llega.
-        const orden = (f) => (f === 'ahora' ? '0' : f === 'despues' ? '9' : M.esUnico(f) ? M.ingresoDeClave(st, f)?.fecha || '9' : f);
-        grupos.sort((a, b) => (orden(a.f) < orden(b.f) ? -1 : orden(a.f) > orden(b.f) ? 1 : 0));
-        const cual = (f) => {
-            if (f === 'despues' || M.esUnico(f) || !hz.ingreso) return etiquetaFuente(f);
-            const dia = M.partes(f)[2];
-            const mes = f.slice(0, 7) === st.hoy.slice(0, 7) ? '' : ` de ${M.MESES[M.partes(f)[1] - 1]}`;
-            return hz.ingreso.frecuencia === 'semanal' ? `tu pago del ${M.DIAS[M.diaSemana(f)]} ${dia}${mes}` : `tu ${nombreIngreso(hz)} del ${dia}${mes}`;
-        };
-        return grupos.map((g) => (g.f === 'ahora' ? '' : `<li class="separador" role="presentation"><span>Con ${esc(cual(g.f))}</span></li>`) + g.filas.map(fila).join('')).join('');
-    }
     function proximosPagos(n) {
         const st = P.st;
         const hasta = M.sumarDias(st.hoy, 45);

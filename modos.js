@@ -173,6 +173,8 @@
     const anteriorA291 = (v) => !numVersion(v) || cmpVersion(numVersion(v), [2, 9, 1]) < 0;
     /** v2.9.2: ¿lo guardó una versión anterior a la v2.9.2? */
     const anteriorA292 = (v) => !numVersion(v) || cmpVersion(numVersion(v), [2, 9, 2]) < 0;
+    /** v2.9.3: ¿lo guardó una versión anterior a la v2.9.3? */
+    const anteriorA293 = (v) => !numVersion(v) || cmpVersion(numVersion(v), [2, 9, 3]) < 0;
     /**
      * v2.7 (DATOS-2, F20): ¿se puede usar? `estricto` (al restaurar una copia): la forma de cada cosa, sus montos en
      * centavos enteros, sus fechas y que lo que se nombra exista. Siempre: calcular en una copia aparte, antes de escribir
@@ -393,6 +395,27 @@
         if (lineas.length) u.novedades = { ...(u.novedades || {}), 'v2.9.2': { fecha: new Date().toISOString(), visto: null, de: crudo.version || null, lineas } };
     }
 
+    /**
+     * v2.9.3 «Hoy claro» (APROBADO por Victor, 2026-10-23): un cuadrito, una sola vez, a quien ya usaba la v2.9 (de la v2.9.0
+     * a la v2.9.2): cómo se lee el Hoy nuevo, en 5 líneas amables. Quien viene de antes de la v2.9 ve el de la v2.9 (el suyo).
+     */
+    function prepararNovedades293(u, crudo) {
+        if (!u.st || !u.st.configurado || u.st.persona !== 'uso' || esDeEjemplo(u.st) || !anteriorA293(crudo.version) || anteriorA29(crudo.version) || (u.novedades && u.novedades['v2.9.3'])) return;
+        u.novedades = { ...(u.novedades || {}), 'v2.9.3': { fecha: new Date().toISOString(), visto: null, de: crudo.version || null } };
+    }
+    /** Las 5 líneas del cuadrito de la v2.9.3 (quien no cobra por quincena nunca lee «quincena»). */
+    function lineas293(st) {
+        const p = M.principal(st);
+        const con = !p ? 'después' : p.frecuencia === 'quincenal' ? 'con tu próxima quincena' : p.frecuencia === 'mensual' ? `con tu próximo ${p.nombre.toLowerCase()}` : 'con tu próximo ingreso';
+        return [
+            'Tu libre sigue arriba, como siempre.',
+            '«Para hoy» te dice lo que toca hacer; si no hay nada, te lo dice en una línea.',
+            'Tus presupuestos van en una fila que deslizas con el dedo.',
+            `«Lo que viene» separa lo que baja tu libre de hoy de lo que pagas ${con}.`,
+            'Al pagar, te dice de qué mes es, para no pagarlo dos veces.',
+        ];
+    }
+
     let uso = null;
     /** v2.6.1 (QA H-01): otra pestaña (o Safari y la app instalada a la vez) guardó tus datos y aquí todavía no se cargan. */
     let deOtra = false;
@@ -419,6 +442,7 @@
             prepararNovedades(tmp, crudo);
             prepararNovedades291(tmp, crudo);
             prepararNovedades292(tmp, crudo);
+            prepararNovedades293(tmp, crudo);
             g.novedades = tmp.novedades || null;
         }
         const u = structuredClone(g.uso);
@@ -613,6 +637,7 @@
         if (n['v2.9'] && !n['v2.9'].visto) return 'v2.9';
         if (n['v2.9.1'] && !n['v2.9.1'].visto) return 'v2.9.1';
         if (n['v2.9.2'] && !n['v2.9.2'].visto) return 'v2.9.2';
+        if (n['v2.9.3'] && !n['v2.9.3'].visto) return 'v2.9.3';
         return null;
     }
     /** v2.9.2: lo que cambió en Mi plan → Mes, con su antes y después. */
@@ -620,6 +645,14 @@
         const n = uso.novedades['v2.9.2'];
         return `<h2 class="nov-t" id="nov-t" tabindex="-1">Tu mes, bien contado ✨</h2>
             <ul class="nov-lista" id="nov-x">${(n.lineas || []).map((l) => `<li>${icon('check', 'ico-xs')}<span>${esc(l)}</span></li>`).join('')}</ul>
+            <p class="nov-cierre">${esc(NOV_CIERRE)}</p>
+            <button type="button" class="btn btn--prim btn--48 btn--full" data-a="novedadesOk" data-fk="nov-ok">¡Entendido!</button>
+            <button type="button" class="link nov-recuperar" data-a="novedadesRecuperar" data-fk="nov-recuperar">¿Algo se ve raro? Recupera tus datos</button>`;
+    }
+    /** v2.9.3: cómo se lee el Hoy nuevo. */
+    function cuerpo293() {
+        return `<h2 class="nov-t" id="nov-t" tabindex="-1">Hoy, más claro ✨</h2>
+            <ul class="nov-lista" id="nov-x">${lineas293(P.st).map((l) => `<li>${icon('check', 'ico-xs')}<span>${esc(l)}</span></li>`).join('')}</ul>
             <p class="nov-cierre">${esc(NOV_CIERRE)}</p>
             <button type="button" class="btn btn--prim btn--48 btn--full" data-a="novedadesOk" data-fk="nov-ok">¡Entendido!</button>
             <button type="button" class="link nov-recuperar" data-a="novedadesRecuperar" data-fk="nov-recuperar">¿Algo se ve raro? Recupera tus datos</button>`;
@@ -672,7 +705,7 @@
         const lineas = clave === 'v2.9' ? lineasNovedades(uso) : [];
         novPrevio = document.activeElement;
         const capa = Object.assign(document.createElement('div'), { id: 'capa-novedades', className: 'capa-novedades' });
-        capa.innerHTML = M.unPunto(`<div class="nov-fondo"></div><section class="nov" role="dialog" aria-modal="true" aria-labelledby="nov-t" aria-describedby="nov-x">${clave === 'v2.9.1' ? cuerpo291() : clave === 'v2.9.2' ? cuerpo292() : `
+        capa.innerHTML = M.unPunto(`<div class="nov-fondo"></div><section class="nov" role="dialog" aria-modal="true" aria-labelledby="nov-t" aria-describedby="nov-x">${clave === 'v2.9.1' ? cuerpo291() : clave === 'v2.9.2' ? cuerpo292() : clave === 'v2.9.3' ? cuerpo293() : `
             <h2 class="nov-t" id="nov-t" tabindex="-1">${esc(NOV_TITULO)}</h2>
             <ul class="nov-lista" id="nov-x">${lineas.map((l) => `<li>${icon('check', 'ico-xs')}<span>${esc(l)}</span></li>`).join('')}</ul>
             <p class="nov-cierre">${esc(NOV_CIERRE)}</p>
@@ -698,7 +731,7 @@
             if (el) el.inert = ['vista', 'nav'].includes(id) && !!(P.ui && P.ui.hoja);
         }
         // Una sola vez: queda guardado con tus datos (al recargar no vuelve). Si traía lo de la v2.8 o la v2.7, también queda visto.
-        if ((clave === 'v2.9.1' || clave === 'v2.9.2') && uso && uso.novedades && uso.novedades[clave]) uso.novedades[clave].visto = new Date().toISOString();
+        if ((clave === 'v2.9.1' || clave === 'v2.9.2' || clave === 'v2.9.3') && uso && uso.novedades && uso.novedades[clave]) uso.novedades[clave].visto = new Date().toISOString();
         else if (uso && uso.novedades && uso.novedades['v2.9']) {
             const ahora = new Date().toISOString();
             const n = uso.novedades['v2.9'];
@@ -1830,6 +1863,7 @@
         tipsVistos,
         // Cierre v2.8: las líneas del cuadrito, para que `palabras-v28` las revise.
         lineasNovedades: (u) => lineasNovedades(u),
+        lineas293: (st) => lineas293(st),
         tipVisto,
         vistaPlan,
         guardarVistaPlan,

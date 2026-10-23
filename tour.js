@@ -142,7 +142,7 @@
     const libreHoy = () => corto(P.calc().libre);
     /** Cierre v2.8 (ajuste 7): lo aproximado se escribe «$600.00 aprox.», con centavos y después del monto. */
     const aprox = (c) => M.dinero(c, { aprox: true });
-    /** El primer pago que vence antes de que termine tu libre (el primero de «Próximos pagos»). */
+    /** El primer pago que vence antes de que termine tu libre (el primero de «Lo que viene»). */
     function primerPago() {
         const st = P.st;
         const k = P.calc();
@@ -353,7 +353,13 @@
                 sel: 'section[aria-labelledby="h-pagos"]',
                 hazlo: {
                     claves: ['guardado:pagado'],
-                    senal: () => (enPantalla('hoy') ? tocar('[data-fk^="pagado-p-telefono-"]', 'Ya pagaste el teléfono: toca «Ya lo pagué» junto a él.') : tocar('[data-fk="nav-hoy"]', 'Toca «Hoy» abajo.')),
+                    // v2.9.3 «Hoy claro»: en «Lo que viene», «Ya pagué el de octubre» aparece al tocar la fila.
+                    senal: () => {
+                        if (!enPantalla('hoy')) return tocar('[data-fk="nav-hoy"]', 'Toca «Hoy» abajo.');
+                        const b = document.querySelector('[data-fk^="pagado-p-telefono-"]');
+                        if (!b || b.closest('[hidden]')) return tocar('[data-fk^="p-telefono-"]', 'Ya pagaste el teléfono: tócalo en «Lo que viene».');
+                        return tocar('[data-fk^="pagado-p-telefono-"]', `Toca «${b.textContent.trim()}».`);
+                    },
                     foco: '.portada',
                     pausa: (a, d) => ({ titulo: 'Mira tu libre', filas: [filaLibre(a, d), { l: 'Tienes', a: a.tienes, d: d.tienes }], texto: d.libre === a.libre ? `Tu libre no cambió: el teléfono ya estaba restado. Lo que tienes bajó ${corto(a.tienes - d.tienes)}.` : cambioLibre(a, d, 'marcaste el teléfono') }),
                 },
@@ -535,14 +541,18 @@
                 ejemplo: ej.guardar(40),
                 montos: [40],
                 antes: irA('hoy'),
-                sel: '.aviso-hoy',
+                // v2.9.3 «Hoy claro»: el aviso está en «Para hoy»; «Ver» lo abre con sus botones.
+                sel: 'section[aria-labelledby="ph-t"]',
                 hazlo: {
                     claves: ['guardado:reservar'],
                     senal: () => {
-                        if (hoja('reservar')) return M.leerMonto(P.ui.hoja.monto) === 4000 ? tocar('[data-fk="reservar-ok"]', 'Toca «Reservar».') : escribir('#f-monto', '40', 'Borra el número y escribe 40 en «¿Cuánto?».');
+                        if (hoja('reservar')) return M.leerMonto(P.ui.hoja.monto) === 4000 ? tocar('[data-fk="reservar-ok"]', 'Toca «Dejar listo».') : escribir('#f-monto', '40', 'Borra el número y escribe 40 en «¿Cuánto?».');
                         if (!enPantalla('hoy')) return tocar('[data-fk="nav-hoy"]', 'Toca «Hoy» abajo.');
                         const b = document.querySelector('[data-fk="at-sug-si"]');
-                        return tocar('[data-fk="at-sug-si"]', `Toca «${b ? b.textContent.trim() : 'Sí'}».`);
+                        if (b) return tocar('[data-fk="at-sug-si"]', `Toca «${b.textContent.trim()}».`);
+                        const v = document.querySelector('[data-fk^="pr-sug-"]');
+                        if (v) return tocar('[data-fk^="pr-sug-"]', `En «Para hoy», toca «${v.textContent.trim()}».`);
+                        return tocar('[data-fk="ph-todas"]', 'En «Para hoy», toca «Ver las…».');
                     },
                     foco: '.portada',
                     pausa: pausaLibre('Mira tu libre', (a, d) => `guardaste ${corto(a.libre - d.libre)} para el alquiler`),
