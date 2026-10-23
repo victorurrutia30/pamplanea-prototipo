@@ -146,6 +146,24 @@ Versión visible en la app y en la guía: **«Prototipo v2.8.0 · 2026-10-22»**
 - **Decisiones 43 y 44: APROBADO por Victor (2026-10-22)**, al pegar «sigue — ya liberé memoria». Frases literales:
   - «En Esta quincena, el resumen dice «Tienes $X · Ahorros $Y · Sale $Z» (los ahorros NO van dentro de «Sale»). Tienes − Ahorros − Sale = Tu libre, el mismo número de Hoy.»
   - ««+~$150» para un ingreso aproximado en la lista por fecha: APROBADO (reemplaza el acuerdo de la v2.3 «nunca +~» solo en esta lista).»
+- **Ajuste 6 «Presupuestos, categorías y Mes»: APROBADO por Victor (2026-10-22)**, al pegar el prompt «v2.8 — AJUSTE 6» («De acuerdo contigo en todo»). De `0c3cdbf` pasaron las 5 pruebas. Frases literales:
+  - «gastos variables confunde un poco … la sección en sí ayuda mucho … se define un presupuesto máximo … ¿cómo lo podríamos nombrar?»
+  - «me gustaría que todas las categorías que están predefinidas se puedan editar desde mis categorías, solo las aplicables, por ejemplo luz no»
+  - «me gustaría un rediseño total de la pantalla de mes … lo veo como un lugar de análisis e historial»
+  - «me parece» (arreglos de cómo se ven los montos).
+- Decisiones (una línea cada una):
+  - **Principio de diseño:** «no tanto ruido, que diga mucho con poco»: una idea por bloque, números grandes solo donde importan, una línea por fila, nada repetido, lo vacío no se muestra.
+  - **1. «Gastos variables» → «Presupuestos»** en todas las pantallas (cambia el nombre de D-2/C-3). La regla del dinero no cambia; los datos guardados tampoco.
+  - **1b.** Al crear: «Lo máximo que quieres gastar en algo cada quincena». «¿Cómo es?»: «Llega con fecha (luz, internet)» / «Le pongo un máximo (súper, comida afuera)» / «Solo esta vez».
+  - **1c.** El catálogo de presupuestos suma «Comida afuera». Súper puede ser gasto fijo o presupuesto: lo elige la persona.
+  - **2. Categorías predefinidas editables** en «Mis categorías» (renombrar, ícono, ocultar, «Volver al original»): las del día a día, las de Suscripción y Otro, los presupuestos sugeridos y las propias.
+  - **2b. Fijas, con 🔒 «La app la usa para tus cuentas»:** Luz, Agua, Internet, Salario e ingreso principal, cuotas, deudas y tarjeta, Cuchubal y «Otros».
+  - **2c.** Ocultar no borra ni cambia nada anotado. Renombrar cambia el nombre en todo el historial; los montos no. Cambia lo guardado: copia por versión y `actualizar` ×2.
+  - **3. Mes, rediseño total:** «¿qué pasó y qué aprendo?», la única pantalla que mira hacia atrás. Resumen, «¿En qué se te fue?», «Tus presupuestos», «Lo que encontramos» e «Historial», en una columna.
+  - **3b.** Se conserva todo lo que Mes hace hoy (corregir, filtros, ingresos, sin detalle, intereses del estado de cuenta). Con pocos datos, frases amables, nunca un gráfico vacío.
+  - **4. Montos (Mi plan y Mes):** gastos sin «−», ingresos con «+», aproximados «~$30.00», pagado ✓ en gris, parcial «faltan $X.XX».
+  - **4b.** Un cobro con tarjeta se ve «$10.00 · va en Mi BAC», en gris y sin «−»: no está dentro de «Sale» (C-7).
+  - **4c.** Al crear algo nuevo: primera letra en mayúscula y el emoji por el nombre (gasolina → ⛽). Lo ya guardado no cambia.
 
 ### E1 — el cálculo y los datos
 
@@ -247,6 +265,10 @@ Versión visible en la app y en la guía: **«Prototipo v2.8.0 · 2026-10-22»**
 | Ajuste 5 · un resumen por periodo: «Tu libre» = Hoy | Sí | `invariantes` V24, `viaje-v23`, `aceptacion-v23`, QUÉ DEBO PROBAR 1 y 3 |
 | Ajuste 5 · «⚠ N por confirmar ›» y una línea por fila | Sí | `invariantes` I05, I06 y V25, `v262`, QUÉ DEBO PROBAR 2 |
 | Ajuste 5 · nada se pierde frente a `509aef4` | Sí | `invariantes` V25 |
+| Ajuste 6 · «Presupuestos» (antes «gastos variables») | Sí | `invariantes` V15, V25 y V26, QUÉ DEBO PROBAR 1 |
+| Ajuste 6 · categorías predefinidas editables, fijas con 🔒 | Sí | `invariantes` V29 y V30, `actualizar` ×2, QUÉ DEBO PROBAR 3, captura |
+| Ajuste 6 · Mes nuevo | Sí | `invariantes` V27 y V28, `viaje-v23`, `entrega2-v23`, QUÉ DEBO PROBAR 4 y 5, capturas |
+| Ajuste 6 · un solo formato de montos, «va en Mi BAC» | Sí | `invariantes` V31, `v262`, `aceptacion-v23`, QUÉ DEBO PROBAR 2 |
 
 ### Pruebas de E2 y al terminar
 
@@ -381,6 +403,23 @@ Versión visible en la app y en la guía: **«Prototipo v2.8.0 · 2026-10-22»**
   - un guion repitió tu preparación y los ajustes 1 a 4 (el 4 en `509aef4`) y después las 5 pruebas nuevas con el código final, el 22 de octubre, sin fallos: en las 5 nuevas tu libre sigue en $856;
   - encontró «~$NaN» en el total de «Deudas» con Mi BAC pagada en parte: quedó arreglado y probado en V25.
 
+### Ajuste 6 «Presupuestos, categorías y Mes» (2026-10-22)
+
+- **Lo que cambió** (APROBADO por Victor 2026-10-22; v2.8.0): «Presupuestos»; «Mis categorías» con las predefinidas (renombrar, ícono, ocultar, «Volver al original») y las fijas con 🔒; Mes nuevo; un solo formato de montos; al crear, mayúscula y emoji por el nombre.
+- **Pruebas** (modo ajuste: una a la vez, con la memoria primero; hubo entre 4.0 y 4.6 GB libres):
+  - `invariantes`: **50 de 50**. Nuevas: V27 a V31;
+  - `actualizar --ref=c640e4e` y `--ref=d702de0`: 0 fallos;
+  - en verde: `palabras-v28`, `v263`, `v262`, `v241`, `aceptacion-v23`, `entrega2-v23`, `viaje-v23`, `humo-v23`, `humo`, `atras`, `recorrer-sets`, `contraste-v23` (mínimo 4.94:1), `contraste`, `teclado`, `montos` y `numeros-entrenamiento`;
+  - actualizadas citando su punto (no se borró ninguna): `invariantes` V15, V20, V25 y V26, `v262`, `aceptacion-v23`, `entrega2-v23`, `viaje-v23` y `contraste-v23` (ahora mide Mes y «Mis categorías»);
+  - 3 capturas a 390×844 (Mes arriba, Mes historial, Mis categorías), revisadas como imágenes. Se quitó ruido del historial.
+- **Lo que las pruebas encontraron y quedó arreglado:**
+  - abrir una categoría fija desde el código fallaba: ahora abre con su candado;
+  - la nota de una fila ensanchaba Mes más que la pantalla;
+  - al renombrar «Súper», un gasto de súper dejaba de salir de su presupuesto: el motor usa el nombre de ahora.
+- **QUÉ DEBO PROBAR, verificado:**
+  - el guion repitió hasta el ajuste 5 en `0c3cdbf`, y con el código final tu «Comida» de $50 y las 5 nuevas, el 22 de octubre, sin fallos;
+  - tu libre: $856 → $838 (tu «Comida» ya lleva $32 de pupusas) → $808 con «Farmacia».
+
 ### Pendiente para el cierre
 
 Para cuando Victor escriba «todo aprobado, lancemos» (modo ajuste: no se hizo ahora).
@@ -390,7 +429,9 @@ Para cuando Victor escriba «todo aprobado, lancemos» (modo ajuste: no se hizo 
   - La ayuda llama a Mi plan «Pagos».
   - El tour y el glosario hablan de «tu próxima quincena» como tarjeta; ahora señalan el resumen de Mi plan → Próxima.
   - El consejo de la primera vez en Mi plan.
-- **Contraste:** «⚠ N por confirmar» no se midió en los 4 temas (el caso de `contraste-v23` no tiene nada vencido).
+  - «Presupuestos» en el entrenamiento, la ayuda, el glosario («Gastos variables») y el cuadrito («pueden ser gastos variables»); el consejo de Mes.
+- **`palabras-v28`:** agregar «gasto variable» y «gastos variables» (cuando cambien esos textos).
+- **Contraste:** «⚠ N por confirmar», «va en Mi BAC» y la línea contra el mes anterior no se midieron en los 4 temas (el caso de `contraste-v23` no los tiene).
 - **Pruebas que no se corrieron:**
   - la batería completa y las largas: `v25`, `v24`, `v231`, `v26`, `v264`, `v266`, `v267`, `v267-editar`, `formularios-v265`, `recorrer-v2`, `recorrer-modos`;
   - `capturas-v28`, `capturas-ux` y la vista de computadora;
@@ -462,6 +503,19 @@ Para cuando Victor escriba «todo aprobado, lancemos» (modo ajuste: no se hizo 
 47. **La vista se recuerda en las preferencias del teléfono** (junto a los consejos vistos). No cambia cómo se guardan tus datos; por eso no se corrió `actualizar`.
 48. **«Por confirmar» es su propia pantalla** («‹ Mi plan»). Vacía dice «Nada por confirmar. Vas al día.»
 49. **Tour, solo para que no se rompa:** «Esta es tu próxima quincena» señala el resumen de Mi plan → Próxima, y «Aquí anotas un adelanto», «+ Agregar». Los textos no se tocaron.
+50. **Ajuste 6, Mis categorías:** Cable, Plan de celular, Gas y Vigilancia se pueden cambiar (no están entre las fijas). «Suscripciones» y «Facturas de servicios» para anotar quedan fijas y no se muestran: Mes las usa.
+51. **Súper, Comida, Mercado y Transporte** son la misma categoría para anotar y como presupuesto sugerido: se cambian en un solo lugar («Para anotar»).
+52. **Renombrar** cambia el nombre guardado de lo anotado y de tu plan que se llamaba igual (y era de esa categoría); «Volver al original» lo regresa. Montos iguales.
+53. **«Archivar»** (tus categorías) ahora se llama «Ocultar», como en las predefinidas.
+54. **Mes en curso:** la línea contra el anterior compara a la misma altura («↑ $X más que a esta altura de septiembre»); «Tus presupuestos» dice «Vas bien en n de m».
+55. **«¿En qué se te fue?»:** la categoría «Otros» va siempre dentro de «Otros (n)» (nunca dos «Otros»). La barra es la parte de «Salieron».
+56. **«Tus presupuestos»:** el máximo del mes es su máximo × los días de pago del mes desde que existe (tu Súper: $150 × 2 = $300).
+57. **«Lo que encontramos» → «Tu avance»:** abonos a tarjetas y cuotas de deudas del mes, y lo que guardaste en tus ahorros ese mes.
+58. **Historial:** un movimiento se ve «Banco → Efectivo»; un cuadre, la cuenta y su nota. Hoy no se pinta (en Mi plan sí).
+59. **Ver por tipo:** el total de cada sección no suma lo que «va en» una tarjeta ni los descuentos del salario (C-7).
+60. **Al crear,** el emoji por el nombre solo reemplaza un ícono genérico (🧾, 🛒, 🏷️, 🧩).
+61. **«Súper, fijo o presupuesto»:** lo elige la persona con «¿Cómo es?», «Pásalo a…» y la pregunta de una vez; no se agregó Súper a los gastos fijos.
+62. **Lo guardado:** lo nuevo (`categoriasBase`) solo aparece al cambiar una categoría; la versión sigue en v2.8.0, así que la copia por versión es la de antes de la v2.8.0. Una versión anterior lo ignora sin perder nada (`actualizar` ×2: 0 fallos).
 
 ### PENDIENTE (lo vi y no lo toqué)
 
